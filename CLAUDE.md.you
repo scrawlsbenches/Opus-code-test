@@ -83,11 +83,18 @@ ls -t samples/memories/*knowledge-transfer*.md | head -1 | xargs cat  # Recent c
 
 ### What is GoT?
 
-GoT (Graph of Thought) is our task and decision tracking system:
+GoT (Graph of Thought) serves dual purposes:
+
+**1. Task & Decision Tracking:**
 - **Tasks**: `T-20251221-014654-a1b2c3d4` (8-char hex suffix)
 - **Sprints**: `S-sprint-017-spark-slm`
 - **Decisions**: Logged choices with rationale
-- **Edges**: Relationships (DEPENDS_ON, BLOCKS, CONTAINS)
+
+**2. Reasoning Framework** (see `docs/graph-of-thought.md`):
+- **Node types**: CONCEPT, QUESTION, DECISION, HYPOTHESIS, EVIDENCE
+- **Edge types**: EXPLORES, SUPPORTS, CONTRADICTS, REFINES
+- **Pattern factories**: Build structured reasoning graphs
+- **Use Case**: Complex problems with multiple competing hypotheses
 
 **Essential Commands:**
 
@@ -332,7 +339,63 @@ python -m pytest tests/ -v --cov=cortical     # full suite
 
 ---
 
-## Part IX: Architecture Reference
+## Part IX: Woven Mind — Cognitive Architecture
+
+The system implements **dual-process cognitive theory** (Kahneman's System 1/2):
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         THE WOVEN MIND                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│    ┌──────────────────────────────────────────────────────────────┐     │
+│    │                   CORTEX (System 2)                          │     │
+│    │               "The Deliberate Dreamer"                       │     │
+│    │   • Slow, effortful        • Builds abstractions             │     │
+│    │   • Goal-directed          • Top-down guidance               │     │
+│    └────────────────────────┬─────────────────────────────────────┘     │
+│                              │                                           │
+│              ════════════════╪════════════ The Loom ════════════        │
+│                              │                                           │
+│    ┌────────────────────────▼─────────────────────────────────────┐     │
+│    │                    HIVE (System 1)                           │     │
+│    │               "The Pattern Whisperer"                        │     │
+│    │   • Fast, automatic        • Hebbian learning                │     │
+│    │   • Pattern matching       • Spreading activation            │     │
+│    └──────────────────────────────────────────────────────────────┘     │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key Components:**
+
+| Component | Role | Location |
+|-----------|------|----------|
+| **Hive** | Fast pattern matching (System 1) | `cortical/reasoning/hive.py` |
+| **Cortex** | Deliberate reasoning (System 2) | `cortical/reasoning/cortex.py` |
+| **Loom** | Mode switching based on surprise | `cortical/reasoning/loom.py` |
+| **Consolidation** | Sleep-like learning transfer | `cortical/reasoning/consolidation.py` |
+
+**Mode Switching:**
+- **Low surprise** → Stay FAST (Hive handles it)
+- **High surprise** → Switch SLOW (engage Cortex)
+- **Threshold**: Default 0.3 (configurable via `surprise_threshold`)
+
+**Usage:**
+```python
+from cortical.reasoning.woven_mind import WovenMind
+
+mind = WovenMind()
+mind.train("neural networks process data")
+result = mind.process(["neural", "networks"])
+print(f"Mode: {result.mode.name}")  # FAST or SLOW
+```
+
+> **Deep Dive:** See `docs/woven-mind-user-guide.md` and `docs/woven-mind-architecture.md`
+
+---
+
+## Part X: Architecture Reference
 
 ### Layer Hierarchy
 
@@ -341,6 +404,36 @@ Layer 0 (TOKENS)    → Individual words        [atomic units]
 Layer 1 (BIGRAMS)   → Word pairs              [local patterns]
 Layer 2 (CONCEPTS)  → Semantic clusters       [abstract ideas]
 Layer 3 (DOCUMENTS) → Full documents          [complete entities]
+```
+
+### Five-Layer Module Architecture
+
+```
+┌───────────────────────────────────────────────────────────────────────┐
+│  ORCHESTRATION LAYER — processor/ package (public API)                 │
+│  • CorticalTextProcessor (mixin composition)                           │
+│  • Staleness tracking, coordinates all components                      │
+└─────────────────────────────────┬─────────────────────────────────────┘
+                                  │
+┌─────────────────────────────────┴─────────────────────────────────────┐
+│  ALGORITHM LAYER — analysis/, semantics/, embeddings/                  │
+│  • PageRank, TF-IDF, clustering, semantic relations                   │
+└─────────────────────────────────┬─────────────────────────────────────┘
+                                  │
+┌─────────────────────────────────┴─────────────────────────────────────┐
+│  QUERY LAYER — query/ package                                          │
+│  • expansion, search, passages, ranking, intent                        │
+└─────────────────────────────────┬─────────────────────────────────────┘
+                                  │
+┌─────────────────────────────────┴─────────────────────────────────────┐
+│  PERSISTENCE LAYER — persistence.py, chunk_index.py                   │
+│  • Save/load, git-friendly chunk storage                              │
+└─────────────────────────────────┬─────────────────────────────────────┘
+                                  │
+┌─────────────────────────────────┴─────────────────────────────────────┐
+│  FOUNDATION LAYER — minicolumn.py, layers.py, config.py, tokenizer.py │
+│  • Core data structures, no external dependencies                      │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Module Map
@@ -390,9 +483,25 @@ cortical/
 | `HierarchicalLayer` | `layers.py` | Container with O(1) ID lookups |
 | `CorticalConfig` | `config.py` | Configuration with validation |
 
+### Semantic Relations
+
+Relations between terms have typed weights:
+
+| Relation | Weight | Example |
+|----------|--------|---------|
+| `IsA` | 1.5 | "dog IsA animal" |
+| `SimilarTo` | 1.4 | "dog SimilarTo cat" |
+| `PartOf` | 1.3 | "wheel PartOf car" |
+| `DerivedFrom` | 1.2 | "quickly DerivedFrom quick" |
+| `HasProperty` | 1.2 | "dog HasProperty loyal" |
+| `Causes` | 1.1 | "rain Causes floods" |
+| `RelatedTo` | 1.0 | Default co-occurrence |
+| `CoOccurs` | 0.8 | Statistical co-occurrence |
+| `Antonym` | 0.3 | "big Antonym small" (penalized) |
+
 ---
 
-## Part X: Staleness Tracking System
+## Part XI: Staleness Tracking System
 
 The processor tracks which computations are up-to-date:
 
@@ -416,7 +525,7 @@ if processor.is_stale(processor.COMP_PAGERANK):
 
 ---
 
-## Part XI: Return Value Semantics
+## Part XII: Return Value Semantics
 
 ### Edge Case Returns
 
@@ -450,7 +559,7 @@ if processor.is_stale(processor.COMP_PAGERANK):
 
 ---
 
-## Part XII: Quick Reference
+## Part XIII: Quick Reference
 
 ### Most-Used Commands
 
@@ -478,7 +587,7 @@ if processor.is_stale(processor.COMP_PAGERANK):
 
 ---
 
-## Part XIII: The Metus Way — Summary
+## Part XIV: The Metus Way — Summary
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -500,6 +609,21 @@ if processor.is_stale(processor.COMP_PAGERANK):
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Further Reading
+
+| Document | Purpose |
+|----------|---------|
+| `docs/architecture.md` | Full module dependency graph |
+| `docs/glossary.md` | Term definitions (Minicolumn, Edge, PageRank, etc.) |
+| `docs/woven-mind-user-guide.md` | Dual-process cognitive architecture guide |
+| `docs/woven-mind-architecture.md` | Technical deep-dive on Hive/Cortex/Loom |
+| `docs/graph-of-thought.md` | GoT reasoning framework patterns |
+| `docs/cognitive-operations-reference.md` | Cognitive operations mapping |
+| `docs/automated-testing-techniques.md` | Advanced testing patterns |
+| `MANIFEST.md` | Project structure overview |
 
 ---
 
