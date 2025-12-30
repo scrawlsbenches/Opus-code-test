@@ -310,7 +310,8 @@ class QueryMixin:
         use_expansion: bool = True,
         use_semantic: bool = True,
         filter_code_stop_words: bool = True,
-        test_file_penalty: float = 0.8
+        test_file_penalty: float = 0.8,
+        freshness_boost: float = 1.0
     ) -> List[Tuple[str, float]]:
         """
         Find documents most relevant to a query.
@@ -324,6 +325,9 @@ class QueryMixin:
                                     from expansion. Reduces noise in code search. (default True)
             test_file_penalty: Multiplier for test files to rank them lower (default 0.8).
                                Set to 1.0 to disable penalty.
+            freshness_boost: Multiplier for documents added within the freshness window
+                             (default 7 days). Recent documents get their score multiplied
+                             by this factor. Set to 1.0 to disable. Default: 1.0 (disabled).
 
         Returns:
             List of (doc_id, score) tuples ranked by relevance
@@ -345,7 +349,9 @@ class QueryMixin:
             semantic_relations=self.semantic_relations if use_semantic else None,
             use_semantic=use_semantic,
             filter_code_stop_words=filter_code_stop_words,
-            test_file_penalty=test_file_penalty
+            test_file_penalty=test_file_penalty,
+            freshness_boost=freshness_boost,
+            doc_metadata=self.document_metadata
         )
 
     def fast_find_documents(

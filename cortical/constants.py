@@ -85,5 +85,17 @@ IMPLEMENTATION_KEYWORDS: FrozenSet[str] = frozenset([
 ])
 
 
+# =============================================================================
+# FRESHNESS BOOST SETTINGS
+# =============================================================================
+
+# Default freshness boost weight for recent documents
+# Documents within the freshness window get their score multiplied by this factor
+DEFAULT_FRESHNESS_BOOST: float = 1.5
+
+# Number of days within which a document is considered "fresh"
+FRESHNESS_WINDOW_DAYS: int = 7
+
+
 # NOTE: LAYER_COLORS and LAYER_NAMES are defined in persistence.py
 # because they use CorticalLayer enum keys for type safety in exports.
