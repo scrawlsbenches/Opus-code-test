@@ -19,10 +19,64 @@ from datetime import datetime, timedelta
 from ..layers import CorticalLayer, HierarchicalLayer
 from ..tokenizer import Tokenizer
 from ..code_concepts import get_related_terms
-from ..constants import FRESHNESS_WINDOW_DAYS
+from ..constants import (
+    FRESHNESS_WINDOW_DAYS,
+    FRESHNESS_DECAY_FUNCTIONS,
+    DEFAULT_FRESHNESS_DECAY,
+)
 
 from .expansion import expand_query, get_expanded_query_terms
 from .utils import get_tfidf_score, is_test_file
+
+
+def _compute_decay_factor(
+    days_old: float,
+    window_days: int,
+    decay_function: str,
+) -> float:
+    """
+    Compute the decay factor for a document based on its age.
+
+    Args:
+        days_old: Number of days since the document was added
+        window_days: Freshness window in days
+        decay_function: Type of decay ("linear", "exponential", or "none")
+
+    Returns:
+        Decay factor in range [0.0, 1.0] where:
+        - 1.0 = full boost (document is brand new)
+        - 0.0 = no boost (document is at or beyond window boundary)
+    """
+    if days_old < 0:
+        days_old = 0
+
+    if days_old >= window_days:
+        return 0.0
+
+    if decay_function == "none":
+        # Binary: full boost within window
+        return 1.0
+
+    # Normalized position in window: 0.0 = today, 1.0 = at boundary
+    normalized_age = days_old / window_days
+
+    if decay_function == "linear":
+        # Linear decay: 1.0 at day 0, 0.0 at window boundary
+        return 1.0 - normalized_age
+
+    elif decay_function == "exponential":
+        # Exponential decay: faster drop-off, front-loads freshness
+        # Uses decay curve: e^(-3 * normalized_age) normalized to [0, 1]
+        import math
+        # At day 0: e^0 = 1.0
+        # At boundary: e^-3 ≈ 0.05 (we normalize to reach 0)
+        decay = math.exp(-3.0 * normalized_age)
+        # Normalize so boundary approaches 0
+        min_val = math.exp(-3.0)  # Value at boundary
+        return (decay - min_val) / (1.0 - min_val)
+
+    # Fallback to linear for unknown decay functions
+    return 1.0 - normalized_age
 
 
 def _apply_document_name_boost(
@@ -85,27 +139,39 @@ def _apply_freshness_boost(
     doc_scores: Dict[str, float],
     doc_metadata: Optional[Dict[str, Dict[str, Any]]],
     freshness_boost: float,
-    freshness_window_days: int = FRESHNESS_WINDOW_DAYS
+    freshness_window_days: int = FRESHNESS_WINDOW_DAYS,
+    freshness_decay: str = DEFAULT_FRESHNESS_DECAY
 ) -> None:
     """
     Apply freshness boost to scores for recently added documents in-place.
 
     Documents with a timestamp within the freshness window get their scores
-    multiplied by the freshness_boost factor. Documents without timestamps
-    or with timestamps outside the window are not boosted.
+    multiplied by a boost factor. The boost can decay based on document age
+    using different decay functions.
 
     Args:
         doc_scores: Dictionary of doc_id -> score (modified in-place)
         doc_metadata: Dictionary of doc_id -> metadata dict containing timestamps
-        freshness_boost: Boost factor for fresh documents (e.g., 1.5 = 50% boost)
+        freshness_boost: Maximum boost factor for fresh documents (e.g., 1.5 = 50% boost)
         freshness_window_days: Number of days within which a document is "fresh"
+        freshness_decay: Decay function type:
+            - "linear": Boost decays linearly from full at day 0 to 1.0 at boundary
+            - "exponential": Boost decays exponentially (front-loads freshness)
+            - "none": Binary boost (original behavior) - full boost within window
+
+    Example with freshness_boost=1.5 and linear decay over 7-day window:
+        - Day 0: 1.5x boost (full)
+        - Day 3: ~1.29x boost
+        - Day 7: 1.0x boost (no boost)
     """
     if freshness_boost <= 1.0 or not doc_scores or not doc_metadata:
         return
 
-    # Calculate the cutoff date for freshness
+    # Validate decay function
+    if freshness_decay not in FRESHNESS_DECAY_FUNCTIONS:
+        freshness_decay = DEFAULT_FRESHNESS_DECAY
+
     today = datetime.now()
-    cutoff_date = today - timedelta(days=freshness_window_days)
 
     for doc_id in doc_scores:
         metadata = doc_metadata.get(doc_id, {})
@@ -118,9 +184,21 @@ def _apply_freshness_boost(
             # Parse timestamp - supports YYYY-MM-DD format
             doc_date = datetime.strptime(timestamp_str, "%Y-%m-%d")
 
-            # Apply boost if document is within freshness window
-            if doc_date >= cutoff_date:
-                doc_scores[doc_id] *= freshness_boost
+            # Calculate document age in days
+            days_old = (today - doc_date).days
+
+            # Compute decay factor based on age
+            decay_factor = _compute_decay_factor(
+                days_old, freshness_window_days, freshness_decay
+            )
+
+            if decay_factor > 0:
+                # Calculate graduated boost: 1.0 + (boost - 1.0) * decay_factor
+                # This maps: decay_factor=1.0 -> full boost, decay_factor=0 -> no boost
+                boost_amount = freshness_boost - 1.0
+                effective_boost = 1.0 + (boost_amount * decay_factor)
+                doc_scores[doc_id] *= effective_boost
+
         except (ValueError, TypeError):
             # Invalid timestamp format - skip this document
             continue
@@ -138,7 +216,9 @@ def find_documents_for_query(
     filter_code_stop_words: bool = True,
     test_file_penalty: float = 0.8,
     freshness_boost: float = 1.0,
-    doc_metadata: Optional[Dict[str, Dict[str, Any]]] = None
+    doc_metadata: Optional[Dict[str, Dict[str, Any]]] = None,
+    freshness_decay: str = DEFAULT_FRESHNESS_DECAY,
+    freshness_window_days: int = FRESHNESS_WINDOW_DAYS
 ) -> List[Tuple[str, float]]:
     """
     Find documents most relevant to a query using TF-IDF and optional expansion.
@@ -156,10 +236,13 @@ def find_documents_for_query(
                                 from expansion candidates. Reduces noise in code search. (default True)
         test_file_penalty: Multiplier for test files to rank them lower (default 0.8).
                            Set to 1.0 to disable penalty.
-        freshness_boost: Multiplier for documents added within the freshness window
-                         (default 7 days). Set to 1.0 to disable. Default: 1.0 (disabled).
+        freshness_boost: Maximum multiplier for documents added within the freshness window.
+                         Set to 1.0 to disable. Default: 1.0 (disabled).
         doc_metadata: Optional document metadata dict for freshness boost.
                       Expected format: {doc_id: {"timestamp": "YYYY-MM-DD", ...}}
+        freshness_decay: Decay function for freshness boost ("linear", "exponential", "none").
+                         Default: "linear" for graduated decay.
+        freshness_window_days: Number of days within which a document is "fresh" (default 7).
 
     Returns:
         List of (doc_id, score) tuples ranked by relevance
@@ -198,7 +281,11 @@ def find_documents_for_query(
 
     # Apply freshness boost to recent documents
     if freshness_boost > 1.0 and doc_metadata:
-        _apply_freshness_boost(doc_scores, doc_metadata, freshness_boost)
+        _apply_freshness_boost(
+            doc_scores, doc_metadata, freshness_boost,
+            freshness_window_days=freshness_window_days,
+            freshness_decay=freshness_decay
+        )
 
     sorted_docs = sorted(doc_scores.items(), key=lambda x: -x[1])
     return sorted_docs[:top_n]

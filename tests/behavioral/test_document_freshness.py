@@ -323,3 +323,357 @@ class TestDocumentFreshness:
         for doc_id, score in results:
             assert isinstance(doc_id, str), "doc_id should be string"
             assert isinstance(score, (int, float)), "score should be numeric"
+
+
+class TestGraduatedFreshnessDecay:
+    """
+    Epic: Graduated freshness decay for search ranking
+
+    As a researcher searching my document corpus,
+    I want the freshness boost to decay gradually based on document age,
+    So that a 2-day-old document ranks higher than a 6-day-old document
+    (rather than both receiving the same boost).
+    """
+
+    def test_today_document_gets_full_freshness_boost(self, fresh_processor):
+        """
+        Scenario: Documents from today get full freshness boost
+
+        Given a document added today
+        And a document added 30 days ago
+        When I search with linear decay enabled
+        Then the today's document gets the full boost (1.5x)
+        Because the most recent documents should be most prominent.
+        """
+        # Given documents at different ages
+        today = datetime.now()
+        today_str = today.strftime("%Y-%m-%d")
+        thirty_days_ago = (today - timedelta(days=30)).strftime("%Y-%m-%d")
+
+        fresh_processor.process_document(
+            "today_doc",
+            "Kubernetes container orchestration and deployment strategies.",
+            metadata={"timestamp": today_str}
+        )
+        fresh_processor.process_document(
+            "old_doc",
+            "Kubernetes container orchestration and deployment strategies.",
+            metadata={"timestamp": thirty_days_ago}
+        )
+        fresh_processor.compute_all(verbose=False)
+
+        # When I search with linear decay
+        results = fresh_processor.find_documents_for_query(
+            "kubernetes container",
+            top_n=5,
+            freshness_boost=1.5,
+            freshness_decay="linear"
+        )
+
+        # Then today's document should rank first with full boost
+        result_docs = [doc_id for doc_id, _ in results]
+        assert result_docs[0] == "today_doc", (
+            f"Today's document should rank first, got: {result_docs}"
+        )
+
+        # Verify score difference reflects full boost
+        scores = {doc_id: score for doc_id, score in results}
+        # Today's doc should have significantly higher score (1.5x boost vs no boost)
+        assert scores["today_doc"] > scores["old_doc"], (
+            "Today's document should have higher score than 30-day-old document"
+        )
+
+    def test_linear_decay_ranks_2day_higher_than_6day(self, fresh_processor):
+        """
+        Scenario: 2-day-old document ranks higher than 6-day-old with linear decay
+
+        Given two documents with identical content
+        And one was added 2 days ago
+        And another was added 6 days ago
+        When I search with linear decay enabled
+        Then the 2-day-old document ranks higher
+        Because linear decay: Day 2 gets ~1.36x boost, Day 6 gets ~1.07x boost.
+        """
+        # Given documents at different ages within the window
+        today = datetime.now()
+        two_days_ago = (today - timedelta(days=2)).strftime("%Y-%m-%d")
+        six_days_ago = (today - timedelta(days=6)).strftime("%Y-%m-%d")
+
+        content = (
+            "GraphQL API design with Apollo Server and schema stitching. "
+            "Modern API development patterns for microservices."
+        )
+
+        fresh_processor.process_document(
+            "doc_2days", content,
+            metadata={"timestamp": two_days_ago}
+        )
+        fresh_processor.process_document(
+            "doc_6days", content,
+            metadata={"timestamp": six_days_ago}
+        )
+        fresh_processor.compute_all(verbose=False)
+
+        # When I search with linear decay
+        results = fresh_processor.find_documents_for_query(
+            "GraphQL API design",
+            top_n=5,
+            freshness_boost=1.5,
+            freshness_decay="linear"
+        )
+
+        # Then 2-day-old document should rank higher than 6-day-old
+        result_docs = [doc_id for doc_id, _ in results]
+        assert "doc_2days" in result_docs
+        assert "doc_6days" in result_docs
+        idx_2days = result_docs.index("doc_2days")
+        idx_6days = result_docs.index("doc_6days")
+        assert idx_2days < idx_6days, (
+            f"2-day-old doc (idx {idx_2days}) should rank higher than "
+            f"6-day-old doc (idx {idx_6days})"
+        )
+
+    def test_linear_decay_day7_gets_no_boost(self, fresh_processor):
+        """
+        Scenario: Day 7 documents get no freshness boost with linear decay
+
+        Given a document added exactly 7 days ago (boundary)
+        And a document added 10 days ago (outside window)
+        When I search with linear decay enabled
+        Then both documents have similar scores
+        Because day 7 is the boundary where boost reaches 1.0x (no boost).
+        """
+        # Given documents at and beyond the window boundary
+        today = datetime.now()
+        seven_days_ago = (today - timedelta(days=7)).strftime("%Y-%m-%d")
+        ten_days_ago = (today - timedelta(days=10)).strftime("%Y-%m-%d")
+
+        content = (
+            "Redis caching strategies for high-performance web applications. "
+            "In-memory data structure store optimization techniques."
+        )
+
+        fresh_processor.process_document(
+            "doc_7days", content,
+            metadata={"timestamp": seven_days_ago}
+        )
+        fresh_processor.process_document(
+            "doc_10days", content,
+            metadata={"timestamp": ten_days_ago}
+        )
+        fresh_processor.compute_all(verbose=False)
+
+        # When I search with linear decay
+        results = fresh_processor.find_documents_for_query(
+            "Redis caching",
+            top_n=5,
+            freshness_boost=1.5,
+            freshness_decay="linear"
+        )
+
+        # Then both should have similar scores (neither gets meaningful boost)
+        scores = {doc_id: score for doc_id, score in results}
+        assert "doc_7days" in scores
+        assert "doc_10days" in scores
+
+        # Scores should be very close (both effectively unboosted)
+        ratio = scores["doc_7days"] / scores["doc_10days"] if scores["doc_10days"] > 0 else 1
+        assert 0.95 <= ratio <= 1.05, (
+            f"Day 7 and Day 10 docs should have similar scores, ratio: {ratio:.3f}"
+        )
+
+    def test_exponential_decay_front_loads_freshness(self, fresh_processor):
+        """
+        Scenario: Exponential decay favors very recent documents more strongly
+
+        Given documents at days 0, 2, and 5
+        When I search with exponential decay enabled
+        Then the score gap between day 0 and day 2 is larger than linear decay
+        Because exponential decay front-loads the boost for newest documents.
+        """
+        # Given documents at different ages
+        today = datetime.now()
+        today_str = today.strftime("%Y-%m-%d")
+        two_days_ago = (today - timedelta(days=2)).strftime("%Y-%m-%d")
+        five_days_ago = (today - timedelta(days=5)).strftime("%Y-%m-%d")
+
+        content = (
+            "Terraform infrastructure as code for cloud resource management. "
+            "HashiCorp configuration language for DevOps automation."
+        )
+
+        fresh_processor.process_document(
+            "doc_today", content,
+            metadata={"timestamp": today_str}
+        )
+        fresh_processor.process_document(
+            "doc_2days", content,
+            metadata={"timestamp": two_days_ago}
+        )
+        fresh_processor.process_document(
+            "doc_5days", content,
+            metadata={"timestamp": five_days_ago}
+        )
+        fresh_processor.compute_all(verbose=False)
+
+        # When I search with exponential decay
+        results_exp = fresh_processor.find_documents_for_query(
+            "Terraform infrastructure",
+            top_n=5,
+            freshness_boost=1.5,
+            freshness_decay="exponential"
+        )
+
+        # Then the ranking should be today > 2days > 5days
+        result_docs = [doc_id for doc_id, _ in results_exp]
+        assert result_docs[0] == "doc_today", "Today's doc should rank first"
+        assert result_docs.index("doc_2days") < result_docs.index("doc_5days"), (
+            "2-day-old doc should rank higher than 5-day-old doc"
+        )
+
+    def test_decay_none_preserves_binary_behavior(self, fresh_processor):
+        """
+        Scenario: decay_function="none" preserves original binary boost behavior
+
+        Given documents at days 2 and 6 (both within 7-day window)
+        When I search with decay="none"
+        Then both documents get the same full boost
+        Because "none" means no decay - full boost for all fresh documents.
+        """
+        # Given documents both within the freshness window
+        today = datetime.now()
+        two_days_ago = (today - timedelta(days=2)).strftime("%Y-%m-%d")
+        six_days_ago = (today - timedelta(days=6)).strftime("%Y-%m-%d")
+
+        content = (
+            "Docker containerization best practices and Dockerfile optimization. "
+            "Container security and multi-stage builds for production."
+        )
+
+        fresh_processor.process_document(
+            "doc_2days", content,
+            metadata={"timestamp": two_days_ago}
+        )
+        fresh_processor.process_document(
+            "doc_6days", content,
+            metadata={"timestamp": six_days_ago}
+        )
+        fresh_processor.compute_all(verbose=False)
+
+        # When I search with decay="none" (binary boost)
+        results = fresh_processor.find_documents_for_query(
+            "Docker containerization",
+            top_n=5,
+            freshness_boost=1.5,
+            freshness_decay="none"
+        )
+
+        # Then both documents should have identical scores
+        scores = {doc_id: score for doc_id, score in results}
+        assert "doc_2days" in scores
+        assert "doc_6days" in scores
+
+        # With no decay, both get full 1.5x boost, so scores should be equal
+        ratio = scores["doc_2days"] / scores["doc_6days"] if scores["doc_6days"] > 0 else 1
+        assert 0.99 <= ratio <= 1.01, (
+            f"With decay='none', both docs should have equal scores, ratio: {ratio:.3f}"
+        )
+
+    def test_default_decay_is_linear(self, fresh_processor):
+        """
+        Scenario: Default decay function is linear when not specified
+
+        Given documents at different ages
+        When I search with freshness_boost but no explicit decay parameter
+        Then linear decay is applied by default
+        Because linear decay provides intuitive graduated ranking.
+        """
+        # Given documents at different ages
+        today = datetime.now()
+        one_day_ago = (today - timedelta(days=1)).strftime("%Y-%m-%d")
+        five_days_ago = (today - timedelta(days=5)).strftime("%Y-%m-%d")
+
+        content = (
+            "Prometheus monitoring and Grafana dashboards for observability. "
+            "Metrics collection and alerting for distributed systems."
+        )
+
+        fresh_processor.process_document(
+            "doc_1day", content,
+            metadata={"timestamp": one_day_ago}
+        )
+        fresh_processor.process_document(
+            "doc_5days", content,
+            metadata={"timestamp": five_days_ago}
+        )
+        fresh_processor.compute_all(verbose=False)
+
+        # When I search without specifying decay (should default to linear)
+        results_default = fresh_processor.find_documents_for_query(
+            "Prometheus monitoring",
+            top_n=5,
+            freshness_boost=1.5
+            # No freshness_decay parameter - should default to linear
+        )
+
+        # And when I search with explicit linear decay
+        results_linear = fresh_processor.find_documents_for_query(
+            "Prometheus monitoring",
+            top_n=5,
+            freshness_boost=1.5,
+            freshness_decay="linear"
+        )
+
+        # Then results should be identical
+        default_docs = [doc_id for doc_id, _ in results_default]
+        linear_docs = [doc_id for doc_id, _ in results_linear]
+        assert default_docs == linear_docs, (
+            f"Default should match linear. Default: {default_docs}, Linear: {linear_docs}"
+        )
+
+    def test_graduated_decay_with_custom_window(self, fresh_processor):
+        """
+        Scenario: Graduated decay respects custom freshness window
+
+        Given a custom 14-day freshness window
+        And documents at days 5 and 12
+        When I search with linear decay
+        Then both documents get graduated boosts appropriate to the 14-day window
+        Because the decay is relative to the configured window size.
+        """
+        # Given documents within a 14-day window
+        today = datetime.now()
+        five_days_ago = (today - timedelta(days=5)).strftime("%Y-%m-%d")
+        twelve_days_ago = (today - timedelta(days=12)).strftime("%Y-%m-%d")
+
+        content = (
+            "Elasticsearch full-text search and aggregation queries. "
+            "Distributed search engine optimization and cluster management."
+        )
+
+        fresh_processor.process_document(
+            "doc_5days", content,
+            metadata={"timestamp": five_days_ago}
+        )
+        fresh_processor.process_document(
+            "doc_12days", content,
+            metadata={"timestamp": twelve_days_ago}
+        )
+        fresh_processor.compute_all(verbose=False)
+
+        # When I search with linear decay and 14-day window
+        results = fresh_processor.find_documents_for_query(
+            "Elasticsearch search",
+            top_n=5,
+            freshness_boost=1.5,
+            freshness_decay="linear",
+            freshness_window_days=14
+        )
+
+        # Then 5-day doc should rank higher (gets more boost in 14-day window)
+        result_docs = [doc_id for doc_id, _ in results]
+        assert "doc_5days" in result_docs
+        assert "doc_12days" in result_docs
+        assert result_docs.index("doc_5days") < result_docs.index("doc_12days"), (
+            "5-day-old doc should rank higher than 12-day-old doc in 14-day window"
+        )
