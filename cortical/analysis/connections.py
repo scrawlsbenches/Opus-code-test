@@ -11,11 +11,492 @@ from typing import Dict, List, Tuple, Set, Any, Optional
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
+from multiprocessing import shared_memory
+import struct
 import os
 
 from ..layers import CorticalLayer, HierarchicalLayer
 from ..minicolumn import Minicolumn
 from .utils import cosine_similarity
+
+
+# =============================================================================
+# SHARED MEMORY PARALLEL INFRASTRUCTURE
+# =============================================================================
+
+def _popcount64(x: int) -> int:
+    """Count set bits in a 64-bit integer (Hamming weight)."""
+    # Brian Kernighan's algorithm - O(set bits)
+    count = 0
+    while x:
+        x &= x - 1
+        count += 1
+    return count
+
+
+def _jaccard_from_bits(bits1: List[int], bits2: List[int]) -> float:
+    """Compute Jaccard similarity from bit vectors using bitwise ops."""
+    intersection = 0
+    union = 0
+    for b1, b2 in zip(bits1, bits2):
+        intersection += _popcount64(b1 & b2)
+        union += _popcount64(b1 | b2)
+    return intersection / union if union > 0 else 0.0
+
+
+@dataclass
+class CompactBigramData:
+    """
+    Compact representation of bigram data for shared memory parallelism.
+
+    All string IDs are converted to integer indices for minimal memory footprint.
+    Document sets are encoded as bit vectors for fast Jaccard computation.
+    """
+    n_bigrams: int
+    n_docs: int
+    n_terms: int
+    bits_per_bigram: int  # Number of uint64s needed per bigram
+
+    # Index mappings (kept in main process)
+    bigram_id_to_idx: Dict[str, int] = field(default_factory=dict)
+    idx_to_bigram_id: List[str] = field(default_factory=list)
+    term_to_idx: Dict[str, int] = field(default_factory=dict)
+    doc_to_bit_pos: Dict[str, int] = field(default_factory=dict)
+
+    # Flat arrays for shared memory (as bytes)
+    left_term_data: bytes = b''      # int32[n_bigrams]
+    right_term_data: bytes = b''     # int32[n_bigrams]
+    tfidf_data: bytes = b''          # float32[n_bigrams]
+    doc_bits_data: bytes = b''       # uint64[n_bigrams * bits_per_bigram]
+
+    # Term groupings (serialized as length-prefixed arrays)
+    left_groups_data: bytes = b''    # For each term: [n_bigrams, idx1, idx2, ...]
+    right_groups_data: bytes = b''
+
+
+def _build_compact_data(bigrams: List['Minicolumn']) -> CompactBigramData:
+    """
+    Build compact data structures from bigram Minicolumns.
+
+    Converts all data to integer indices and bit vectors.
+    """
+    # Collect all unique terms and documents
+    all_terms: Set[str] = set()
+    all_docs: Set[str] = set()
+
+    for bigram in bigrams:
+        parts = bigram.content.split(' ')
+        if len(parts) == 2:
+            all_terms.add(parts[0])
+            all_terms.add(parts[1])
+        all_docs.update(bigram.document_ids)
+
+    # Create mappings
+    term_to_idx = {term: i for i, term in enumerate(sorted(all_terms))}
+    doc_to_bit_pos = {doc: i for i, doc in enumerate(sorted(all_docs))}
+
+    n_bigrams = len(bigrams)
+    n_docs = len(all_docs)
+    n_terms = len(all_terms)
+    bits_per_bigram = (n_docs + 63) // 64  # Ceiling division
+
+    # Pre-allocate arrays
+    left_terms = []
+    right_terms = []
+    tfidfs = []
+    doc_bits = []
+
+    bigram_id_to_idx = {}
+    idx_to_bigram_id = []
+
+    # Group bigrams by left/right terms
+    left_groups: Dict[int, List[int]] = defaultdict(list)
+    right_groups: Dict[int, List[int]] = defaultdict(list)
+
+    for idx, bigram in enumerate(bigrams):
+        bigram_id_to_idx[bigram.id] = idx
+        idx_to_bigram_id.append(bigram.id)
+
+        parts = bigram.content.split(' ')
+        if len(parts) == 2:
+            left_idx = term_to_idx[parts[0]]
+            right_idx = term_to_idx[parts[1]]
+            left_terms.append(left_idx)
+            right_terms.append(right_idx)
+            left_groups[left_idx].append(idx)
+            right_groups[right_idx].append(idx)
+        else:
+            left_terms.append(-1)
+            right_terms.append(-1)
+
+        tfidfs.append(bigram.tfidf)
+
+        # Encode document_ids as bit vector
+        bits = [0] * bits_per_bigram
+        for doc_id in bigram.document_ids:
+            bit_pos = doc_to_bit_pos[doc_id]
+            word_idx = bit_pos // 64
+            bit_idx = bit_pos % 64
+            bits[word_idx] |= (1 << bit_idx)
+        doc_bits.extend(bits)
+
+    # Pack arrays into bytes
+    left_term_data = struct.pack(f'{n_bigrams}i', *left_terms)
+    right_term_data = struct.pack(f'{n_bigrams}i', *right_terms)
+    tfidf_data = struct.pack(f'{n_bigrams}f', *tfidfs)
+    doc_bits_data = struct.pack(f'{n_bigrams * bits_per_bigram}Q', *doc_bits)
+
+    # Pack term groups (length-prefixed)
+    left_groups_parts = []
+    for term_idx in range(n_terms):
+        group = left_groups.get(term_idx, [])
+        left_groups_parts.append(struct.pack('I', len(group)))
+        if group:
+            left_groups_parts.append(struct.pack(f'{len(group)}I', *group))
+    left_groups_data = b''.join(left_groups_parts)
+
+    right_groups_parts = []
+    for term_idx in range(n_terms):
+        group = right_groups.get(term_idx, [])
+        right_groups_parts.append(struct.pack('I', len(group)))
+        if group:
+            right_groups_parts.append(struct.pack(f'{len(group)}I', *group))
+    right_groups_data = b''.join(right_groups_parts)
+
+    return CompactBigramData(
+        n_bigrams=n_bigrams,
+        n_docs=n_docs,
+        n_terms=n_terms,
+        bits_per_bigram=bits_per_bigram,
+        bigram_id_to_idx=bigram_id_to_idx,
+        idx_to_bigram_id=idx_to_bigram_id,
+        term_to_idx=term_to_idx,
+        doc_to_bit_pos=doc_to_bit_pos,
+        left_term_data=left_term_data,
+        right_term_data=right_term_data,
+        tfidf_data=tfidf_data,
+        doc_bits_data=doc_bits_data,
+        left_groups_data=left_groups_data,
+        right_groups_data=right_groups_data,
+    )
+
+
+def _worker_process_components(
+    shm_name: str,
+    n_bigrams: int,
+    n_terms: int,
+    bits_per_bigram: int,
+    term_range: Tuple[int, int],  # (start_term_idx, end_term_idx)
+    is_left: bool,
+    component_weight: float,
+    max_bigrams_per_term: int,
+    max_connections_per_bigram: int,
+    groups_offset: int,
+    groups_size: int,
+) -> List[Tuple[int, int, float]]:
+    """
+    Worker function for component connections using shared memory.
+
+    Returns list of (bigram_idx1, bigram_idx2, weight) tuples.
+    """
+    # Attach to shared memory
+    shm = shared_memory.SharedMemory(name=shm_name)
+
+    try:
+        # Parse groups data from shared memory
+        # Groups are at the end: left_groups then right_groups
+        groups_start = groups_offset
+
+        connections = []
+        local_counts: Dict[int, int] = {}
+        seen_pairs: Set[Tuple[int, int]] = set()
+
+        # Navigate to correct term range
+        offset = groups_start
+        for term_idx in range(term_range[0]):
+            # Skip this term's group
+            group_len = struct.unpack_from('I', shm.buf, offset)[0]
+            offset += 4 + group_len * 4
+
+        # Process terms in range
+        for term_idx in range(term_range[0], term_range[1]):
+            group_len = struct.unpack_from('I', shm.buf, offset)[0]
+            offset += 4
+
+            if group_len == 0:
+                continue
+
+            if group_len > max_bigrams_per_term:
+                continue  # Skip overly common terms
+
+            # Read bigram indices for this term
+            bigram_indices = list(struct.unpack_from(f'{group_len}I', shm.buf, offset))
+            offset += group_len * 4
+
+            # Connect all pairs
+            for i, idx1 in enumerate(bigram_indices):
+                if local_counts.get(idx1, 0) >= max_connections_per_bigram:
+                    continue
+                for idx2 in bigram_indices[i+1:]:
+                    if local_counts.get(idx2, 0) >= max_connections_per_bigram:
+                        continue
+
+                    pair = (idx1, idx2) if idx1 < idx2 else (idx2, idx1)
+                    if pair in seen_pairs:
+                        continue
+
+                    seen_pairs.add(pair)
+                    connections.append((idx1, idx2, component_weight))
+                    local_counts[idx1] = local_counts.get(idx1, 0) + 1
+                    local_counts[idx2] = local_counts.get(idx2, 0) + 1
+
+        return connections
+    finally:
+        shm.close()
+
+
+def _worker_process_cooccurrence(
+    shm_name: str,
+    n_bigrams: int,
+    bits_per_bigram: int,
+    bigram_range: Tuple[int, int],  # (start_idx, end_idx)
+    cooccurrence_weight: float,
+    min_shared_docs: int,
+    max_connections_per_bigram: int,
+    tfidf_offset: int,
+    doc_bits_offset: int,
+    importance_threshold: float,
+) -> List[Tuple[int, int, float]]:
+    """
+    Worker function for co-occurrence connections using shared memory bit vectors.
+
+    Uses bitwise AND/OR for fast Jaccard computation.
+    """
+    shm = shared_memory.SharedMemory(name=shm_name)
+
+    try:
+        connections = []
+        local_counts: Dict[int, int] = {}
+        seen_pairs: Set[Tuple[int, int]] = set()
+
+        start_idx, end_idx = bigram_range
+
+        # Process bigram pairs in range
+        for idx1 in range(start_idx, end_idx):
+            if local_counts.get(idx1, 0) >= max_connections_per_bigram:
+                continue
+
+            # Get tfidf for idx1
+            tfidf1 = struct.unpack_from('f', shm.buf, tfidf_offset + idx1 * 4)[0]
+            if tfidf1 < importance_threshold:
+                continue
+
+            # Get doc bits for idx1
+            bits1_offset = doc_bits_offset + idx1 * bits_per_bigram * 8
+            bits1 = list(struct.unpack_from(f'{bits_per_bigram}Q', shm.buf, bits1_offset))
+
+            # Compare with subsequent bigrams
+            for idx2 in range(idx1 + 1, min(idx1 + 1000, n_bigrams)):  # Limit comparisons
+                if local_counts.get(idx2, 0) >= max_connections_per_bigram:
+                    continue
+
+                tfidf2 = struct.unpack_from('f', shm.buf, tfidf_offset + idx2 * 4)[0]
+                if tfidf2 < importance_threshold:
+                    continue
+
+                # Fast Jaccard via bit operations
+                bits2_offset = doc_bits_offset + idx2 * bits_per_bigram * 8
+                bits2 = list(struct.unpack_from(f'{bits_per_bigram}Q', shm.buf, bits2_offset))
+
+                intersection = 0
+                union = 0
+                for b1, b2 in zip(bits1, bits2):
+                    intersection += _popcount64(b1 & b2)
+                    union += _popcount64(b1 | b2)
+
+                if intersection < min_shared_docs:
+                    continue
+
+                jaccard = intersection / union if union > 0 else 0.0
+                weight = cooccurrence_weight * jaccard
+
+                pair = (idx1, idx2)
+                if pair not in seen_pairs:
+                    seen_pairs.add(pair)
+                    connections.append((idx1, idx2, weight))
+                    local_counts[idx1] = local_counts.get(idx1, 0) + 1
+                    local_counts[idx2] = local_counts.get(idx2, 0) + 1
+
+        return connections
+    finally:
+        shm.close()
+
+
+def _compute_bigram_connections_shared_memory(
+    layer1: HierarchicalLayer,
+    bigrams: List[Minicolumn],
+    min_shared_docs: int,
+    component_weight: float,
+    chain_weight: float,
+    cooccurrence_weight: float,
+    max_bigrams_per_term: int,
+    max_bigrams_per_doc: int,
+    max_connections_per_bigram: int,
+    n_workers: int
+) -> Dict[str, Any]:
+    """
+    Shared memory parallel implementation of bigram connection building.
+
+    Uses compact integer indices and bit vectors for minimal memory/communication.
+    """
+    # Build compact data structures
+    compact = _build_compact_data(bigrams)
+
+    # Calculate memory layout
+    left_term_offset = 0
+    right_term_offset = left_term_offset + len(compact.left_term_data)
+    tfidf_offset = right_term_offset + len(compact.right_term_data)
+    doc_bits_offset = tfidf_offset + len(compact.tfidf_data)
+    left_groups_offset = doc_bits_offset + len(compact.doc_bits_data)
+    right_groups_offset = left_groups_offset + len(compact.left_groups_data)
+    total_size = right_groups_offset + len(compact.right_groups_data)
+
+    # Create shared memory
+    shm = shared_memory.SharedMemory(create=True, size=total_size)
+
+    try:
+        # Copy data to shared memory
+        shm.buf[left_term_offset:right_term_offset] = compact.left_term_data
+        shm.buf[right_term_offset:tfidf_offset] = compact.right_term_data
+        shm.buf[tfidf_offset:doc_bits_offset] = compact.tfidf_data
+        shm.buf[doc_bits_offset:left_groups_offset] = compact.doc_bits_data
+        shm.buf[left_groups_offset:right_groups_offset] = compact.left_groups_data
+        shm.buf[right_groups_offset:total_size] = compact.right_groups_data
+
+        all_connections: List[Tuple[int, int, float]] = []
+
+        # Compute importance threshold
+        tfidf_values = [b.tfidf for b in bigrams if b.tfidf > 0]
+        importance_threshold = sorted(tfidf_values)[len(tfidf_values) // 4] if tfidf_values else 0
+
+        # Partition terms for component workers
+        terms_per_worker = (compact.n_terms + n_workers - 1) // n_workers
+
+        with ProcessPoolExecutor(max_workers=n_workers) as executor:
+            futures = []
+
+            # Submit left component jobs
+            for i in range(n_workers):
+                start_term = i * terms_per_worker
+                end_term = min((i + 1) * terms_per_worker, compact.n_terms)
+                if start_term < end_term:
+                    futures.append(executor.submit(
+                        _worker_process_components,
+                        shm.name,
+                        compact.n_bigrams,
+                        compact.n_terms,
+                        compact.bits_per_bigram,
+                        (start_term, end_term),
+                        True,  # is_left
+                        component_weight,
+                        max_bigrams_per_term,
+                        max_connections_per_bigram,
+                        left_groups_offset,
+                        len(compact.left_groups_data),
+                    ))
+
+            # Submit right component jobs
+            for i in range(n_workers):
+                start_term = i * terms_per_worker
+                end_term = min((i + 1) * terms_per_worker, compact.n_terms)
+                if start_term < end_term:
+                    futures.append(executor.submit(
+                        _worker_process_components,
+                        shm.name,
+                        compact.n_bigrams,
+                        compact.n_terms,
+                        compact.bits_per_bigram,
+                        (start_term, end_term),
+                        False,  # is_left (right)
+                        component_weight,
+                        max_bigrams_per_term,
+                        max_connections_per_bigram,
+                        right_groups_offset,
+                        len(compact.right_groups_data),
+                    ))
+
+            # Submit cooccurrence jobs
+            bigrams_per_worker = (compact.n_bigrams + n_workers - 1) // n_workers
+            for i in range(n_workers):
+                start_idx = i * bigrams_per_worker
+                end_idx = min((i + 1) * bigrams_per_worker, compact.n_bigrams)
+                if start_idx < end_idx:
+                    futures.append(executor.submit(
+                        _worker_process_cooccurrence,
+                        shm.name,
+                        compact.n_bigrams,
+                        compact.bits_per_bigram,
+                        (start_idx, end_idx),
+                        cooccurrence_weight,
+                        min_shared_docs,
+                        max_connections_per_bigram,
+                        tfidf_offset,
+                        doc_bits_offset,
+                        importance_threshold,
+                    ))
+
+            # Collect results
+            for future in as_completed(futures):
+                try:
+                    connections = future.result()
+                    all_connections.extend(connections)
+                except Exception as e:
+                    import sys
+                    print(f"Worker error: {e}", file=sys.stderr)
+
+        # Merge and deduplicate connections
+        seen_pairs: Set[Tuple[int, int]] = set()
+        connection_counts: Dict[int, int] = defaultdict(int)
+        final_connections: Dict[str, Dict[str, float]] = defaultdict(lambda: defaultdict(float))
+
+        for idx1, idx2, weight in all_connections:
+            pair = (idx1, idx2) if idx1 < idx2 else (idx2, idx1)
+            if pair in seen_pairs:
+                # Accumulate weight
+                id1 = compact.idx_to_bigram_id[idx1]
+                id2 = compact.idx_to_bigram_id[idx2]
+                final_connections[id1][id2] += weight
+                final_connections[id2][id1] += weight
+            else:
+                if (connection_counts[idx1] >= max_connections_per_bigram or
+                    connection_counts[idx2] >= max_connections_per_bigram):
+                    continue
+                seen_pairs.add(pair)
+                id1 = compact.idx_to_bigram_id[idx1]
+                id2 = compact.idx_to_bigram_id[idx2]
+                final_connections[id1][id2] += weight
+                final_connections[id2][id1] += weight
+                connection_counts[idx1] += 1
+                connection_counts[idx2] += 1
+
+        # Apply connections to bigrams
+        for bigram_id, connections in final_connections.items():
+            bigram = layer1.get_by_id(bigram_id)
+            if bigram:
+                bigram.add_lateral_connections_batch(dict(connections))
+
+        return {
+            'connections_created': len(seen_pairs),
+            'bigrams': compact.n_bigrams,
+            'parallel': True,
+            'parallel_mode': 'shared_memory',
+            'n_workers': n_workers,
+            'shared_memory_size_mb': total_size / (1024 * 1024),
+        }
+
+    finally:
+        shm.close()
+        shm.unlink()
 
 
 def compute_concept_connections(
@@ -1053,14 +1534,12 @@ def compute_bigram_connections(
             right_index[parts[1]].append(bigram)
 
     # =========================================================================
-    # PARALLEL EXECUTION PATH (ProcessPoolExecutor for true CPU parallelism)
+    # PARALLEL EXECUTION PATH (Shared Memory for minimal overhead)
     # =========================================================================
     if n_workers is not None and n_workers > 1:
-        return _compute_bigram_connections_parallel_process(
+        return _compute_bigram_connections_shared_memory(
             layer1=layer1,
             bigrams=bigrams,
-            left_index=dict(left_index),
-            right_index=dict(right_index),
             min_shared_docs=min_shared_docs,
             component_weight=component_weight,
             chain_weight=chain_weight,
