@@ -1,2899 +1,887 @@
-# CLAUDE.md - Cortical Text Processor Development Guide
+# CLAUDE.md.BDD - Metus Development Philosophy
 
 ---
 
-## 🚀 Quick Session Start (READ THIS FIRST)
+## METUS
 
-**New session? Start here to restore context fast.**
-
-### 1. Check GoT State (30 seconds)
-```bash
-python scripts/got_utils.py validate      # Health check
-python scripts/got_utils.py task list --status in_progress  # What's active?
-```
-
-### 2. Read Recent Knowledge Transfer (2 minutes)
-```bash
-ls -t samples/memories/*knowledge-transfer*.md | head -1 | xargs cat
-```
-**Most recent:** `samples/memories/2025-12-22-session-knowledge-transfer-got-migration.md`
-
-### 3. What is GoT?
-GoT (Graph of Thought) is our task, sprint, and decision tracking system:
-- **Tasks**: Work items with IDs like `T-20251221-014654-d4b7`
-- **Sprints**: Time-boxed work periods with IDs like `S-sprint-017-spark-slm`
-- **Epics**: Large initiatives spanning multiple sprints (e.g., `EPIC-nlu`)
-- **Decisions**: Logged choices with rationale
-- **Handoffs**: Agent-to-agent work transfers with IDs like `H-20251222-093045-a1b2c3d4`
-- **Edges**: Relationships (DEPENDS_ON, BLOCKS, CONTAINS, etc.)
-
-**Task commands:**
-| Command | Purpose |
-|---------|---------|
-| `python scripts/got_utils.py dashboard` | Overview of all tasks |
-| `python scripts/got_utils.py task create "Title" --priority high [--sprint S-XXX]` | Create task (optionally add to sprint) |
-| `python scripts/got_utils.py task start T-XXX` | Start working on task |
-| `python scripts/got_utils.py task complete T-XXX --notes "..."` | Mark complete with notes |
-| `python scripts/got_utils.py task update T-XXX --notes "..."` | Update task properties |
-| `python scripts/got_utils.py task show T-XXX` | Show task details |
-| `python scripts/got_utils.py task delete T-XXX [--force]` | Delete task (transactional) |
-| `python scripts/got_utils.py decision log "Decision" --rationale "Why"` | Log decision |
-| `python scripts/got_utils.py validate` | Health check |
-
-**Sprint commands:**
-| Command | Purpose |
-|---------|---------|
-| `python scripts/got_utils.py sprint list` | List all sprints with status |
-| `python scripts/got_utils.py sprint status` | Show current/active sprint |
-| `python scripts/got_utils.py sprint create "Title" --number N` | Create a new sprint |
-
-**Batch commands (multiple operations in one transaction):**
-
-```bash
-# Create sprint with tasks and dependencies in a single command
-python scripts/got_utils.py batch <<'EOF'
-sprint create "Sprint 28 - Feature X" --number 28 as sprint1
-
-task create "Implement core feature" --sprint $sprint1 --priority high as t1
-task create "Write unit tests" --sprint $sprint1 --priority medium as t2
-task create "Update documentation" --sprint $sprint1 --priority low as t3
-
-edge add $t2 $t1 DEPENDS_ON
-edge add $t3 $t1 DEPENDS_ON
-EOF
-```
-
-**Batch DSL syntax:**
-- Commands use same syntax as individual CLI commands
-- `as NAME` assigns an alias to the created entity
-- `$NAME` references a previously aliased entity
-- Empty lines and `# comments` are ignored
-- All operations are atomic (all succeed or all fail)
-
-| Flag | Purpose |
-|------|---------|
-| `--dry-run` | Preview operations without executing |
-| `--output-json` | Return created IDs as JSON (for scripting) |
-| `--file FILE` | Read batch script from file instead of stdin |
-| `--no-atomic` | Allow partial success (not recommended) |
-
-> **Note:** Sprint data is stored in `.got/entities/`. The file `tasks/CURRENT_SPRINT.md` is deprecated and kept for historical reference only.
-
-> **Sprint ID Formats:**
-> - **Generated (current)**: `S-YYYYMMDD-HHMMSS-hash` (e.g., `S-20251227-211213-ae934eab`)
-> - **Legacy verbose**: `S-sprint-NNN-slug` (e.g., `S-sprint-017-spark-slm`)
-> - **Legacy short**: `S-NNN` (e.g., `S-022`, `S-028`)
->
-> All formats are supported for backward compatibility. New sprints automatically use the generated timestamp format to prevent merge conflicts across branches. Sprint numbers are stored as metadata within the sprint entity, not in the ID.
-
-> **⚠️ NEVER edit or delete GoT files directly!**
->
-> GoT data in `.got/` is **transactional and event-sourced** with **checksum integrity**. Direct file manipulation:
-> - Breaks checksum validation (files will be auto-deleted as corrupted)
-> - Breaks the event log (events reference modified/deleted nodes)
-> - Corrupts dependency tracking
-> - Leaves orphaned edges and broken relationships
->
-> **This includes:**
-> - ❌ `sed -i` on `.got/` files
-> - ❌ Direct JSON editing with any tool
-> - ❌ Manual file deletion with `rm`
-> - ❌ Any bypass of the GoT API
->
-> **Always use GoT CLI commands** which:
-> - Maintain checksum integrity
-> - Verify preconditions (no dependents, not blocking others)
-> - Clean up related edges
-> - Log operations as events for audit trail
-> - Support `--force` for overriding safety checks
->
-> **If a GoT command fails or is missing:**
-> 1. **DO NOT work around it** by editing files directly
-> 2. **FIX THE TOOL** - add the missing command or fix the bug
-> 3. **Then use the fixed tool** to make your changes
->
-> See "Tool Reliability Policy" below for the full protocol.
-
-**GoT Auto-Commit & Auto-Push (DEFAULT: ON)**
-
-Both are enabled by default for environment resilience. GoT state auto-saves to git after every mutation.
-
-| Variable | Default | To Disable |
-|----------|---------|------------|
-| `GOT_AUTO_COMMIT` | ON | `export GOT_AUTO_COMMIT=0` |
-| `GOT_AUTO_PUSH` | ON | `export GOT_AUTO_PUSH=0` |
-
-**Safety features:**
-- Auto-push ONLY works on `claude/*` branches (never main/master)
-- Protected branches: `main`, `master`, `prod`, `production`, `release`
-- Network errors retry up to 3 times with exponential backoff
-- Failures are logged but never block operations
-
-### 4. Critical Bugs Fixed (Don't Reintroduce!)
-- **Edge rebuild**: Use `from_id`/`to_id`, NOT `source_id`/`target_id` in `add_edge()`
-- **EdgeType lookup**: Use `EdgeType[name]` with try/except, NOT `hasattr()`
-- **Priority executor**: Skip query echo line when parsing blockers
-
-### 5. Work Priority Order
-1. **Security** → 2. **Bugs** → 3. **Features** → 4. **Documentation**
-
-### 5a. Tool Reliability Policy
-
-> **⚠️ CRITICAL: Tools must work. Fix them immediately when broken.**
-
-**The Golden Rule:** If a tool or API doesn't exist or fails, **fix the tool first**, then use it. Never work around broken tools with direct file manipulation.
-
-**When you discover a broken or missing tool:**
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                 TOOL FAILURE RESPONSE PROTOCOL                       │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  1. STOP                                                             │
-│     └── Do NOT attempt workarounds (sed, manual edits, etc.)         │
-│                                                                       │
-│  2. ASSESS                                                           │
-│     └── Is the tool missing entirely, or just buggy?                 │
-│     └── Is this blocking critical work?                              │
-│                                                                       │
-│  3. FIX                                                              │
-│     └── Add the missing command/feature to the tool                  │
-│     └── Or fix the bug in the existing tool                          │
-│     └── Add tests for the fix                                        │
-│                                                                       │
-│  4. USE                                                              │
-│     └── Now use the fixed tool to accomplish your goal               │
-│                                                                       │
-│  5. DOCUMENT                                                         │
-│     └── Update CLAUDE.md if needed                                   │
-│     └── Log a decision if significant                                │
-│                                                                       │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-**Examples of what NOT to do:**
-
-| Situation | ❌ Wrong | ✅ Right |
-|-----------|----------|----------|
-| `handoff reject` missing | Work around it manually | Add `cmd_handoff_reject` to CLI |
-| Invalid edge type | `sed -i` the JSON file | Add edge type to EdgeType enum |
-| Checksum error | Delete the corrupted file | Use recovery tools or fix data properly |
-| API returns error | Ignore and edit file | Fix the API or handle the error |
-
-**Why this matters:**
-- Direct file edits break checksums → auto-deletion as "corrupted"
-- Workarounds accumulate → technical debt
-- Broken tools stay broken → future agents hit same issues
-- Each agent fixing tools → progressively better system
-
-**This policy applies to:**
-- GoT tools (`scripts/got_utils.py`, `cortical/got/cli/*`)
-- Test utilities
-- Index/search scripts
-- Any CLI or API in the project
-
-### 6. Using Sub-Agents (Preserve Your Context!)
-
-**Delegate mechanical work, keep decisions in main context.**
-
-| Situation | Agent Type | Example |
-|-----------|-----------|---------|
-| "Where is X?" | `Explore` (quick) | Find implementation patterns |
-| "How does X work?" | `Explore` (thorough) | Understand full system flow |
-| "Implement feature X" | `general-purpose` | Write tests, implement features |
-| "How should we build X?" | `Plan` | Architecture decisions |
-
-**Parallel Execution Pattern (Proven Effective):**
-
-When facing multiple independent mechanical tasks, spawn sub-agents in parallel:
-
-```
-Main Agent (keeps context):
-├── Task 1: Complex work requiring full context (do this yourself)
-├── Task 2: Complex work requiring decisions (do this yourself)
-└── Spawn parallel sub-agents for mechanical tasks:
-    ├── Sub-agent A: "Consolidate checksums.py - move compute_checksum to cortical/utils/"
-    ├── Sub-agent B: "Consolidate query/utils.py - extract shared scoring helpers"
-    ├── Sub-agent C: "Consolidate persistence.py - extract atomic_save_json"
-    └── Sub-agent D: "Consolidate text.py - move slugify to cortical/utils/"
-```
-
-**Key insights from practice:**
-- Sub-agents work best for **well-defined mechanical tasks** with clear specifications
-- Main agent should handle **context-heavy decisions** that require understanding broader implications
-- Provide explicit input/output specs to sub-agents (e.g., "create file X with function Y from file Z")
-- Wait for all sub-agents to complete before proceeding to dependent work
-- Review sub-agent outputs for integration issues before committing
-
-> **⚠️ CRITICAL: Sub-Agent Persistence Issue**
->
-> Sub-agents may work in isolated contexts. Their file changes can fail to persist even when they report success.
->
-> **Always verify after sub-agent completion:**
-> ```bash
-> git status                    # Check if files actually changed
-> git diff path/to/file.py     # Verify the actual changes
-> ```
->
-> **If changes didn't persist:**
-> 1. Apply changes manually in main agent context
-> 2. The sub-agent's report contains the correct implementation details
-> 3. Consider storing diffs with task metadata for recovery
->
-> **Observed in session QkbsL (2025-12-22):** Implementation agents reported success with verification output, but `git status` showed no file changes. Main agent had to manually apply identical changes.
->
-> **Investigation update (same session):** Issue could not be reproduced in controlled testing - both new and existing file modifications persisted correctly. Root cause unclear (possibly transient, timing-related, or session-specific). **The warning remains as defensive practice** - always verify changes when using sub-agents for critical work.
-
-**Sub-agent delegation language:**
-```
-## Task: [Clear action verb] [specific thing]
-
-### File to modify
-`/absolute/path/to/file.py`
-
-### Changes needed
-1. [Specific change with line numbers if known]
-2. [Exact code to add/modify]
-
-### Verification
-After making changes, run:
-[specific command to verify]
-
-### DO NOT
-- Create new files (unless specified)
-- Modify other files
-- [Other constraints]
-```
-
-**Full guide:** `docs/sub-agent-utilization-plan.md`
+**Mindful Execution Through Unwavering Specification**
 
 ---
 
-## Persona & Working Philosophy
+## The Philosophy
 
-You are a **senior computational neuroscience engineer** with deep expertise in:
-- Information retrieval algorithms (PageRank, TF-IDF, BM25)
-- Graph theory and network analysis
-- Natural language processing without ML dependencies
-- Biologically-inspired computing architectures
-- Python best practices and clean code principles
+Metus is not fear. Metus is *reverence*—a profound respect for the craft that manifests as discipline.
 
-### Core Principles
+We hold reverence for:
+- **The User** — whose stories define what we build
+- **The Behavior** — which we describe before we create
+- **The Performance** — which we contract, not merely measure
+- **The Build** — our guardian that never sleeps, never lies
 
-**Test-Driven Development First**
-- **Write tests BEFORE writing code** - this is non-negotiable
-- Tests define the contract; implementation fulfills it
-- If you can't write a test for it, you don't understand it yet
-- See [docs/automated-testing-techniques.md](docs/automated-testing-techniques.md) for comprehensive testing guide
-
-**Scientific Rigor**
-- Verify claims with data, not assumptions
-- When something "seems slow," profile it before optimizing
-- Be skeptical of intuitions—measure, then act
-
-**Understand Through Testing**
-- Write a test to verify your understanding of the code
-- Use tests as executable documentation of behavior
-- Check GoT state with `python scripts/got_utils.py task list` to avoid duplicate work
-
-**Deep Analysis Over Trial-and-Error**
-- When debugging, write a failing test that reproduces the bug first
-- Profile bottlenecks systematically; the obvious culprit often isn't the real one
-- Document findings even when they contradict initial hypotheses
-
-> **⚠️ CODE COVERAGE POLICY:**
-> - **Current baseline:** 98% on fault-tolerant systems (as of 2025-12-24)
-> - **Target:** 95%+ for core logic, 90%+ for error handling
-> - **TDD Requirement:** Write tests FIRST, then implement
->
-> **Before writing ANY code:**
-> ```bash
-> # 1. Write failing tests that define expected behavior
-> # 2. Run to confirm they fail (RED)
-> python -m pytest tests/path/to/new_tests.py -v
-> # 3. Implement until tests pass (GREEN)
-> # 4. Check coverage
-> python -m coverage run -m pytest tests/ && python -m coverage report --include="cortical/*"
-> ```
->
-> **Known coverage debt (acknowledged, not blocking):**
-> - `cortical/query/analogy.py` (3%), `cortical/gaps.py` (9%)
-> - `cortical/cli_wrapper.py` (0% - CLI entry point), `cortical/types.py` (0% - type aliases)
->
-> **Rule:** ALL new code requires tests written first. No exceptions.
-
-**Dog-Food Everything**
-- Use the system to test itself when possible
-- Real usage reveals issues that unit tests miss
-- Create tasks using `python scripts/got_utils.py task create "Title"` (GoT is the only task system)
-
-**Honest Assessment**
-- Acknowledge when something isn't working
-- Say "I don't know" when uncertain, then investigate
-- Correct course based on evidence, not pride
-
-**Native Over External**
-- Prefer implementing features ourselves over 3rd party APIs/actions
-- External dependencies add maintenance burden and security risk
-- If we can build it in <20000 lines, build it ourselves
-- Avoid deprecated or unmaintained external tools
-
-When you see "neural" or "cortical" in this codebase, remember: these are metaphors for standard IR algorithms, not actual neural implementations.
+Metus is the voice that whispers: *"Prove you understand before you proceed."*
 
 ---
 
-## Cognitive Continuity & Cross-Branch Collaboration
-
-This section defines how to maintain cognitive coherence across sessions, branches, and context windows using Graph of Thought (GoT) as the underlying reasoning structure.
-
-### The Problem
-
-Claude operates across:
-- **Multiple sessions** - Context resets between conversations
-- **Multiple branches** - Parallel work streams with different states
-- **Context windows** - Limited memory requiring state externalization
-
-Without explicit structures, this leads to:
-- Lost reasoning chains
-- Conflicting understanding of system state
-- Inability to resume complex tasks
-- Silent failures that confuse users
-
-### The Solution: Externalized Cognitive State
-
-Use these systems to maintain continuity:
+## The Five Tenets of Metus
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    COGNITIVE STATE HIERARCHY                         │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  1. BRANCH STATE (.branch-state/)                                    │
-│     └── What work is happening on which branch                       │
-│                                                                       │
-│  2. THOUGHT GRAPH (GoT via cortical/reasoning/)                      │
-│     └── Network of questions, decisions, hypotheses                  │
-│                                                                       │
-│  3. TASK STATE (GoT via .got/entities/)                              │
-│     └── What needs to be done, what's complete                       │
-│                                                                       │
-│  4. MEMORY STATE (samples/memories/)                                 │
-│     └── Learnings, decisions, insights                               │
-│                                                                       │
-└─────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│                         T H E   F I V E   T E N E T S                    │
+│                                                                          │
+│  ═══════════════════════════════════════════════════════════════════    │
+│                                                                          │
+│   I.   BEHAVIOR PRECEDES IMPLEMENTATION                                  │
+│        We describe what the system should do before writing              │
+│        a single line of code. The scenario is the specification.         │
+│                                                                          │
+│  ═══════════════════════════════════════════════════════════════════    │
+│                                                                          │
+│   II.  PERFORMANCE IS A SACRED CONTRACT                                  │
+│        Speed is not optimized once—it is defended eternally.             │
+│        We write contracts. We guard them. We honor them.                 │
+│                                                                          │
+│  ═══════════════════════════════════════════════════════════════════    │
+│                                                                          │
+│   III. THE BUILD SERVER IS THE ARBITER OF TRUTH                         │
+│        When we disagree with CI, CI is correct.                          │
+│        Green locally means nothing. Green in CI means everything.        │
+│                                                                          │
+│  ═══════════════════════════════════════════════════════════════════    │
+│                                                                          │
+│   IV.  UNDERSTANDING IS DEMONSTRATED THROUGH AUTOMATION                  │
+│        "I think I understand" is worthless.                              │
+│        "Here is an executable scenario that proves I understand" is law. │
+│                                                                          │
+│  ═══════════════════════════════════════════════════════════════════    │
+│                                                                          │
+│   V.   ELEGANCE IS NOT OPTIONAL                                         │
+│        Our code communicates. Our tests tell stories.                    │
+│        Our documentation speaks with clarity and grace.                  │
+│        Craft is not vanity—it is respect for those who follow.          │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Cross-Branch Workflow
+---
 
-When working across branches:
-
-**1. Before Switching Branches**
-```bash
-# Save current cognitive state
-git add -A && git commit -m "checkpoint: Pre-branch-switch state"
-git push -u origin $(git branch --show-current)
-
-# Document what you were doing
-python scripts/new_memory.py "Branch checkpoint: $(git branch --show-current)" --decision
-```
-
-**2. When Pulling/Merging Another Branch**
-```bash
-# First, understand the topology
-git log --oneline HEAD..origin/other-branch | head -10  # What's incoming
-git log --oneline origin/other-branch..HEAD | head -10  # What's unique here
-
-# Check for reasoning state files
-git diff HEAD...origin/other-branch --stat | grep -E "(tasks/|memories/|.branch-state/)"
-
-# Then merge with full awareness
-git merge origin/other-branch --no-ff
-```
-
-**3. Track Branch Relationships in GoT**
-```python
-from cortical.reasoning import ThoughtGraph, NodeType, EdgeType
-
-graph = ThoughtGraph()
-
-# Model branches as contexts
-graph.add_node("branch:main", NodeType.CONTEXT, "Production-ready code")
-graph.add_node("branch:feature-x", NodeType.CONTEXT, "Implementing feature X")
-graph.add_node("branch:debug-y", NodeType.CONTEXT, "Debugging issue Y")
-
-# Model dependencies
-graph.add_edge("branch:feature-x", "branch:main", EdgeType.DEPENDS_ON)
-graph.add_edge("branch:debug-y", "branch:feature-x", EdgeType.REQUIRES)
-```
-
-### Cognitive Breakdown Detection
-
-Recognize these signs of cognitive breakdown:
-
-| Signal | Meaning | Response |
-|--------|---------|----------|
-| Repeating same failed approach | **Loop detected** | Stop, analyze, replan |
-| Contradicting earlier statements | **State confusion** | Re-read context, reconcile |
-| Making changes without reading | **Premature action** | Read first, then act |
-| Asking questions already answered | **Context loss** | Check memories, task history |
-| Generating placeholder content | **Uncertainty masked** | Admit uncertainty, ask for help |
-
-### Verifying Previous Agents' Claims
-
-**Trust but verify.** Tasks and decisions from previous agents are *input*, not *truth*. Before acting on claims that involve destructive operations (delete, remove, deprecate):
-
-| Step | Action | Example |
-|------|--------|---------|
-| 1. **Identify the claim** | What is being asserted? | "TX backend replaces all functionality" |
-| 2. **Find evidence** | Did they test it? Is there proof? | Check for test results, verification steps |
-| 3. **Verify empirically** | Run commands, check code | `python scripts/got_utils.py infer --message "test"` |
-| 4. **Only proceed if verified** | Document your verification | Log decision with findings |
-
-**Why this matters (2025-12-24 incident):**
-- Task claimed "TX backend replaces all functionality"
-- `infer` command was actually **broken** - method never migrated
-- Would have deleted 2,200 lines containing the only working implementation
-- Caught by empirical testing, not by trusting the claim
-- See: `D-20251224-052658-40924db3`, `samples/memories/2025-12-24-session-knowledge-transfer-audit-findings.md`
-
-**High-risk operations requiring verification:**
-- Deleting code/files
-- Removing "deprecated" components
-- Claims of functional equivalence ("X replaces Y")
-- Migration completion claims
-
-### Automated Recovery Process
-
-When breakdown is detected, follow this recovery protocol:
+## The Metus Development Cycle
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                     RECOVERY PROTOCOL                                │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  1. DETECT                                                           │
-│     └── Identify the breakdown type (loop, confusion, loss)          │
-│                                                                       │
-│  2. STOP                                                             │
-│     └── Halt current action immediately                              │
-│     └── Do not attempt to "push through"                             │
-│                                                                       │
-│  3. DIAGNOSE                                                         │
-│     └── What was I trying to do?                                     │
-│     └── What state am I in now?                                      │
-│     └── What information am I missing?                               │
-│                                                                       │
-│  4. INFORM USER                                                      │
-│     └── State clearly: "I've detected [BREAKDOWN TYPE]"              │
-│     └── Explain: "I was attempting [ACTION] but [PROBLEM]"           │
-│     └── Request: "I need [SPECIFIC INFORMATION] to proceed"          │
-│                                                                       │
-│  5. RECOVER                                                          │
-│     └── If possible: Load state from files/memories                  │
-│     └── If not: Ask user for context restoration                     │
-│     └── Document the recovery in a memory entry                      │
-│                                                                       │
-│  6. VERIFY                                                           │
-│     └── Confirm recovered state is consistent                        │
-│     └── Run sanity checks before resuming                            │
-│                                                                       │
-└─────────────────────────────────────────────────────────────────────┘
+                              ┌───────────────┐
+                              │   DISCOVER    │
+                              │               │
+                              │ "What story   │
+                              │  does the     │
+                              │  user tell?"  │
+                              └───────┬───────┘
+                                      │
+                                      ▼
+        ┌─────────────────────────────────────────────────────┐
+        │                                                      │
+        │            Write the User Story                      │
+        │                                                      │
+        │   As a [role],                                       │
+        │   I want [capability],                               │
+        │   So that [benefit].                                 │
+        │                                                      │
+        └─────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+                              ┌───────────────┐
+                              │   FORMULATE   │
+                              │               │
+                              │ "How will we  │
+                              │  know it      │
+                              │  works?"      │
+                              └───────┬───────┘
+                                      │
+                                      ▼
+        ┌─────────────────────────────────────────────────────┐
+        │                                                      │
+        │            Write Executable Scenarios                │
+        │                                                      │
+        │   Given [context],                                   │
+        │   When [action],                                     │
+        │   Then [observable outcome].                         │
+        │                                                      │
+        └─────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+                              ┌───────────────┐
+                              │   AUTOMATE    │
+                              │               │
+                              │ "Make the     │
+                              │  scenarios    │
+                              │  pass."       │
+                              └───────┬───────┘
+                                      │
+                                      ▼
+        ┌─────────────────────────────────────────────────────┐
+        │                                                      │
+        │            Implement & Refine                        │
+        │                                                      │
+        │   Write only what is needed.                         │
+        │   Let scenarios guide design.                        │
+        │   Refactor with confidence—scenarios protect you.    │
+        │                                                      │
+        └─────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+                              ┌───────────────┐
+                              │   CERTIFY     │
+                              │               │
+                              │ "Does CI      │
+                              │  approve?"    │
+                              └───────┬───────┘
+                                      │
+                          ┌───────────┴───────────┐
+                          │                       │
+                          ▼                       ▼
+                    ┌──────────┐           ┌──────────┐
+                    │  GREEN   │           │   RED    │
+                    │          │           │          │
+                    │ Proceed  │           │  STOP    │
+                    │ with     │           │          │
+                    │ honor    │           │ Fix now. │
+                    └──────────┘           │ No       │
+                                           │ excuses. │
+                                           └──────────┘
 ```
 
-### Recovery Commands
+---
 
-Use these to restore cognitive state:
+## The Three Pillars of Assurance
 
-```bash
-# Check what branch you're on and its state
-git branch -vv && cat .branch-state/active/*.json 2>/dev/null
+### Pillar I: Behavioral Scenarios — *The Shared Understanding*
 
-# See recent work context
-git log --oneline -10 && python scripts/got_utils.py task list --status in_progress
+Behavioral scenarios answer: **"What should the system do, from the user's perspective?"**
 
-# Read recent memories for context
-ls -t samples/memories/*.md | head -5 | xargs head -30
-
-# Run context recovery command
-# (see /context-recovery slash command)
-```
-
-### Communication Standards During Recovery
-
-When communicating with the user during cognitive issues:
-
-**DO:**
-```
-"I've detected that I may be confused about the current branch state.
-
-What I understand:
-- I'm on branch: claude/feature-x
-- Last action: Attempted to merge from branch Y
-
-What's unclear:
-- Whether the merge completed successfully
-- The current state of file Z
-
-What I need:
-- Confirmation of merge status
-- Current contents of file Z if it differs from my understanding
-
-Proceeding to verify by running: git status && git log -1"
-```
-
-**DON'T:**
-```
-"Let me try that again..."
-"I'll just make this change..."
-"Something went wrong, but I'll fix it..."
-```
-
-### GoT Integration for Reasoning Persistence
-
-Use the reasoning framework to persist complex thought processes:
+They are:
+- Written in **Given-When-Then** format
+- Named as **user stories**, not technical descriptions
+- The **single source of truth** for system behavior
+- **Living documentation** that never goes stale
 
 ```python
-from cortical.reasoning import CognitiveLoop, LoopPhase
+# tests/behavioral/corpus_search_stories.py
 
-# Create a loop for complex task
-loop = CognitiveLoop(goal="Implement authentication feature")
+class ResearcherSearchesForKnowledge:
+    """
+    Epic: Knowledge Discovery
 
-# Progress through phases with explicit state
-loop.start()
-loop.add_note("QUESTION phase: Clarifying requirements")
-loop.record_question("What auth method is preferred?")
-loop.record_decision("Use JWT based on user input", rationale="User confirmed JWT preference")
+    As a researcher with a vast document collection,
+    I want to search using natural concepts,
+    So that I discover insights I didn't know to look for.
+    """
 
-# Serialize for persistence across sessions
-state = loop.serialize()
-# Save to .git-ml/ or memory file for next session
+    def scenario_concept_search_transcends_keywords(self, corpus):
+        """
+        Scenario: Finding documents by concept, not just keywords
 
-# Later session can restore
-restored_loop = CognitiveLoop.deserialize(state)
-# Continue from where we left off
+        Given a corpus with documents about 'machine learning'
+        And documents about 'statistical inference'
+        When I search for 'AI prediction methods'
+        Then I find documents from both domains
+        Because the system understands conceptual relationships.
+        """
+        # Given
+        corpus.add("ml_regression.md", "Machine learning regression models predict...")
+        corpus.add("stats_bayes.md", "Bayesian statistical inference enables prediction...")
+
+        # When
+        results = corpus.search("AI prediction methods")
+
+        # Then
+        found_ids = {r.doc_id for r in results}
+        assert "ml_regression.md" in found_ids
+        assert "stats_bayes.md" in found_ids
+
+    def scenario_search_respects_user_time(self, corpus, performance):
+        """
+        Scenario: Search is always fast
+
+        Given a corpus of 10,000 documents
+        When I execute any search query
+        Then results appear in under 100 milliseconds
+        Because researcher flow must never be interrupted.
+        """
+        # Given
+        corpus.load_benchmark_corpus(size=10_000)
+
+        # When
+        latency = performance.measure(lambda: corpus.search("any query"))
+
+        # Then
+        assert latency.p95_ms < 100, f"Search too slow: {latency.p95_ms}ms"
 ```
 
-### Backup Plans
-
-Always have backup plans:
-
-| Primary Approach | Backup Plan | Fallback |
-|------------------|-------------|----------|
-| Read state from `.branch-state/` | Check git log for context | Ask user |
-| Load GoT from saved state | Reconstruct from task files | Start fresh with explicit acknowledgment |
-| Use incremental changes | Full recompute | Manual verification |
-| Parallel agent coordination | Sequential execution | Single agent with checkpoints |
-
-### Quick Reference: Cognitive Commands
-
-| Command | Purpose |
-|---------|---------|
-| `/context-recovery` | Restore cognitive state from available sources |
-| `/woven-mind-director` | Orchestrate Woven Mind + PRISM marriage tasks |
-| `python scripts/got_utils.py task list --status in_progress` | See active work |
-| `git log --oneline -5` | Recent actions context |
-| `cat .branch-state/active/*.json` | Branch state |
-| `python scripts/reasoning_demo.py --quick` | Verify reasoning system works |
+**Location**: `tests/behavioral/`
+**Naming**: `{user_role}_{action}_stories.py`
+**Format**: Classes are epics, methods are scenarios
 
 ---
 
-## Project Overview
+### Pillar II: Performance Contracts — *The Promises We Keep*
 
-**Cortical Text Processor** is a zero-dependency Python library for hierarchical text analysis. It organizes text through 4 layers inspired by visual cortex organization:
+Performance contracts answer: **"What speed and efficiency do we guarantee?"**
 
-> **Platform Support:** Linux and macOS only. Windows is not supported (uses POSIX-specific `fcntl.flock()` for process-safe locking).
-
-```
-Layer 0 (TOKENS)    → Individual words        [V1 analogy: edges]
-Layer 1 (BIGRAMS)   → Word pairs              [V2 analogy: patterns]
-Layer 2 (CONCEPTS)  → Semantic clusters       [V4 analogy: shapes]
-Layer 3 (DOCUMENTS) → Full documents          [IT analogy: objects]
-```
-
-**Core algorithms:**
-- **PageRank** for term importance (`analysis/pagerank.py`)
-- **TF-IDF** for document relevance (`analysis/tfidf.py`)
-- **Louvain community detection** for concept clustering (`analysis/clustering.py`)
-- **Co-occurrence counting** for lateral connections ("Hebbian learning")
-- **Pattern-based relation extraction** for semantic relations (`semantics.py`)
-
----
-
-## Development Environment Setup
-
-> **⚠️ CRITICAL: Before any software development, you MUST have pytest and coverage installed and collect baseline coverage results.**
-
-### Step 1: Check if Dependencies Are Installed
-
-```bash
-# Check if pytest is installed
-python -c "import pytest; print(f'pytest OK: {pytest.__version__}')" 2>/dev/null || echo "❌ pytest NOT installed"
-
-# Check if coverage is installed
-python -c "import coverage; print(f'coverage OK: {coverage.__version__}')" 2>/dev/null || echo "❌ coverage NOT installed"
-```
-
-### Step 2: Install Missing Dependencies
-
-**If pytest or coverage are NOT installed**, install them:
-
-```bash
-# Quick install (minimum required)
-pip install pytest coverage
-
-# OR: Install as editable package with all dev deps (recommended)
-pip install -e ".[dev]"
-
-# OR: Install from requirements.txt
-pip install -r requirements.txt
-```
-
-This installs: `coverage`, `pytest`, `pyyaml`
-
-### Step 3: Collect Baseline Coverage (REQUIRED before development)
-
-**Before making any code changes**, run coverage to establish baseline:
-
-```bash
-# Run tests with coverage collection
-python -m coverage run -m pytest tests/ -q
-
-# View coverage report
-python -m coverage report --include="cortical/*"
-
-# Check current coverage percentage
-python -m coverage report --include="cortical/*" | tail -1
-```
-
-**Expected output:** Coverage should be ~98% or higher (current baseline as of 2025-12-24).
-
-### Troubleshooting
-
-| Error | Solution |
-|-------|----------|
-| `ModuleNotFoundError: No module named 'pytest'` | Run `pip install pytest` |
-| `ModuleNotFoundError: No module named 'coverage'` | Run `pip install coverage` |
-| Tests timing out | Use `--timeout=60` flag with pytest |
-
-> **Note:** The library itself has zero runtime dependencies. Dev dependencies are only needed for testing and coverage reporting.
-
----
-
-## AI Agent Onboarding
-
-**New to this codebase?** Follow these steps to get oriented quickly:
-
-### Step 0: Check Current Sprint Context
-
-Before diving into code, understand what's being worked on:
-
-```bash
-# View current sprint status
-python scripts/got_utils.py sprint status
-
-# List all sprints
-python scripts/got_utils.py sprint list
-```
-
-**What sprint tracking provides:**
-- Current sprint ID and epic context
-- Active goals and their completion status
-- Sprint status (available, in_progress, completed)
-- Related tasks via CONTAINS edges
-
-This helps you understand the current development focus and avoid duplicate work.
-
-### Step 1: Generate AI Metadata (if missing)
-
-```bash
-# Check if metadata exists
-ls cortical/*.ai_meta
-
-# If not present, generate it (~1s)
-python scripts/generate_ai_metadata.py
-```
-
-### Step 2: Read Module Metadata First
-
-Instead of reading entire source files, start with `.ai_meta` files:
-
-```bash
-# Get structured overview of any module (processor is now a package)
-cat cortical/processor/__init__.py.ai_meta
-```
-
-**What metadata provides:**
-- Module docstring and purpose
-- Function signatures with `see_also` cross-references
-- Class structures with inheritance
-- Logical section groupings (Persistence, Query, Analysis, etc.)
-- Complexity hints for expensive operations
-
-### Step 3: Use the Full Toolchain
-
-```bash
-# Index codebase + generate metadata (recommended startup command)
-python scripts/index_codebase.py --incremental && python scripts/generate_ai_metadata.py --incremental
-
-# Then search semantically
-python scripts/search_codebase.py "your query here"
-```
-
-### AI Navigation Tips
-
-1. **Read `.ai_meta` before source code** - Get the map before exploring the territory
-2. **Follow `see_also` references** - Functions are cross-linked to related functions
-3. **Check `complexity_hints`** - Know which operations are expensive before calling them
-4. **Use semantic search** - The codebase is indexed for meaning-based retrieval
-5. **Trust the sections** - Functions are grouped by purpose in the metadata
-
-### Example Workflow
-
-```bash
-# I need to understand how search works
-cat cortical/query/__init__.py.ai_meta | head -100    # Get overview (query is a package)
-python scripts/search_codebase.py "expand query"  # Find specific code
-# Then read specific line ranges as needed
-```
-
-### Complex Reasoning Framework (Optional)
-
-For multi-step tasks requiring structured thinking, use the reasoning framework:
-
-```bash
-# Run the demo to see QAPV cycle, verification, and parallel coordination
-python scripts/reasoning_demo.py --quick
-
-# Run with graph persistence (WAL, snapshots, recovery)
-python scripts/reasoning_demo.py --quick --persist
-
-# Run the graph persistence demo
-python examples/graph_persistence_demo.py
-
-# Validate reasoning + persistence integration
-python scripts/validate_reasoning_persistence.py
-```
-
-**Key components in `cortical.reasoning`:**
-- **CognitiveLoop**: QAPV phases (Question → Answer → Produce → Verify)
-- **ThoughtGraph**: Graph-based thought representation with typed edges
-- **ParallelCoordinator**: Spawn parallel sub-agents with boundary isolation
-- **VerificationManager**: Multi-level testing protocols
-- **CrisisManager**: Failure detection and recovery
-
-**Graph Persistence components:**
-- **GraphWAL**: Write-Ahead Log for durable graph operations
-- **GraphSnapshot**: Point-in-time compressed snapshots
-- **GitAutoCommitter**: Automatic git versioning with protected branch safety
-- **GraphRecovery**: 4-level cascade recovery (WAL → Snapshot → Git → Chunks)
-
-**When to use:**
-- Complex multi-step implementations
-- Tasks requiring explicit decision tracking
-- Parallel agent coordination
-- Structured verification workflows
-- **Crash recovery** for long-running reasoning tasks
-
-**Documentation:**
-- [docs/graph-of-thought.md](docs/graph-of-thought.md) - Reasoning framework
-- [docs/graph-recovery-procedures.md](docs/graph-recovery-procedures.md) - Recovery guide
-
-### Woven Mind Cognitive Architecture
-
-Dual-process cognitive system inspired by Kahneman's System 1/System 2 theory:
+They are:
+- **Explicit promises** with defined thresholds
+- **Defended continuously** against regression
+- **Renegotiated deliberately** if requirements change
 
 ```python
-from cortical.reasoning.woven_mind import WovenMind
+# tests/performance/contracts/search_contract.py
 
-# Create and train
-mind = WovenMind()
-mind.train("neural networks process information")
-mind.train("deep learning uses neural networks")
+"""
+╔══════════════════════════════════════════════════════════════════════╗
+║                     SEARCH PERFORMANCE CONTRACT                       ║
+╠══════════════════════════════════════════════════════════════════════╣
+║  Ratified:     2024-12-30                                            ║
+║  Guardian:     CI Pipeline                                            ║
+║  Renegotiation: Requires team review + documented justification      ║
+╠══════════════════════════════════════════════════════════════════════╣
+║                                                                       ║
+║  We solemnly contract the following guarantees:                      ║
+║                                                                       ║
+║  • Search latency p50 < 50ms   for corpus ≤ 10,000 docs             ║
+║  • Search latency p99 < 200ms  for corpus ≤ 10,000 docs             ║
+║  • Memory usage < 100MB per 1,000 documents                          ║
+║  • Index build time < 5 seconds for 1,000 documents                  ║
+║                                                                       ║
+╚══════════════════════════════════════════════════════════════════════╝
+"""
 
-# Process input - automatically routes to FAST or SLOW mode
-result = mind.process(["neural", "networks"])
-print(f"Mode: {result.mode.name}")  # FAST or SLOW
-print(f"Source: {result.source}")    # 'hive' or 'cortex'
+import pytest
+from statistics import median
+from typing import List
 
-# Periodic consolidation (like sleep)
-consolidation = mind.consolidate()
-print(f"Patterns transferred: {consolidation.patterns_transferred}")
+
+def percentile(data: List[float], p: int) -> float:
+    """Calculate the p-th percentile of a list."""
+    sorted_data = sorted(data)
+    index = int(len(sorted_data) * p / 100)
+    return sorted_data[min(index, len(sorted_data) - 1)]
+
+
+class SearchPerformanceContract:
+    """
+    This contract is enforced on every CI run.
+    Breaking this contract blocks the build.
+    There are no exceptions.
+    """
+
+    # The sacred numbers
+    CORPUS_SIZE = 10_000
+    P50_LATENCY_MS = 50
+    P99_LATENCY_MS = 200
+    MEMORY_PER_1K_DOCS_MB = 100
+    INDEX_TIME_PER_1K_DOCS_S = 5
+
+    @pytest.mark.contract
+    def test_p50_latency_honored(self, benchmark_corpus):
+        """We promise: half of all searches complete in under 50ms."""
+        latencies = self._measure_searches(benchmark_corpus, n=1000)
+        p50 = percentile(latencies, 50)
+
+        assert p50 < self.P50_LATENCY_MS, (
+            f"CONTRACT VIOLATION: p50 latency is {p50:.1f}ms, "
+            f"contract requires <{self.P50_LATENCY_MS}ms"
+        )
+
+    @pytest.mark.contract
+    def test_p99_latency_honored(self, benchmark_corpus):
+        """We promise: 99% of searches complete in under 200ms."""
+        latencies = self._measure_searches(benchmark_corpus, n=1000)
+        p99 = percentile(latencies, 99)
+
+        assert p99 < self.P99_LATENCY_MS, (
+            f"CONTRACT VIOLATION: p99 latency is {p99:.1f}ms, "
+            f"contract requires <{self.P99_LATENCY_MS}ms"
+        )
+
+    @pytest.mark.contract
+    def test_memory_bounded(self, benchmark_corpus):
+        """We promise: memory usage scales linearly and predictably."""
+        import tracemalloc
+
+        tracemalloc.start()
+        benchmark_corpus.search("test query")
+        current, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+
+        peak_mb = peak / 1024 / 1024
+        expected_max = (self.CORPUS_SIZE / 1000) * self.MEMORY_PER_1K_DOCS_MB
+
+        assert peak_mb < expected_max, (
+            f"CONTRACT VIOLATION: memory usage is {peak_mb:.1f}MB, "
+            f"contract requires <{expected_max:.1f}MB"
+        )
+
+    def _measure_searches(self, corpus, n: int) -> List[float]:
+        """Execute n searches and return latencies in milliseconds."""
+        import time
+        import random
+
+        queries = ["machine learning", "neural networks", "data analysis",
+                   "algorithm", "optimization", "prediction"]
+        latencies = []
+
+        for _ in range(n):
+            query = random.choice(queries)
+            start = time.perf_counter()
+            corpus.search(query)
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            latencies.append(elapsed_ms)
+
+        return latencies
 ```
 
-**Key components:**
-- **WovenMind**: Main facade orchestrating dual-process cognition
-- **The Loom**: Routes between FAST (Hive) and SLOW (Cortex) based on surprise
-- **Hive (System 1)**: Fast pattern matching, automatic responses, spreading activation
-- **Cortex (System 2)**: Slow deliberate reasoning, abstraction formation, planning
-- **ConsolidationEngine**: Sleep-like memory transfer from Hive to Cortex
-
-**When to use:**
-- Adaptive text classification (familiar → fast, novel → slow)
-- Intelligent systems that know when to think carefully
-- Knowledge extraction with progressive learning
-- Anomaly detection through surprise monitoring
-
-**Documentation:**
-- User Guide: [docs/woven-mind-user-guide.md](docs/woven-mind-user-guide.md)
-- Tutorial: [examples/woven_mind_tutorial.ipynb](examples/woven_mind_tutorial.ipynb)
-- Demo: `python examples/woven_mind_demo.py --section all`
-- Release Notes: [docs/release-announcement-woven-mind-v1.md](docs/release-announcement-woven-mind-v1.md)
+**Location**: `tests/performance/contracts/`
+**Marker**: `@pytest.mark.contract`
+**Enforcement**: CI fails on violation—no override possible
 
 ---
 
-## Architecture Map
+### Pillar III: Unit Specifications — *The Precise Details*
 
-```
-cortical/
-├── processor/        # Main orchestrator package - START HERE
-│   │                 # CorticalTextProcessor is the public API (composed from mixins)
-│   ├── __init__.py   # Re-exports CorticalTextProcessor class
-│   ├── core.py       # Initialization, staleness tracking, layer management (~100 lines)
-│   ├── documents.py  # Document processing, add/remove, metadata (~450 lines)
-│   ├── compute.py    # compute_all, PageRank, TF-IDF, clustering (~750 lines)
-│   ├── query_api.py  # Search, expansion, retrieval methods (~550 lines)
-│   ├── introspection.py  # State inspection, fingerprints, summaries (~200 lines)
-│   └── persistence_api.py # Save/load/export methods (~200 lines)
-├── query/            # Search, retrieval, query expansion (split into 8 modules)
-│   ├── __init__.py   # Re-exports public API
-│   ├── expansion.py  # Query expansion (TF-IDF weighted lateral expansion)
-│   ├── search.py     # Document search
-│   ├── passages.py   # Passage retrieval
-│   ├── chunking.py   # Text chunking
-│   ├── intent.py     # Intent-based queries
-│   ├── definitions.py # Definition search
-│   ├── ranking.py    # Multi-stage ranking
-│   ├── analogy.py    # Analogy completion
-│   └── utils.py      # Shared query scoring helpers (TF-IDF utilities)
-├── reasoning/        # Graph of Thought + Woven Mind cognitive architecture
-│   ├── __init__.py   # Re-exports all components
-│   ├── woven_mind.py     # WovenMind facade - dual-process orchestration (404 lines)
-│   ├── loom.py           # The Loom - mode switching, surprise detection (1,115 lines)
-│   ├── loom_hive.py      # System 1 connector - fast, automatic processing (400 lines)
-│   ├── loom_cortex.py    # System 2 connector - slow, deliberate reasoning (416 lines)
-│   ├── consolidation.py  # Sleep-like memory consolidation engine (634 lines)
-│   ├── workflow.py   # ReasoningWorkflow orchestrator
-│   ├── cognitive_loop.py  # QAPV cycle implementation
-│   ├── thought_graph.py   # Graph-based thought representation
-│   ├── graph_of_thought.py # Core data structures (ThoughtNode, ThoughtEdge)
-│   ├── graph_persistence.py  # WAL, snapshots, git integration, recovery (2,012 lines)
-│   ├── verification.py    # Multi-level verification
-│   ├── crisis_manager.py  # Failure detection and recovery
-│   ├── production_state.py # Artifact creation tracking
-│   ├── collaboration.py   # Parallel agent coordination
-│   └── claude_code_spawner.py  # Production agent spawning
-├── got/              # Graph of Thought task/decision tracking
-│   ├── __init__.py   # Re-exports GoTManager
-│   ├── api.py        # GoTManager - task/decision/edge/sprint/epic/handoff CRUD operations
-│   ├── wal.py        # Transaction WAL using TransactionWALEntry from cortical/wal.py
-│   ├── query.py      # GoT query language ("what blocks X", "path from A to B")
-│   ├── query_builder.py  # Fluent Query API with SQL-like chaining (~800 lines)
-│   ├── graph_walker.py   # GraphWalker with visitor pattern for traversal (~380 lines)
-│   ├── path_finder.py    # PathFinder with BFS/DFS algorithms (~190 lines)
-│   ├── pattern_matcher.py # PatternMatcher for subgraph matching (~250 lines)
-│   └── cli/          # CLI commands for GoT
-│       └── analyze.py    # Analysis commands using Query API
-├── spark/            # Statistical Language Model for quick predictions
-│   ├── __init__.py   # Re-exports SparkPredictor, NGramModel, AnomalyDetector
-│   ├── ngram.py      # N-gram language model (bigram/trigram)
-│   ├── alignment.py  # AlignmentIndex for definitions/patterns from markdown
-│   ├── predictor.py  # SparkPredictor facade class
-│   ├── anomaly.py    # AnomalyDetector for prompt injection detection
-│   ├── quality.py    # Quality scoring utilities
-│   ├── suggester.py  # Term suggestion utilities
-│   └── transfer.py   # Knowledge transfer utilities
-├── utils/            # Shared utility modules (canonical implementations)
-│   ├── __init__.py   # Re-exports all utilities
-│   ├── id_generation.py  # Canonical ID generation (generate_task_id, generate_plan_id, etc.)
-│   ├── checksums.py  # Unified checksum computation (compute_checksum)
-│   ├── persistence.py # Atomic save utilities (atomic_save)
-│   └── text.py       # Text processing utilities (slugify)
-├── wal.py            # Base WAL entry classes (BaseWALEntry, TransactionWALEntry)
-├── analysis/         # Graph algorithms package (3,014 lines total)
-│   ├── __init__.py   # Re-exports public API
-│   ├── pagerank.py   # PageRank importance scoring
-│   ├── tfidf.py      # TF-IDF term weighting
-│   ├── clustering.py # Louvain community detection
-│   ├── connections.py # Connection building
-│   ├── activation.py # Activation propagation
-│   ├── parallel.py   # Parallel computation
-│   ├── quality.py    # Quality metrics
-│   └── utils.py      # Shared utilities
-├── semantics.py      # Relation extraction, inheritance, retrofitting (915 lines)
-├── persistence.py    # Save/load with full state preservation (606 lines)
-├── chunk_index.py    # Git-friendly chunk-based storage (574 lines)
-├── tokenizer.py      # Tokenization, stemming, stop word removal (398 lines)
-├── minicolumn.py     # Core data structure with typed Edge connections (357 lines)
-├── config.py         # CorticalConfig dataclass with validation (352 lines)
-├── fingerprint.py    # Semantic fingerprinting and similarity (315 lines)
-├── observability.py  # Timing, metrics collection, and trace context (374 lines)
-├── layers.py         # HierarchicalLayer with O(1) ID lookups via _id_index (294 lines)
-├── code_concepts.py  # Programming concept synonyms for code search (includes ML, frontend, security groups)
-├── gaps.py           # Knowledge gap detection and anomaly analysis (245 lines)
-└── embeddings.py     # Graph embeddings (adjacency, spectral, random walk) (209 lines)
+Unit specifications answer: **"What exactly does this one piece do?"**
+
+They are:
+- **Atomic proofs** of implementation correctness
+- **Safety nets** enabling fearless refactoring
+- **Edge case documentation** for complex logic
+
+```python
+# tests/unit/specifications/tokenizer_spec.py
+
+class TokenizerSpecification:
+    """
+    These specifications document the precise behavior of tokenization.
+    Each specification is a fact about the system that must remain true.
+    """
+
+    def spec_bigrams_use_space_separator(self):
+        """
+        SPECIFICATION: Bigrams are joined with spaces, never underscores.
+
+        This is load-bearing behavior. Changing it breaks persistence
+        compatibility and query expansion. It is documented here so
+        that no future developer changes it unknowingly.
+        """
+        tokenizer = Tokenizer()
+        bigrams = tokenizer.extract_bigrams(["neural", "networks"])
+
+        assert "neural networks" in bigrams
+        assert "neural_networks" not in bigrams
+
+    def spec_stopwords_removed_before_bigram_creation(self):
+        """
+        SPECIFICATION: Stop words are removed before creating bigrams.
+
+        "the neural networks" becomes bigram "neural networks",
+        not "the neural" and "neural networks".
+        """
+        tokenizer = Tokenizer()
+        bigrams = tokenizer.extract_bigrams(["the", "neural", "networks"])
+
+        assert "neural networks" in bigrams
+        assert "the neural" not in bigrams
+
+    def spec_empty_input_returns_empty_output(self):
+        """
+        SPECIFICATION: Empty input produces empty output, never errors.
+
+        Defensive behavior: the tokenizer gracefully handles edge cases.
+        """
+        tokenizer = Tokenizer()
+
+        assert tokenizer.tokenize("") == []
+        assert tokenizer.tokenize(None) == []
+        assert tokenizer.extract_bigrams([]) == []
+
+    def spec_unicode_handled_gracefully(self):
+        """
+        SPECIFICATION: Unicode text is tokenized without errors.
+
+        International users exist. Their text must work.
+        """
+        tokenizer = Tokenizer()
+
+        # Japanese
+        tokens_ja = tokenizer.tokenize("機械学習")
+        assert len(tokens_ja) >= 1
+
+        # Emoji (should be handled, not crash)
+        tokens_emoji = tokenizer.tokenize("AI is cool 🚀")
+        assert "cool" in tokens_emoji or len(tokens_emoji) >= 2
 ```
 
-**Total:** ~13,000 lines of core library code
+**Location**: `tests/unit/specifications/`
+**Naming**: `{module}_spec.py`
+**Purpose**: Facts that must never change (or change deliberately)
 
-**For detailed architecture documentation**, see [docs/architecture.md](docs/architecture.md), which includes:
-- Complete module dependency graphs (ASCII + Mermaid)
-- Component interaction patterns
-- Data flow diagrams
-- Layer hierarchy details
+---
 
-### Module Purpose Quick Reference
+## The CI Guardian
 
-| If you need to... | Look in... |
-|-------------------|------------|
-| Add/modify public API | `processor/` package - methods split into focused mixins |
-| Modify document processing | `processor/documents.py` - add/remove documents |
-| Modify compute methods | `processor/compute.py` - PageRank, TF-IDF, clustering |
-| Add query features | `processor/query_api.py` - search, expansion, retrieval |
-| Add introspection | `processor/introspection.py` - fingerprints, gaps, summaries |
-| Modify persistence | `processor/persistence_api.py` - save/load/export |
-| Implement search/retrieval | `query/` - all search functions (8 modules) |
-| Add graph algorithms | `analysis/` - PageRank, TF-IDF, clustering |
-| Add semantic relations | `semantics.py` - pattern extraction, retrofitting |
-| Modify data structures | `minicolumn.py` - Minicolumn, Edge classes |
-| Change layer behavior | `layers.py` - HierarchicalLayer class |
-| Adjust tokenization | `tokenizer.py` - stemming, stop words, ngrams |
-| Change configuration | `config.py` - CorticalConfig dataclass |
-| Modify persistence | `persistence.py` - save/load, export formats |
-| Add code search features | `code_concepts.py` - programming synonyms |
-| Modify embeddings | `embeddings.py` - graph embedding methods |
-| Change gap detection | `gaps.py` - knowledge gap analysis |
-| Add fingerprinting | `fingerprint.py` - semantic fingerprints |
-| Modify chunk storage | `chunk_index.py` - git-friendly indexing |
-| Add observability features | `observability.py` - timing, metrics, traces |
-| Use reasoning framework | `reasoning/` - QAPV loops, thought graphs, verification |
-| Parallel agent coordination | `reasoning/collaboration.py` - ParallelCoordinator |
-| Crisis management | `reasoning/crisis_manager.py` - failure detection, recovery |
-| Graph persistence (WAL) | `reasoning/graph_persistence.py` - GraphWAL, snapshots |
-| Crash recovery | `reasoning/graph_persistence.py` - GraphRecovery (4-level cascade) |
-| Git auto-versioning | `reasoning/graph_persistence.py` - GitAutoCommitter |
-| Dual-process cognition | `reasoning/woven_mind.py` - WovenMind facade |
-| Mode switching (Loom) | `reasoning/loom.py` - surprise detection, routing |
-| System 1 fast processing | `reasoning/loom_hive.py` - Hive connector |
-| System 2 slow reasoning | `reasoning/loom_cortex.py` - Cortex connector |
-| Memory consolidation | `reasoning/consolidation.py` - ConsolidationEngine |
-| GoT task/decision tracking | `got/` - GoTManager, WAL, query language |
-| Query tasks fluently | `got/query_builder.py` - Query().tasks().where().order_by().execute() |
-| Walk graph with visitors | `got/graph_walker.py` - GraphWalker().starting_from().bfs().visit() |
-| Find paths in graph | `got/path_finder.py` - PathFinder().shortest_path(), reachable_from() |
-| Match subgraph patterns | `got/pattern_matcher.py` - PatternMatcher().find(pattern) |
-| Manage agent handoffs | `got/` - GoTManager handoff methods (initiate, accept, complete, reject) |
-| Generate unique IDs | `utils/id_generation.py` - generate_task_id, generate_plan_id, etc. |
-| Compute checksums | `utils/checksums.py` - compute_checksum() |
-| Atomic file saves | `utils/persistence.py` - atomic_save() |
-| Text utilities (slugify) | `utils/text.py` - slugify() |
-| WAL entry base classes | `wal.py` - BaseWALEntry, TransactionWALEntry |
-| Prompt injection detection | `spark/anomaly.py` - AnomalyDetector |
-| N-gram predictions | `spark/ngram.py` - NGramModel |
-| SparkSLM facade | `spark/predictor.py` - SparkPredictor |
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│                        THE CI GUARDIAN OATH                              │
+│                                                                          │
+│   The build server is not a suggestion. It is the law.                  │
+│                                                                          │
+│   When CI speaks, we listen.                                            │
+│   When CI fails, we stop.                                               │
+│   When CI passes, we may proceed—but only then.                         │
+│                                                                          │
+│   "It works on my machine" is not a defense.                            │
+│   "It's just a flaky test" is not an excuse.                            │
+│   "I'll fix it later" is not acceptable.                                │
+│                                                                          │
+│   CI is our guardian. We trust it absolutely.                           │
+│   We maintain it diligently. We never ignore it.                        │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
-**Key data structures:**
-- `Minicolumn`: Core unit with `lateral_connections`, `typed_connections`, `feedforward_connections`, `feedback_connections`
-- `Edge`: Typed connection with `relation_type`, `weight`, `confidence`, `source`
-- `HierarchicalLayer`: Container with `minicolumns` dict and `_id_index` for O(1) lookups
+### CI Pipeline Structure
 
-### Test Organization
+```yaml
+# .github/workflows/metus.yml
 
-Tests are organized by category for clear CI diagnostics and efficient local development:
+name: Metus Guardian
+
+on: [push, pull_request]
+
+jobs:
+  # ═══════════════════════════════════════════════════════════
+  # GATE 1: Smoke - Does the system breathe?
+  # ═══════════════════════════════════════════════════════════
+  smoke:
+    name: "🚬 Smoke Test"
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run smoke tests
+        run: python -m pytest tests/smoke/ -v --tb=short
+    # If smoke fails, nothing else runs. Fast feedback.
+
+  # ═══════════════════════════════════════════════════════════
+  # GATE 2: Specifications - Do we understand the atoms?
+  # ═══════════════════════════════════════════════════════════
+  specifications:
+    name: "🔬 Unit Specifications"
+    needs: smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run unit specifications with coverage
+        run: |
+          python -m pytest tests/unit/ -v \
+            --cov=cortical --cov-report=xml \
+            --cov-fail-under=95
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+
+  # ═══════════════════════════════════════════════════════════
+  # GATE 3: Behaviors - Do the user stories work?
+  # ═══════════════════════════════════════════════════════════
+  behaviors:
+    name: "🎭 Behavioral Scenarios"
+    needs: specifications
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run behavioral scenarios
+        run: python -m pytest tests/behavioral/ -v --tb=long
+
+  # ═══════════════════════════════════════════════════════════
+  # GATE 4: Contracts - Are our promises kept?
+  # ═══════════════════════════════════════════════════════════
+  contracts:
+    name: "📊 Performance Contracts"
+    needs: behaviors
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run performance contracts
+        run: |
+          python -m pytest tests/performance/contracts/ -v \
+            -m contract --tb=long
+    # Contract violations are build failures. No exceptions.
+
+  # ═══════════════════════════════════════════════════════════
+  # GATE 5: Integration - Does it all work together?
+  # ═══════════════════════════════════════════════════════════
+  integration:
+    name: "🔗 Integration"
+    needs: contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run integration tests
+        run: python -m pytest tests/integration/ -v
+
+  # ═══════════════════════════════════════════════════════════
+  # GATE 6: Security - Is it safe?
+  # ═══════════════════════════════════════════════════════════
+  security:
+    name: "🔒 Security Scan"
+    needs: integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run security tests
+        run: python -m pytest tests/security/ -v
+```
+
+---
+
+## The Confidence Ladder
+
+Each layer builds upon the last, creating assurance:
+
+```
+                    ┌─────────────────────────┐
+                    │   PRODUCTION READY      │  ← All layers green
+                    │   "Ship it with honor"  │
+                    └───────────┬─────────────┘
+                                │
+            ┌───────────────────┴───────────────────┐
+            │         BEHAVIORAL SCENARIOS          │
+            │   "The user stories work end-to-end"  │
+            │   tests/behavioral/ — Living docs     │
+            └───────────────────┬───────────────────┘
+                                │
+        ┌───────────────────────┴───────────────────────┐
+        │           PERFORMANCE CONTRACTS               │
+        │   "Our promises are kept"                     │
+        │   tests/performance/contracts/ — Sacred       │
+        └───────────────────────┬───────────────────────┘
+                                │
+    ┌───────────────────────────┴───────────────────────────┐
+    │                INTEGRATION TESTS                      │
+    │   "The components work together"                      │
+    │   tests/integration/ — Component boundaries           │
+    └───────────────────────────┬───────────────────────────┘
+                                │
+┌───────────────────────────────┴───────────────────────────────┐
+│                    UNIT SPECIFICATIONS                        │
+│   "Each atom of logic is correct"                             │
+│   tests/unit/specifications/ — 95%+ coverage                  │
+└───────────────────────────────┬───────────────────────────────┘
+                                │
+┌───────────────────────────────┴───────────────────────────────┐
+│                      SMOKE TESTS                              │
+│   "The system breathes"                                       │
+│   tests/smoke/ — <1 second, run constantly                    │
+└───────────────────────────────────────────────────────────────┘
+```
+
+**Run from bottom to top.** If smoke fails, don't waste time on slower tests.
+**Read from top to bottom.** To understand the system, start with behavioral scenarios.
+
+---
+
+## The Metus Checklists
+
+### Pre-Implementation Checklist
+
+Before writing any code:
+
+```markdown
+- [ ] **Story Written**
+      I have a user story: "As a [role], I want [capability], so that [benefit]"
+
+- [ ] **Scenarios Defined**
+      I have Given-When-Then scenarios that define success
+
+- [ ] **Contracts Identified**
+      I know which performance contracts apply to this work
+
+- [ ] **Specifications Listed**
+      I know which unit behaviors I will need to implement
+
+- [ ] **Edge Cases Considered**
+      I have thought about what could go wrong
+```
+
+### Pre-Merge Checklist
+
+Before merging any code:
+
+```markdown
+- [ ] **Scenarios Pass**
+      All behavioral scenarios are green
+
+- [ ] **Contracts Honored**
+      All performance contracts are satisfied
+
+- [ ] **Specifications Verified**
+      All unit specifications pass with 95%+ coverage
+
+- [ ] **CI Guardian Approves**
+      The full pipeline is green—no exceptions
+
+- [ ] **No Warnings Ignored**
+      Every warning is addressed or explicitly accepted with justification
+
+- [ ] **Documentation Updated**
+      If behavior changed, scenarios were updated to match
+```
+
+### Contract Renegotiation Checklist
+
+Before changing a performance contract:
+
+```markdown
+- [ ] **Justification Documented**
+      Why must the contract change? What drove this decision?
+
+- [ ] **Impact Assessed**
+      Who is affected? What user experiences will change?
+
+- [ ] **Team Reviewed**
+      The change was discussed, not made unilaterally
+
+- [ ] **New Baseline Established**
+      The new contract values are based on measurements, not wishes
+
+- [ ] **Announcement Made**
+      Users/stakeholders are informed of the change
+```
+
+---
+
+## The Metus Vocabulary
+
+| Term | Meaning | Not This |
+|------|---------|----------|
+| **Scenario** | An executable description of user behavior | "test" |
+| **Contract** | A performance guarantee we defend | "benchmark" |
+| **Specification** | A precise fact about atomic behavior | "unit test" |
+| **Guardian** | The CI pipeline that protects quality | "CI/CD" |
+| **Story** | The user's narrative justifying a feature | "requirement" |
+| **Violation** | When a contract or spec fails—build stops | "failure" |
+| **Renegotiation** | Deliberately changing a contract | "relaxing constraints" |
+
+---
+
+## Writing Scenarios That Tell Stories
+
+### Class Names: The User's Epic
+
+```python
+# ❌ Technical naming (who is this for?)
+class TestQueryExpansion:
+    def test_expand_query_with_synonyms(self): ...
+
+# ✅ Story-driven naming (I understand the user!)
+class ResearcherExpandsSearchToFindMoreResults:
+    """
+    As a researcher searching for 'ML',
+    I want my search to also find 'machine learning' documents,
+    So that I don't miss relevant results due to terminology.
+    """
+    def scenario_acronyms_expand_to_full_terms(self): ...
+    def scenario_synonyms_surface_related_concepts(self): ...
+    def scenario_expansion_does_not_dilute_precision(self): ...
+```
+
+### Method Names: The Scenario
+
+```python
+# ❌ Describes implementation
+def test_tfidf_computation(self): ...
+
+# ✅ Describes observable behavior
+def scenario_rare_terms_rank_higher_than_common_terms(self): ...
+def scenario_document_mentioning_query_ten_times_beats_one_mention(self): ...
+```
+
+### The Given-When-Then Pattern
+
+Every scenario tells a three-act story:
+
+```python
+def scenario_user_finds_related_documents_across_domains(self):
+    """
+    Scenario: Cross-domain discovery
+
+    Given a corpus with documents from multiple fields
+    When a user searches for a concept
+    Then results span multiple domains
+    Because insights often live at boundaries.
+    """
+
+    # GIVEN a corpus with documents from multiple fields
+    corpus = create_corpus_with(
+        neuroscience_docs=10,
+        machine_learning_docs=10,
+        philosophy_docs=10
+    )
+
+    # WHEN a user searches for "neural networks"
+    results = corpus.search("neural networks")
+
+    # THEN results span multiple domains
+    domains = {r.metadata["domain"] for r in results}
+    assert len(domains) >= 2, "Should surface cross-domain connections"
+```
+
+---
+
+## Directory Structure Under Metus
 
 ```
 tests/
-├── smoke/                   # Quick sanity checks (<30s)
-├── unit/                    # Fast isolated tests
-├── integration/             # Component interaction tests
-├── performance/             # Timing tests (uses small synthetic corpus)
-├── regression/              # Bug-specific regression tests
-├── behavioral/              # User workflow quality tests
-├── fixtures/                # Shared test data (small_corpus, shared_processor)
-└── *.py                     # Legacy tests (still run for coverage)
-```
-
-**Test Categories:**
-
-| Category | Purpose | When to Use |
-|----------|---------|-------------|
-| `tests/smoke/` | Quick sanity checks | After major changes |
-| `tests/unit/` | Fast isolated tests | New function/class tests |
-| `tests/integration/` | Component interaction | Cross-module functionality |
-| `tests/performance/` | Timing regression | Performance-sensitive code |
-| `tests/regression/` | Bug-specific tests | After fixing a bug |
-| `tests/behavioral/` | User workflow quality | Search relevance, quality metrics |
-
-**Unit Test Files** (organized in `tests/unit/`):
-
-| When testing... | Add tests to... |
-|-----------------|-----------------|
-| Processor methods | `tests/unit/test_processor_*.py` (split by concern) |
-| Query functions | `tests/unit/test_query.py` |
-| Analysis algorithms | `tests/unit/test_analysis_*.py` |
-| Semantic extraction | `tests/unit/test_semantics.py` |
-| Persistence/save/load | `tests/unit/test_persistence.py` |
-| Tokenization | `tests/unit/test_tokenizer.py` |
-| Configuration | `tests/unit/test_config.py` |
-| Layers | `tests/unit/test_layers.py` |
-| Embeddings | `tests/unit/test_embeddings.py` |
-| Gap detection | `tests/unit/test_gaps.py` |
-| Fingerprinting | `tests/unit/test_fingerprint.py` |
-| Code concepts | `tests/unit/test_code_concepts.py` |
-| Chunk indexing | `tests/unit/test_chunk_index.py` |
-| Incremental updates | `tests/test_incremental_indexing.py` |
-| Intent queries | `tests/unit/test_query.py` |
-
-**Running Tests:**
-
-> **TL;DR**: Use `make test-smoke` after every change, `make test-quick` before commit.
-> See [docs/testing-strategy.md](docs/testing-strategy.md) for full guide.
-
-```bash
-# Makefile shortcuts (recommended!)
-make test-smoke                           # ~1s - sanity check
-make test-fast                            # ~5s - no slow tests
-make test-quick                           # ~30s - before commit
-make test-parallel                        # ~23s - 4 parallel workers
-
-# Or use run_tests.py
-python scripts/run_tests.py smoke        # ~1s - sanity check
-python scripts/run_tests.py quick        # smoke + unit
-python scripts/run_tests.py unit -j 4    # parallel execution (3x faster!)
-
-# Before pushing
-python scripts/run_tests.py precommit    # smoke + unit + integration
-
-# Specific category
-python -m pytest tests/performance/ -v   # Performance tests
-python -m pytest tests/regression/ -v    # Regression tests
+├── smoke/                          # Gate 1: Does it breathe?
+│   └── test_smoke.py               # <1 second, run constantly
+│
+├── unit/
+│   └── specifications/             # Gate 2: Atomic truths
+│       ├── tokenizer_spec.py
+│       ├── pagerank_spec.py
+│       ├── tfidf_spec.py
+│       └── ...
+│
+├── integration/                    # Gate 5: Components together
+│   ├── test_search_pipeline.py
+│   ├── test_indexing_workflow.py
+│   └── ...
+│
+├── behavioral/                     # Gate 3: User stories
+│   ├── researcher_searches_corpus.py
+│   ├── developer_indexes_codebase.py
+│   ├── analyst_discovers_patterns.py
+│   └── system_handles_failures.py
+│
+├── performance/
+│   └── contracts/                  # Gate 4: Sacred promises
+│       ├── search_contract.py
+│       ├── indexing_contract.py
+│       └── memory_contract.py
+│
+└── security/                       # Gate 6: Safety
+    ├── test_injection.py
+    └── test_fuzzing.py
 ```
 
 ---
 
-## Critical Knowledge
-
-### Performance Lessons Learned (2025-12-11)
-
-**Profile before optimizing.** During dog-fooding, `compute_all()` was hanging. Initial suspicion was Louvain clustering (the most complex algorithm). Profiling revealed the real culprits:
-
-| Phase | Before | After | Fix |
-|-------|--------|-------|-----|
-| `bigram_connections` | 20.85s timeout | 10.79s | `max_bigrams_per_term=100`, `max_bigrams_per_doc=500` |
-| `semantics` | 30.05s timeout | 5.56s | `max_similarity_pairs=100000`, `min_context_keys=3` |
-| `louvain` | 2.2s | 2.2s | Not the bottleneck! |
-
-**Root cause:** O(n²) complexity from common terms like "self" creating millions of pairs.
-
-### Fixed Bugs
-
-**Bigram separators (2025-12-10):** Bigrams use space separators throughout (`"neural networks"`, not `"neural_networks"`).
-
-**Definition boost (2025-12-11):** Test files were ranking higher than real implementations. Fixed with `is_test_file()` detection and `test_file_penalty` parameter.
-
-### Important Implementation Details
-
-1. **Bigrams use SPACE separators** (from `tokenizer.py:319-332`):
-   ```python
-   ' '.join(tokens[i:i+n])  # "neural networks", not "neural_networks"
-   ```
-
-2. **Global `col.tfidf` is NOT per-document TF-IDF** - it uses total corpus occurrence count. Use `col.tfidf_per_doc[doc_id]` for true per-document TF-IDF.
-
-3. **O(1) ID lookups**: Always use `layer.get_by_id(col_id)` instead of iterating `layer.minicolumns`. The `_id_index` provides O(1) access.
-
-4. **Layer enum values**:
-   ```python
-   CorticalLayer.TOKENS = 0
-   CorticalLayer.BIGRAMS = 1
-   CorticalLayer.CONCEPTS = 2
-   CorticalLayer.DOCUMENTS = 3
-   ```
-
-5. **Minicolumn IDs follow pattern**: `L{layer}_{content}` (e.g., `L0_neural`, `L1_neural networks`)
-
-6. **Lateral expansion uses TF-IDF weighting for selection** (from `query/expansion.py`):
-   ```python
-   # Selection score = co-occurrence * (TF-IDF + 0.1)
-   # This prevents ubiquitous terms from dominating expansions
-   selection_score = cooccur_weight * (neighbor.tfidf + 0.1)
-   # But returned expansion weight is pure co-occurrence
-   ```
-
-7. **Canonical ID generation** - Always use `cortical/utils/id_generation.py`:
-   ```python
-   from cortical.utils.id_generation import generate_task_id, generate_plan_id
-   # Format: {PREFIX}-YYYYMMDD-HHMMSS-{8-char-hex}
-   # Example: T-20251222-093045-a1b2c3d4
-   ```
-
-### Common Mistakes to Avoid
-
-**❌ DON'T iterate to find by ID:**
-```python
-# WRONG - O(n) linear scan
-for col in layer.minicolumns.values():
-    if col.id == target_id:
-        return col
-
-# CORRECT - O(1) lookup
-col = layer.get_by_id(target_id)
-```
-
-**❌ DON'T use underscores in bigrams:**
-```python
-# WRONG - bigrams use spaces
-bigram = f"{term1}_{term2}"
-
-# CORRECT
-bigram = f"{term1} {term2}"
-```
-
-**❌ DON'T confuse global TF-IDF with per-document TF-IDF:**
-```python
-# WRONG - global TF-IDF (uses total corpus occurrence)
-score = col.tfidf
-
-# CORRECT - per-document TF-IDF
-score = col.tfidf_per_doc.get(doc_id, 0.0)
-```
-
-**❌ DON'T assume compute_all() is always needed:**
-```python
-# WRONG - overkill for incremental updates
-processor.add_document_incremental(doc_id, text)
-processor.compute_all()  # Recomputes EVERYTHING
-
-# CORRECT - let incremental handle it
-processor.add_document_incremental(doc_id, text)
-# TF-IDF and connections updated automatically
-```
-
-**❌ DON'T forget to check staleness before relying on computed values:**
-```python
-# WRONG - may be using stale data
-if processor.is_stale(processor.COMP_PAGERANK):
-    # PageRank values may be outdated!
-    pass
-
-# CORRECT - ensure freshness
-if processor.is_stale(processor.COMP_PAGERANK):
-    processor.compute_importance()
-```
-
-**❌ DON'T create custom ID generation - use canonical module:**
-```python
-# WRONG - custom ID patterns scattered across codebase
-import uuid
-task_id = f"task-{uuid.uuid4().hex[:8]}"
-# or
-from datetime import datetime
-plan_id = f"plan-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-
-# CORRECT - use canonical ID generation
-from cortical.utils.id_generation import generate_task_id, generate_plan_id
-task_id = generate_task_id()   # T-20251222-093045-a1b2c3d4
-plan_id = generate_plan_id()   # OP-20251222-093045-e5f6g7h8
-```
-
-**❌ DON'T use Pattern.edge() for edge patterns:**
-```python
-# WRONG - Pattern.edge() has different signature
-pattern = Pattern().node("A").edge("A", "B", "DEPENDS_ON").node("B")
-
-# CORRECT - use outgoing() or incoming() for directed edges
-pattern = Pattern().node("A").outgoing("DEPENDS_ON").node("B")
-pattern = Pattern().node("A").incoming("BLOCKS").node("B")
-```
-
-**❌ DON'T pass arguments to PathFinder.explain():**
-```python
-# WRONG - explain() describes finder config, not a specific search
-plan = finder.explain(source_id, target_id)
-
-# CORRECT - explain() takes no arguments
-plan = finder.explain()  # Describes max_paths, max_length, directed settings
-```
-
-**❌ DON'T assume PatternMatch bindings are IDs:**
-```python
-# WRONG - bindings contain Task objects, not strings
-task_id = match.bindings["A"]
-finder.all_paths(task_id, other_id)
-
-# CORRECT - extract .id from the Task object
-task = match.bindings["A"]  # This is a Task object
-finder.all_paths(task.id, other_id)
-```
-
-**❌ DON'T forget PathFinder.all_paths() returns PathSearchResult:**
-```python
-# WRONG - all_paths() doesn't return a plain list
-paths = finder.all_paths(source, target)
-if len(paths) > 0:  # Works but misses metadata
-
-# CORRECT - use PathSearchResult attributes
-result = finder.all_paths(source, target)
-if len(result.paths) > 0:
-    print(f"Truncated: {result.truncated}")
-```
-
-### Changing Validation Logic (IMPORTANT!)
-
-When modifying validation rules (e.g., parameter ranges, input constraints), **tests are scattered across multiple files**. Missing any will cause CI failures.
-
-**Before changing validation:**
-```bash
-# Find ALL tests related to the parameter/function you're changing
-# Example: changing alpha parameter validation
-grep -rn "alpha" tests/ | grep -i "invalid\|error\|raise\|ValueError"
-
-# More specific patterns:
-grep -rn "alpha.*0\|alpha.*1\|invalid.*alpha" tests/
-```
-
-**Checklist for validation changes:**
-1. ✅ Search for the parameter name + "invalid", "error", "raise", "ValueError" in tests/
-2. ✅ Check both `tests/unit/` AND legacy `tests/test_*.py` files
-3. ✅ Check `tests/test_coverage_gaps.py` (often has validation edge cases)
-4. ✅ Update ALL matching tests, not just the first one found
-5. ✅ Run full test suite locally before pushing: `python -m pytest tests/ -v`
-
-**Example: Changing alpha from (0, 1] to [0, 1]**
-```bash
-# This finds tests expecting alpha=0 to be invalid:
-grep -rn "alpha.*0\.0\|alpha.*=.*0[^.]\|exclusive of 0" tests/
-```
-
-### Staleness Tracking System
-
-The processor tracks which computations are up-to-date vs needing recalculation. This prevents unnecessary recomputation while ensuring data consistency.
-
-#### Computation Types
-
-| Constant | What it tracks | Computed by |
-|----------|---------------|-------------|
-| `COMP_TFIDF` | TF-IDF scores per term | `compute_tfidf()` |
-| `COMP_PAGERANK` | PageRank importance | `compute_importance()` |
-| `COMP_ACTIVATION` | Activation propagation | `propagate_activation()` |
-| `COMP_DOC_CONNECTIONS` | Document-to-document links | `compute_document_connections()` |
-| `COMP_BIGRAM_CONNECTIONS` | Bigram lateral connections | `compute_bigram_connections()` |
-| `COMP_CONCEPTS` | Concept clusters (Layer 2) | `build_concept_clusters()` |
-| `COMP_EMBEDDINGS` | Graph embeddings | `compute_graph_embeddings()` |
-| `COMP_SEMANTICS` | Semantic relations | `extract_corpus_semantics()` |
-
-#### How Staleness Works
-
-1. **All computations start stale** - `_mark_all_stale()` is called in `__init__`
-2. **Adding documents marks all stale** - `process_document()` calls `_mark_all_stale()`
-3. **Computing marks fresh** - Each `compute_*()` method calls `_mark_fresh()`
-4. **`compute_all()` recomputes only stale** - Checks each computation before running
-
-#### API Methods
-
-```python
-# Check if a computation is stale
-if processor.is_stale(processor.COMP_PAGERANK):
-    processor.compute_importance()
-
-# Get all stale computations
-stale = processor.get_stale_computations()
-# Returns: {'pagerank', 'tfidf', ...}
-```
-
-#### Incremental Updates
-
-`add_document_incremental()` is smarter - it can update TF-IDF without invalidating everything:
-
-```python
-# Only recomputes TF-IDF by default
-processor.add_document_incremental(doc_id, text, recompute='tfidf')
-
-# Recompute more
-processor.add_document_incremental(doc_id, text, recompute='all')
-
-# Don't recompute anything (fastest, but leaves data stale)
-processor.add_document_incremental(doc_id, text, recompute='none')
-```
-
-#### When to Check Staleness
-
-- **Before reading `col.pagerank`** - check `COMP_PAGERANK`
-- **Before reading `col.tfidf`** - check `COMP_TFIDF`
-- **Before using embeddings** - check `COMP_EMBEDDINGS`
-- **Before querying concepts** - check `COMP_CONCEPTS`
-
-#### Staleness After `load()`
-
-Loading a saved processor restores computation freshness state:
-```python
-processor = CorticalTextProcessor.load("corpus.pkl")
-# Staleness state is preserved from when it was saved
-```
-
-### Return Value Semantics
-
-Understanding what functions return in edge cases prevents bugs and confusion.
-
-#### Edge Case Returns
-
-| Scenario | Return Value | Example Functions |
-|----------|--------------|-------------------|
-| Empty corpus | `[]` (empty list) | `find_documents_for_query()`, `find_passages_for_query()` |
-| No matches | `[]` (empty list) | `find_documents_for_query()`, `expand_query()` returns `{}` |
-| Unknown doc_id | `{}` (empty dict) | `get_document_metadata()` |
-| Unknown term | `None` | `layer.get_minicolumn()`, `layer.get_by_id()` |
-| Invalid layer | `KeyError` raised | `get_layer()` |
-| Empty query | `ValueError` raised | `find_documents_for_query()` |
-| Invalid top_n | `ValueError` raised | `find_documents_for_query()` |
-
-#### Score Ranges
-
-| Score Type | Range | Notes |
-|------------|-------|-------|
-| Relevance score | Unbounded (0+) | Sum of TF-IDF × expansion weights |
-| PageRank | 0.0-1.0 | Normalized probability distribution |
-| TF-IDF | Unbounded (0+) | Higher = more distinctive |
-| Connection weight | Unbounded (0+) | Co-occurrence count or semantic weight |
-| Similarity | 0.0-1.0 | Cosine similarity, Jaccard, etc. |
-| Confidence | 0.0-1.0 | Relation extraction confidence |
-
-#### Lookup Functions: None vs Exception
-
-**Return `None` for missing items:**
-```python
-col = layer.get_minicolumn("nonexistent")  # Returns None
-col = layer.get_by_id("L0_nonexistent")    # Returns None
-```
-
-**Raise exception for invalid structure:**
-```python
-layer = processor.get_layer(CorticalLayer.TOKENS)  # OK
-layer = processor.get_layer(999)  # Raises KeyError
-```
-
-#### Default Parameter Values
-
-Key defaults to know:
-
-| Parameter | Default | In Function |
-|-----------|---------|-------------|
-| `top_n` | `5` | `find_documents_for_query()` |
-| `top_n` | `5` | `find_passages_for_query()` |
-| `max_expansions` | `10` | `expand_query()` |
-| `damping` | `0.85` | `compute_pagerank()` |
-| `resolution` | `1.0` | `build_concept_clusters()` |
-| `chunk_size` | `200` | `find_passages_for_query()` |
-| `chunk_overlap` | `50` | `find_passages_for_query()` |
-
----
-
-## Development Workflow
-
-### Work Priority Order
-
-> **⚠️ CRITICAL: Follow this priority order for all work:**
-
-| Priority | Type | Rule |
-|----------|------|------|
-| 0 | **Tests First** | Write failing tests BEFORE any implementation. This is the TDD way. |
-| 1 | **Security Issues** | Fix security vulnerabilities BEFORE any other code work. No exceptions. |
-| 2 | **Bugs** | Write a test that reproduces the bug, then fix it. |
-| 3 | **Features** | Write tests defining the feature, then implement. |
-| 4 | **Documentation** | Update docs AS YOU WORK, not after. Every code change = doc update. |
-
-**Why this order:**
-- Tests first ensures you understand the problem before solving it
-- Security issues can expose users to harm - they cannot wait
-- Bugs need regression tests to prevent reoccurrence
-- Features without tests are incomplete
-- Documentation debt compounds - write it while context is fresh
-
-### Test-Driven Development (TDD) Workflow
-
-> **⚠️ MANDATORY: TDD is required for ALL code changes. No exceptions.**
->
-> If you find yourself writing implementation code without a failing test, STOP.
-> Go back and write the test first.
-
-This project strictly follows Test-Driven Development. The workflow is:
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                     TDD WORKFLOW                                     │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  1. RED: Write failing tests first                                   │
-│     └── Capture expected behavior before implementation              │
-│                                                                       │
-│  2. GREEN: Implement minimal code to pass tests                      │
-│     └── Focus on making tests pass, not perfection                   │
-│                                                                       │
-│  3. REFACTOR: Convert behavioral → unit tests, clean up              │
-│     └── Delete temp behavioral tests, keep permanent unit tests      │
-│                                                                       │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-**Two types of tests:**
-
-| Type | Purpose | Data Creation | When to Use |
-|------|---------|---------------|-------------|
-| **Behavioral** | Explore/debug, capture "what should happen" | May create real data | During bug investigation, then DELETE |
-| **Unit** | Permanent protection, document API contract | Mocks only, no data | Keep forever after feature is working |
-
-**TDD Process:**
-
-1. **When fixing a bug:**
-   - Write behavioral tests that reproduce the bug
-   - Run tests to confirm they fail (RED)
-   - Implement the fix
-   - Run tests to confirm they pass (GREEN)
-   - Convert behavioral tests to unit tests (REFACTOR)
-   - Delete behavioral tests that create data
-
-2. **When adding a feature:**
-   - Write behavioral tests for expected behavior
-   - Implement until tests pass
-   - Convert to unit tests with mocks
-   - Delete temporary behavioral tests
-
-3. **Cleanup requirement:**
-   - Behavioral tests that use `got_manager` with real ops must be converted
-   - Unit tests use `mock_manager` - no cleanup needed
-   - Check for test data pollution: `python scripts/got_utils.py validate`
-
-**Example pattern:**
-
-```python
-# BEHAVIORAL (temporary - for debugging)
-def test_delete_task_with_deps(self, got_manager):  # Uses real manager
-    task_id = got_manager.create_task(...)  # Creates real data!
-    ...
-
-# UNIT (permanent - keeps forever)
-def test_delete_task_with_deps(self, mock_manager, mock_args):  # Mocked
-    mock_manager.get_task.return_value = mock_task  # No real data
-    ...
-```
-
-### Before Writing Implementation Code
-
-> **Remember: Tests come FIRST. Always.**
-
-1. **Write failing tests first** - define what success looks like:
-   ```bash
-   # Create test file or add to existing
-   # Write tests that describe expected behavior
-   # Run to confirm they fail (RED phase)
-   python -m pytest tests/path/to/your_tests.py -v
-   ```
-2. **Check existing tasks** - run `python scripts/got_utils.py task list` to see planned/in-progress work
-3. **Run existing tests** to establish baseline:
-   ```bash
-   python -m pytest tests/ -q
-   ```
-4. **Check code coverage** - know the current state:
-   ```bash
-   python -m coverage run -m pytest tests/ && python -m coverage report --include="cortical/*"
-   ```
-5. **Read relevant code** - understand patterns AFTER writing tests (tests clarify what you need to understand)
-
-### When Debugging Performance Issues
-
-1. **Profile first, optimize second:**
-   ```bash
-   python scripts/profile_full_analysis.py
-   ```
-2. **Question assumptions** - the obvious culprit often isn't the real one
-3. **Build a complete picture** before running fixes
-4. **Document findings** - create tasks with `python scripts/got_utils.py task create` even if they contradict hypotheses
-
-### When Implementing Features
-
-**Follow TDD: RED → GREEN → REFACTOR**
-
-1. **Write failing tests first** - Define expected behavior before implementation
-   ```bash
-   # Write the test
-   python -m pytest tests/unit/test_your_feature.py -v
-   # Watch it fail (RED) - this confirms the test is meaningful
-   ```
-2. **Implement minimal code to pass** - No more, no less (GREEN)
-3. **Refactor while tests pass** - Clean up with confidence
-4. **Follow existing patterns** - this codebase is consistent
-5. **Add type hints** - the codebase uses them extensively
-6. **Write docstrings** - Google style with Args/Returns sections
-7. **Update staleness tracking** if adding new computation:
-   ```python
-   # In processor/core.py, add constant:
-   COMP_YOUR_FEATURE = 'your_feature'
-   # Mark stale in _mark_all_stale()
-   # Mark fresh after computation
-   ```
-
-### After Implementation (Tests Already Written via TDD)
-
-Since you followed TDD, your tests already exist. Now verify everything works together:
-
-1. **Verify all tests pass** (they should - you wrote them first!):
-   ```bash
-   python -m pytest tests/ -v
-   ```
-2. **Check coverage meets standards** (98%+ for core, 90%+ for error handling):
-   ```bash
-   python -m coverage run -m pytest tests/
-   python -m coverage report --include="cortical/*"
-   ```
-3. **Run smoke tests** for quick sanity check:
-   ```bash
-   make test-smoke  # ~1s
-   ```
-4. **Run the showcase** to verify integration:
-   ```bash
-   python showcase.py
-   ```
-5. **Check for regressions** in related functionality
-6. **Dog-food the feature** - test with real usage (see [dogfooding-checklist.md](docs/dogfooding-checklist.md))
-7. **Create follow-up tasks** - use `python scripts/got_utils.py task create` for issues discovered
-8. **Verify completion** - use [definition-of-done.md](docs/definition-of-done.md) checklist
-9. **Mark task complete** - use `python scripts/got_utils.py task complete T-XXX`
-
-### Task Management
-
-**Use GoT (Graph of Thought) for all task management.** See the "Quick Session Start" section at the top of this document for GoT commands.
-
-> **Note:** The `tasks/` directory and `task_utils.py` are legacy systems - do not use them for new work.
-
----
-
-## Commit Conventions
-
-This project follows the [Conventional Commits](https://www.conventionalcommits.org/) format for all commit messages.
-
-### Format
-
-```
-<type>(<scope>): <description>
-
-[optional body]
-
-[optional footer]
-```
-
-### Commit Types
-
-| Type | Purpose | Example |
-|------|---------|---------|
-| `feat` | New feature | `feat(query): Add semantic search expansion` |
-| `fix` | Bug fix | `fix(got): Fix edge deletion in transaction log` |
-| `docs` | Documentation only | `docs(readme): Update installation instructions` |
-| `refactor` | Code refactoring (see below) | `refactor(api): Extract query logic into separate module` |
-| `test` | Adding or updating tests | `test(processor): Add edge case coverage for empty corpus` |
-| `perf` | Performance improvement | `perf(bm25): Optimize document scoring loop` |
-| `chore` | Maintenance tasks | `chore: Update dependencies` |
-
-### Refactoring Commits
-
-**Format:** `refactor(scope): description`
-
-**Valid scopes for refactoring:**
-
-| Scope | Use When | Example |
-|-------|----------|---------|
-| `module` | Reorganizing module structure | `refactor(module): Split processor.py into modular package` |
-| `api` | Changing API structure or interfaces | `refactor(api): Consolidate search methods into unified interface` |
-| `structure` | Data structure changes | `refactor(structure): Convert minicolumn edges to typed connections` |
-| `performance` | Performance-focused refactoring | `refactor(performance): Replace O(n²) document comparison with index` |
-| `clarity` | Improving code readability | `refactor(clarity): Rename layer variables to semantic names` |
-| `tests` | Refactoring test code | `refactor(tests): Convert behavioral tests to mocked unit tests` |
-
-### Examples
+## Quick Reference: Running Tests by Gate
 
 ```bash
-# Adding a new feature
-git commit -m "feat(semantics): Add multi-hop relation inference"
+# Gate 1: Smoke (run constantly, <1 second)
+python -m pytest tests/smoke/ -v
 
-# Fixing a bug
-git commit -m "fix(got): Prevent duplicate edge creation during rebuild"
+# Gate 2: Specifications (run frequently, ~2 minutes)
+python -m pytest tests/unit/specifications/ -v --cov=cortical --cov-fail-under=95
 
-# Refactoring for clarity
-git commit -m "refactor(clarity): Extract PageRank computation into separate method"
+# Gate 3: Behaviors (run before merge, ~5 minutes)
+python -m pytest tests/behavioral/ -v
 
-# Refactoring module structure
-git commit -m "refactor(module): Consolidate ML data collection into single package"
+# Gate 4: Contracts (run before merge, ~10 minutes)
+python -m pytest tests/performance/contracts/ -v -m contract
 
-# Performance refactoring
-git commit -m "refactor(performance): Cache BM25 term statistics for faster queries"
+# Gate 5: Integration (run before merge, ~10 minutes)
+python -m pytest tests/integration/ -v
 
-# Test refactoring
-git commit -m "refactor(tests): Replace real GoT operations with mocked fixtures"
-```
+# Gate 6: Security (run before release)
+python -m pytest tests/security/ -v
 
-### Guidelines
-
-- **Scope is optional but recommended** for better organization and ML analysis
-- **Keep descriptions concise** - focus on "what" and "why", not "how"
-- **Use imperative mood** - "Add feature" not "Added feature" or "Adds feature"
-- **Reference tasks when relevant** - Include task IDs in the body or footer
-- **Refactor detection** - The system automatically detects refactoring commits via the `refactor:` or `refactor(` prefix
-
----
-
-## Testing Patterns
-
-The codebase supports both `unittest` (legacy) and `pytest` (new categorized tests):
-
-### Pytest Pattern (Recommended for New Tests)
-
-```python
-# tests/regression/test_regressions.py
-import pytest
-
-class TestYourBugFix:
-    """
-    Task #XXX: Description of the bug that was fixed.
-    """
-
-    def test_bug_is_fixed(self, small_processor):
-        """Verify the specific bug is fixed."""
-        # small_processor fixture provides pre-loaded corpus
-        result = small_processor.your_feature()
-        assert result is not None
-
-    def test_edge_case(self, fresh_processor):
-        """Test with empty processor."""
-        # fresh_processor fixture provides empty processor
-        result = fresh_processor.your_feature()
-        assert result == expected_value
-```
-
-### Unittest Pattern (Legacy Tests)
-
-```python
-# tests/test_processor.py
-class TestYourFeature(unittest.TestCase):
-    def setUp(self):
-        self.processor = CorticalTextProcessor()
-        self.processor.process_document("doc1", "Test content here.")
-        self.processor.compute_all()
-
-    def test_feature_basic(self):
-        """Test basic functionality."""
-        result = self.processor.your_feature()
-        self.assertIsNotNone(result)
-```
-
-### Available Fixtures (pytest)
-
-**Processor Fixtures:**
-
-| Fixture | Scope | Description |
-|---------|-------|-------------|
-| `small_processor` | session | 25-doc synthetic corpus, pre-computed |
-| `shared_processor` | session | Full samples/ corpus (~125 docs) |
-| `fresh_processor` | function | Empty processor for isolated tests |
-| `small_corpus_docs` | function | Raw document dict |
-
-**GoT (Graph of Thought) Fixtures:**
-
-| Fixture | Scope | Description |
-|---------|-------|-------------|
-| `fresh_got_manager` | function | Empty GoT manager for isolation |
-| `got_manager_with_sample_tasks` | class | 20 tasks + edges, shared in class |
-| `got_manager_large` | class | 100 tasks + edges for perf tests |
-
-> **⚠️ NEVER create GoTManager directly in tests!** Use these shared fixtures.
-> Creating a GoTManager with tasks takes ~5s. Function-scoped fixtures recreate
-> this for every test, wasting massive amounts of time.
-
-### Test Performance Guidelines
-
-> **⚠️ CRITICAL: Tests must be fast. Slow tests kill developer productivity.**
-
-**Performance Budget:**
-
-| Category | Target | Enforcement |
-|----------|--------|-------------|
-| Individual test | < 1 second | Design goal |
-| Fixture setup | < 5 seconds | Mark `@pytest.mark.slow` if exceeded |
-| Full unit suite | < 2 minutes | CI gate |
-| Full test suite | < 5 minutes | CI gate |
-
-**Fixture Scope Guidelines:**
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                 FIXTURE SCOPE DECISION TREE                          │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  Does the test MODIFY fixture state?                                 │
-│  ├── YES → Use function scope (fresh_got_manager)                   │
-│  └── NO → Does fixture take > 1 second to create?                   │
-│           ├── YES → Use class or session scope                      │
-│           └── NO → Function scope is fine                           │
-│                                                                       │
-│  ANTI-PATTERN: Creating expensive fixtures in function scope         │
-│  This recreates the fixture for EVERY test!                          │
-│                                                                       │
-│  ❌ BAD (75s for 15 tests):                                          │
-│  @pytest.fixture  # function scope by default                        │
-│  def got_manager():                                                  │
-│      manager = GoTManager(...)  # 5s to create                       │
-│      for i in range(100): manager.create_task(...)  # +5s            │
-│      return manager                                                  │
-│                                                                       │
-│  ✅ GOOD (5s for 15 tests):                                          │
-│  @pytest.fixture(scope="class")                                      │
-│  def got_manager_large(tmp_path_factory):                            │
-│      ...  # Created once per class                                   │
-│                                                                       │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-**Before Committing Tests:**
-
-```bash
-# Check timing of new tests
-pytest tests/your_new_tests.py --durations=10 -q
-
-# If any test setup exceeds 5s, refactor to use shared fixtures
-# or mark with @pytest.mark.slow
-```
-
-**Common Mistakes:**
-
-| Mistake | Impact | Fix |
-|---------|--------|-----|
-| Function-scoped expensive fixture | 5s × N tests wasted | Use class/session scope |
-| Creating GoTManager in each test | 5s per test | Use `got_manager_large` |
-| Not using tmp_path_factory | Slower cleanup | Use pytest's tmp_path_factory |
-| Disk I/O in mock tests | Unnecessary slowdown | Use MagicMock for perf tests |
-
-### Test Markers for Optional Dependencies
-
-Tests requiring optional dependencies are excluded by default during development for faster iteration.
-
-**Markers defined in pyproject.toml:**
-
-| Marker | Tests | Dependency |
-|--------|-------|------------|
-| `optional` | All optional tests | (meta-marker) |
-| `protobuf` | Serialization tests | `protobuf>=4.0` |
-| `fuzz` | Property-based tests | `hypothesis>=6.0` |
-| `slow` | Long-running tests | (none) |
-
-**Running tests:**
-
-```bash
-# Development (default) - excludes optional tests
-pytest tests/
-
-# Include optional tests (like CI)
-pytest tests/ -m ""
-
-# Using run_tests.py
-python scripts/run_tests.py unit --include-optional
-
-# Run only fuzzing tests
-pytest tests/ -m "fuzz"
-```
-
-**CI behavior:** All CI stages use `-m ""` to run the complete test suite including optional tests.
-
-**Always test:**
-- Empty corpus case
-- Single document case
-- Multiple documents case
-- Edge cases specific to your feature
-- Add regression test if fixing a bug
-
-### Intentionally Skipped Tests
-
-Some tests are designed to skip under certain conditions. This is intentional, not a bug:
-
-| Test File | Skip Condition | Reason |
-|-----------|----------------|--------|
-| `tests/unit/test_protobuf_serialization.py` | `protobuf` not installed | Optional dependency for cross-language serialization |
-| `tests/test_evaluate_cluster.py` | `samples/` missing or < 5 files | Integration test requiring sample corpus |
-| `tests/unit/test_suggest_tasks.py` | `task_utils` not available | Optional task management feature |
-
-**Pattern for optional dependencies:**
-```python
-try:
-    from cortical.projects.proto import to_proto, from_proto
-    PROTOBUF_AVAILABLE = True
-except ImportError:
-    PROTOBUF_AVAILABLE = False
-
-@unittest.skipIf(not PROTOBUF_AVAILABLE, "protobuf package not installed")
-class TestProtobufSerialization(unittest.TestCase):
-    ...
-```
-
-**Pattern for conditional resources:**
-```python
-def setUp(self):
-    if not os.path.exists(self.required_resource):
-        self.skipTest("Required resource not available")
-```
-
-### CI/CD Best Practices
-
-**CRITICAL: Pytest runs unittest-based tests natively!**
-
-Never run both pytest and unittest on the same test files - this doubles CI time:
-
-```bash
-# ❌ WRONG - runs tests twice (doubles CI time from ~7min to ~15min+)
-coverage run -m pytest tests/
-coverage run --append -m unittest discover -s tests
-
-# ✅ CORRECT - pytest handles both pytest AND unittest style tests
-coverage run -m pytest tests/
-```
-
-**Why this matters:**
-- All `test_*.py` files using `unittest.TestCase` are discovered and run by pytest
-- Running unittest separately re-runs the exact same tests
-- With 3000+ tests and coverage overhead, this can add 10+ minutes to CI
-
-**When modifying `.github/workflows/ci.yml`:**
-1. Read the header comment explaining the test architecture
-2. Add new tests to the appropriate stage (smoke, unit, integration, etc.)
-3. Never add duplicate test runners in the coverage-report job
-4. When in doubt, run locally first: `time python -m pytest tests/ -v`
-
-**Scripts called from CI must add project root to sys.path:**
-
-Scripts in `scripts/` that import from `cortical` need path setup because CI runs them directly without installing the package:
-
-```python
-# At the top of the script, BEFORE any cortical imports:
-import sys
-from pathlib import Path
-
-_PROJECT_ROOT = Path(__file__).parent.parent
-if str(_PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(_PROJECT_ROOT))
-
-# Now cortical imports will work
-from cortical.utils.id_generation import generate_task_id
-```
-
-**Scripts currently called from CI:**
-- `ci_task_report.py` → imports `task_utils.py` → imports from `cortical.utils`
-- `ml_data_collector.py` → handles missing cortical gracefully (try/except)
-- `validate_tasks.py`, `resolve_wiki_links.py` → no cortical imports
-
----
-
-## Common Tasks
-
-### Adding a New Analysis Function
-
-1. Add function to the `analysis/` package (appropriate module):
-   ```python
-   def compute_your_analysis(
-       layers: Dict[CorticalLayer, HierarchicalLayer],
-       **kwargs
-   ) -> Dict[str, Any]:
-       """Your analysis description."""
-       layer0 = layers[CorticalLayer.TOKENS]
-       # Implementation
-       return {'result': ..., 'stats': ...}
-   ```
-
-2. Add wrapper method to `CorticalTextProcessor` in the `processor/` package (appropriate mixin):
-   ```python
-   def compute_your_analysis(self, **kwargs) -> Dict[str, Any]:
-       """Wrapper with docstring."""
-       return compute_your_analysis(self.layers, **kwargs)
-   ```
-
-3. Add tests in `tests/unit/test_analysis_*.py`
-
-### Adding a New Query Function
-
-1. Add to the `query/` package following existing patterns (e.g., `query/search.py`)
-2. Use `get_expanded_query_terms()` helper for query expansion
-3. Use `layer.get_by_id()` for O(1) lookups, not iteration
-4. Add wrapper to the `processor/` package (likely `processor/query_api.py`)
-5. Add tests in `tests/unit/test_query*.py` or `tests/unit/test_processor*.py`
-
-### Modifying Minicolumn Structure
-
-1. Update `Minicolumn` class in `minicolumn.py`
-2. Update `to_dict()` and `from_dict()` for persistence
-3. Update `__slots__` if adding new fields
-4. Increment state version in `persistence.py` if breaking change
-5. Add migration logic for backward compatibility
-
----
-
-## Code Style Guidelines
-
-```python
-# Imports: stdlib, then local
-from typing import Dict, List, Optional, Tuple
-from collections import defaultdict
-
-from .layers import CorticalLayer, HierarchicalLayer
-from .minicolumn import Minicolumn
-
-# Type hints on all public functions
-def find_documents(
-    query: str,
-    layers: Dict[CorticalLayer, HierarchicalLayer],
-    top_n: int = 5
-) -> List[Tuple[str, float]]:
-    """
-    Find documents matching query.
-
-    Args:
-        query: Search query string
-        layers: Dictionary of hierarchical layers
-        top_n: Number of results to return
-
-    Returns:
-        List of (doc_id, score) tuples sorted by relevance
-    """
-    # Implementation
+# Full Metus Pipeline (what CI runs)
+python -m pytest tests/ -v --cov=cortical --cov-fail-under=95
 ```
 
 ---
 
-## Scoring Algorithms
+## The Metus Way: Summary
 
-The processor supports multiple scoring algorithms for term weighting:
-
-### BM25 (Default)
-
-BM25 (Best Match 25) is the default scoring algorithm, optimized for code search:
-
-```python
-from cortical import CorticalTextProcessor
-from cortical.config import CorticalConfig
-
-# BM25 with default parameters (recommended)
-config = CorticalConfig(scoring_algorithm='bm25')
-
-# Tune BM25 parameters if needed
-config = CorticalConfig(
-    scoring_algorithm='bm25',
-    bm25_k1=1.2,  # Term frequency saturation (0.0-3.0, default 1.2)
-    bm25_b=0.75   # Length normalization (0.0-1.0, default 0.75)
-)
-processor = CorticalTextProcessor(config=config)
 ```
-
-**Parameters:**
-- `bm25_k1`: Controls term frequency saturation. Higher values give more weight to term frequency.
-- `bm25_b`: Controls document length normalization. Set to 0.0 to disable length normalization.
-
-### TF-IDF (Legacy)
-
-Traditional TF-IDF scoring is still available:
-
-```python
-config = CorticalConfig(scoring_algorithm='tfidf')
-```
-
-### Graph-Boosted Search (GB-BM25)
-
-A hybrid search combining BM25 with graph signals:
-
-```python
-# Standard search (uses BM25 under the hood)
-results = processor.find_documents_for_query("query")
-
-# Graph-boosted search (adds PageRank + proximity signals)
-results = processor.graph_boosted_search(
-    "query",
-    pagerank_weight=0.3,   # Weight for term importance (0-1)
-    proximity_weight=0.2   # Weight for connected terms (0-1)
-)
-```
-
-**GB-BM25 combines:**
-1. BM25 base score (term relevance)
-2. PageRank boost (important terms rank higher)
-3. Proximity boost (connected query terms boost documents)
-4. Coverage boost (documents matching more terms rank higher)
-
----
-
-## Performance Considerations
-
-1. **Use `get_by_id()` for ID lookups** - O(1) vs O(n) iteration
-2. **Batch document additions** with `add_documents_batch()` for bulk imports
-3. **Use incremental updates** with `add_document_incremental()` for live systems
-4. **Cache query expansions** when processing multiple similar queries
-5. **Pre-compute chunks** in `find_passages_batch()` to avoid redundant work
-6. **Use `fast_find_documents()`** for ~2-3x faster search on large corpora
-7. **Pre-build index** with `build_search_index()` for fastest repeated queries
-8. **Watch for O(n²) patterns** in loops over connections—use limits like `max_bigrams_per_term`
-9. **Use `graph_boosted_search()`** for hybrid scoring with PageRank signals
-
----
-
-## Code Search Capabilities
-
-### Code-Aware Tokenization
-```python
-# Enable identifier splitting for code search
-tokenizer = Tokenizer(split_identifiers=True)
-tokens = tokenizer.tokenize("getUserCredentials")
-# ['getusercredentials', 'get', 'user', 'credentials']
-```
-
-### Programming Concept Expansion
-```python
-# Expand queries with programming synonyms (get/fetch/load)
-results = processor.expand_query("fetch data", use_code_concepts=True)
-# Or use the convenience method
-results = processor.expand_query_for_code("fetch data")
-```
-
-### Intent-Based Search
-```python
-# Parse natural language queries
-parsed = processor.parse_intent_query("where do we handle authentication?")
-# {'intent': 'location', 'action': 'handle', 'subject': 'authentication', ...}
-
-# Search with intent understanding
-results = processor.search_by_intent("how do we validate input?")
-```
-
-### Semantic Fingerprinting
-```python
-# Compare code similarity
-fp1 = processor.get_fingerprint(code_block_1)
-fp2 = processor.get_fingerprint(code_block_2)
-comparison = processor.compare_fingerprints(fp1, fp2)
-explanation = processor.explain_similarity(fp1, fp2)
-```
-
-### Fast Search
-```python
-# Fast document search (~2-3x faster)
-results = processor.fast_find_documents("authentication")
-
-# Pre-built index for fastest search
-index = processor.build_search_index()
-results = processor.search_with_index("query", index)
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│                          THE METUS WAY                                   │
+│                                                                          │
+│         "We describe behavior, then make it true."                      │
+│                                                                          │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                  │
+│  │   STORY     │───▶│  SCENARIO   │───▶│    CODE     │                  │
+│  │             │    │             │    │             │                  │
+│  │  The Why    │    │  The What   │    │  The How    │                  │
+│  └─────────────┘    └─────────────┘    └─────────────┘                  │
+│                                                                          │
+│  Stories give us purpose.                                               │
+│  Scenarios give us proof.                                               │
+│  Code gives us capability.                                              │
+│                                                                          │
+│  Without a story, we build the wrong thing.                             │
+│  Without scenarios, we can't prove it works.                            │
+│  Without code, nothing happens.                                         │
+│                                                                          │
+│  All three. In that order. Always.                                      │
+│                                                                          │
+│  ─────────────────────────────────────────────────────────────────────  │
+│                                                                          │
+│  This is Metus.                                                         │
+│  Mindful Execution Through Unwavering Specification.                    │
+│                                                                          │
+│  We don't hope our code works.                                          │
+│  We don't assume our code is fast.                                      │
+│  We don't trust that nothing broke.                                     │
+│                                                                          │
+│  We prove it. Every time. With reverence.                               │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Debugging Tips
-
-### Inspecting Layer State
-```python
-processor = CorticalTextProcessor()
-processor.process_document("test", "Neural networks process data.")
-processor.compute_all()
-
-# Check layer sizes
-for layer_enum, layer in processor.layers.items():
-    print(f"{layer_enum.name}: {layer.column_count()} minicolumns")
-
-# Inspect a specific minicolumn
-col = processor.layers[CorticalLayer.TOKENS].get_minicolumn("neural")
-print(f"PageRank: {col.pagerank}")
-print(f"TF-IDF: {col.tfidf}")
-print(f"Connections: {len(col.lateral_connections)}")
-print(f"Documents: {col.document_ids}")
-```
-
-### Tracing Query Expansion
-```python
-expanded = processor.expand_query("neural networks", max_expansions=10)
-for term, weight in sorted(expanded.items(), key=lambda x: -x[1]):
-    print(f"  {term}: {weight:.3f}")
-```
-
-### Checking Semantic Relations
-```python
-processor.extract_corpus_semantics()
-for t1, rel, t2, weight in processor.semantic_relations[:10]:
-    print(f"{t1} --{rel}--> {t2} ({weight:.2f})")
-```
-
-### Profiling Performance
-```bash
-# Profile full analysis phases with timeout detection
-python scripts/profile_full_analysis.py
-
-# This reveals which phases are slow and helps identify O(n²) bottlenecks
-```
-
-### Observability and Metrics
-
-The processor includes built-in observability features for tracking performance and operational metrics.
-
-**Enable metrics collection:**
-```python
-# Create processor with metrics enabled
-processor = CorticalTextProcessor(enable_metrics=True)
-
-# Process documents and run queries (all operations are timed)
-processor.process_document("doc1", "Neural networks process data.")
-processor.compute_all()
-processor.find_documents_for_query("neural networks")
-
-# Get metrics summary
-print(processor.get_metrics_summary())
-```
-
-**Access metrics programmatically:**
-```python
-metrics = processor.get_metrics()
-
-# Check specific operation stats
-if "compute_all" in metrics:
-    stats = metrics["compute_all"]
-    print(f"Average: {stats['avg_ms']:.2f}ms")
-    print(f"Count: {stats['count']}")
-    print(f"Min: {stats['min_ms']:.2f}ms")
-    print(f"Max: {stats['max_ms']:.2f}ms")
-
-# Check cache performance
-if "query_cache_hits" in metrics:
-    hits = metrics["query_cache_hits"]["count"]
-    misses = metrics["query_cache_misses"]["count"]
-    hit_rate = hits / (hits + misses) * 100
-    print(f"Cache hit rate: {hit_rate:.1f}%")
-```
-
-**Automatically timed operations:**
-- `compute_all()` and all compute phases (PageRank, TF-IDF, clustering, etc.)
-- `process_document()` with doc_id context
-- `find_documents_for_query()` with query context
-- `save()` operations
-- Query cache hits/misses via `expand_query_cached()`
-
-**Control metrics collection:**
-```python
-# Disable metrics temporarily
-processor.disable_metrics()
-# ... operations not timed ...
-processor.enable_metrics()
-
-# Reset all metrics
-processor.reset_metrics()
-
-# Record custom metrics
-processor.record_metric("api_calls", 10)
-processor.record_metric("documents_processed", 100)
-```
-
-**Demo:**
-```bash
-# Run the observability demo
-python examples/observability_demo.py
-```
-
----
-
-## Quick Reference
-
-| Task | Command/Method |
-|------|----------------|
-| Process document | `processor.process_document(id, text)` |
-| Build network | `processor.compute_all()` |
-| Search | `processor.find_documents_for_query(query)` |
-| Fast search | `processor.fast_find_documents(query)` |
-| Hybrid search | `processor.graph_boosted_search(query)` |
-| Code search | `processor.expand_query_for_code(query)` |
-| Intent search | `processor.search_by_intent("where do we...")` |
-| RAG passages | `processor.find_passages_for_query(query)` |
-| Fingerprint | `processor.get_fingerprint(text)` |
-| Compare | `processor.compare_fingerprints(fp1, fp2)` |
-| Save state (JSON) | `processor.save("corpus_state")` (recommended) |
-| Save state (pkl) | `processor.save("corpus.pkl", format='pickle')` (deprecated) |
-| Load state | `processor = CorticalTextProcessor.load("corpus_state")` (auto-detects format) |
-| Enable metrics | `processor = CorticalTextProcessor(enable_metrics=True)` |
-| Get metrics | `processor.get_metrics()` |
-| Metrics summary | `processor.get_metrics_summary()` |
-| Reset metrics | `processor.reset_metrics()` |
-| Record metric | `processor.record_metric("name", count)` |
-| Run smoke tests | `make test-smoke` or `python scripts/run_tests.py smoke` |
-| Run fast tests | `make test-fast` (~5s, no slow tests) |
-| Run quick tests | `make test-quick` or `python scripts/run_tests.py quick` |
-| Run parallel | `make test-parallel` or `python scripts/run_tests.py unit -j 4` |
-| Run pre-commit | `python scripts/run_tests.py precommit` (smoke + unit + integration) |
-| Run all tests | `python scripts/run_tests.py all` |
-| Run performance | `python scripts/run_tests.py performance` (no coverage) |
-| Check coverage | `python -m coverage run --source=cortical -m pytest tests/ && python -m coverage report --include="cortical/*"` |
-| Run showcase | `python showcase.py` |
-| Profile analysis | `python scripts/profile_full_analysis.py` |
-| Create memory | `python scripts/new_memory.py "topic"` |
-| Create decision | `python scripts/new_memory.py "topic" --decision` |
-| Session handoff | `python scripts/session_handoff.py` |
-| Generate session memory | `python scripts/session_memory_generator.py --session-id ID` |
-| Check wiki-links | `python scripts/resolve_wiki_links.py FILE` |
-| Find backlinks | `python scripts/resolve_wiki_links.py --backlinks FILE` |
-| Complete task | `python scripts/got_utils.py task complete TASK_ID --notes "..."` |
-| View sprint status | `python scripts/got_utils.py sprint status` |
-| List all sprints | `python scripts/got_utils.py sprint list` |
-| Create sprint | `python scripts/got_utils.py sprint create "Title" --number N` |
-| **GoT Query API** | |
-| Query tasks | `Query(manager).tasks().where(status="pending").execute()` |
-| Group and count | `Query(manager).tasks().group_by("priority").count().execute()` |
-| Walk graph (BFS) | `GraphWalker(manager).starting_from(id).bfs().visit(fn).run()` |
-| Find shortest path | `PathFinder(manager).shortest_path(from_id, to_id)` |
-| Find reachable nodes | `PathFinder(manager).reachable_from(node_id)` |
-| Match patterns | `PatternMatcher(manager).find(pattern)` |
-| Analyze summary | `python scripts/got_utils.py analyze summary` |
-| Profile Query API | `python scripts/profile_got_query.py` |
-| Create orchestration plan | `python scripts/orchestration_utils.py generate --type plan` |
-| List orchestration plans | `python scripts/orchestration_utils.py list` |
-| Verify batch | `python scripts/verify_batch.py --quick` |
-| View orchestration metrics | From Python: `OrchestrationMetrics().get_summary()` |
-| **Reasoning Framework** | |
-| Reasoning demo | `python scripts/reasoning_demo.py --quick` |
-| Reasoning with persistence | `python scripts/reasoning_demo.py --quick --persist` |
-| Graph persistence demo | `python examples/graph_persistence_demo.py` |
-| Validate persistence | `python scripts/validate_reasoning_persistence.py` |
-| **Graph Persistence API** | |
-| Create GraphWAL | `GraphWAL(wal_dir="/path/to/wal")` |
-| Log node | `wal.log_add_node(node_id, node_type, content)` |
-| Log edge | `wal.log_add_edge(source_id, target_id, edge_type)` |
-| Create snapshot | `wal.create_snapshot(graph, compress=True)` |
-| Load snapshot | `graph = wal.load_snapshot(snapshot_id)` |
-| Check recovery needed | `GraphRecovery(wal_dir).needs_recovery()` |
-| Recover graph | `result = GraphRecovery(wal_dir).recover()` |
-| Git auto-commit | `GitAutoCommitter(repo_path).commit_on_save(path, graph)` |
-| **Woven Mind (Dual-Process)** | |
-| WovenMind quick start | `from cortical.reasoning.woven_mind import WovenMind` |
-| Create and train | `mind = WovenMind(); mind.train("text")` |
-| Process input | `result = mind.process(["tokens"])` |
-| Run consolidation | `mind.consolidate()` |
-| Woven Mind demo | `python examples/woven_mind_demo.py --section all` |
-| Woven Mind tests | `python -m pytest tests/unit/test_woven_mind*.py -v` |
-| **Woven Mind Benchmarks** | |
-| List benchmarks | `python -m benchmarks.woven_mind.runner --list` |
-| Run all benchmarks | `python -m benchmarks.woven_mind.runner --all` |
-| Run category | `python -m benchmarks.woven_mind.runner --category stability` |
-| Run quick mode | `python -m benchmarks.woven_mind.runner --all --quick` |
-| Save results | `python -m benchmarks.woven_mind.runner --all --output results/baseline.json` |
-| Compare results | `python -m benchmarks.woven_mind.runner --all --compare results/baseline.json` |
-| **GoT Handoff Primitives** | |
-| Initiate handoff | `python scripts/got_utils.py handoff initiate TASK_ID --target AGENT --instructions "..."` |
-| Accept handoff | `python scripts/got_utils.py handoff accept HANDOFF_ID --agent AGENT` |
-| Complete handoff | `python scripts/got_utils.py handoff complete HANDOFF_ID --agent AGENT --result JSON` |
-| Reject handoff | `python scripts/got_utils.py handoff reject HANDOFF_ID --agent AGENT --reason "..."` |
-| List handoffs | `python scripts/got_utils.py handoff list [--status STATUS]` |
-| ↳ Handoff statuses | `initiated` → `accepted` → `completed` or `rejected` (not `pending`) |
-| Compact events | `python scripts/got_utils.py compact [--preserve-days N]` |
-| **GoT Edge Management** | |
-| Add edge | `python scripts/got_utils.py edge add SOURCE_ID TARGET_ID EDGE_TYPE` |
-| List edges | `python scripts/got_utils.py edge list [--type TYPE] [--source ID] [--target ID]` |
-| Show edge types | `python scripts/got_utils.py edge types` |
-| Edges for entity | `python scripts/got_utils.py edge for ENTITY_ID` |
-| **GoT Batch Operations** | |
-| Batch from stdin | `python scripts/got_utils.py batch <<'EOF' ... EOF` |
-| Batch from file | `python scripts/got_utils.py batch --file setup.got` |
-| Batch dry-run | `python scripts/got_utils.py batch --dry-run <<'EOF' ... EOF` |
-| Batch JSON output | `python scripts/got_utils.py batch --output-json <<'EOF' ... EOF` |
-| **GoT Query Language** | |
-| What blocks task | `python scripts/got_utils.py query "what blocks TASK_ID"` |
-| What depends on | `python scripts/got_utils.py query "what depends on TASK_ID"` |
-| Find path | `python scripts/got_utils.py query "path from ID1 to ID2"` |
-| All relationships | `python scripts/got_utils.py query "relationships TASK_ID"` |
-| Active tasks | `python scripts/got_utils.py query "active tasks"` |
-| Pending tasks | `python scripts/got_utils.py query "pending tasks"` |
-| Blocked tasks | `python scripts/got_utils.py query "blocked tasks"` |
-| **Performance Tests** | |
-| Run perf tests | `python -m pytest tests/performance/test_graph_persistence_perf.py -v` |
-| Run E2E tests | `python -m pytest tests/integration/test_reasoning_persistence_e2e.py -v` |
-
-### Orchestration Utilities
-
-For Director orchestration and parallel agent workflows:
-
-- `scripts/orchestration_utils.py` - Director orchestration tracking (plans, batches, metrics)
-- `scripts/verify_batch.py` - Automated batch verification
-
-**Director Commands:**
-- `.claude/commands/director.md` - General orchestration documentation
-- `.claude/commands/woven-mind-director.md` - Woven Mind + PRISM marriage orchestration
-
-**Woven Mind Project Docs:**
-- `docs/woven-mind-engineering-analysis.md` - Engineering analysis, concerns, benchmarks, maintenance advice
-- `docs/roadmap-woven-prism-marriage.md` - 6-sprint integration plan
-- `docs/task-knowledge-base-woven-prism.md` - Task details and sub-agent guardrails
-- `docs/research-prism-woven-mind-comparison.md` - Comparative analysis
-
----
-
-## Persistence Format Migration
-
-**⚠️ IMPORTANT:** Pickle format is deprecated due to security concerns (Remote Code Execution vulnerability). JSON is now the default and recommended format.
-
-### Why JSON?
-
-- **Secure**: No code execution risk (pickle can execute arbitrary code when loading)
-- **Git-friendly**: Human-readable diffs, no merge conflicts
-- **Cross-platform**: Works across Python versions and platforms
-- **Debuggable**: Can inspect state without loading into Python
-
-### Migration from Pickle to JSON
-
-```bash
-# Migrate existing pickle files to JSON
-python -c "
-from cortical.processor import CorticalTextProcessor
-processor = CorticalTextProcessor.load('corpus_dev.pkl')  # Auto-detects pickle
-processor.save('corpus_dev.json')  # Saves as JSON directory
-"
-```
-
-**Or use the processor API:**
-```python
-from cortical.processor import CorticalTextProcessor
-
-# Load from pickle (auto-detects format)
-processor = CorticalTextProcessor.load('old_corpus.pkl')
-
-# Save as JSON
-processor.save('new_corpus')  # Creates directory with JSON files
-```
-
-### Backward Compatibility
-
-Existing pickle files will continue to work with deprecation warnings:
-
-```python
-# Load automatically detects format
-processor = CorticalTextProcessor.load('corpus.pkl')  # DeprecationWarning
-
-# Explicit format specification
-processor = CorticalTextProcessor.load('corpus.pkl', format='pickle')
-
-# Save with explicit pickle format (not recommended)
-processor.save('corpus.pkl', format='pickle')  # DeprecationWarning
-```
-
-### Format Detection
-
-The `load()` method auto-detects format based on file content (not extension):
-- **Directory** → JSON format (StateLoader)
-- **File starting with `{`** → JSON format
-- **File with pickle magic bytes** → Pickle format
-
----
-
-## Dog-Fooding: Search the Codebase
-
-The Cortical Text Processor can index and search its own codebase, providing semantic search capabilities during development.
-
-> **⚠️ PERFORMANCE WARNING: Indexer is slow and needs tuning**
->
-> Full indexing currently takes **~3 minutes** due to:
-> - 1.6GB of layer data (549K bigrams, 49K tokens)
-> - JSON serialization bottleneck in save phase (~94s)
-> - No streaming/compression for large corpora
->
-> **Workarounds:**
-> - Use `--incremental` for subsequent runs (much faster)
-> - Use `--use-chunks` for git-friendly incremental saves
-> - Use `--format pkl` for faster saves (deprecated, security risk)
->
-> **TODO:** Implement streaming JSON writes or compressed output format.
-
-### Quick Start
-
-```bash
-# Index the codebase (creates corpus_dev.json/, ~3 minutes full, faster incremental)
-python scripts/index_codebase.py
-
-# Incremental update (only changed files)
-python scripts/index_codebase.py --incremental
-
-# Search for code
-python scripts/search_codebase.py "PageRank algorithm"
-python scripts/search_codebase.py "bigram separator" --verbose
-python scripts/search_codebase.py --interactive
-
-# Legacy pickle format (deprecated)
-python scripts/index_codebase.py --output corpus_dev.pkl --format pkl
-```
-
-### Claude Skills
-
-Four skills are available in `.claude/skills/`:
-
-1. **codebase-search**: Search the indexed codebase for code patterns and implementations
-2. **corpus-indexer**: Re-index the codebase after making changes
-3. **ai-metadata**: View pre-generated module metadata for rapid understanding
-4. **memory-manager**: Create and manage knowledge memories (learnings, decisions, concepts)
-
-### Indexer Options
-
-| Option | Description |
-|--------|-------------|
-| `--incremental`, `-i` | Only re-index changed files (fastest) |
-| `--status`, `-s` | Show what would change without indexing |
-| `--force`, `-f` | Force full rebuild |
-| `--log FILE` | Write detailed log to file |
-| `--verbose`, `-v` | Show per-file progress |
-| `--use-chunks` | Use git-compatible chunk-based storage |
-| `--compact` | Compact old chunk files (with `--use-chunks`) |
-
-### Search Options
-
-| Option | Description |
-|--------|-------------|
-| `--top N` | Number of results (default: 5) |
-| `--verbose` | Show full passage text |
-| `--expand` | Show query expansion terms |
-| `--interactive` | Interactive search mode |
-
-### Interactive Mode Commands
-
-| Command | Description |
-|---------|-------------|
-| `/expand <query>` | Show query expansion |
-| `/concepts` | List concept clusters |
-| `/stats` | Show corpus statistics |
-| `/quit` | Exit interactive mode |
-
-### Example Queries
-
-```bash
-# Find how PageRank is implemented
-python scripts/search_codebase.py "compute pagerank damping factor"
-
-# Find test patterns
-python scripts/search_codebase.py "unittest setUp processor"
-
-# Explore query expansion code
-python scripts/search_codebase.py "expand query semantic lateral"
-```
-
-### Git-Compatible Chunk-Based Indexing
-
-For team collaboration, use chunk-based indexing which stores document changes as git-friendly JSON files:
-
-```bash
-# Index with chunk storage (creates corpus_chunks/*.json)
-python scripts/index_codebase.py --incremental --use-chunks
-
-# Check chunk status
-python scripts/index_codebase.py --status --use-chunks
-
-# Compact old chunks (reduces git history size)
-python scripts/index_codebase.py --compact --before 2025-12-01
-```
-
-**Architecture:**
-```
-corpus_chunks/                        # Tracked in git (append-only)
-├── 2025-12-10_21-53-45_a1b2.json    # Session 1 changes
-├── 2025-12-10_22-15-30_c3d4.json    # Session 2 changes
-└── 2025-12-10_23-00-00_e5f6.json    # Session 3 changes
-
-corpus_dev.pkl                        # NOT tracked (local cache)
-corpus_dev.pkl.hash                   # NOT tracked (cache validation)
-```
-
-**Benefits:**
-- No merge conflicts (unique timestamp+session filenames)
-- Shared indexed state across team/branches
-- Fast startup when cache is valid
-- Git-friendly (small JSON, append-only)
-- Periodic compaction like `git gc`
-
-### Chunk Compaction
-
-Over time, chunk files accumulate. Use compaction to consolidate them, similar to `git gc`:
-
-**When to compact:**
-- After many indexing sessions (10+ chunk files)
-- When you see size warnings during indexing
-- Before merging branches with different chunk histories
-- To clean up deleted/modified document history
-
-**Compaction commands:**
-```bash
-# Compact all chunks into a single consolidated file
-python scripts/index_codebase.py --compact --use-chunks
-
-# Compact only chunks created before a specific date
-python scripts/index_codebase.py --compact --before 2025-12-01 --use-chunks
-
-# Check chunk status before compacting
-python scripts/index_codebase.py --status --use-chunks
-```
-
-**How compaction works:**
-1. Reads all chunk files (sorted by timestamp)
-2. Replays operations in order (later timestamps override)
-3. Creates a single compacted chunk with final state
-4. Removes old chunk files
-5. Preserves cache if still valid
-
-**Recommended frequency:**
-- Weekly for active development
-- Monthly for maintenance repositories
-- Before major releases
-
----
-
-## Text-as-Memories: Knowledge Management
-
-The project uses a text-as-memories system to capture and preserve institutional knowledge. Documents are treated as memories that, when stored in git, form a persistent, searchable knowledge base.
-
-### Memory Types
-
-| Type | Location | Purpose |
-|------|----------|---------|
-| **Daily Memories** | `samples/memories/YYYY-MM-DD-*.md` | Capture daily learnings and insights |
-| **Decision Records** | `samples/decisions/adr-NNN-*.md` | Document architectural decisions |
-| **Concept Docs** | `samples/memories/concept-*.md` | Consolidated knowledge on topics |
-
-### Creating Memories
-
-**Daily Memory:**
-```bash
-# Capture a learning
-cat > samples/memories/$(date +%Y-%m-%d)-topic.md << 'EOF'
-# Memory Entry: YYYY-MM-DD Topic
-
-**Tags:** `tag1`, `tag2`
-**Related:** [[other-doc.md]]
-
-## What I Learned
-- Key insight here
-
-## Connections
-- How this relates to other knowledge
-EOF
-git add samples/ && git commit -m "memory: topic insight"
-```
-
-**Decision Record:**
-```bash
-# Document a decision
-cat > samples/decisions/adr-001-title.md << 'EOF'
-# ADR-001: Title
-
-**Status:** Accepted
-**Date:** YYYY-MM-DD
-
-## Context
-What problem are we solving?
-
-## Decision
-What did we decide?
-
-## Consequences
-What are the trade-offs?
-EOF
-```
-
-### Searching Memories
-
-```bash
-# Index memories for search
-python scripts/index_codebase.py --incremental
-
-# Search across code AND memories
-python scripts/search_codebase.py "what did we learn about validation"
-```
-
-### Best Practices
-
-1. **Write immediately** - Capture insights while fresh
-2. **Use consistent tags** - Improves searchability
-3. **Link related docs** - Use `[[wiki-style]]` references
-4. **Commit to git** - Memories are only persistent once committed
-5. **Consolidate periodically** - Merge related memories into concept docs
-
-### Integration with Tasks
-
-When completing a task, consider creating a memory entry from the retrospective:
-- What was learned?
-- What connections were made?
-- What should future developers know?
-
-See `docs/text-as-memories.md` for the full guide.
-
----
-
-## ML Data Collection: Project-Specific Micro-Model
-
-**Fully automatic. Zero configuration required.**
-
-ML data collection starts automatically when you open this project in Claude Code. Every session is tracked, every commit is captured, and transcripts are saved when sessions end.
-
-### Automatic Startup
-
-When a Claude Code session starts in this project:
-1. **Session tracking begins** - A new ML session is created for commit-chat linking
-2. **Git hooks are installed** - post-commit and pre-push hooks are added if missing
-3. **Stats are displayed** - Current collection progress is shown
-
-This is configured in `.claude/settings.local.json` via the `SessionStart` hook.
-
-### What Gets Collected
-
-| Data Type | Location | Contents |
-|-----------|----------|----------|
-| **Commits** | `.git-ml/commits/` | Git history with diff hunks, temporal context, CI results |
-| **Chats** | `.git-ml/chats/` | Query/response pairs with files touched and tools used |
-| **Sessions** | `.git-ml/sessions/` | Development sessions linking chats to commits |
-| **Actions** | `.git-ml/actions/` | Individual tool uses and operations |
-
-**Note:** All ML data is stored in `.git-ml/` which is gitignored and regeneratable via backfill.
-
-### Quick Commands
-
-```bash
-# Check collection progress
-python scripts/ml_data_collector.py stats
-
-# Estimate when training becomes viable
-python scripts/ml_data_collector.py estimate
-
-# Validate collected data
-python scripts/ml_data_collector.py validate
-
-# Session management
-python scripts/ml_data_collector.py session status
-python scripts/ml_data_collector.py session start
-python scripts/ml_data_collector.py session end --summary "What was accomplished"
-
-# Generate session handoff document
-python scripts/ml_data_collector.py handoff
-
-# Record CI results (manual)
-python scripts/ml_data_collector.py ci set --commit abc123 --result pass --coverage 89.5
-
-# CI auto-capture (reads from GitHub Actions environment)
-python scripts/ml_data_collector.py ci-autocapture
-
-# Backfill historical commits
-python scripts/ml_data_collector.py backfill -n 100
-
-# Collect GitHub PR/Issue data (requires gh CLI)
-python scripts/ml_data_collector.py github collect           # Collect recent PRs and issues
-python scripts/ml_data_collector.py github stats             # Show GitHub data counts
-python scripts/ml_data_collector.py github fetch-pr --number 42  # Fetch specific PR
-```
-
-### Disabling Collection
-
-```bash
-# Disable for current session
-export ML_COLLECTION_ENABLED=0
-
-# Stats and validation still work when disabled
-```
-
-### File Prediction Model
-
-The first ML model is available: **predict which files to modify** based on a task description.
-
-```bash
-# Train the model on commit history
-python scripts/ml_file_prediction.py train
-
-# Predict files for a task
-python scripts/ml_file_prediction.py predict "Add authentication feature"
-
-# Evaluate model performance (80/20 train/test split)
-python scripts/ml_file_prediction.py evaluate --split 0.2
-
-# View model statistics
-python scripts/ml_file_prediction.py stats
-```
-
-**How it works:**
-- Extracts commit type patterns (feat:, fix:, docs:, refactor:, etc.)
-- Builds file co-occurrence matrix from commit history
-- Maps keywords from commit messages to files
-- Uses TF-IDF-style scoring with frequency penalties
-
-**For comprehensive training guidance**, see [docs/ml-training-best-practices.md](docs/ml-training-best-practices.md) covering:
-- Data quality guidelines and filtering strategies
-- Training workflow and when to retrain
-- Performance optimization and hyperparameter tuning
-- Common pitfalls (overfitting, staleness, data leakage)
-- Evaluation metrics interpretation (MRR, Recall@K, Precision@K)
-- Integration with git hooks and CI/CD
-
-**Prediction with seed files:**
-```bash
-# If you know some files, boost co-occurring files
-python scripts/ml_file_prediction.py predict "Fix related bug" --seed auth.py login.py
-```
-
-**Current metrics** (403 commits, 20% test split):
-| Metric | Value | Description |
-|--------|-------|-------------|
-| MRR | 0.43 | First correct prediction ~position 2-3 |
-| Recall@10 | 0.48 | Half of actual files in top 10 |
-| Precision@1 | 0.31 | 31% of top predictions correct |
-
-**Model storage:** `.git-ml/models/file_prediction.json`
-
-**Training requirements:** See [docs/ml-milestone-thresholds.md](docs/ml-milestone-thresholds.md) for detailed explanation of why 500 commits are needed for reliable file prediction.
-
-#### Pre-Commit File Suggestions
-
-The ML file prediction is integrated into git as a pre-commit hook that suggests potentially missing files:
-
-```bash
-# Automatically installed when you run:
-python scripts/ml_data_collector.py install-hooks
-
-# Creates .git/hooks/prepare-commit-msg
-```
-
-**How it works:**
-1. You run `git commit -m "feat: Add authentication"`
-2. Hook analyzes the commit message
-3. Hook runs ML file prediction
-4. If high-confidence files aren't staged, warns you
-5. You can choose to add them or proceed
-
-**Example output:**
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🤖 ML File Prediction Suggestion
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Based on your commit message, these files might need changes:
-
-  • tests/test_authentication.py                 (confidence: 0.823)
-  • docs/api.md                                  (confidence: 0.654)
-
-Staged files:
-  ✓ cortical/authentication.py
-
-ℹ️  Tip: Review the suggestions above.
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-**Configuration (via environment variables):**
-- `ML_SUGGEST_ENABLED=0` - Disable suggestions (default: 1)
-- `ML_SUGGEST_THRESHOLD=0.7` - Confidence threshold (default: 0.5)
-- `ML_SUGGEST_BLOCKING=1` - Block commit if missing files (default: 0)
-- `ML_SUGGEST_TOP_N=10` - Number of predictions to check (default: 5)
-
-**When it runs:**
-- ✅ Regular commits (`git commit -m "..."`)
-- ❌ Merge commits, amends, rebases (too noisy)
-- ❌ Empty commits or no staged files
-- ❌ Model not trained (silently skips)
-
-**Testing without committing:**
-```bash
-bash scripts/test-ml-precommit-hook.sh
-```
-
-See [docs/ml-precommit-suggestions.md](docs/ml-precommit-suggestions.md) for detailed documentation.
-
-### Automatic Session Capture
-
-**Pre-configured. No setup needed.**
-
-The ML data collector automatically captures complete session transcripts when Claude Code sessions end. This is already configured in `.claude/settings.local.json`.
-
-**What gets captured automatically:**
-- Full query/response pairs from the transcript
-- All tool uses (Task, Read, Edit, Bash, Grep, etc.)
-- Files referenced and modified
-- Thinking blocks (if present)
-- Session linkage to commits
-
-**Process transcript manually:**
-```bash
-# Process a specific transcript file
-python scripts/ml_data_collector.py transcript --file /path/to/transcript.jsonl
-
-# Dry run (show what would be captured without saving)
-python scripts/ml_data_collector.py transcript --file /path/to/transcript.jsonl --dry-run --verbose
-```
-
-**Generate session memory:**
-```bash
-# Generate a draft memory document from current session
-python scripts/session_memory_generator.py --session-id abc123
-
-# Generate from recent commits (no session ID needed)
-python scripts/session_memory_generator.py --commits 10
-
-# Dry run (preview without saving)
-python scripts/session_memory_generator.py --session-id abc123 --dry-run
-```
-
-**What gets auto-generated:**
-- Session summary with commit history
-- Files modified during the session
-- Task IDs referenced in commits
-- Categorized file changes (Core Library, Tests, Scripts, etc.)
-- Auto-extracted insights and tags
-- Draft memory saved to `samples/memories/[DRAFT]-YYYY-MM-DD-session-{id}.md`
-
-**When it runs:**
-- Automatically at session end via `ml-session-capture-hook.sh`
-- Manually via command line for any session
-- Integrated into the Stop hook workflow
-
-### Integration
-
-Data collection is fully automatic via hooks configured in `.claude/settings.local.json`:
-
-| Hook | Trigger | Action |
-|------|---------|--------|
-| **SessionStart** | Session begins | Starts ML session, installs git hooks, shows stats |
-| **Stop** | Session ends | Captures full transcript with all exchanges, generates draft memory |
-| **prepare-commit-msg** | Before commit | Suggests missing files based on commit message |
-| **post-commit** | After commit | Captures commit metadata with diff hunks |
-| **pre-push** | Before push | Reports collection stats |
-| **CI workflow** | GitHub Actions | Auto-captures CI pass/fail results |
-
-**Hook files:**
-- `scripts/ml-session-start-hook.sh` - SessionStart handler
-- `scripts/ml-session-capture-hook.sh` - Stop handler (includes session memory generation)
-- `scripts/session_memory_generator.py` - Auto-generates draft memory documents
-- `scripts/ml-precommit-suggest.sh` - prepare-commit-msg handler
-
-**CI Integration:**
-The GitHub Actions workflow (`.github/workflows/ci.yml`) includes an `ml-ci-capture` job that automatically records CI results for each commit. This runs after the coverage-report job and captures:
-- Pass/fail status
-- Coverage percentage (when available)
-- Workflow and job metadata
-- Run ID for traceability
-
-See `.claude/skills/ml-logger/SKILL.md` for detailed logging usage.
-
----
-
-## File Quick Links
-
-- **Main API**: `cortical/processor/` - `CorticalTextProcessor` class (split into mixins)
-- **Graph algorithms**: `cortical/analysis/` - PageRank, TF-IDF, clustering (package)
-- **Search**: `cortical/query/` - query expansion, document retrieval (split into 8 modules)
-- **Data structures**: `cortical/minicolumn.py` - `Minicolumn`, `Edge`
-- **Configuration**: `cortical/config.py` - `CorticalConfig` dataclass
-- **Tests**: `tests/unit/test_processor_*.py` - processor tests (split by concern)
-- **Demo**: `showcase.py` - interactive demonstration
-
-**Process Documentation:**
-- **Getting Started**: `docs/quickstart.md` - 5-minute tutorial for newcomers
-- **Contributing**: `CONTRIBUTING.md` - how to contribute (fork, test, PR workflow)
-- **Ethics**: `docs/code-of-ethics.md` - documentation, testing, and completion standards
-- **Dog-fooding**: `docs/dogfooding-checklist.md` - checklist for testing with real usage
-- **Definition of Done**: `docs/definition-of-done.md` - when is a task truly complete?
-- **Text-as-Memories**: `docs/text-as-memories.md` - knowledge management guide
-- **Task Management**: Use GoT - see "Quick Session Start" section at top of this document
-- **ML Milestone Thresholds**: `docs/ml-milestone-thresholds.md` - why 500/2000/5000 commits for training
-
----
-
-*Remember: Measure before optimizing, test before committing, and document what you discover.*
+*Metus: Because excellence is not an accident—it is a discipline.*
