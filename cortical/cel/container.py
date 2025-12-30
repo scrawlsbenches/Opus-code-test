@@ -620,3 +620,94 @@ def create_lattice(
         container.register_instance(Materializer, materializer)
 
     return CognitiveLatticeImpl(container)
+
+
+def create_high_performance_lattice(
+    base_path: Path,
+    expected_events: int = 100000,
+    cache_size: int = 10000,
+    batch_size: int = 100,
+    snapshot_interval: int = 1000,
+) -> CognitiveLatticeImpl:
+    """
+    Create a high-performance lattice optimized for large event volumes.
+
+    Uses StreamingEventStore with:
+    - Lazy loading (O(cache_size) memory vs O(all_events))
+    - Write batching (amortized O(1) writes)
+    - LRU caching (hot events stay in memory)
+    - EntityIndex for O(1) entity lookups
+    - OptimizedDAG for O(n log n) causal ordering
+
+    Args:
+        base_path: Root directory for storage
+        expected_events: Expected number of events (for tuning indexes)
+        cache_size: Event cache size (default 10000)
+        batch_size: Write batch size (default 100)
+        snapshot_interval: Events between snapshots (default 1000)
+
+    Returns:
+        High-performance CognitiveLattice
+
+    Example:
+        >>> # For 1M+ events
+        >>> lattice = create_high_performance_lattice(
+        ...     Path(".cel"),
+        ...     expected_events=1_000_000,
+        ...     cache_size=50000,
+        ... )
+    """
+    from .performance import StreamingEventStore
+    from .performance.streaming_store import StoreConfig
+    from .wisdom.materializer import (
+        CachingMaterializer,
+        default_reducer_registry,
+    )
+    from .wisdom.semantic import HybridSemanticIndex
+    from .sanity.health import EventStoreHealthMonitor
+
+    # Configure streaming store
+    store_config = StoreConfig(
+        event_cache_size=cache_size,
+        batch_size=batch_size,
+        snapshot_interval=snapshot_interval,
+        enable_entity_index=True,
+        enable_concept_index=True,
+        enable_temporal_index=True,
+    )
+
+    # Create high-performance event store
+    store = StreamingEventStore(
+        base_path=base_path / "events",
+        config=store_config,
+    )
+
+    # Create reducer registry
+    reducers = default_reducer_registry()
+
+    # Create materializer with EntityIndex for O(1) entity lookups
+    # The StreamingEventStore maintains an EntityIndex internally
+    materializer = CachingMaterializer(
+        event_store=store,
+        reducer_registry=reducers,
+        cache_size=min(expected_events // 10, 5000),
+        entity_index=store._entity_index,  # Wire EntityIndex for O(1) lookups
+    )
+
+    # Create semantic index
+    semantic = HybridSemanticIndex(
+        base_path=base_path / "semantic",
+        expected_concepts=expected_events,
+    )
+
+    # Create health monitor
+    health = EventStoreHealthMonitor(store)
+
+    # Build container
+    container = Container()
+    container.register_instance(EventStore, store)
+    container.register_instance(Materializer, materializer)
+    container.register_instance(SemanticIndex, semantic)
+    container.register_instance(HealthMonitor, health)
+
+    return CognitiveLatticeImpl(container)
