@@ -318,6 +318,41 @@ class ResearcherSearchesForKnowledge:
 **Naming**: `{user_role}_{action}_stories.py`
 **Format**: Classes are epics, methods are scenarios
 
+**IMPORTANT — Test Content Must Embody Sovereignty:**
+
+Behavioral scenarios are living documentation. The example content within tests—the strings, the fake data, the hypothetical systems being described—must reflect our philosophy.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│   ❌ WRONG: Test content that references adopting third-party tools     │
+│                                                                          │
+│      "Kubernetes container orchestration..."                            │
+│      "GraphQL API with Apollo Server..."                                │
+│      "Redis caching strategies..."                                      │
+│      "Terraform infrastructure as code..."                              │
+│      "Docker containerization..."                                       │
+│      "Prometheus monitoring and Grafana dashboards..."                  │
+│      "Elasticsearch full-text search..."                                │
+│                                                                          │
+│   ✅ RIGHT: Test content that reflects building it ourselves            │
+│                                                                          │
+│      "Custom task orchestration engine we built from first principles." │
+│      "Hand-built parser and schema resolver we control completely."     │
+│      "In-house caching layer we implemented ourselves."                 │
+│      "Infrastructure provisioning system built from scratch."           │
+│      "Process isolation implementation we built ourselves."             │
+│      "Custom observability stack with hand-rolled metrics pipeline."    │
+│      "Custom full-text search engine we implemented ourselves."         │
+│                                                                          │
+│   The language we use shapes how we think.                              │
+│   Tests are documentation. Documentation embodies values.               │
+│   A project that builds everything shouldn't casually reference         │
+│   adopting external tools—even in test fixtures.                        │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
 ---
 
 ### Pillar II: Performance Contracts — *The Promises We Keep*
