@@ -657,6 +657,1049 @@ class ThoughtGraphAdapter:
 
 ---
 
+## Resource Control & Operational Excellence
+
+### 8. Custom Index Management
+
+Developers have full control over index creation, lifecycle, and optimization:
+
+```python
+class IndexManager:
+    """
+    Programmable index management for custom workloads.
+
+    Developers control:
+    - Which fields are indexed
+    - Index type selection
+    - Index build timing (sync/async)
+    - Index storage budget
+    - Automatic vs manual maintenance
+    """
+
+    def create_index(
+        self,
+        name: str,
+        index_type: IndexType,
+        fields: List[str],
+        options: IndexOptions
+    ) -> IndexHandle:
+        """
+        Create a custom index on node/edge fields.
+
+        Index Types:
+        - BTREE: Range queries, sorting (default)
+        - HASH: Point lookups, equality checks
+        - INVERTED: Full-text search
+        - BITMAP: Low-cardinality fields (status, type)
+        - SPATIAL: Geospatial queries (future)
+        - VECTOR: Embedding similarity (future)
+
+        Options:
+        - build_mode: SYNC (block until built) | ASYNC (background)
+        - storage_budget_mb: Maximum index size
+        - compaction_strategy: LEVELED | SIZE_TIERED | TIME_WINDOW
+        - bloom_filter_fp_rate: False positive rate (default 0.01)
+
+        Example:
+            # Index for fast status lookups
+            idx = index_mgr.create_index(
+                name="task_status_idx",
+                index_type=IndexType.BITMAP,
+                fields=["properties.status"],
+                options=IndexOptions(
+                    build_mode=BuildMode.ASYNC,
+                    partitions=["got"]  # Only for GoT namespace
+                )
+            )
+
+            # Composite index for complex queries
+            idx = index_mgr.create_index(
+                name="task_priority_date_idx",
+                index_type=IndexType.BTREE,
+                fields=["properties.priority", "created_at"],
+                options=IndexOptions(
+                    storage_budget_mb=100
+                )
+            )
+        """
+        pass
+
+    def drop_index(self, name: str, force: bool = False) -> None:
+        """Drop an index. Use force=True to drop even if queries depend on it."""
+        pass
+
+    def rebuild_index(self, name: str, options: RebuildOptions) -> AsyncHandle:
+        """
+        Rebuild index in background without blocking reads.
+
+        Useful for:
+        - Fixing corruption
+        - Changing index parameters
+        - Compacting fragmented indexes
+        """
+        pass
+
+    def analyze_index(self, name: str) -> IndexAnalysis:
+        """
+        Get index statistics and recommendations.
+
+        Returns:
+        - size_bytes: Current index size
+        - entries: Number of indexed entries
+        - fragmentation_pct: How fragmented
+        - hit_rate: Cache hit rate
+        - recommendations: ["consider compaction", "unused - drop?"]
+        """
+        pass
+
+    def list_indexes(self, namespace: Optional[str] = None) -> List[IndexInfo]:
+        """List all indexes with their metadata."""
+        pass
+
+
+@dataclass
+class IndexOptions:
+    """Fine-grained index configuration."""
+
+    # Build behavior
+    build_mode: BuildMode = BuildMode.ASYNC
+    parallelism: int = 4  # Concurrent index build threads
+
+    # Storage limits
+    storage_budget_mb: Optional[int] = None  # None = unlimited
+    compaction_strategy: CompactionStrategy = CompactionStrategy.LEVELED
+
+    # Performance tuning
+    bloom_filter_fp_rate: float = 0.01
+    cache_size_mb: int = 64
+    page_size: int = 4096
+
+    # Filtering
+    partitions: Optional[List[str]] = None  # Only index these partitions
+    filter_predicate: Optional[str] = None  # Only index matching nodes
+
+    # Maintenance
+    auto_compact: bool = True
+    compact_threshold: float = 0.3  # Compact when 30% fragmented
+```
+
+### 9. Memory Management & Backpressure
+
+Prevent OOM crashes with explicit memory budgets and backpressure:
+
+```python
+class MemoryManager:
+    """
+    Explicit memory budgets to prevent OS crashes.
+
+    Philosophy: Better to reject requests gracefully than crash.
+    """
+
+    def __init__(self, config: MemoryConfig):
+        self.config = config
+        self._allocator = BuddyAllocator(config.total_budget_mb * 1024 * 1024)
+        self._pressure_callbacks: List[Callable] = []
+
+    def configure(
+        self,
+        total_budget_mb: int = 1024,
+        memtable_budget_mb: int = 256,
+        cache_budget_mb: int = 512,
+        query_budget_mb: int = 256,
+        emergency_reserve_mb: int = 64
+    ) -> None:
+        """
+        Configure memory budgets by subsystem.
+
+        Budgets:
+        - memtable: Write buffer before flush to disk
+        - cache: Block cache, page cache, index cache
+        - query: Per-query result buffers, intermediate state
+        - emergency_reserve: Reserved for graceful degradation
+
+        When a budget is exceeded:
+        1. Backpressure applied (slow down writes/queries)
+        2. Eviction triggered (LRU cache entries)
+        3. If still exceeded, requests rejected with RESOURCE_EXHAUSTED
+
+        Example:
+            mem_mgr.configure(
+                total_budget_mb=2048,      # 2GB total
+                memtable_budget_mb=512,    # 512MB for writes
+                cache_budget_mb=1024,      # 1GB for caching
+                query_budget_mb=448,       # 448MB for queries
+                emergency_reserve_mb=64    # 64MB reserved
+            )
+        """
+        pass
+
+    def allocate(
+        self,
+        subsystem: MemorySubsystem,
+        size_bytes: int,
+        priority: AllocationPriority = AllocationPriority.NORMAL
+    ) -> Optional[MemoryAllocation]:
+        """
+        Allocate memory from a subsystem budget.
+
+        Returns None if budget exceeded and backpressure active.
+        Raises ResourceExhausted if emergency reserve depleted.
+        """
+        pass
+
+    def get_pressure_level(self) -> PressureLevel:
+        """
+        Current memory pressure level.
+
+        Levels:
+        - NONE: < 70% budget used, all systems go
+        - LOW: 70-85%, start evicting cold cache entries
+        - MEDIUM: 85-95%, slow down writes, aggressive eviction
+        - HIGH: 95-99%, reject new queries, emergency eviction
+        - CRITICAL: > 99%, reject all requests, trigger snapshot
+        """
+        pass
+
+    def on_pressure_change(self, callback: Callable[[PressureLevel], None]) -> None:
+        """Register callback for pressure level changes."""
+        pass
+
+    def get_usage_stats(self) -> MemoryUsageStats:
+        """
+        Detailed memory usage breakdown.
+
+        Returns:
+            MemoryUsageStats(
+                total_budget_mb=2048,
+                total_used_mb=1536,
+                by_subsystem={
+                    "memtable": SubsystemUsage(budget=512, used=400, pct=78.1),
+                    "cache": SubsystemUsage(budget=1024, used=900, pct=87.9),
+                    "query": SubsystemUsage(budget=448, used=200, pct=44.6),
+                },
+                largest_allocations=[
+                    Allocation("idx:task_status", 150_000_000),
+                    Allocation("cache:hot_nodes", 120_000_000),
+                ],
+                gc_stats=GCStats(collections=42, time_ms=1200)
+            )
+        """
+        pass
+
+
+@dataclass
+class MemoryConfig:
+    """Memory configuration with sensible defaults."""
+
+    total_budget_mb: int = 1024
+
+    # Subsystem budgets (must sum to <= total - emergency)
+    memtable_budget_pct: float = 0.25    # 25% for write buffers
+    cache_budget_pct: float = 0.50       # 50% for caches
+    query_budget_pct: float = 0.20       # 20% for query processing
+    emergency_reserve_pct: float = 0.05  # 5% emergency reserve
+
+    # Backpressure thresholds
+    pressure_low_pct: float = 0.70
+    pressure_medium_pct: float = 0.85
+    pressure_high_pct: float = 0.95
+    pressure_critical_pct: float = 0.99
+
+    # Eviction policy
+    eviction_policy: EvictionPolicy = EvictionPolicy.LRU
+    eviction_batch_size: int = 100
+```
+
+### 10. Network Bandwidth Control
+
+Rate limiting and bandwidth management for distributed operations:
+
+```python
+class NetworkManager:
+    """
+    Control network bandwidth to prevent saturation.
+
+    Critical for:
+    - Multi-tenant deployments
+    - Preventing noisy neighbor problems
+    - Graceful degradation under load
+    """
+
+    def configure(
+        self,
+        max_bandwidth_mbps: int = 1000,
+        max_connections_per_partition: int = 100,
+        request_timeout_ms: int = 5000,
+        compression: CompressionConfig = CompressionConfig()
+    ) -> None:
+        """
+        Configure network limits.
+
+        Parameters:
+        - max_bandwidth_mbps: Total outbound bandwidth limit
+        - max_connections_per_partition: Connection pool size
+        - request_timeout_ms: Timeout for inter-partition requests
+        - compression: Compression settings for wire protocol
+        """
+        pass
+
+    def create_rate_limiter(
+        self,
+        name: str,
+        requests_per_second: int,
+        burst_size: int = 10
+    ) -> RateLimiter:
+        """
+        Create a named rate limiter for specific operations.
+
+        Example:
+            # Limit bulk imports to not overwhelm the system
+            bulk_limiter = net_mgr.create_rate_limiter(
+                name="bulk_import",
+                requests_per_second=100,
+                burst_size=50
+            )
+
+            # Use in code
+            async with bulk_limiter.acquire():
+                await cdg.write_batch(nodes)
+        """
+        pass
+
+    def get_bandwidth_usage(self) -> BandwidthStats:
+        """Current bandwidth usage by partition and operation type."""
+        pass
+
+
+@dataclass
+class CompressionConfig:
+    """Wire protocol compression settings."""
+
+    enabled: bool = True
+    algorithm: CompressionAlgorithm = CompressionAlgorithm.LZ4  # Fast
+    level: int = 1  # 1-9, higher = better ratio, slower
+    min_size_bytes: int = 1024  # Don't compress small messages
+
+    # Adaptive compression
+    adaptive: bool = True  # Adjust based on CPU/bandwidth tradeoff
+    cpu_threshold_pct: float = 0.80  # Disable compression if CPU > 80%
+```
+
+### 11. Thread Pool Configuration
+
+Separate thread pools for reads and writes with explicit control:
+
+```python
+class ThreadPoolManager:
+    """
+    Explicit thread pool management for workload isolation.
+
+    Why separate pools?
+    - Prevent write storms from starving reads
+    - Tune for workload characteristics
+    - Better resource utilization
+    """
+
+    def configure(
+        self,
+        read_threads: int = 8,
+        write_threads: int = 4,
+        background_threads: int = 2,
+        query_threads: int = 4,
+        io_threads: int = 4
+    ) -> None:
+        """
+        Configure thread pools by purpose.
+
+        Pools:
+        - read_threads: Handle read queries (point, range, pattern)
+        - write_threads: Handle writes (insert, update, delete)
+        - background_threads: Compaction, index builds, snapshots
+        - query_threads: Complex query execution (joins, aggregations)
+        - io_threads: Disk I/O operations
+
+        Guidelines:
+        - Read-heavy: read_threads = 2 * write_threads
+        - Write-heavy: write_threads = read_threads
+        - CPU cores: total threads <= 2 * cores for CPU-bound
+        - I/O bound: io_threads = disk count * 2
+
+        Example for 8-core machine with SSD:
+            pool_mgr.configure(
+                read_threads=8,      # Handle concurrent reads
+                write_threads=4,     # Writes are I/O bound
+                background_threads=2, # Low priority
+                query_threads=4,     # Complex queries
+                io_threads=4         # SSD parallelism
+            )
+        """
+        pass
+
+    def set_priority(self, pool: ThreadPool, priority: Priority) -> None:
+        """
+        Set OS thread priority for a pool.
+
+        Priorities:
+        - REALTIME: Critical path (use sparingly)
+        - HIGH: User-facing queries
+        - NORMAL: Standard operations
+        - LOW: Background tasks (compaction, GC)
+        """
+        pass
+
+    def get_pool_stats(self) -> Dict[str, PoolStats]:
+        """
+        Get statistics for each thread pool.
+
+        Returns:
+            {
+                "read": PoolStats(
+                    threads=8,
+                    active=5,
+                    queued=12,
+                    completed=100000,
+                    avg_latency_ms=2.5,
+                    p99_latency_ms=15.0
+                ),
+                ...
+            }
+        """
+        pass
+
+    def resize_pool(self, pool: ThreadPool, new_size: int) -> None:
+        """Dynamically resize a thread pool (takes effect immediately)."""
+        pass
+```
+
+### 12. Query Tracing & Explain Plans
+
+Distributed tracing for debugging query performance:
+
+```python
+class QueryTracer:
+    """
+    Distributed query tracing for debugging and optimization.
+
+    Every query can be traced to see:
+    - Which partitions were touched
+    - Time spent in each phase
+    - Rows scanned vs returned
+    - Index usage
+    - Network hops
+    """
+
+    def trace(self, query: GraphQuery) -> TracedResult:
+        """
+        Execute query with full tracing enabled.
+
+        Example:
+            result = tracer.trace(
+                GraphQuery.pattern_match(
+                    Pattern()
+                        .node("a", type="task", status="pending")
+                        .edge("DEPENDS_ON")
+                        .node("b", type="task")
+                )
+            )
+
+            print(result.trace.summary())
+            # Query: pattern_match
+            # Total time: 45.2ms
+            # Partitions: [0, 3, 7]
+            # Phases:
+            #   - parse: 0.1ms
+            #   - plan: 0.5ms
+            #   - partition_route: 0.2ms
+            #   - partition_0_execute: 15.1ms (scanned: 1000, matched: 50)
+            #   - partition_3_execute: 14.8ms (scanned: 800, matched: 30)
+            #   - partition_7_execute: 12.5ms (scanned: 600, matched: 20)
+            #   - merge: 2.0ms
+            # Indexes used: [task_status_idx, task_type_idx]
+            # Warnings: ["partition_3: sequential scan on edges"]
+        """
+        pass
+
+    def explain(self, query: GraphQuery) -> QueryPlan:
+        """
+        Get query execution plan without executing.
+
+        Returns:
+            QueryPlan(
+                steps=[
+                    PlanStep(
+                        operation="INDEX_SCAN",
+                        target="task_status_idx",
+                        predicate="status = 'pending'",
+                        estimated_rows=500,
+                        estimated_cost=10.0
+                    ),
+                    PlanStep(
+                        operation="EDGE_EXPAND",
+                        edge_type="DEPENDS_ON",
+                        direction="OUTGOING",
+                        estimated_rows=2000,
+                        estimated_cost=50.0
+                    ),
+                    PlanStep(
+                        operation="FILTER",
+                        predicate="node_type = 'task'",
+                        estimated_rows=1500,
+                        estimated_cost=5.0
+                    ),
+                ],
+                total_estimated_cost=65.0,
+                partitions_touched=[0, 3, 7],
+                indexes_used=["task_status_idx"],
+                warnings=["Consider adding index on DEPENDS_ON edges"]
+            )
+        """
+        pass
+
+    def analyze(self, query: GraphQuery) -> QueryAnalysis:
+        """
+        Deep analysis with recommendations.
+
+        Runs query multiple times to gather statistics, then provides:
+        - Actual vs estimated row counts
+        - Hot spots (partitions with most work)
+        - Missing index recommendations
+        - Query rewrite suggestions
+        """
+        pass
+
+
+@dataclass
+class TraceSpan:
+    """A single span in the distributed trace."""
+
+    span_id: str
+    parent_id: Optional[str]
+    operation: str
+    partition: Optional[int]
+    start_time: datetime
+    duration_ms: float
+
+    # Metrics
+    rows_scanned: int = 0
+    rows_returned: int = 0
+    bytes_read: int = 0
+    bytes_written: int = 0
+
+    # Context
+    index_used: Optional[str] = None
+    cache_hit: bool = False
+
+    # Errors/warnings
+    error: Optional[str] = None
+    warnings: List[str] = field(default_factory=list)
+```
+
+### 13. Debugging & Introspection
+
+Tools for debugging hard-to-reach issues:
+
+```python
+class DebugTools:
+    """
+    Introspection and debugging tools for operational issues.
+
+    Philosophy: When things go wrong at 3 AM, these tools help you
+    understand what's happening without restarting the system.
+    """
+
+    def dump_partition_state(self, partition_id: int) -> PartitionDump:
+        """
+        Dump complete state of a partition for analysis.
+
+        Includes:
+        - Node/edge counts by type
+        - Index states
+        - Pending transactions
+        - WAL position
+        - Memory usage breakdown
+        - Recent errors
+        """
+        pass
+
+    def inspect_node(self, node_id: str) -> NodeInspection:
+        """
+        Deep inspection of a single node.
+
+        Returns:
+        - All versions (MVCC history)
+        - Which indexes contain it
+        - Edges in/out with their states
+        - Transaction locks held
+        - Last access time
+        - Storage location (memtable, which SSTable)
+        """
+        pass
+
+    def inspect_transaction(self, tx_id: str) -> TransactionInspection:
+        """
+        Inspect a transaction (active or historical).
+
+        Returns:
+        - State (ACTIVE, COMMITTED, ABORTED)
+        - Read/write sets
+        - Locks held
+        - Participants (for 2PC)
+        - Timeline of events
+        - If aborted: reason
+        """
+        pass
+
+    def find_locks(self, node_id: Optional[str] = None) -> List[LockInfo]:
+        """
+        Find all active locks, optionally filtered by node.
+
+        Essential for debugging deadlocks and contention.
+        """
+        pass
+
+    def simulate_failure(self, failure: FailureScenario) -> SimulationResult:
+        """
+        Simulate failure scenarios for testing recovery.
+
+        Scenarios:
+        - PARTITION_NETWORK_FAILURE: Simulate network partition
+        - NODE_CRASH: Simulate sudden process death
+        - DISK_FULL: Simulate disk space exhaustion
+        - SLOW_DISK: Simulate degraded disk performance
+        - MEMORY_PRESSURE: Simulate OOM conditions
+
+        Example:
+            result = debug.simulate_failure(
+                FailureScenario.PARTITION_NETWORK_FAILURE,
+                partition_id=3,
+                duration_seconds=30
+            )
+            # System continues, can observe behavior
+        """
+        pass
+
+    def enable_debug_mode(
+        self,
+        partition: Optional[int] = None,
+        log_level: LogLevel = LogLevel.DEBUG,
+        trace_all_queries: bool = False,
+        record_allocations: bool = False
+    ) -> DebugSession:
+        """
+        Enable detailed debug logging for a partition or globally.
+
+        Warning: Significant performance impact. Use sparingly.
+        """
+        pass
+
+    def health_check(self) -> HealthReport:
+        """
+        Comprehensive health check of the entire system.
+
+        Checks:
+        - All partitions responding
+        - WAL not falling behind
+        - No stuck transactions
+        - Memory within limits
+        - Disk space adequate
+        - Index health
+        - Replication lag (if applicable)
+        """
+        pass
+```
+
+### 14. Cortical Query Language (CQL)
+
+A declarative query language inspired by community standards (Cypher/Gremlin/SQL):
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    CORTICAL QUERY LANGUAGE (CQL)                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  Design Principles:                                                      │
+│  1. Familiar to users of Cypher, Gremlin, SQL                           │
+│  2. Graph-native: paths and patterns are first-class                    │
+│  3. Composable: queries can be combined                                 │
+│  4. Typed: catch errors at parse time                                   │
+│  5. Extensible: custom functions and operators                          │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+## Basic Syntax
+
+```cql
+-- Find all pending tasks
+MATCH (t:Task {status: "pending"})
+RETURN t
+
+-- Find tasks with their dependencies
+MATCH (t:Task)-[:DEPENDS_ON]->(dep:Task)
+WHERE t.status = "pending" AND dep.status = "completed"
+RETURN t.id, t.title, dep.title AS dependency
+
+-- Path queries
+MATCH path = (start:Task {id: "T-001"})-[:DEPENDS_ON*1..5]->(end:Task)
+WHERE end.status = "blocked"
+RETURN path, length(path) AS hops
+
+-- Pattern matching with properties
+MATCH (q:Question)-[:EXPLORES]->(h:Hypothesis)-[:SUPPORTS]->(c:Conclusion)
+WHERE h.confidence > 0.8
+RETURN q.content, h.content, c.content
+
+-- Aggregations
+MATCH (t:Task)
+WHERE t.created_at > datetime("2025-01-01")
+RETURN t.status, count(*) AS count, avg(t.priority) AS avg_priority
+GROUP BY t.status
+
+-- Mutations
+CREATE (t:Task {
+    id: generate_id(),
+    title: "Implement CDG",
+    status: "pending",
+    priority: 1
+})
+
+-- Update with pattern
+MATCH (t:Task {id: "T-001"})
+SET t.status = "completed", t.completed_at = now()
+RETURN t
+
+-- Delete with safety
+MATCH (t:Task {id: "T-001"})
+WHERE NOT (t)<-[:DEPENDS_ON]-(:Task {status: "pending"})
+DELETE t
+
+-- Transactions
+BEGIN TRANSACTION
+    CREATE (t1:Task {id: "T-100", title: "Task A"})
+    CREATE (t2:Task {id: "T-101", title: "Task B"})
+    CREATE (t1)-[:DEPENDS_ON {weight: 0.9}]->(t2)
+COMMIT
+
+-- Namespace scoping
+USE NAMESPACE thought
+MATCH (n:Concept)-[:SIMILAR*1..3]-(related)
+RETURN n, collect(related) AS related_concepts
+```
+
+```python
+class CQLParser:
+    """
+    Parse and execute CQL queries.
+
+    Built from scratch - no external parser generators.
+    """
+
+    def parse(self, query: str) -> CQLStatement:
+        """Parse CQL string into AST."""
+        pass
+
+    def validate(self, statement: CQLStatement) -> ValidationResult:
+        """Validate query against schema and permissions."""
+        pass
+
+    def execute(self, query: str, params: Dict[str, Any] = None) -> QueryResult:
+        """
+        Parse, validate, and execute a CQL query.
+
+        Example:
+            result = cql.execute('''
+                MATCH (t:Task {status: $status})
+                WHERE t.priority <= $max_priority
+                RETURN t
+                ORDER BY t.created_at DESC
+                LIMIT 10
+            ''', params={"status": "pending", "max_priority": 2})
+
+            for row in result:
+                print(row["t"])
+        """
+        pass
+
+    def explain(self, query: str) -> QueryPlan:
+        """Get execution plan for a query."""
+        pass
+
+
+# CQL can also be built programmatically
+class CQLBuilder:
+    """Fluent API for building CQL queries."""
+
+    def match(self, pattern: str) -> "CQLBuilder":
+        """Add MATCH clause."""
+        pass
+
+    def where(self, condition: str) -> "CQLBuilder":
+        """Add WHERE clause."""
+        pass
+
+    def return_(self, *expressions: str) -> "CQLBuilder":
+        """Add RETURN clause."""
+        pass
+
+    def build(self) -> str:
+        """Build CQL string."""
+        pass
+
+    # Example usage:
+    # query = (CQLBuilder()
+    #     .match("(t:Task)-[:DEPENDS_ON]->(d:Task)")
+    #     .where("t.status = 'pending'")
+    #     .return_("t", "collect(d) as deps")
+    #     .build())
+```
+
+### 15. Schema Evolution & Migration
+
+Handle schema changes without downtime:
+
+```python
+class SchemaManager:
+    """
+    Schema versioning and migration without downtime.
+
+    Principles:
+    - Backward compatible by default
+    - Lazy migration (on read/write, not big bang)
+    - Rollback capability
+    - Audit trail
+    """
+
+    def register_schema(
+        self,
+        namespace: str,
+        version: int,
+        schema: Schema
+    ) -> None:
+        """
+        Register a schema version for a namespace.
+
+        Schema defines:
+        - Required properties
+        - Property types
+        - Constraints (unique, not null, etc.)
+        - Indexes to create
+
+        Example:
+            schema_mgr.register_schema(
+                namespace="got",
+                version=2,
+                schema=Schema(
+                    node_types={
+                        "task": NodeSchema(
+                            required=["title", "status"],
+                            properties={
+                                "title": PropertyType.STRING,
+                                "status": PropertyType.ENUM(["pending", "active", "completed"]),
+                                "priority": PropertyType.INT,
+                                "estimate_hours": PropertyType.FLOAT,  # NEW in v2
+                            },
+                            indexes=["status", ("priority", "created_at")]
+                        )
+                    },
+                    edge_types={
+                        "depends_on": EdgeSchema(
+                            from_types=["task"],
+                            to_types=["task"],
+                            properties={"weight": PropertyType.FLOAT}
+                        )
+                    }
+                )
+            )
+        """
+        pass
+
+    def migrate(
+        self,
+        namespace: str,
+        from_version: int,
+        to_version: int,
+        migration: Migration
+    ) -> MigrationHandle:
+        """
+        Register a migration between schema versions.
+
+        Migrations are applied lazily:
+        - On read: Transform old format to new
+        - On write: Ensure new format
+        - Background: Gradually migrate all data
+
+        Example:
+            schema_mgr.migrate(
+                namespace="got",
+                from_version=1,
+                to_version=2,
+                migration=Migration(
+                    # Transform function for lazy migration
+                    transform=lambda node: {
+                        **node,
+                        "estimate_hours": node.get("estimate_hours", 0.0)
+                    },
+                    # Validation for new writes
+                    validate=lambda node: "estimate_hours" in node,
+                    # Background migration (optional)
+                    background=True,
+                    batch_size=1000
+                )
+            )
+        """
+        pass
+
+    def get_migration_status(self, namespace: str) -> MigrationStatus:
+        """
+        Check migration progress.
+
+        Returns:
+            MigrationStatus(
+                namespace="got",
+                current_version=2,
+                nodes_migrated=50000,
+                nodes_remaining=10000,
+                estimated_completion="2025-01-15T10:00:00",
+                errors=[]
+            )
+        """
+        pass
+
+    def rollback(self, namespace: str, to_version: int) -> None:
+        """Rollback to a previous schema version."""
+        pass
+```
+
+### 16. Observability Framework
+
+Metrics, logging, and alerting built from scratch:
+
+```python
+class ObservabilityManager:
+    """
+    Built-in observability without external dependencies.
+
+    We build our own because:
+    - No dependency on Prometheus/Grafana/etc.
+    - Customized for graph workloads
+    - Integrated with our debug tools
+    """
+
+    def __init__(self, config: ObservabilityConfig):
+        self.metrics = MetricsRegistry()
+        self.logger = StructuredLogger()
+        self.alerter = AlertManager()
+
+    # ─────────────────────────────────────────────────────────────────
+    # METRICS
+    # ─────────────────────────────────────────────────────────────────
+
+    def record_latency(self, operation: str, latency_ms: float, tags: Dict = None):
+        """Record operation latency with histogram."""
+        pass
+
+    def increment_counter(self, name: str, value: int = 1, tags: Dict = None):
+        """Increment a counter metric."""
+        pass
+
+    def set_gauge(self, name: str, value: float, tags: Dict = None):
+        """Set a gauge metric."""
+        pass
+
+    def get_metrics(self, filter: Optional[str] = None) -> MetricsSnapshot:
+        """
+        Get current metrics snapshot.
+
+        Built-in metrics:
+        - cdg_query_latency_ms{operation, partition}
+        - cdg_query_count{operation, status}
+        - cdg_write_latency_ms{operation, partition}
+        - cdg_transaction_count{status}
+        - cdg_memory_usage_bytes{subsystem}
+        - cdg_disk_usage_bytes{partition}
+        - cdg_index_size_bytes{name}
+        - cdg_wal_lag_bytes{partition}
+        - cdg_cache_hit_ratio{cache}
+        - cdg_thread_pool_queue_size{pool}
+        """
+        pass
+
+    def export_prometheus(self) -> str:
+        """Export metrics in Prometheus format for compatibility."""
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # LOGGING
+    # ─────────────────────────────────────────────────────────────────
+
+    def log(self, level: LogLevel, message: str, **context):
+        """
+        Structured logging with context.
+
+        Example:
+            obs.log(
+                LogLevel.WARN,
+                "Query exceeded timeout",
+                query_id="q-123",
+                duration_ms=5500,
+                timeout_ms=5000,
+                partition=3
+            )
+
+        Output (JSON):
+            {
+                "timestamp": "2025-01-01T12:00:00.000Z",
+                "level": "WARN",
+                "message": "Query exceeded timeout",
+                "query_id": "q-123",
+                "duration_ms": 5500,
+                "timeout_ms": 5000,
+                "partition": 3
+            }
+        """
+        pass
+
+    def set_log_level(self, level: LogLevel, component: Optional[str] = None):
+        """Set log level globally or per component."""
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # ALERTING
+    # ─────────────────────────────────────────────────────────────────
+
+    def register_alert(
+        self,
+        name: str,
+        condition: str,
+        severity: AlertSeverity,
+        action: AlertAction
+    ) -> None:
+        """
+        Register an alert condition.
+
+        Example:
+            obs.register_alert(
+                name="high_query_latency",
+                condition="cdg_query_latency_ms.p99 > 200",
+                severity=AlertSeverity.WARNING,
+                action=AlertAction.LOG  # or WEBHOOK, EMAIL, etc.
+            )
+
+            obs.register_alert(
+                name="memory_critical",
+                condition="cdg_memory_usage_pct > 95",
+                severity=AlertSeverity.CRITICAL,
+                action=AlertAction.WEBHOOK(url="http://alerts/webhook")
+            )
+        """
+        pass
+
+    def get_active_alerts(self) -> List[Alert]:
+        """Get currently firing alerts."""
+        pass
+```
+
+---
+
 ## Implementation Phases
 
 ### Phase 1: Single-Node Foundation (Week 1-2)
@@ -708,10 +1751,13 @@ cortical/cdg/
 │   ├── sstable.py           # Sorted string tables
 │   └── engine.py            # LocalStorageEngine
 ├── index/
+│   ├── manager.py           # IndexManager (custom index creation)
 │   ├── btree.py             # B-tree index
 │   ├── hash.py              # Hash index
 │   ├── bloom.py             # Bloom filter
-│   └── inverted.py          # Inverted index (full-text)
+│   ├── bitmap.py            # Bitmap index (low cardinality)
+│   ├── inverted.py          # Inverted index (full-text)
+│   └── vector.py            # Vector index (embeddings, future)
 ├── partition/
 │   ├── manager.py           # PartitionManager
 │   ├── router.py            # Query routing
@@ -721,15 +1767,41 @@ cortical/cdg/
 │   ├── distributed.py       # 2PC coordinator
 │   └── mvcc.py              # Multi-version concurrency
 ├── query/
-│   ├── parser.py            # Query parsing
+│   ├── cql/
+│   │   ├── parser.py        # CQL parser (hand-written)
+│   │   ├── lexer.py         # CQL lexer
+│   │   ├── ast.py           # Abstract syntax tree
+│   │   └── builder.py       # Fluent query builder
 │   ├── planner.py           # Query planning
 │   ├── executor.py          # Query execution
 │   ├── pattern.py           # Pattern matching
-│   └── path.py              # Path finding
+│   ├── path.py              # Path finding
+│   └── tracer.py            # Query tracing & explain
+├── resource/
+│   ├── memory.py            # MemoryManager (budgets, backpressure)
+│   ├── network.py           # NetworkManager (bandwidth, rate limiting)
+│   ├── threads.py           # ThreadPoolManager (read/write isolation)
+│   └── allocator.py         # BuddyAllocator (memory allocation)
+├── schema/
+│   ├── manager.py           # SchemaManager (versioning)
+│   ├── migration.py         # Migration engine
+│   └── validator.py         # Schema validation
+├── observability/
+│   ├── metrics.py           # MetricsRegistry
+│   ├── logging.py           # StructuredLogger
+│   ├── alerting.py          # AlertManager
+│   └── exporter.py          # Prometheus format export
+├── debug/
+│   ├── tools.py             # DebugTools (introspection)
+│   ├── inspection.py        # Node/transaction inspection
+│   ├── simulation.py        # Failure simulation
+│   └── health.py            # Health checks
 ├── adapters/
 │   ├── got.py               # GoT adapter
 │   ├── thought.py           # ThoughtGraph adapter
-│   └── knowledge.py         # Knowledge graph adapter
+│   ├── synaptic.py          # SynapticMemoryGraph adapter
+│   ├── pln.py               # PLNGraph adapter
+│   └── slm.py               # TransitionGraph adapter
 ├── config.py                # Configuration
 └── client.py                # CDGClient API
 ```
