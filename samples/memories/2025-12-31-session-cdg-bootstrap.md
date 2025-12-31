@@ -565,6 +565,54 @@ When CDG breaks in production, we need this context for root cause analysis.
 
 ---
 
+## Post-Bootstrap Strategy Refinement
+
+After completing Phase 1, a key strategy discussion refined the dogfooding approach:
+
+### Critical Insight
+
+**Don't build CDG separately then integrate. Build CDG BY making GoT use it.**
+
+This is more aggressive than the original phased approach. Instead of building CDG in isolation and then creating adapters, we evolve GoT's storage layer into CDG directly.
+
+### Refined Decisions
+
+| Question | Decision | Rationale |
+|----------|----------|-----------|
+| **Partitions for GoT?** | Start with 1 (no partitioning) | We just need to be ready for the future, not implement it now |
+| **Data migration?** | Read GoT files directly | Checksums are for safety, not migration barriers |
+| **Separate WAL?** | No - reuse existing WAL | Use what exists, refactor as needed, high code coverage protects us |
+| **GoT changes?** | Full control | GoT and CDG are the same thing with different aspirations |
+| **Feature flag?** | Skip it entirely | Just make GoT use CDG directly as a test case |
+| **Performance baseline?** | Not needed | Research later if needed |
+
+### New Approach
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│                    REVISED IMPLEMENTATION STRATEGY                       │
+│                                                                          │
+│   OLD: Build CDG → Create adapter → Wire up GoT → Test                  │
+│                                                                          │
+│   NEW: Make GoT's VersionedStore become CDGStore                        │
+│        GoT's tests become CDG's tests                                   │
+│        GoT IS the test case                                             │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Immediate Next Steps (Updated)
+
+1. **Create CDGStore** that implements VersionedStore's interface
+2. **Change GoT's imports** to use CDGStore
+3. **Run GoT's tests** - they validate CDG works
+4. **Fix what breaks** - tests tell us immediately
+
+This is aggressive dogfooding: we know instantly if CDG works because GoT's tests tell us.
+
+---
+
 ## Next Session Checklist
 
 Before starting Phase 2:
