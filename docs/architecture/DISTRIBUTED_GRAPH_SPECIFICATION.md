@@ -5184,6 +5184,406 @@ CDG supports all knowledge worker graph needs:
 
 ---
 
+## 25. Bootstrap Implementation Guide
+
+This section provides the concrete implementation plan for bootstrapping CDG by lifting proven components from GoT (Graph of Thoughts).
+
+### Philosophy: Move Fast and Build Incrementally
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│                    DOGFOODING STRATEGY                                   │
+│                                                                          │
+│   "Use what we build while we build it"                                 │
+│                                                                          │
+│   1. Features are barely beta - expect breaking changes                 │
+│   2. Data stored in git allows rebuilding when needed                   │
+│   3. API stability: move fast and break things, deal with it later      │
+│   4. Migrations are first-class citizens, no exceptions                 │
+│   5. Performance: developers can wait a little, but not much            │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### What We're Lifting from GoT
+
+GoT already implements ~80% of what CDG needs for its storage layer:
+
+| Component | GoT Location | Lines | CDG Action |
+|-----------|--------------|-------|------------|
+| **Entity base class** | `cortical/got/types.py` | 50 | Lift directly |
+| **Edge model** | `cortical/got/types.py` | 80 | Lift directly |
+| **Valid edge types** | `cortical/got/types.py` | 30 | Lift as defaults |
+| **Transaction model** | `cortical/got/transaction.py` | 167 | Lift directly |
+| **TransactionState enum** | `cortical/got/transaction.py` | 10 | Lift directly |
+| **VersionedStore** | `cortical/got/versioned_store.py` | 600 | Adapt for partitions |
+| **WALManager** | `cortical/got/wal.py` | 467 | Adapt for partitions |
+| **Schema validation** | `cortical/got/schema.py` | 550 | Lift & extend |
+| **QueryBuilder** | `cortical/got/query_builder.py` | 200+ | Lift & extend |
+| **Process locking** | `cortical/utils/locking.py` | - | Already shared |
+| **Checksums** | `cortical/utils/checksums.py` | - | Already shared |
+
+### Directory Structure
+
+```
+cortical/cdg/
+├── __init__.py              # Public API exports
+├── types.py                 # Entity, Edge, Node (lifted from GoT)
+├── transaction.py           # Transaction, TransactionState (lifted from GoT)
+├── partition.py             # PartitionManager, Partition (new)
+├── storage.py               # CDGStore (adapted from VersionedStore)
+├── wal.py                   # CDGWALManager (adapted from WALManager)
+├── query.py                 # QueryBuilder, QueryResult (lifted + extended)
+├── index.py                 # IndexManager, PropertyIndex (new)
+├── schema.py                # SchemaRegistry (lifted from GoT)
+├── config.py                # CDGConfig, DurabilityMode (lifted from GoT)
+├── errors.py                # CDG-specific errors
+├── migration.py             # Migration infrastructure
+└── adapters/
+    ├── __init__.py
+    └── got_adapter.py       # GoT compatibility adapter
+```
+
+### Phase 1: Foundation (Days 1-2)
+
+**Goal**: Get core types working with basic storage.
+
+```python
+# Step 1: Create cortical/cdg/types.py
+# Lift Entity, Edge from cortical/got/types.py
+# Add Node as alias for Entity (CDG terminology)
+
+from dataclasses import dataclass, field
+from typing import Dict, Any, List, Optional
+from datetime import datetime, timezone
+
+@dataclass
+class Entity:
+    """Base entity - lifted from GoT with minimal changes."""
+    id: str
+    entity_type: str = ""
+    version: int = 1
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    modified_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+    # CDG extension: partition hint
+    partition_key: Optional[str] = None
+
+# Node is just an alias for Entity in CDG
+Node = Entity
+
+@dataclass
+class Edge:
+    """Edge - lifted from GoT with CDG extensions."""
+    id: str
+    source_id: str
+    target_id: str
+    edge_type: str
+    weight: float = 1.0
+    confidence: float = 1.0
+    version: int = 1
+
+    # CDG extension: timestamps
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+```
+
+```python
+# Step 2: Create cortical/cdg/transaction.py
+# Direct lift from cortical/got/transaction.py
+
+from enum import Enum
+from dataclasses import dataclass, field
+from typing import Dict, Optional
+from .types import Entity
+
+class TransactionState(Enum):
+    ACTIVE = "active"
+    PREPARING = "preparing"
+    COMMITTED = "committed"
+    ABORTED = "aborted"
+    ROLLED_BACK = "rolled_back"
+
+@dataclass
+class Transaction:
+    """Transaction with snapshot isolation - lifted from GoT."""
+    id: str
+    state: TransactionState
+    started_at: str
+    snapshot_version: int
+    write_set: Dict[str, Entity] = field(default_factory=dict)
+    read_set: Dict[str, int] = field(default_factory=dict)
+
+    # CDG extension: partition tracking
+    touched_partitions: set = field(default_factory=set)
+```
+
+### Phase 2: Storage Layer (Days 3-4)
+
+**Goal**: Adapt VersionedStore for partitioned storage.
+
+```python
+# Step 3: Create cortical/cdg/storage.py
+# Adapt VersionedStore to be partition-aware
+
+class CDGStore:
+    """
+    Partition-aware storage layer.
+
+    Wraps partition-local VersionedStore instances with
+    routing logic and cross-partition coordination.
+    """
+
+    def __init__(self, store_dir: Path, partition_count: int = 1):
+        self.store_dir = store_dir
+        self.partition_count = partition_count
+        self._partitions: Dict[int, VersionedStore] = {}
+        self._init_partitions()
+
+    def _get_partition(self, entity_id: str) -> VersionedStore:
+        """Route to correct partition based on entity ID hash."""
+        partition_id = hash(entity_id) % self.partition_count
+        return self._partitions[partition_id]
+
+    def read(self, entity_id: str) -> Optional[Entity]:
+        """Read from correct partition."""
+        return self._get_partition(entity_id).read(entity_id)
+
+    def write(self, entity: Entity) -> None:
+        """Write to correct partition."""
+        self._get_partition(entity.id).write(entity)
+```
+
+### Phase 3: Query Layer (Days 5-7)
+
+**Goal**: Lift QueryBuilder and extend for CDG.
+
+```python
+# Step 4: Create cortical/cdg/query.py
+# Lift QueryBuilder from GoT, extend with CDG features
+
+class QueryBuilder:
+    """
+    Fluent query builder - lifted from GoT with CDG extensions.
+
+    Example:
+        results = (QueryBuilder(store)
+            .match(entity_type="task")
+            .where(status="pending")
+            .traverse("DEPENDS_ON", Direction.OUTGOING)
+            .return_nodes())
+    """
+
+    def match(self, entity_type: str = None, **properties) -> "QueryBuilder":
+        """Start query with type/property filter."""
+        ...
+
+    def where(self, **conditions) -> "QueryBuilder":
+        """Add filter conditions."""
+        ...
+
+    def traverse(self, edge_type: str, direction: Direction, depth: int = 1) -> "QueryBuilder":
+        """Follow edges."""
+        ...
+
+    # CDG extension: partition hints
+    def in_partition(self, partition_id: int) -> "QueryBuilder":
+        """Restrict query to specific partition."""
+        ...
+```
+
+### Phase 4: GoT Integration (Week 2)
+
+**Goal**: Wire up GoT to use CDG with feature flag.
+
+```python
+# Step 5: Create cortical/cdg/adapters/got_adapter.py
+
+class GoTAdapter:
+    """
+    Adapter to make CDG look like GoT's VersionedStore.
+
+    Enables gradual migration:
+    1. Set GOT_USE_CDG=false (default) - uses existing VersionedStore
+    2. Set GOT_USE_CDG=true - uses CDG through this adapter
+    """
+
+    def __init__(self, cdg_store: CDGStore):
+        self._store = cdg_store
+
+    def read(self, entity_id: str) -> Optional[Entity]:
+        """Compatible with VersionedStore.read()"""
+        return self._store.read(entity_id)
+
+    def write(self, entity: Entity) -> None:
+        """Compatible with VersionedStore.write()"""
+        self._store.write(entity)
+
+    def read_at_version(self, entity_id: str, version: int) -> Optional[Entity]:
+        """Compatible with VersionedStore.read_at_version()"""
+        return self._store.read_at_version(entity_id, version)
+```
+
+```python
+# Step 6: Modify cortical/got/__init__.py or api.py
+
+import os
+from pathlib import Path
+
+def get_store(store_dir: Path):
+    """Factory function that respects GOT_USE_CDG flag."""
+    if os.getenv("GOT_USE_CDG", "false").lower() == "true":
+        from cortical.cdg import CDGStore
+        from cortical.cdg.adapters.got_adapter import GoTAdapter
+        return GoTAdapter(CDGStore(store_dir))
+    else:
+        from cortical.got.versioned_store import VersionedStore
+        return VersionedStore(store_dir)
+```
+
+### Migration Infrastructure
+
+```python
+# cortical/cdg/migration.py
+
+from dataclasses import dataclass
+from typing import Callable, List
+from datetime import datetime
+
+@dataclass
+class Migration:
+    """Single migration step."""
+    version: int
+    name: str
+    up: Callable[["CDGStore"], None]
+    down: Callable[["CDGStore"], None]
+
+class MigrationRunner:
+    """
+    First-class migration support.
+
+    Migrations are required, not optional. Every schema change
+    must have a migration. Data in git means we can rebuild,
+    but migrations document how.
+    """
+
+    def __init__(self, store: "CDGStore"):
+        self._store = store
+        self._migrations: List[Migration] = []
+
+    def register(self, migration: Migration) -> None:
+        """Register a migration."""
+        self._migrations.append(migration)
+        self._migrations.sort(key=lambda m: m.version)
+
+    def migrate_to(self, target_version: int) -> None:
+        """Run migrations up or down to reach target version."""
+        current = self._get_current_version()
+
+        if target_version > current:
+            # Migrate up
+            for m in self._migrations:
+                if current < m.version <= target_version:
+                    m.up(self._store)
+                    self._set_current_version(m.version)
+        elif target_version < current:
+            # Migrate down
+            for m in reversed(self._migrations):
+                if target_version < m.version <= current:
+                    m.down(self._store)
+                    self._set_current_version(m.version - 1)
+```
+
+### First Dogfooding Target: GoT
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│                    GoT → CDG MIGRATION PATH                              │
+│                                                                          │
+│   PHASE 1: Shadow Mode                                                   │
+│   ─────────────────────                                                  │
+│   • CDG runs alongside GoT, receives write shadows                      │
+│   • GoT remains source of truth                                         │
+│   • Compare CDG reads vs GoT reads for verification                     │
+│                                                                          │
+│   PHASE 2: Dual Write                                                    │
+│   ────────────────────                                                   │
+│   • Writes go to both GoT and CDG                                       │
+│   • Reads from GoT (source of truth)                                    │
+│   • CDG catches up, data verified                                       │
+│                                                                          │
+│   PHASE 3: CDG Primary                                                   │
+│   ────────────────────                                                   │
+│   • CDG becomes source of truth                                         │
+│   • GoT becomes read replica for compatibility                          │
+│   • Monitor for issues                                                  │
+│                                                                          │
+│   PHASE 4: GoT Retired                                                   │
+│   ────────────────────                                                   │
+│   • GoT adapter wraps CDG                                               │
+│   • Old GoT code deprecated                                             │
+│   • Full CDG operation                                                  │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### What NOT to Lift (Build Fresh)
+
+These components are CDG-specific and should be built from scratch:
+
+| Component | Reason |
+|-----------|--------|
+| **PartitionManager** | GoT is single-partition; CDG needs distributed partitioning |
+| **ClusterManager** | GoT is single-node; CDG needs cluster coordination |
+| **ReplicationManager** | New capability for CDG |
+| **SuperNodeHandler** | New CDG feature for handling high-degree nodes |
+| **EncryptionProvider** | New pluggable encryption system |
+
+### Success Criteria
+
+Before considering Phase 1 complete:
+
+- [ ] `Entity`, `Edge`, `Transaction` lifted and passing GoT's existing tests
+- [ ] `CDGStore` can perform basic read/write operations
+- [ ] `GOT_USE_CDG=true` flag works without breaking existing GoT tests
+- [ ] At least one real use case (GoT) running on CDG in development
+
+### File-by-File Lift Plan
+
+```bash
+# Day 1: Core types
+cp cortical/got/types.py cortical/cdg/types.py
+# Edit: Remove GoT-specific entity types (Task, Decision, Sprint, etc.)
+# Edit: Add partition_key to Entity
+# Edit: Add Node alias
+
+cp cortical/got/transaction.py cortical/cdg/transaction.py
+# Edit: Add touched_partitions tracking
+
+cp cortical/got/errors.py cortical/cdg/errors.py
+# Edit: Rename to CDG namespace
+
+# Day 2: Configuration
+cp cortical/got/config.py cortical/cdg/config.py
+# Edit: Extend with CDG-specific config (partition_count, etc.)
+
+# Day 3-4: Storage
+# Create cortical/cdg/storage.py (new, adapting VersionedStore patterns)
+# Create cortical/cdg/partition.py (new)
+# Create cortical/cdg/wal.py (adapting WALManager patterns)
+
+# Day 5-7: Query layer
+cp cortical/got/query_builder.py cortical/cdg/query.py
+# Edit: Add partition awareness
+# Edit: Extend with CDG-specific methods
+
+cp cortical/got/schema.py cortical/cdg/schema.py
+# Edit: Generalize from GoT entity types
+```
+
+---
+
 ## Conclusion
 
 The Cortical Distributed Graph provides a unified foundation for all graph storage needs in the system. By building every component from first principles, we maintain complete sovereignty over the implementation while achieving service provider-grade performance targets.
