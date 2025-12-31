@@ -1,0 +1,26 @@
+{
+  "_checksum": "00b8b4c21b7b4693",
+  "_written_at": "2025-12-31T23:07:14.892621+00:00",
+  "data": {
+    "created_at": "2025-12-31T23:07:14.890526+00:00",
+    "entity_type": "sprint",
+    "epic_id": "",
+    "goals": [
+      "Lift QueryBuilder from GoT to CDG",
+      "Add partition-aware query hints",
+      "Build property indexing for WHERE clauses",
+      "Enable GoT to use CDG queries"
+    ],
+    "id": "S-20251231-230714-4181325a",
+    "isolation": [],
+    "metadata": {},
+    "modified_at": "2025-12-31T23:07:14.892586+00:00",
+    "notes": [],
+    "number": null,
+    "properties": {},
+    "session_id": "",
+    "status": "available",
+    "title": "CDG Phase 2: Query & Index Layer",
+    "version": 2
+  }
+}
