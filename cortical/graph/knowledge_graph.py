@@ -168,6 +168,8 @@ class SemanticKnowledgeGraph:
         enable_spark: bool = False,
         persistence_dir: Optional[str] = None,
         use_real_expansion: bool = False,
+        max_edges_per_node: int = 50,
+        edge_weight_threshold: float = 0.01,
     ):
         """
         Initialize the Semantic Knowledge Graph.
@@ -180,6 +182,8 @@ class SemanticKnowledgeGraph:
             enable_spark: Enable SparkSLM prediction
             persistence_dir: Directory for WAL and state storage (enables persistence)
             use_real_expansion: Use cortical/query/expansion.py for query expansion
+            max_edges_per_node: Maximum lateral edges per node (default 50, 0=unlimited)
+            edge_weight_threshold: Minimum edge weight to keep (default 0.01)
         """
         self.id = str(uuid.uuid4())[:8]
         self.created_at = datetime.now()
@@ -210,6 +214,10 @@ class SemanticKnowledgeGraph:
         self._enable_spark = enable_spark
         self._use_real_expansion = use_real_expansion
         self._persistence_dir = persistence_dir
+
+        # Edge optimization parameters
+        self._max_edges_per_node = max_edges_per_node
+        self._edge_weight_threshold = edge_weight_threshold
 
         # Persistence (WAL and state storage)
         self._wal_writer = None
@@ -359,6 +367,10 @@ class SemanticKnowledgeGraph:
         # Build connections between layers
         self._build_connections()
 
+        # Prune edges to keep only top-K per node
+        if self._max_edges_per_node > 0:
+            self._prune_edges()
+
         # Extract semantic relations
         self._extract_semantic_relations()
 
@@ -435,7 +447,11 @@ class SemanticKnowledgeGraph:
         weight: float = 1.0,
         confidence: float = 1.0,
     ) -> None:
-        """Add an edge to the graph."""
+        """Add an edge to the graph (with threshold filtering)."""
+        # Filter by weight threshold
+        if weight < self._edge_weight_threshold:
+            return
+
         edge = GraphEdge(
             source_id=source_id,
             target_id=target_id,
@@ -450,6 +466,27 @@ class SemanticKnowledgeGraph:
         if source_id not in self._edge_index:
             self._edge_index[source_id] = []
         self._edge_index[source_id].append(edge)
+
+    def _prune_edges(self) -> None:
+        """Prune edges to keep only top-K per node by weight."""
+        if self._max_edges_per_node <= 0:
+            return
+
+        # Group edges by source and keep top-K by weight
+        new_edges = []
+        new_edge_index: Dict[str, List[GraphEdge]] = {}
+
+        for source_id, edges in self._edge_index.items():
+            # Sort by weight descending and keep top-K
+            sorted_edges = sorted(edges, key=lambda e: e.weight, reverse=True)
+            kept_edges = sorted_edges[:self._max_edges_per_node]
+
+            new_edges.extend(kept_edges)
+            if kept_edges:
+                new_edge_index[source_id] = kept_edges
+
+        self._edges = new_edges
+        self._edge_index = new_edge_index
 
     def _build_connections(self) -> None:
         """Build lateral connections within layers."""
