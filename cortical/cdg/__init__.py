@@ -38,8 +38,10 @@ from .errors import (
     CorruptionError,
     TransactionError,
     ConflictError,
+    StorageError,
 )
 from .config import CDGConfig, DurabilityMode
+from .storage import CDGStore, EntityFactory, default_entity_factory
 
 __all__ = [
     # Types
@@ -47,6 +49,10 @@ __all__ = [
     "Node",
     "Edge",
     "VALID_EDGE_TYPES",
+    # Storage
+    "CDGStore",
+    "EntityFactory",
+    "default_entity_factory",
     # Transactions
     "Transaction",
     "TransactionState",
@@ -57,6 +63,7 @@ __all__ = [
     "CorruptionError",
     "TransactionError",
     "ConflictError",
+    "StorageError",
     # Configuration
     "CDGConfig",
     "DurabilityMode",
