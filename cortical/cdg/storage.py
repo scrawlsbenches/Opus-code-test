@@ -153,6 +153,12 @@ class CDGStore:
         # Process lock for cross-process version file protection
         self._version_lock = ProcessLock(self.store_dir / ".version.lock", reentrant=False)
 
+        # Write lock for thread-safe write operations (covers entire write transaction)
+        self._write_lock = threading.RLock()
+
+        # Process lock for cross-process write protection (covers entire write transaction)
+        self._write_process_lock = ProcessLock(self.store_dir / ".write.lock", reentrant=True)
+
         # Load current version
         self._version = self._load_version()
 
@@ -236,6 +242,8 @@ class CDGStore:
         """
         Write an entity (used for single writes, increments entity.version).
 
+        Thread-safe and process-safe via write locks.
+
         Args:
             entity: Entity to write
 
@@ -243,27 +251,32 @@ class CDGStore:
             CorruptionError: If checksum operations fail
             ValidationError: If entity fails validation (when validate_on_save=True)
         """
-        # Validate entity before writing
-        self._validate_entity(entity)
+        # Acquire both thread and process locks for full safety
+        with self._write_lock:
+            with self._write_process_lock:
+                # Validate entity before writing
+                self._validate_entity(entity)
 
-        # Save current state to history before overwriting
-        if self.exists(entity.id):
-            self._save_to_history(entity.id, self._version)
+                # Save current state to history before overwriting
+                if self.exists(entity.id):
+                    self._save_to_history(entity.id, self._version)
 
-        # Increment entity version
-        entity.bump_version()
+                # Increment entity version
+                entity.bump_version()
 
-        # Write entity to file
-        path = self._entity_path(entity.id)
-        self._write_with_checksum(path, entity.to_dict())
+                # Write entity to file
+                path = self._entity_path(entity.id)
+                self._write_with_checksum(path, entity.to_dict())
 
-        # Increment global version
-        self._version += 1
-        self._save_version()
+                # Increment global version
+                self._version += 1
+                self._save_version()
 
     def apply_writes(self, write_set: Dict[str, Entity]) -> int:
         """
         Atomically apply a set of writes.
+
+        Thread-safe and process-safe via write locks.
 
         Uses atomic file operations:
         1. Validate all entities (if validate_on_save=True)
@@ -285,54 +298,57 @@ class CDGStore:
             CorruptionError: If checksum operations fail
             ValidationError: If any entity fails validation
         """
-        # Step 0: Validate all entities before any writes
-        for entity in write_set.values():
-            self._validate_entity(entity)
+        # Acquire both thread and process locks for full safety
+        with self._write_lock:
+            with self._write_process_lock:
+                # Step 0: Validate all entities before any writes
+                for entity in write_set.values():
+                    self._validate_entity(entity)
 
-        temp_files = []
-        renamed_files = []  # Track successful renames for rollback
+                temp_files = []
+                renamed_files = []  # Track successful renames for rollback
 
-        try:
-            # Step 1: Save old states to history and write new states to temp files
-            for entity_id, entity in write_set.items():
-                # Save current state to history if entity exists
-                if self.exists(entity_id):
-                    self._save_to_history(entity_id, self._version)
+                try:
+                    # Step 1: Save old states to history and write new states to temp files
+                    for entity_id, entity in write_set.items():
+                        # Save current state to history if entity exists
+                        if self.exists(entity_id):
+                            self._save_to_history(entity_id, self._version)
 
-                # Increment entity version
-                entity.bump_version()
+                        # Increment entity version
+                        entity.bump_version()
 
-                # Write to temp file
-                temp_path = self._entity_path(entity_id).with_suffix('.tmp')
-                self._write_with_checksum(temp_path, entity.to_dict())
-                temp_files.append((temp_path, self._entity_path(entity_id)))
+                        # Write to temp file
+                        temp_path = self._entity_path(entity_id).with_suffix('.tmp')
+                        self._write_with_checksum(temp_path, entity.to_dict())
+                        temp_files.append((temp_path, self._entity_path(entity_id)))
 
-            # Step 2: Fsync all temp files (respects durability mode)
-            for temp_path, _ in temp_files:
-                self._fsync_file(temp_path)
+                    # Step 2: Fsync all temp files (respects durability mode)
+                    for temp_path, _ in temp_files:
+                        self._fsync_file(temp_path)
 
-            # Step 3: Rename all temp files to final (atomic on POSIX)
-            for temp_path, final_path in temp_files:
-                temp_path.rename(final_path)
-                renamed_files.append(final_path)
+                    # Step 3: Rename all temp files to final (atomic on POSIX)
+                    for temp_path, final_path in temp_files:
+                        temp_path.rename(final_path)
+                        renamed_files.append(final_path)
 
-            # Step 4: Update global version
-            self._version += 1
-            self._save_version()
+                    # Step 4: Update global version
+                    self._version += 1
+                    self._save_version()
 
-            return self._version
+                    return self._version
 
-        except Exception:
-            # Rollback: Delete successfully renamed files
-            for final_path in renamed_files:
-                if final_path.exists():
-                    final_path.unlink()
+                except Exception:
+                    # Rollback: Delete successfully renamed files
+                    for final_path in renamed_files:
+                        if final_path.exists():
+                            final_path.unlink()
 
-            # Clean up remaining temp files
-            for temp_path, _ in temp_files:
-                if temp_path.exists():
-                    temp_path.unlink()
-            raise
+                    # Clean up remaining temp files
+                    for temp_path, _ in temp_files:
+                        if temp_path.exists():
+                            temp_path.unlink()
+                    raise
 
     def exists(self, entity_id: str) -> bool:
         """
@@ -350,27 +366,32 @@ class CDGStore:
         """
         Delete an entity.
 
+        Thread-safe and process-safe via write locks.
+
         Args:
             entity_id: Entity identifier
 
         Returns:
             True if deleted, False if not found
         """
-        path = self._entity_path(entity_id)
-        if not path.exists():
-            return False
+        # Acquire both thread and process locks for full safety
+        with self._write_lock:
+            with self._write_process_lock:
+                path = self._entity_path(entity_id)
+                if not path.exists():
+                    return False
 
-        # Save to history before deleting
-        self._save_to_history(entity_id, self._version)
+                # Save to history before deleting
+                self._save_to_history(entity_id, self._version)
 
-        # Delete file
-        path.unlink()
+                # Delete file
+                path.unlink()
 
-        # Increment global version
-        self._version += 1
-        self._save_version()
+                # Increment global version
+                self._version += 1
+                self._save_version()
 
-        return True
+                return True
 
     def _entity_path(self, entity_id: str) -> Path:
         """Get path for entity JSON file."""
