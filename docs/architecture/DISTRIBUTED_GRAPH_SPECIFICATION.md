@@ -1700,6 +1700,2429 @@ class ObservabilityManager:
 
 ---
 
+## 17. Replication & Consensus
+
+**Design Philosophy**: Data durability and availability require multi-replica consistency.
+We implement consensus protocols from first principles—no external dependencies.
+
+### Replication Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     REPLICATION TOPOLOGY                                 │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   ┌──────────────┐     ┌──────────────┐     ┌──────────────┐           │
+│   │   LEADER     │────▶│  FOLLOWER 1  │     │  FOLLOWER 2  │           │
+│   │  (Primary)   │────▶│  (Replica)   │     │  (Replica)   │           │
+│   └──────────────┘     └──────────────┘     └──────────────┘           │
+│         │                    ▲                    ▲                      │
+│         │                    │                    │                      │
+│         └────────────────────┴────────────────────┘                     │
+│                    Async Replication Stream                              │
+│                                                                          │
+│   Write Path: Client → Leader → WAL → Replicate → Ack                   │
+│   Read Path:  Client → Any Replica (configurable consistency)           │
+│                                                                          │
+│   Consistency Levels:                                                    │
+│   • ONE:    Ack after 1 replica (fastest, eventual consistency)         │
+│   • QUORUM: Ack after majority (balanced)                               │
+│   • ALL:    Ack after all replicas (strongest, slowest)                 │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### ReplicationManager API
+
+```python
+@dataclass
+class ReplicaConfig:
+    """Configuration for a replica node."""
+    node_id: str
+    host: str
+    port: int
+    datacenter: str
+    rack: str
+    is_leader: bool = False
+
+class ConsistencyLevel(Enum):
+    ONE = "one"           # Fastest, eventual consistency
+    QUORUM = "quorum"     # Majority agreement
+    ALL = "all"           # Full consistency, highest latency
+    LOCAL_QUORUM = "local_quorum"  # Quorum within datacenter
+
+class ReplicationManager:
+    """
+    Manages multi-replica consistency using Raft consensus.
+
+    Sovereignty Note: We implement Raft from first principles.
+    No etcd, no Consul, no ZooKeeper. Our protocol, our control.
+    """
+
+    def __init__(
+        self,
+        node_id: str,
+        replicas: List[ReplicaConfig],
+        replication_factor: int = 3,
+        election_timeout_ms: int = 150,
+        heartbeat_interval_ms: int = 50
+    ):
+        """
+        Initialize replication manager.
+
+        Args:
+            node_id: Unique identifier for this node
+            replicas: List of replica configurations
+            replication_factor: Number of copies to maintain
+            election_timeout_ms: Leader election timeout
+            heartbeat_interval_ms: Leader heartbeat interval
+        """
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # RAFT CONSENSUS PROTOCOL
+    # ─────────────────────────────────────────────────────────────────
+
+    def request_vote(
+        self,
+        term: int,
+        candidate_id: str,
+        last_log_index: int,
+        last_log_term: int
+    ) -> VoteResponse:
+        """
+        Raft RequestVote RPC.
+
+        Called by candidates during leader election.
+        Vote granted if:
+        - Candidate's term >= current term
+        - Haven't voted for another candidate this term
+        - Candidate's log is at least as up-to-date
+        """
+        pass
+
+    def append_entries(
+        self,
+        term: int,
+        leader_id: str,
+        prev_log_index: int,
+        prev_log_term: int,
+        entries: List[LogEntry],
+        leader_commit: int
+    ) -> AppendResponse:
+        """
+        Raft AppendEntries RPC.
+
+        Called by leader to replicate log entries.
+        Also serves as heartbeat when entries is empty.
+        """
+        pass
+
+    def start_election(self) -> bool:
+        """
+        Transition to candidate state and start election.
+
+        Returns True if this node becomes leader.
+        """
+        pass
+
+    def step_down(self):
+        """Transition from leader to follower state."""
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # REPLICATION OPERATIONS
+    # ─────────────────────────────────────────────────────────────────
+
+    def replicate(
+        self,
+        operation: WriteOperation,
+        consistency: ConsistencyLevel = ConsistencyLevel.QUORUM
+    ) -> ReplicationResult:
+        """
+        Replicate a write operation across replicas.
+
+        Args:
+            operation: The write operation to replicate
+            consistency: Required consistency level
+
+        Returns:
+            ReplicationResult with success status and ack count
+
+        Example:
+            result = repl.replicate(
+                operation=WriteOperation(type="PUT", key="node:123", value=node_data),
+                consistency=ConsistencyLevel.QUORUM
+            )
+            if result.success:
+                print(f"Replicated to {result.ack_count} nodes")
+        """
+        pass
+
+    def sync_replica(self, replica_id: str) -> SyncResult:
+        """
+        Force synchronization with a specific replica.
+
+        Used for:
+        - Bringing a lagging replica up to date
+        - Recovering a replica after failure
+        - Initial replica bootstrap
+        """
+        pass
+
+    def get_replication_lag(self, replica_id: str) -> ReplicationLag:
+        """
+        Get replication lag for a specific replica.
+
+        Returns:
+            ReplicationLag with bytes_behind, entries_behind, estimated_catch_up_time
+        """
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # LEADER ELECTION & FAILOVER
+    # ─────────────────────────────────────────────────────────────────
+
+    def get_leader(self) -> Optional[ReplicaConfig]:
+        """Get the current leader node."""
+        pass
+
+    def is_leader(self) -> bool:
+        """Check if this node is the current leader."""
+        pass
+
+    def trigger_failover(self, preferred_leader: Optional[str] = None) -> FailoverResult:
+        """
+        Trigger manual failover to a new leader.
+
+        Args:
+            preferred_leader: Preferred new leader node ID (optional)
+
+        Returns:
+            FailoverResult with new leader and failover duration
+        """
+        pass
+
+    def get_cluster_status(self) -> ClusterStatus:
+        """
+        Get overall cluster health and status.
+
+        Returns:
+            ClusterStatus with:
+            - leader_id
+            - term
+            - replica_states (LEADER, FOLLOWER, CANDIDATE, DOWN)
+            - replication_health (HEALTHY, DEGRADED, CRITICAL)
+        """
+        pass
+```
+
+### Conflict Resolution
+
+```python
+class ConflictResolver:
+    """
+    Handles write conflicts in multi-leader or partition scenarios.
+
+    Strategies:
+    - LAST_WRITE_WINS: Timestamp-based resolution (default)
+    - VECTOR_CLOCK: Causal ordering with vector clocks
+    - CUSTOM: Application-defined merge function
+    """
+
+    def __init__(self, strategy: ConflictStrategy = ConflictStrategy.LAST_WRITE_WINS):
+        pass
+
+    def resolve(self, versions: List[VersionedValue]) -> VersionedValue:
+        """
+        Resolve conflicting versions.
+
+        Example (vector clock):
+            # Two concurrent writes
+            v1 = VersionedValue(value="A", vector_clock={"node1": 1})
+            v2 = VersionedValue(value="B", vector_clock={"node2": 1})
+
+            # Conflict detected - clocks are concurrent
+            resolved = resolver.resolve([v1, v2])
+            # Returns merged value or prompts for manual resolution
+        """
+        pass
+
+    def register_merge_function(self, node_type: str, merge_fn: Callable[[Any, Any], Any]):
+        """
+        Register custom merge function for a node type.
+
+        Example:
+            def merge_counters(a, b):
+                return {"count": a["count"] + b["count"]}
+
+            resolver.register_merge_function("counter", merge_counters)
+        """
+        pass
+```
+
+---
+
+## 18. Security & Access Control
+
+**Design Philosophy**: Security is not optional. Every operation is authenticated and authorized.
+We implement security from first principles—no blind trust in external identity providers.
+
+### Security Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                       SECURITY LAYERS                                    │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   ┌─────────────────────────────────────────────────────────────────┐   │
+│   │                    TRANSPORT SECURITY                            │   │
+│   │  • TLS 1.3 for all connections                                  │   │
+│   │  • Certificate pinning for inter-node communication             │   │
+│   │  • Perfect forward secrecy                                      │   │
+│   └─────────────────────────────────────────────────────────────────┘   │
+│                              │                                           │
+│                              ▼                                           │
+│   ┌─────────────────────────────────────────────────────────────────┐   │
+│   │                    AUTHENTICATION                                │   │
+│   │  • API keys (service-to-service)                                │   │
+│   │  • JWT tokens (user sessions)                                   │   │
+│   │  • mTLS certificates (inter-node)                               │   │
+│   └─────────────────────────────────────────────────────────────────┘   │
+│                              │                                           │
+│                              ▼                                           │
+│   ┌─────────────────────────────────────────────────────────────────┐   │
+│   │                    AUTHORIZATION (RBAC)                          │   │
+│   │  • Role-based permissions                                       │   │
+│   │  • Namespace isolation                                          │   │
+│   │  • Row-level security policies                                  │   │
+│   └─────────────────────────────────────────────────────────────────┘   │
+│                              │                                           │
+│                              ▼                                           │
+│   ┌─────────────────────────────────────────────────────────────────┐   │
+│   │                    AUDIT LOGGING                                 │   │
+│   │  • All operations logged immutably                              │   │
+│   │  • Tamper-evident audit trail                                   │   │
+│   │  • Compliance reporting                                         │   │
+│   └─────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### SecurityManager API
+
+```python
+@dataclass
+class Principal:
+    """Represents an authenticated identity."""
+    id: str
+    type: PrincipalType  # USER, SERVICE, INTERNAL
+    roles: List[str]
+    attributes: Dict[str, Any]  # Custom claims
+
+@dataclass
+class Permission:
+    """A specific permission grant."""
+    resource: str      # "namespace:thought_graph/*" or "node:123"
+    actions: List[str] # ["READ", "WRITE", "DELETE", "ADMIN"]
+    conditions: Optional[Dict[str, Any]] = None  # Row-level security conditions
+
+class SecurityManager:
+    """
+    Manages authentication, authorization, and audit logging.
+
+    Sovereignty Note: We implement our own auth stack.
+    No Auth0, no Okta, no external identity providers required.
+    """
+
+    def __init__(
+        self,
+        secret_key: bytes,
+        token_expiry_seconds: int = 3600,
+        enable_audit: bool = True
+    ):
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # AUTHENTICATION
+    # ─────────────────────────────────────────────────────────────────
+
+    def authenticate_api_key(self, api_key: str) -> AuthResult:
+        """
+        Authenticate using API key.
+
+        Returns:
+            AuthResult with principal and session token
+
+        Example:
+            result = security.authenticate_api_key("sk_live_abc123")
+            if result.success:
+                session = result.session_token
+        """
+        pass
+
+    def authenticate_token(self, token: str) -> AuthResult:
+        """
+        Authenticate using JWT token.
+
+        Validates:
+        - Signature (HMAC-SHA256 or RS256)
+        - Expiration
+        - Issuer
+        - Not revoked
+        """
+        pass
+
+    def create_api_key(
+        self,
+        principal_id: str,
+        name: str,
+        permissions: List[Permission],
+        expires_at: Optional[datetime] = None
+    ) -> APIKey:
+        """
+        Create a new API key for a principal.
+
+        Example:
+            key = security.create_api_key(
+                principal_id="service:indexer",
+                name="indexer-prod-key",
+                permissions=[
+                    Permission(resource="namespace:*", actions=["READ"]),
+                    Permission(resource="namespace:indexer/*", actions=["READ", "WRITE"])
+                ],
+                expires_at=datetime(2025, 12, 31)
+            )
+            print(f"API Key: {key.key}")  # Only shown once!
+        """
+        pass
+
+    def revoke_api_key(self, key_id: str) -> bool:
+        """Revoke an API key immediately."""
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # AUTHORIZATION (RBAC)
+    # ─────────────────────────────────────────────────────────────────
+
+    def create_role(self, name: str, permissions: List[Permission]) -> Role:
+        """
+        Create a new role with specified permissions.
+
+        Example:
+            analyst_role = security.create_role(
+                name="analyst",
+                permissions=[
+                    Permission(resource="namespace:analytics/*", actions=["READ"]),
+                    Permission(resource="namespace:reports/*", actions=["READ", "WRITE"])
+                ]
+            )
+        """
+        pass
+
+    def assign_role(self, principal_id: str, role_name: str) -> bool:
+        """Assign a role to a principal."""
+        pass
+
+    def revoke_role(self, principal_id: str, role_name: str) -> bool:
+        """Revoke a role from a principal."""
+        pass
+
+    def check_permission(
+        self,
+        principal: Principal,
+        resource: str,
+        action: str,
+        context: Optional[Dict[str, Any]] = None
+    ) -> AuthzResult:
+        """
+        Check if principal has permission to perform action on resource.
+
+        Args:
+            principal: The authenticated principal
+            resource: Resource identifier (e.g., "node:123")
+            action: Action to perform (e.g., "WRITE")
+            context: Additional context for row-level security
+
+        Example:
+            result = security.check_permission(
+                principal=current_user,
+                resource="node:thought:123",
+                action="DELETE",
+                context={"node_owner": "user:456"}
+            )
+            if not result.allowed:
+                raise PermissionDenied(result.reason)
+        """
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # ROW-LEVEL SECURITY
+    # ─────────────────────────────────────────────────────────────────
+
+    def create_policy(
+        self,
+        name: str,
+        resource_pattern: str,
+        condition: str,  # Expression language
+        actions: List[str]
+    ) -> SecurityPolicy:
+        """
+        Create a row-level security policy.
+
+        Example:
+            # Users can only see their own thoughts
+            security.create_policy(
+                name="own_thoughts_only",
+                resource_pattern="namespace:thoughts/*",
+                condition="node.owner_id == principal.id",
+                actions=["READ", "WRITE", "DELETE"]
+            )
+
+            # Managers can see reports from their team
+            security.create_policy(
+                name="team_reports",
+                resource_pattern="namespace:reports/*",
+                condition="node.team_id IN principal.attributes.managed_teams",
+                actions=["READ"]
+            )
+        """
+        pass
+
+    def apply_security_filter(
+        self,
+        query: Query,
+        principal: Principal
+    ) -> Query:
+        """
+        Apply row-level security filters to a query.
+
+        Automatically adds WHERE clauses based on applicable policies.
+        """
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # AUDIT LOGGING
+    # ─────────────────────────────────────────────────────────────────
+
+    def log_access(
+        self,
+        principal: Principal,
+        resource: str,
+        action: str,
+        result: str,  # "ALLOWED", "DENIED"
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> AuditEntry:
+        """
+        Log an access attempt to the audit trail.
+
+        Audit entries are:
+        - Immutable (append-only)
+        - Tamper-evident (hash-chained)
+        - Searchable
+        """
+        pass
+
+    def query_audit_log(
+        self,
+        filters: AuditFilters,
+        limit: int = 100
+    ) -> List[AuditEntry]:
+        """
+        Query the audit log.
+
+        Example:
+            entries = security.query_audit_log(
+                filters=AuditFilters(
+                    principal_id="user:123",
+                    action="DELETE",
+                    time_range=(start, end),
+                    result="DENIED"
+                )
+            )
+        """
+        pass
+
+    def export_compliance_report(
+        self,
+        report_type: ComplianceType,  # SOC2, GDPR, HIPAA
+        time_range: Tuple[datetime, datetime]
+    ) -> ComplianceReport:
+        """Generate compliance report from audit data."""
+        pass
+```
+
+### Encryption at Rest
+
+```python
+class EncryptionManager:
+    """
+    Manages encryption for data at rest.
+
+    Sovereignty Note: We implement AES-256-GCM ourselves.
+    Key management is under our control.
+    """
+
+    def __init__(self, master_key: bytes):
+        """
+        Initialize with master key.
+
+        Master key should be:
+        - 256 bits (32 bytes)
+        - Stored securely (HSM, secure enclave, or encrypted file)
+        - Rotated periodically
+        """
+        pass
+
+    def encrypt_value(
+        self,
+        plaintext: bytes,
+        associated_data: Optional[bytes] = None
+    ) -> EncryptedValue:
+        """
+        Encrypt a value using AES-256-GCM.
+
+        Args:
+            plaintext: Data to encrypt
+            associated_data: Additional authenticated data (not encrypted, but authenticated)
+
+        Returns:
+            EncryptedValue with ciphertext, nonce, and tag
+        """
+        pass
+
+    def decrypt_value(
+        self,
+        encrypted: EncryptedValue,
+        associated_data: Optional[bytes] = None
+    ) -> bytes:
+        """Decrypt a value. Raises AuthenticationError if tampered."""
+        pass
+
+    def rotate_master_key(self, new_master_key: bytes) -> KeyRotationResult:
+        """
+        Rotate the master key.
+
+        Process:
+        1. Generate new data encryption keys with new master
+        2. Re-encrypt all data encryption keys
+        3. Schedule background re-encryption of data
+        """
+        pass
+```
+
+---
+
+## 19. Backup & Disaster Recovery
+
+**Design Philosophy**: Data loss is unacceptable. We maintain multiple recovery options
+with guaranteed RPO (Recovery Point Objective) and RTO (Recovery Time Objective).
+
+### Backup Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      BACKUP STRATEGY                                     │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   CONTINUOUS                  PERIODIC                  ARCHIVE          │
+│   ───────────                 ────────                  ───────          │
+│                                                                          │
+│   ┌─────────┐                ┌─────────┐               ┌─────────┐      │
+│   │   WAL   │                │  FULL   │               │  COLD   │      │
+│   │ Stream  │                │ Snapshot│               │ Storage │      │
+│   └────┬────┘                └────┬────┘               └────┬────┘      │
+│        │                          │                         │           │
+│        ▼                          ▼                         ▼           │
+│   RPO: ~0                    RPO: 1 hour               RPO: 24 hours    │
+│   RTO: minutes               RTO: 15 min               RTO: hours       │
+│                                                                          │
+│   ┌─────────────────────────────────────────────────────────────────┐   │
+│   │                    GEOGRAPHIC DISTRIBUTION                       │   │
+│   │                                                                  │   │
+│   │   Primary DC        Secondary DC         Archive Region          │   │
+│   │   (us-east-1)       (us-west-2)          (eu-west-1)            │   │
+│   │                                                                  │   │
+│   │   WAL + Full        WAL + Full           Monthly Full           │   │
+│   │   (sync)            (async, <1s lag)     (encrypted, compressed)│   │
+│   └─────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### BackupManager API
+
+```python
+@dataclass
+class BackupConfig:
+    """Backup configuration."""
+    destination: str  # "file:///local/path" or custom scheme
+    retention_days: int = 30
+    compression: CompressionType = CompressionType.ZSTD
+    encryption_key: Optional[bytes] = None
+
+@dataclass
+class BackupMetadata:
+    """Metadata about a backup."""
+    backup_id: str
+    timestamp: datetime
+    type: BackupType  # FULL, INCREMENTAL, WAL
+    size_bytes: int
+    checksum: str
+    wal_position: int
+    partitions: List[int]
+
+class BackupManager:
+    """
+    Manages backup creation, storage, and restoration.
+
+    Sovereignty Note: We implement our own backup format.
+    No vendor lock-in to cloud-specific backup services.
+    """
+
+    def __init__(self, config: BackupConfig):
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # BACKUP CREATION
+    # ─────────────────────────────────────────────────────────────────
+
+    def create_full_backup(
+        self,
+        partitions: Optional[List[int]] = None,
+        parallel_workers: int = 4
+    ) -> BackupMetadata:
+        """
+        Create a full backup of all data.
+
+        Args:
+            partitions: Specific partitions to backup (None = all)
+            parallel_workers: Number of parallel backup workers
+
+        Example:
+            backup = backup_mgr.create_full_backup()
+            print(f"Backup created: {backup.backup_id}")
+            print(f"Size: {backup.size_bytes / 1024 / 1024:.2f} MB")
+        """
+        pass
+
+    def create_incremental_backup(self, base_backup_id: str) -> BackupMetadata:
+        """
+        Create incremental backup since last full backup.
+
+        Only backs up changed SSTables since base_backup_id.
+        """
+        pass
+
+    def start_wal_archiving(self, destination: str) -> WALArchiver:
+        """
+        Start continuous WAL archiving.
+
+        Archives WAL segments as they're completed.
+        Enables point-in-time recovery.
+
+        Example:
+            archiver = backup_mgr.start_wal_archiving("file:///backups/wal/")
+            # WAL segments automatically archived
+        """
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # RESTORATION
+    # ─────────────────────────────────────────────────────────────────
+
+    def restore_full_backup(
+        self,
+        backup_id: str,
+        target_path: str,
+        parallel_workers: int = 4
+    ) -> RestoreResult:
+        """
+        Restore from a full backup.
+
+        Args:
+            backup_id: ID of backup to restore
+            target_path: Where to restore data
+            parallel_workers: Number of parallel restore workers
+        """
+        pass
+
+    def restore_point_in_time(
+        self,
+        target_time: datetime,
+        target_path: str
+    ) -> RestoreResult:
+        """
+        Restore to a specific point in time.
+
+        Process:
+        1. Find most recent full backup before target_time
+        2. Restore full backup
+        3. Replay WAL up to target_time
+
+        Example:
+            # Restore to 5 minutes ago (before accidental deletion)
+            result = backup_mgr.restore_point_in_time(
+                target_time=datetime.now() - timedelta(minutes=5),
+                target_path="/recovery/data"
+            )
+        """
+        pass
+
+    def restore_specific_nodes(
+        self,
+        backup_id: str,
+        node_ids: List[str],
+        target_path: str
+    ) -> RestoreResult:
+        """
+        Restore specific nodes from backup.
+
+        Useful for recovering accidentally deleted data.
+        """
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # BACKUP MANAGEMENT
+    # ─────────────────────────────────────────────────────────────────
+
+    def list_backups(
+        self,
+        backup_type: Optional[BackupType] = None,
+        time_range: Optional[Tuple[datetime, datetime]] = None
+    ) -> List[BackupMetadata]:
+        """List available backups."""
+        pass
+
+    def verify_backup(self, backup_id: str) -> VerificationResult:
+        """
+        Verify backup integrity.
+
+        Checks:
+        - Checksum validation
+        - Completeness (all expected files present)
+        - Restorability (can open and read all SSTables)
+        """
+        pass
+
+    def delete_backup(self, backup_id: str) -> bool:
+        """Delete a backup (respects retention policy)."""
+        pass
+
+    def enforce_retention_policy(self) -> RetentionResult:
+        """
+        Enforce backup retention policy.
+
+        Deletes backups older than retention_days,
+        keeping at least one full backup per week.
+        """
+        pass
+
+
+class DisasterRecoveryManager:
+    """
+    Manages disaster recovery procedures.
+    """
+
+    def __init__(
+        self,
+        primary_region: str,
+        secondary_regions: List[str],
+        rpo_seconds: int = 60,
+        rto_seconds: int = 300
+    ):
+        pass
+
+    def get_recovery_status(self) -> DRStatus:
+        """
+        Get current disaster recovery status.
+
+        Returns:
+            DRStatus with:
+            - current_rpo: Actual recovery point objective
+            - current_rto: Estimated recovery time
+            - secondary_lag: Replication lag to each secondary
+            - health: HEALTHY, DEGRADED, CRITICAL
+        """
+        pass
+
+    def initiate_failover(
+        self,
+        target_region: str,
+        force: bool = False
+    ) -> FailoverResult:
+        """
+        Initiate failover to secondary region.
+
+        Args:
+            target_region: Region to failover to
+            force: Force failover even if data loss possible
+
+        Process:
+        1. Stop writes to primary (if reachable)
+        2. Wait for replication to catch up (unless forced)
+        3. Promote secondary to primary
+        4. Update routing
+        """
+        pass
+
+    def initiate_failback(self, from_region: str) -> FailbackResult:
+        """
+        Failback to original primary after recovery.
+
+        Process:
+        1. Verify primary is healthy
+        2. Sync changes made during failover
+        3. Switch traffic back to primary
+        """
+        pass
+
+    def run_dr_drill(self, target_region: str) -> DrillResult:
+        """
+        Run disaster recovery drill without affecting production.
+
+        Creates isolated test environment and validates:
+        - Backup restoration
+        - Failover procedure
+        - Application connectivity
+        """
+        pass
+```
+
+---
+
+## 20. Query Caching
+
+**Design Philosophy**: Repeated queries should be fast. We cache intelligently
+at multiple levels while ensuring cache coherence.
+
+### Caching Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      CACHE HIERARCHY                                     │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   ┌─────────────────────────────────────────────────────────────────┐   │
+│   │  L1: QUERY RESULT CACHE (per-node)                              │   │
+│   │  • Full query results                                           │   │
+│   │  • LRU eviction, TTL-based expiry                              │   │
+│   │  • Hit rate target: >80% for repeated queries                   │   │
+│   └─────────────────────────────────────────────────────────────────┘   │
+│                              │                                           │
+│                              ▼                                           │
+│   ┌─────────────────────────────────────────────────────────────────┐   │
+│   │  L2: PREPARED STATEMENT CACHE                                    │   │
+│   │  • Parsed + planned queries                                     │   │
+│   │  • Avoids repeated parsing overhead                             │   │
+│   │  • Parameterized query templates                                │   │
+│   └─────────────────────────────────────────────────────────────────┘   │
+│                              │                                           │
+│                              ▼                                           │
+│   ┌─────────────────────────────────────────────────────────────────┐   │
+│   │  L3: SUBGRAPH CACHE                                              │   │
+│   │  • Hot subgraphs kept in memory                                 │   │
+│   │  • Frequently traversed neighborhoods                           │   │
+│   │  • Adaptive based on access patterns                            │   │
+│   └─────────────────────────────────────────────────────────────────┘   │
+│                              │                                           │
+│                              ▼                                           │
+│   ┌─────────────────────────────────────────────────────────────────┐   │
+│   │  L4: BLOCK CACHE (SSTable blocks)                                │   │
+│   │  • Decompressed SSTable blocks                                  │   │
+│   │  • Shared across queries                                        │   │
+│   │  • Clock-based eviction                                         │   │
+│   └─────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### CacheManager API
+
+```python
+@dataclass
+class CacheConfig:
+    """Cache configuration."""
+    result_cache_size_mb: int = 256
+    prepared_cache_size: int = 1000
+    subgraph_cache_size_mb: int = 512
+    block_cache_size_mb: int = 1024
+    default_ttl_seconds: int = 300
+
+class CacheManager:
+    """
+    Manages multi-level query caching.
+
+    Sovereignty Note: We implement our own caching layer.
+    No Redis, no Memcached. Our cache, our control.
+    """
+
+    def __init__(self, config: CacheConfig):
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # QUERY RESULT CACHE
+    # ─────────────────────────────────────────────────────────────────
+
+    def get_result(self, query_hash: str) -> Optional[CachedResult]:
+        """
+        Get cached query result.
+
+        Args:
+            query_hash: Hash of normalized query + parameters
+
+        Returns:
+            CachedResult if hit, None if miss
+        """
+        pass
+
+    def put_result(
+        self,
+        query_hash: str,
+        result: QueryResult,
+        ttl_seconds: Optional[int] = None,
+        invalidation_keys: Optional[List[str]] = None
+    ) -> None:
+        """
+        Cache a query result.
+
+        Args:
+            query_hash: Hash of normalized query
+            result: Query result to cache
+            ttl_seconds: Time-to-live (None = use default)
+            invalidation_keys: Keys that should invalidate this cache entry
+
+        Example:
+            cache.put_result(
+                query_hash="abc123",
+                result=query_result,
+                ttl_seconds=60,
+                invalidation_keys=["node:123", "node:456"]  # Invalidate if these change
+            )
+        """
+        pass
+
+    def invalidate_by_key(self, invalidation_key: str) -> int:
+        """
+        Invalidate all cache entries associated with a key.
+
+        Called when data changes to maintain cache coherence.
+        Returns number of entries invalidated.
+        """
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # PREPARED STATEMENT CACHE
+    # ─────────────────────────────────────────────────────────────────
+
+    def prepare_statement(self, query: str) -> PreparedStatement:
+        """
+        Prepare a query for repeated execution.
+
+        Parses, validates, and plans the query once.
+        Subsequent executions only need parameter binding.
+
+        Example:
+            stmt = cache.prepare_statement(
+                "MATCH (n:Thought {owner: $owner}) RETURN n"
+            )
+
+            # Execute multiple times with different parameters
+            result1 = stmt.execute({"owner": "user1"})
+            result2 = stmt.execute({"owner": "user2"})
+        """
+        pass
+
+    def get_prepared_statement(self, query_hash: str) -> Optional[PreparedStatement]:
+        """Get a previously prepared statement."""
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # SUBGRAPH CACHE
+    # ─────────────────────────────────────────────────────────────────
+
+    def cache_subgraph(
+        self,
+        center_node_id: str,
+        depth: int,
+        subgraph: Subgraph
+    ) -> None:
+        """
+        Cache a subgraph rooted at a node.
+
+        Useful for frequently accessed neighborhoods.
+        """
+        pass
+
+    def get_subgraph(
+        self,
+        center_node_id: str,
+        depth: int
+    ) -> Optional[Subgraph]:
+        """Get cached subgraph if available."""
+        pass
+
+    def warm_subgraph(self, node_ids: List[str], depth: int) -> WarmResult:
+        """
+        Proactively warm cache for specified nodes.
+
+        Example:
+            # Warm cache for user's recent thoughts before they query
+            cache.warm_subgraph(
+                node_ids=user.recent_thought_ids,
+                depth=2
+            )
+        """
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # CACHE MANAGEMENT
+    # ─────────────────────────────────────────────────────────────────
+
+    def get_stats(self) -> CacheStats:
+        """
+        Get cache statistics.
+
+        Returns:
+            CacheStats with:
+            - hit_rate: Overall cache hit rate
+            - hit_rate_by_level: {L1: 0.85, L2: 0.92, ...}
+            - memory_usage_by_level: Bytes used per level
+            - eviction_count: Number of evictions
+        """
+        pass
+
+    def clear(self, level: Optional[CacheLevel] = None) -> None:
+        """Clear cache (all levels or specific level)."""
+        pass
+
+    def resize(self, level: CacheLevel, new_size_mb: int) -> None:
+        """Dynamically resize a cache level."""
+        pass
+
+    def set_adaptive_mode(self, enabled: bool) -> None:
+        """
+        Enable adaptive caching.
+
+        When enabled, cache automatically:
+        - Adjusts sizes based on hit rates
+        - Identifies and caches hot subgraphs
+        - Extends TTL for frequently accessed entries
+        """
+        pass
+```
+
+---
+
+## 21. Streaming & Change Data Capture
+
+**Design Philosophy**: Real-time data access is critical. We provide streaming
+capabilities for live updates and change tracking.
+
+### Streaming Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    CHANGE DATA CAPTURE FLOW                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   ┌─────────────┐    ┌─────────────┐    ┌─────────────────────────┐    │
+│   │   WRITE     │───▶│    WAL      │───▶│   CHANGE LOG            │    │
+│   │  OPERATION  │    │             │    │   (ordered, durable)    │    │
+│   └─────────────┘    └─────────────┘    └───────────┬─────────────┘    │
+│                                                      │                   │
+│                      ┌───────────────────────────────┼───────────────┐  │
+│                      │                               │               │  │
+│                      ▼                               ▼               ▼  │
+│              ┌─────────────┐              ┌─────────────┐    ┌─────────┐│
+│              │  SUBSCRIBER │              │  SUBSCRIBER │    │CONNECTOR││
+│              │  (push)     │              │  (pull)     │    │(export) ││
+│              └─────────────┘              └─────────────┘    └─────────┘│
+│                      │                           │                │     │
+│                      ▼                           ▼                ▼     │
+│              ┌─────────────┐              ┌─────────────┐    ┌─────────┐│
+│              │ Real-time   │              │   Batch     │    │ External││
+│              │ Dashboard   │              │  Analytics  │    │ Systems ││
+│              └─────────────┘              └─────────────┘    └─────────┘│
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### CDCManager API
+
+```python
+@dataclass
+class ChangeEvent:
+    """Represents a single change event."""
+    sequence_id: int          # Monotonic sequence number
+    timestamp: datetime       # When the change occurred
+    operation: ChangeOp       # INSERT, UPDATE, DELETE
+    namespace: str            # Affected namespace
+    entity_type: EntityType   # NODE or EDGE
+    entity_id: str            # ID of changed entity
+    before: Optional[Dict]    # Previous state (for UPDATE/DELETE)
+    after: Optional[Dict]     # New state (for INSERT/UPDATE)
+    transaction_id: str       # Originating transaction
+    metadata: Dict[str, Any]  # Additional context
+
+class CDCManager:
+    """
+    Manages Change Data Capture and streaming.
+
+    Sovereignty Note: We implement our own CDC infrastructure.
+    No Kafka, no Debezium. Our stream, our control.
+    """
+
+    def __init__(
+        self,
+        retention_hours: int = 168,  # 7 days
+        max_subscribers: int = 100
+    ):
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # SUBSCRIPTIONS
+    # ─────────────────────────────────────────────────────────────────
+
+    def subscribe(
+        self,
+        subscriber_id: str,
+        filter: Optional[ChangeFilter] = None,
+        start_from: StartPosition = StartPosition.NOW,
+        delivery_mode: DeliveryMode = DeliveryMode.PUSH
+    ) -> Subscription:
+        """
+        Subscribe to change events.
+
+        Args:
+            subscriber_id: Unique subscriber identifier
+            filter: Optional filter for events
+            start_from: Where to start reading (NOW, BEGINNING, sequence_id)
+            delivery_mode: PUSH (callback) or PULL (polling)
+
+        Example:
+            # Subscribe to all thought changes
+            sub = cdc.subscribe(
+                subscriber_id="dashboard-1",
+                filter=ChangeFilter(
+                    namespaces=["thought_graph"],
+                    operations=[ChangeOp.INSERT, ChangeOp.UPDATE],
+                    entity_types=[EntityType.NODE]
+                ),
+                start_from=StartPosition.NOW,
+                delivery_mode=DeliveryMode.PUSH
+            )
+
+            # Set up callback
+            sub.on_change(lambda event: update_dashboard(event))
+        """
+        pass
+
+    def unsubscribe(self, subscriber_id: str) -> bool:
+        """Remove a subscription."""
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # PULL-BASED CONSUMPTION
+    # ─────────────────────────────────────────────────────────────────
+
+    def poll(
+        self,
+        subscriber_id: str,
+        max_events: int = 100,
+        timeout_ms: int = 1000
+    ) -> List[ChangeEvent]:
+        """
+        Poll for new events (pull mode).
+
+        Args:
+            subscriber_id: Subscriber identifier
+            max_events: Maximum events to return
+            timeout_ms: How long to wait for events
+
+        Returns:
+            List of change events (may be empty if no changes)
+        """
+        pass
+
+    def acknowledge(self, subscriber_id: str, sequence_id: int) -> None:
+        """
+        Acknowledge processing of events up to sequence_id.
+
+        Allows subscriber to resume from this point if disconnected.
+        """
+        pass
+
+    def get_subscriber_lag(self, subscriber_id: str) -> SubscriberLag:
+        """
+        Get how far behind a subscriber is.
+
+        Returns:
+            SubscriberLag with events_behind, bytes_behind, estimated_catch_up_time
+        """
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # CHANGE LOG QUERIES
+    # ─────────────────────────────────────────────────────────────────
+
+    def get_changes(
+        self,
+        entity_id: str,
+        time_range: Optional[Tuple[datetime, datetime]] = None,
+        limit: int = 100
+    ) -> List[ChangeEvent]:
+        """
+        Get change history for an entity.
+
+        Example:
+            # Get all changes to a thought in the last hour
+            changes = cdc.get_changes(
+                entity_id="thought:123",
+                time_range=(datetime.now() - timedelta(hours=1), datetime.now())
+            )
+            for change in changes:
+                print(f"{change.timestamp}: {change.operation}")
+        """
+        pass
+
+    def get_entity_at_time(self, entity_id: str, timestamp: datetime) -> Optional[Dict]:
+        """
+        Get entity state at a specific point in time.
+
+        Reconstructs entity by replaying changes.
+        """
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # CONNECTORS
+    # ─────────────────────────────────────────────────────────────────
+
+    def create_connector(
+        self,
+        name: str,
+        connector_type: ConnectorType,
+        config: ConnectorConfig
+    ) -> Connector:
+        """
+        Create a connector to export changes to external systems.
+
+        Example:
+            # Export to file (for batch processing)
+            connector = cdc.create_connector(
+                name="analytics-export",
+                connector_type=ConnectorType.FILE,
+                config=FileConnectorConfig(
+                    path="/exports/changes/",
+                    format=ExportFormat.JSONL,
+                    rotation_interval_hours=1
+                )
+            )
+
+            # Export via webhook
+            connector = cdc.create_connector(
+                name="webhook-notify",
+                connector_type=ConnectorType.WEBHOOK,
+                config=WebhookConnectorConfig(
+                    url="https://internal.example.com/graph-changes",
+                    batch_size=100,
+                    flush_interval_seconds=5
+                )
+            )
+        """
+        pass
+
+
+class StreamingQueryEngine:
+    """
+    Execute continuous queries over graph changes.
+    """
+
+    def create_continuous_query(
+        self,
+        query: str,
+        callback: Callable[[StreamResult], None]
+    ) -> ContinuousQuery:
+        """
+        Create a continuous query that triggers on matching changes.
+
+        Example:
+            # Alert when a thought with high importance is created
+            cq = stream.create_continuous_query(
+                query=\"\"\"
+                    ON INSERT INTO thought_graph
+                    WHERE new.importance > 0.9
+                    EMIT new
+                \"\"\",
+                callback=lambda result: send_alert(result)
+            )
+        """
+        pass
+
+    def create_windowed_aggregation(
+        self,
+        query: str,
+        window_size: timedelta,
+        slide_interval: timedelta,
+        callback: Callable[[AggregationResult], None]
+    ) -> WindowedQuery:
+        """
+        Create a windowed aggregation over changes.
+
+        Example:
+            # Count thoughts created per minute, updated every 10 seconds
+            wq = stream.create_windowed_aggregation(
+                query="SELECT COUNT(*) FROM thought_graph WHERE operation = 'INSERT'",
+                window_size=timedelta(minutes=1),
+                slide_interval=timedelta(seconds=10),
+                callback=lambda result: update_metrics(result)
+            )
+        """
+        pass
+```
+
+---
+
+## 22. Graph-Specific Optimizations
+
+**Design Philosophy**: Graph workloads have unique patterns. We optimize for
+traversals, neighborhood queries, and relationship-heavy operations.
+
+### Optimization Strategies
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                   GRAPH OPTIMIZATIONS                                    │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   STORAGE LAYOUT                          TRAVERSAL OPTIMIZATION         │
+│   ──────────────                          ──────────────────────         │
+│                                                                          │
+│   ┌─────────────────────────┐            ┌─────────────────────────┐    │
+│   │    EDGE COLOCATION      │            │   NEIGHBOR PRELOADING   │    │
+│   │                         │            │                         │    │
+│   │  Store edges near their │            │  Prefetch neighbors     │    │
+│   │  source nodes for fast  │            │  during traversal       │    │
+│   │  adjacency lookups      │            │  based on access pattern│    │
+│   └─────────────────────────┘            └─────────────────────────┘    │
+│                                                                          │
+│   ┌─────────────────────────┐            ┌─────────────────────────┐    │
+│   │    CSR FORMAT           │            │   BIDIRECTIONAL INDEX   │    │
+│   │                         │            │                         │    │
+│   │  Compressed Sparse Row  │            │  Index both incoming    │    │
+│   │  for memory-efficient   │            │  and outgoing edges     │    │
+│   │  adjacency storage      │            │  for reverse traversal  │    │
+│   └─────────────────────────┘            └─────────────────────────┘    │
+│                                                                          │
+│   QUERY OPTIMIZATION                      MEMORY OPTIMIZATION            │
+│   ──────────────────                      ───────────────────            │
+│                                                                          │
+│   ┌─────────────────────────┐            ┌─────────────────────────┐    │
+│   │   VERTEX-CENTRIC        │            │   PROPERTY SEPARATION   │    │
+│   │   EXECUTION             │            │                         │    │
+│   │                         │            │  Store hot properties   │    │
+│   │  Execute at vertices,   │            │  separately from cold   │    │
+│   │  minimize data movement │            │  for cache efficiency   │    │
+│   └─────────────────────────┘            └─────────────────────────┘    │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### GraphOptimizer API
+
+```python
+class EdgeColocationManager:
+    """
+    Manages edge colocation with source nodes.
+
+    Colocating edges with their source nodes improves:
+    - Adjacency list lookups (single I/O instead of two)
+    - Traversal performance (neighbors are nearby)
+    - Cache utilization (related data loaded together)
+    """
+
+    def __init__(self, colocation_threshold: int = 100):
+        """
+        Args:
+            colocation_threshold: Max edges to colocate per node
+                                  (high-degree nodes use separate storage)
+        """
+        pass
+
+    def get_colocated_edges(self, node_id: str) -> List[Edge]:
+        """Get edges colocated with a node (fast path)."""
+        pass
+
+    def get_overflow_edges(self, node_id: str) -> List[Edge]:
+        """Get edges in overflow storage (for high-degree nodes)."""
+        pass
+
+    def rebalance_colocation(self, partition: int) -> RebalanceResult:
+        """
+        Rebalance edge colocation in a partition.
+
+        Moves edges between colocated and overflow storage
+        based on current degree distribution.
+        """
+        pass
+
+
+class CSRIndex:
+    """
+    Compressed Sparse Row format for efficient adjacency storage.
+
+    Memory layout:
+    - offsets[]: Start position of each node's neighbors
+    - neighbors[]: Flattened array of neighbor IDs
+    - edge_data[]: Parallel array of edge properties
+
+    Benefits:
+    - O(1) access to any node's neighbor list
+    - Cache-friendly sequential access
+    - 50-70% memory reduction vs adjacency lists
+    """
+
+    def __init__(self, nodes: List[str], edges: List[Edge]):
+        """Build CSR index from nodes and edges."""
+        pass
+
+    def get_neighbors(self, node_id: str) -> Iterator[Tuple[str, Dict]]:
+        """
+        Get neighbors of a node.
+
+        Yields (neighbor_id, edge_properties) tuples.
+        """
+        pass
+
+    def get_neighbor_count(self, node_id: str) -> int:
+        """Get degree of a node in O(1)."""
+        pass
+
+    def get_memory_usage(self) -> CSRMemoryStats:
+        """Get memory usage statistics."""
+        pass
+
+
+class NeighborPreloader:
+    """
+    Prefetches neighbors during traversal based on access patterns.
+    """
+
+    def __init__(
+        self,
+        lookahead_depth: int = 2,
+        max_prefetch: int = 1000
+    ):
+        pass
+
+    def start_traversal(self, start_node: str) -> TraversalContext:
+        """
+        Start a traversal with prefetching.
+
+        Example:
+            ctx = preloader.start_traversal("node:123")
+            for neighbor in ctx.get_neighbors():
+                # Neighbors already prefetched
+                process(neighbor)
+                for nn in ctx.get_neighbors(neighbor):
+                    # Next level also prefetched
+                    process(nn)
+        """
+        pass
+
+    def hint_traversal_direction(
+        self,
+        edge_types: List[str],
+        direction: Direction
+    ) -> None:
+        """Hint which edge types will be traversed for better prefetching."""
+        pass
+
+
+class BidirectionalEdgeIndex:
+    """
+    Index for both outgoing and incoming edges.
+
+    Enables efficient:
+    - Reverse traversal (find who points to me)
+    - Bidirectional path finding
+    - Relationship queries in both directions
+    """
+
+    def __init__(self):
+        pass
+
+    def get_outgoing(self, node_id: str, edge_type: Optional[str] = None) -> List[Edge]:
+        """Get outgoing edges from a node."""
+        pass
+
+    def get_incoming(self, node_id: str, edge_type: Optional[str] = None) -> List[Edge]:
+        """Get incoming edges to a node."""
+        pass
+
+    def get_bidirectional(
+        self,
+        node_id: str,
+        edge_type: Optional[str] = None
+    ) -> Tuple[List[Edge], List[Edge]]:
+        """Get both incoming and outgoing edges."""
+        pass
+
+
+class PropertySeparator:
+    """
+    Separates hot and cold properties for cache efficiency.
+
+    Hot properties (frequently accessed): stored inline
+    Cold properties (rarely accessed): stored separately
+
+    Benefits:
+    - Better cache utilization
+    - Faster scans (smaller records)
+    - Reduced I/O for common queries
+    """
+
+    def __init__(self, hot_property_threshold: float = 0.8):
+        """
+        Args:
+            hot_property_threshold: Access frequency threshold for hot storage
+        """
+        pass
+
+    def analyze_access_patterns(
+        self,
+        window_hours: int = 24
+    ) -> PropertyAccessAnalysis:
+        """
+        Analyze property access patterns.
+
+        Returns:
+            PropertyAccessAnalysis with hot/cold classification
+        """
+        pass
+
+    def get_hot_properties(self, node_id: str) -> Dict[str, Any]:
+        """Get hot properties (fast path)."""
+        pass
+
+    def get_cold_properties(self, node_id: str) -> Dict[str, Any]:
+        """Get cold properties (slower, separate I/O)."""
+        pass
+
+    def reclassify_properties(self) -> ReclassifyResult:
+        """
+        Reclassify properties based on recent access patterns.
+
+        Moves properties between hot and cold storage.
+        """
+        pass
+
+
+class VertexCentricExecutor:
+    """
+    Execute computations in a vertex-centric manner.
+
+    Model: Think like a vertex
+    - Each vertex processes its local neighborhood
+    - Messages sent along edges
+    - Iterates until convergence
+
+    Benefits:
+    - Natural parallelism
+    - Minimal data movement
+    - Scales to large graphs
+    """
+
+    def __init__(self, max_iterations: int = 100):
+        pass
+
+    def run_pregel(
+        self,
+        vertex_program: Callable[[Vertex, Messages], Tuple[Vertex, Messages]],
+        initial_message: Any,
+        combiner: Optional[Callable[[Any, Any], Any]] = None
+    ) -> PregelResult:
+        """
+        Run a Pregel-style computation.
+
+        Args:
+            vertex_program: Function executed at each vertex
+            initial_message: Message sent to all vertices initially
+            combiner: Optional function to combine messages
+
+        Example:
+            # PageRank implementation
+            def pagerank_vertex(vertex, messages):
+                if messages:
+                    rank = 0.15 + 0.85 * sum(messages)
+                else:
+                    rank = vertex.properties["rank"]
+
+                out_degree = vertex.out_degree
+                out_message = rank / out_degree if out_degree > 0 else 0
+
+                vertex.properties["rank"] = rank
+                return vertex, [(neighbor, out_message) for neighbor in vertex.neighbors]
+
+            result = executor.run_pregel(pagerank_vertex, initial_message=1.0)
+        """
+        pass
+
+    def run_gather_scatter(
+        self,
+        gather: Callable[[Vertex, Edge, Vertex], Any],
+        sum_fn: Callable[[Any, Any], Any],
+        apply: Callable[[Vertex, Any], Vertex],
+        scatter: Callable[[Vertex, Edge], Optional[Any]]
+    ) -> GatherScatterResult:
+        """
+        Run a Gather-Apply-Scatter computation.
+
+        More flexible than Pregel for some algorithms.
+        """
+        pass
+```
+
+---
+
+## 23. Testing Framework
+
+**Design Philosophy**: A distributed graph requires rigorous testing at all levels.
+We provide built-in tools for chaos, load, and fuzz testing.
+
+### Testing Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      TESTING PYRAMID                                     │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│                        ┌───────────────┐                                │
+│                        │   CHAOS       │  ← Failure injection           │
+│                        │   TESTING     │    Network partitions          │
+│                        └───────────────┘    Node failures               │
+│                       ╱                 ╲                                │
+│                      ╱                   ╲                               │
+│               ┌───────────┐         ┌───────────┐                       │
+│               │   LOAD    │         │   FUZZ    │  ← Random inputs      │
+│               │  TESTING  │         │  TESTING  │    Edge cases         │
+│               └───────────┘         └───────────┘    Malformed data     │
+│              ╱             ╲       ╱             ╲                       │
+│             ╱               ╲     ╱               ╲                      │
+│      ┌───────────┐    ┌───────────┐    ┌───────────┐                   │
+│      │ CONTRACT  │    │ BEHAVIOR  │    │   UNIT    │  ← Fast, focused   │
+│      │   TESTS   │    │   TESTS   │    │   TESTS   │    Deterministic   │
+│      └───────────┘    └───────────┘    └───────────┘                   │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### TestingFramework API
+
+```python
+class ChaosTestFramework:
+    """
+    Framework for chaos engineering tests.
+
+    Tests system resilience by injecting failures:
+    - Network partitions
+    - Node crashes
+    - Disk failures
+    - Clock skew
+    - Resource exhaustion
+
+    Sovereignty Note: We build our own chaos framework.
+    No Chaos Monkey, no LitmusChaos. Our chaos, our control.
+    """
+
+    def __init__(self, cluster: CDGCluster):
+        self.cluster = cluster
+        self.injectors: List[FaultInjector] = []
+
+    # ─────────────────────────────────────────────────────────────────
+    # FAULT INJECTION
+    # ─────────────────────────────────────────────────────────────────
+
+    def inject_network_partition(
+        self,
+        partition_a: List[str],
+        partition_b: List[str],
+        duration_seconds: int
+    ) -> FaultHandle:
+        """
+        Create a network partition between two groups of nodes.
+
+        Example:
+            # Split cluster in half
+            handle = chaos.inject_network_partition(
+                partition_a=["node1", "node2"],
+                partition_b=["node3", "node4"],
+                duration_seconds=30
+            )
+
+            # Verify system behavior during partition
+            assert cluster.is_available()  # Should remain available
+            assert cluster.writes_succeed()  # With quorum
+
+            # Heal partition
+            handle.heal()
+        """
+        pass
+
+    def inject_node_crash(
+        self,
+        node_id: str,
+        crash_type: CrashType = CrashType.SIGKILL
+    ) -> FaultHandle:
+        """
+        Simulate a node crash.
+
+        CrashType options:
+        - SIGKILL: Immediate crash (no cleanup)
+        - SIGTERM: Graceful shutdown
+        - OOM: Out of memory killer
+        - HANG: Process hangs (no response)
+        """
+        pass
+
+    def inject_disk_failure(
+        self,
+        node_id: str,
+        failure_type: DiskFailureType
+    ) -> FaultHandle:
+        """
+        Simulate disk failure.
+
+        DiskFailureType options:
+        - READONLY: Disk becomes read-only
+        - SLOW: I/O latency increased 100x
+        - CORRUPT: Random bit flips
+        - FULL: Disk space exhausted
+        """
+        pass
+
+    def inject_clock_skew(
+        self,
+        node_id: str,
+        skew_seconds: int
+    ) -> FaultHandle:
+        """
+        Inject clock skew on a node.
+
+        Tests timestamp-dependent logic.
+        """
+        pass
+
+    def inject_network_delay(
+        self,
+        node_id: str,
+        delay_ms: int,
+        jitter_ms: int = 0
+    ) -> FaultHandle:
+        """
+        Add network latency to a node.
+
+        Example:
+            # Simulate cross-datacenter latency
+            handle = chaos.inject_network_delay(
+                node_id="node1",
+                delay_ms=100,
+                jitter_ms=20
+            )
+        """
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # CHAOS SCENARIOS
+    # ─────────────────────────────────────────────────────────────────
+
+    def run_scenario(self, scenario: ChaosScenario) -> ScenarioResult:
+        """
+        Run a predefined chaos scenario.
+
+        Example:
+            result = chaos.run_scenario(ChaosScenarios.LEADER_FAILURE)
+            assert result.recovery_time_seconds < 10
+            assert result.data_loss == 0
+        """
+        pass
+
+    @staticmethod
+    def scenarios() -> Dict[str, ChaosScenario]:
+        """
+        Get predefined chaos scenarios.
+
+        Available scenarios:
+        - LEADER_FAILURE: Kill leader, verify failover
+        - NETWORK_PARTITION_QUORUM: Partition with quorum preserved
+        - NETWORK_PARTITION_MINORITY: Partition with minority isolated
+        - ROLLING_RESTART: Restart nodes one by one
+        - DATACENTER_FAILURE: Lose entire datacenter
+        - SPLIT_BRAIN: Network partition causing split brain
+        """
+        pass
+
+
+class LoadTestFramework:
+    """
+    Framework for load and performance testing.
+    """
+
+    def __init__(self, cluster: CDGCluster):
+        pass
+
+    def run_load_test(
+        self,
+        workload: Workload,
+        duration_seconds: int,
+        target_ops_per_second: int,
+        ramp_up_seconds: int = 30
+    ) -> LoadTestResult:
+        """
+        Run a load test with specified workload.
+
+        Example:
+            result = load.run_load_test(
+                workload=Workloads.MIXED_READ_WRITE(read_pct=80),
+                duration_seconds=300,
+                target_ops_per_second=10000,
+                ramp_up_seconds=60
+            )
+
+            print(f"Achieved throughput: {result.actual_ops_per_second}")
+            print(f"p99 latency: {result.latency_p99_ms}ms")
+            print(f"Error rate: {result.error_rate_pct}%")
+        """
+        pass
+
+    def run_stress_test(
+        self,
+        workload: Workload,
+        max_duration_seconds: int = 600
+    ) -> StressTestResult:
+        """
+        Run stress test to find breaking point.
+
+        Increases load until system fails or degrades.
+        """
+        pass
+
+    def run_soak_test(
+        self,
+        workload: Workload,
+        duration_hours: int,
+        target_ops_per_second: int
+    ) -> SoakTestResult:
+        """
+        Run extended soak test to find memory leaks, degradation.
+        """
+        pass
+
+    @staticmethod
+    def workloads() -> Dict[str, Workload]:
+        """
+        Get predefined workloads.
+
+        Available workloads:
+        - READ_HEAVY: 95% reads, 5% writes
+        - WRITE_HEAVY: 30% reads, 70% writes
+        - MIXED_READ_WRITE: Configurable ratio
+        - TRAVERSAL_HEAVY: Graph traversals
+        - SCAN_HEAVY: Full partition scans
+        - POINT_LOOKUP: Single node lookups
+        """
+        pass
+
+
+class FuzzTestFramework:
+    """
+    Framework for fuzz testing.
+
+    Generates random/malformed inputs to find edge cases.
+    """
+
+    def __init__(self, cluster: CDGCluster):
+        pass
+
+    def fuzz_queries(
+        self,
+        iterations: int = 10000,
+        seed: Optional[int] = None
+    ) -> FuzzResult:
+        """
+        Fuzz the query parser and executor.
+
+        Generates random CQL queries to find:
+        - Parser crashes
+        - Executor panics
+        - Unexpected behavior
+        """
+        pass
+
+    def fuzz_input_data(
+        self,
+        iterations: int = 10000,
+        seed: Optional[int] = None
+    ) -> FuzzResult:
+        """
+        Fuzz input data (nodes, edges, properties).
+
+        Tests:
+        - Unicode handling
+        - Large values
+        - Special characters
+        - Null/empty values
+        """
+        pass
+
+    def fuzz_protocol(
+        self,
+        iterations: int = 10000,
+        seed: Optional[int] = None
+    ) -> FuzzResult:
+        """
+        Fuzz the wire protocol.
+
+        Sends malformed messages to test:
+        - Protocol parser robustness
+        - Error handling
+        - Resource limits
+        """
+        pass
+
+    def property_based_test(
+        self,
+        property_fn: Callable[[Any], bool],
+        generator: DataGenerator,
+        iterations: int = 1000
+    ) -> PropertyTestResult:
+        """
+        Run property-based testing.
+
+        Example:
+            # Property: insert then get returns same value
+            def insert_get_roundtrip(data):
+                node = cdg.insert_node(data)
+                retrieved = cdg.get_node(node.id)
+                return retrieved.properties == data
+
+            result = fuzz.property_based_test(
+                property_fn=insert_get_roundtrip,
+                generator=generators.random_node_data(),
+                iterations=10000
+            )
+        """
+        pass
+
+
+class TestDataGenerator:
+    """
+    Generate test data for various scenarios.
+    """
+
+    @staticmethod
+    def random_graph(
+        num_nodes: int,
+        num_edges: int,
+        node_types: List[str],
+        edge_types: List[str]
+    ) -> Tuple[List[Node], List[Edge]]:
+        """Generate a random graph."""
+        pass
+
+    @staticmethod
+    def scale_free_graph(num_nodes: int) -> Tuple[List[Node], List[Edge]]:
+        """Generate scale-free graph (power-law degree distribution)."""
+        pass
+
+    @staticmethod
+    def small_world_graph(
+        num_nodes: int,
+        k: int,
+        p: float
+    ) -> Tuple[List[Node], List[Edge]]:
+        """Generate small-world graph (Watts-Strogatz model)."""
+        pass
+
+    @staticmethod
+    def hierarchical_graph(
+        depth: int,
+        branching_factor: int
+    ) -> Tuple[List[Node], List[Edge]]:
+        """Generate hierarchical/tree graph."""
+        pass
+```
+
+---
+
+## 24. Query Optimizer
+
+**Design Philosophy**: Queries should execute efficiently regardless of how they're written.
+The optimizer transforms queries into optimal execution plans.
+
+### Optimizer Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      QUERY OPTIMIZATION PIPELINE                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                │
+│   │   PARSE     │───▶│  ANALYZE    │───▶│  REWRITE    │                │
+│   │             │    │             │    │             │                │
+│   │  CQL → AST  │    │  Bind types │    │  Apply      │                │
+│   │             │    │  Resolve    │    │  rewrite    │                │
+│   │             │    │  references │    │  rules      │                │
+│   └─────────────┘    └─────────────┘    └─────────────┘                │
+│                                                │                         │
+│                                                ▼                         │
+│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                │
+│   │   EXECUTE   │◀───│   PLAN      │◀───│  OPTIMIZE   │                │
+│   │             │    │             │    │             │                │
+│   │  Run plan   │    │  Generate   │    │  Cost-based │                │
+│   │  Return     │    │  physical   │    │  selection  │                │
+│   │  results    │    │  operators  │    │  Join order │                │
+│   └─────────────┘    └─────────────┘    └─────────────┘                │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### QueryOptimizer API
+
+```python
+@dataclass
+class QueryPlan:
+    """Represents a query execution plan."""
+    root_operator: Operator
+    estimated_cost: float
+    estimated_rows: int
+    estimated_memory_mb: float
+    partitions_accessed: List[int]
+    indexes_used: List[str]
+
+@dataclass
+class TableStatistics:
+    """Statistics for cost estimation."""
+    row_count: int
+    distinct_values: Dict[str, int]  # column -> distinct count
+    null_count: Dict[str, int]       # column -> null count
+    histograms: Dict[str, Histogram] # column -> value distribution
+    correlation: Dict[Tuple[str, str], float]  # column pair -> correlation
+
+class QueryOptimizer:
+    """
+    Cost-based query optimizer.
+
+    Transforms logical query plans into optimal physical plans
+    using statistics and cost models.
+
+    Sovereignty Note: We build our own optimizer.
+    No Calcite, no external query planners. Our optimizer, our control.
+    """
+
+    def __init__(
+        self,
+        statistics_manager: StatisticsManager,
+        cost_model: CostModel
+    ):
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # OPTIMIZATION
+    # ─────────────────────────────────────────────────────────────────
+
+    def optimize(self, logical_plan: LogicalPlan) -> QueryPlan:
+        """
+        Optimize a logical plan into a physical plan.
+
+        Steps:
+        1. Apply rewrite rules
+        2. Generate candidate physical plans
+        3. Estimate cost of each plan
+        4. Select lowest cost plan
+
+        Example:
+            logical = parser.parse("MATCH (a)-[r]->(b) WHERE a.type = 'thought' RETURN b")
+            plan = optimizer.optimize(logical)
+            print(f"Estimated cost: {plan.estimated_cost}")
+            print(f"Indexes used: {plan.indexes_used}")
+        """
+        pass
+
+    def explain(self, query: str, verbose: bool = False) -> ExplainResult:
+        """
+        Explain query execution plan.
+
+        Example:
+            explain = optimizer.explain(
+                "MATCH (a:Thought)-[:RELATES_TO]->(b) WHERE a.importance > 0.5 RETURN b",
+                verbose=True
+            )
+            print(explain.plan_tree)
+            # Output:
+            # Project [b]
+            #   └── Filter [a.importance > 0.5]
+            #         └── Expand [a -[:RELATES_TO]-> b]
+            #               └── IndexScan [a:Thought] using idx_thought_type
+        """
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # REWRITE RULES
+    # ─────────────────────────────────────────────────────────────────
+
+    def add_rewrite_rule(self, rule: RewriteRule) -> None:
+        """
+        Add a query rewrite rule.
+
+        Example:
+            # Push filters down to reduce intermediate results
+            optimizer.add_rewrite_rule(PushDownFilterRule())
+
+            # Eliminate redundant projections
+            optimizer.add_rewrite_rule(EliminateProjectionRule())
+        """
+        pass
+
+    @staticmethod
+    def default_rules() -> List[RewriteRule]:
+        """
+        Get default rewrite rules.
+
+        Includes:
+        - PushDownFilter: Move filters closer to data source
+        - EliminateProjection: Remove unnecessary projections
+        - MergeFilters: Combine consecutive filters
+        - SimplifyPredicates: Boolean simplification
+        - FoldConstants: Evaluate constant expressions
+        - DeduplicateJoins: Remove redundant joins
+        """
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # JOIN OPTIMIZATION
+    # ─────────────────────────────────────────────────────────────────
+
+    def optimize_join_order(
+        self,
+        tables: List[str],
+        predicates: List[Predicate]
+    ) -> JoinOrder:
+        """
+        Find optimal join order.
+
+        Uses dynamic programming for small numbers of tables,
+        falls back to greedy/genetic algorithms for large joins.
+        """
+        pass
+
+    def select_join_algorithm(
+        self,
+        left_stats: TableStatistics,
+        right_stats: TableStatistics,
+        predicate: JoinPredicate
+    ) -> JoinAlgorithm:
+        """
+        Select best join algorithm.
+
+        Options:
+        - NESTED_LOOP: Small outer, any inner
+        - HASH_JOIN: Equality predicate, memory available
+        - MERGE_JOIN: Both inputs sorted
+        - INDEX_JOIN: Inner has index on join column
+        """
+        pass
+
+
+class StatisticsManager:
+    """
+    Manages query statistics for cost estimation.
+    """
+
+    def __init__(self, sample_rate: float = 0.01):
+        """
+        Args:
+            sample_rate: Fraction of data to sample for statistics
+        """
+        pass
+
+    def collect_statistics(
+        self,
+        namespace: str,
+        columns: Optional[List[str]] = None
+    ) -> CollectionResult:
+        """
+        Collect statistics for a namespace.
+
+        Example:
+            result = stats.collect_statistics(
+                namespace="thought_graph",
+                columns=["importance", "created_at", "owner_id"]
+            )
+            print(f"Sampled {result.rows_sampled} rows")
+        """
+        pass
+
+    def get_statistics(self, namespace: str) -> TableStatistics:
+        """Get current statistics for a namespace."""
+        pass
+
+    def estimate_selectivity(
+        self,
+        namespace: str,
+        predicate: Predicate
+    ) -> float:
+        """
+        Estimate selectivity of a predicate.
+
+        Returns value between 0 and 1 representing
+        fraction of rows that match.
+
+        Example:
+            selectivity = stats.estimate_selectivity(
+                namespace="thought_graph",
+                predicate=Predicate("importance > 0.8")
+            )
+            # Returns ~0.2 if 20% of thoughts have importance > 0.8
+        """
+        pass
+
+    def estimate_cardinality(
+        self,
+        namespace: str,
+        predicates: List[Predicate]
+    ) -> int:
+        """
+        Estimate number of rows matching predicates.
+
+        Accounts for correlation between columns.
+        """
+        pass
+
+    def build_histogram(
+        self,
+        namespace: str,
+        column: str,
+        num_buckets: int = 100
+    ) -> Histogram:
+        """
+        Build equi-height histogram for a column.
+
+        Used for range predicate selectivity estimation.
+        """
+        pass
+
+
+class CostModel:
+    """
+    Cost model for query plan evaluation.
+    """
+
+    def __init__(
+        self,
+        seq_page_cost: float = 1.0,
+        random_page_cost: float = 4.0,
+        cpu_tuple_cost: float = 0.01,
+        cpu_operator_cost: float = 0.0025,
+        network_byte_cost: float = 0.001
+    ):
+        """
+        Initialize cost model with tuning parameters.
+
+        Default values work well for SSD storage.
+        Adjust random_page_cost higher for HDD.
+        """
+        pass
+
+    def estimate_scan_cost(
+        self,
+        stats: TableStatistics,
+        scan_type: ScanType,
+        selectivity: float
+    ) -> float:
+        """Estimate cost of a table/index scan."""
+        pass
+
+    def estimate_join_cost(
+        self,
+        left_rows: int,
+        right_rows: int,
+        algorithm: JoinAlgorithm
+    ) -> float:
+        """Estimate cost of a join operation."""
+        pass
+
+    def estimate_sort_cost(self, rows: int, row_width: int) -> float:
+        """Estimate cost of sorting."""
+        pass
+
+    def estimate_aggregate_cost(
+        self,
+        rows: int,
+        groups: int,
+        aggregate_fns: List[str]
+    ) -> float:
+        """Estimate cost of aggregation."""
+        pass
+
+    def calibrate(self, benchmarks: List[BenchmarkResult]) -> None:
+        """
+        Calibrate cost model based on actual query performance.
+
+        Adjusts cost parameters to match observed execution times.
+        """
+        pass
+
+
+class AdaptiveOptimizer:
+    """
+    Adaptive query optimization based on runtime feedback.
+    """
+
+    def __init__(self, base_optimizer: QueryOptimizer):
+        pass
+
+    def learn_from_execution(
+        self,
+        query: str,
+        plan: QueryPlan,
+        actual_metrics: ExecutionMetrics
+    ) -> None:
+        """
+        Learn from query execution.
+
+        Updates:
+        - Cardinality estimates
+        - Cost model parameters
+        - Operator performance profiles
+        """
+        pass
+
+    def get_query_feedback(self, query_hash: str) -> Optional[QueryFeedback]:
+        """Get accumulated feedback for a query pattern."""
+        pass
+
+    def suggest_indexes(
+        self,
+        workload: List[str],
+        max_indexes: int = 5
+    ) -> List[IndexSuggestion]:
+        """
+        Suggest indexes based on query workload.
+
+        Example:
+            suggestions = adaptive.suggest_indexes(
+                workload=recent_queries,
+                max_indexes=3
+            )
+            for s in suggestions:
+                print(f"Suggest index on {s.columns}: estimated {s.speedup}x speedup")
+        """
+        pass
+```
+
+---
+
 ## Implementation Phases
 
 ### Phase 1: Single-Node Foundation (Week 1-2)
@@ -1802,6 +4225,55 @@ cortical/cdg/
 │   ├── synaptic.py          # SynapticMemoryGraph adapter
 │   ├── pln.py               # PLNGraph adapter
 │   └── slm.py               # TransitionGraph adapter
+├── replication/
+│   ├── manager.py           # ReplicationManager
+│   ├── raft.py              # Raft consensus implementation
+│   ├── log.py               # Replicated log
+│   └── conflict.py          # ConflictResolver
+├── security/
+│   ├── manager.py           # SecurityManager
+│   ├── auth.py              # Authentication (API keys, JWT)
+│   ├── authz.py             # Authorization (RBAC)
+│   ├── policy.py            # Row-level security policies
+│   ├── audit.py             # Audit logging
+│   └── encryption.py        # EncryptionManager (AES-256-GCM)
+├── backup/
+│   ├── manager.py           # BackupManager
+│   ├── snapshot.py          # Full/incremental snapshots
+│   ├── wal_archiver.py      # Continuous WAL archiving
+│   ├── restore.py           # Point-in-time recovery
+│   └── dr.py                # DisasterRecoveryManager
+├── cache/
+│   ├── manager.py           # CacheManager
+│   ├── result.py            # Query result cache (L1)
+│   ├── prepared.py          # Prepared statement cache (L2)
+│   ├── subgraph.py          # Subgraph cache (L3)
+│   └── block.py             # Block cache (L4)
+├── cdc/
+│   ├── manager.py           # CDCManager
+│   ├── change_log.py        # Ordered change log
+│   ├── subscription.py      # Push/pull subscriptions
+│   ├── connector.py         # Export connectors
+│   └── streaming.py         # StreamingQueryEngine
+├── optimization/
+│   ├── colocation.py        # EdgeColocationManager
+│   ├── csr.py               # CSRIndex (Compressed Sparse Row)
+│   ├── preloader.py         # NeighborPreloader
+│   ├── bidirectional.py     # BidirectionalEdgeIndex
+│   ├── property_sep.py      # PropertySeparator
+│   └── vertex_centric.py    # VertexCentricExecutor (Pregel)
+├── testing/
+│   ├── chaos.py             # ChaosTestFramework
+│   ├── load.py              # LoadTestFramework
+│   ├── fuzz.py              # FuzzTestFramework
+│   └── generators.py        # TestDataGenerator
+├── optimizer/
+│   ├── query_optimizer.py   # QueryOptimizer
+│   ├── statistics.py        # StatisticsManager
+│   ├── cost_model.py        # CostModel
+│   ├── rewrite.py           # Rewrite rules
+│   ├── join.py              # Join ordering
+│   └── adaptive.py          # AdaptiveOptimizer
 ├── config.py                # Configuration
 └── client.py                # CDGClient API
 ```
