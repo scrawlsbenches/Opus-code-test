@@ -736,11 +736,282 @@ cortical/cdg/
 
 ---
 
+## Existing Graph Implementation Coverage Matrix
+
+The following matrix documents all existing graph implementations in the codebase and how CDG provides unified storage for each:
+
+### Graph Implementation Inventory
+
+| Graph Class | Location | Purpose | CDG Mapping |
+|------------|----------|---------|-------------|
+| **ThoughtGraph** | `cortical/reasoning/thought_graph.py:24` | Main Graph of Thought operations | Namespace: `thought`, Adapter: `ThoughtGraphAdapter` |
+| **ThoughtGraph Protocol** | `llm_orchestration/protocols.py:198` | Interface definition | CDG implements this protocol |
+| **SynapticMemoryGraph** | `cortical/reasoning/prism_got.py:473` | ThoughtGraph with synaptic plasticity | Namespace: `synaptic`, Edge: `SynapticEdge` properties |
+| **PLNGraph** | `cortical/reasoning/prism_pln.py:336` | Probabilistic Logic Network | Namespace: `pln`, TruthValue in properties |
+| **TransitionGraph** | `cortical/reasoning/prism_slm.py:294` | Token transition graph for LM | Namespace: `slm`, Transitions as weighted edges |
+| **GraphWalker** | `cortical/got/graph_walker.py:170` | Visitor pattern traversal | CDG Query API with streaming |
+| **GraphWAL** | `cortical/reasoning/graph_persistence.py:576` | Write-ahead logging | CDG WAL built-in |
+| **GraphRecovery** | `cortical/reasoning/graph_persistence.py:1214` | Multi-level recovery | CDG Recovery subsystem |
+| **HiveNode/HiveEdge** | `cortical/reasoning/prism_slm.py:82,166` | Hebbian learning structures | Namespace: `hive`, Traces in properties |
+
+### Feature Coverage Matrix
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                     FEATURE COVERAGE BY GRAPH IMPLEMENTATION                         │
+├──────────────────────┬──────────┬─────────┬─────────┬─────────┬──────────┬──────────┤
+│ Feature              │ Thought  │Synaptic │   PLN   │ Transit │  Hive   │   CDG    │
+│                      │  Graph   │ Memory  │  Graph  │  Graph  │  Node   │ Unified  │
+├──────────────────────┼──────────┼─────────┼─────────┼─────────┼──────────┼──────────┤
+│ Node CRUD            │    ✓     │    ✓    │    ✓    │    ✓    │    ✓    │    ✓     │
+│ Edge CRUD            │    ✓     │    ✓    │    ✓    │    ✓    │    ✓    │    ✓     │
+│ Typed Nodes          │    ✓     │    ✓    │    ✓    │    ✓    │    ✓    │    ✓     │
+│ Typed Edges          │    ✓     │    ✓    │    ✓    │    ✓    │    ✓    │    ✓     │
+│ Edge Weights         │    ✓     │    ✓    │    ✓    │    ✓    │    ✓    │    ✓     │
+│ Bidirectional Edges  │    ✓     │    ✓    │    ✓    │    -    │    -    │    ✓     │
+│ BFS/DFS Traversal    │    ✓     │    ✓    │    -    │    -    │    -    │    ✓     │
+│ Shortest Path        │    ✓     │    ✓    │    -    │    -    │    -    │    ✓     │
+│ Cycle Detection      │    ✓     │    ✓    │    -    │    -    │    -    │    ✓     │
+│ Clustering           │    ✓     │    ✓    │    -    │    -    │    -    │    ✓     │
+│ Pattern Matching     │    ✓     │    ✓    │    ✓    │    -    │    -    │    ✓     │
+│ Activation Traces    │    -     │    ✓    │    -    │    -    │    ✓    │    ✓     │
+│ Synaptic Decay       │    -     │    ✓    │    -    │    ✓    │    -    │    ✓     │
+│ Hebbian Learning     │    -     │    ✓    │    -    │    ✓    │    ✓    │    ✓     │
+│ Probabilistic Truth  │    -     │    -    │    ✓    │    -    │    -    │    ✓     │
+│ Inference Rules      │    -     │    -    │    ✓    │    -    │    -    │    ✓     │
+│ Context Windows      │    -     │    -    │    -    │    ✓    │    -    │    ✓     │
+│ Spreading Activation │    -     │    -    │    -    │    ✓    │    -    │    ✓     │
+│ Lateral Inhibition   │    -     │    -    │    -    │    ✓    │    -    │    ✓     │
+│ WAL Persistence      │    ✓     │    -    │    ✓    │    ✓    │    -    │    ✓     │
+│ Snapshot Recovery    │    ✓     │    -    │    -    │    -    │    -    │    ✓     │
+│ Distributed Storage  │    -     │    -    │    -    │    -    │    -    │    ✓     │
+│ ACID Transactions    │    -     │    -    │    -    │    -    │    -    │    ✓     │
+│ Partition Scaling    │    -     │    -    │    -    │    -    │    -    │    ✓     │
+└──────────────────────┴──────────┴─────────┴─────────┴─────────┴──────────┴──────────┘
+```
+
+### Detailed Mapping Specifications
+
+#### 1. ThoughtGraph → CDG
+
+```python
+# ThoughtGraph node types map directly to CDG node_type
+NodeType.QUESTION    → DistributedNode(namespace="thought", node_type="question")
+NodeType.HYPOTHESIS  → DistributedNode(namespace="thought", node_type="hypothesis")
+NodeType.EVIDENCE    → DistributedNode(namespace="thought", node_type="evidence")
+NodeType.CONCLUSION  → DistributedNode(namespace="thought", node_type="conclusion")
+NodeType.CONCEPT     → DistributedNode(namespace="thought", node_type="concept")
+
+# ThoughtGraph edge types
+EdgeType.SUPPORTS    → DistributedEdge(namespace="thought", edge_type="supports")
+EdgeType.REFUTES     → DistributedEdge(namespace="thought", edge_type="refutes")
+EdgeType.EXPLORES    → DistributedEdge(namespace="thought", edge_type="explores")
+EdgeType.DERIVES     → DistributedEdge(namespace="thought", edge_type="derives")
+
+# ThoughtGraph clusters
+ThoughtCluster       → DistributedNode(namespace="thought", node_type="cluster",
+                                        properties={"node_ids": [...], "name": "..."})
+```
+
+#### 2. SynapticMemoryGraph → CDG
+
+```python
+# Synaptic extensions stored in properties
+SynapticEdge → DistributedEdge(
+    namespace="synaptic",
+    properties={
+        "activation_count": 42,
+        "last_activation_time": "2025-12-31T12:00:00",
+        "decay_factor": 0.99,
+        "prediction_accuracy": 0.85,
+        "prediction_correct": 17,
+        "prediction_total": 20
+    }
+)
+
+# ActivationTrace stored as node metadata
+ActivationTrace → DistributedNode.metadata = {
+    "activation_trace": {
+        "total_activations": 100,
+        "history": [...],  # Bounded to max_history
+        "max_history": 100
+    }
+}
+
+# PlasticityRules stored as graph-level configuration
+PlasticityRules → CDG partition config or metadata node
+```
+
+#### 3. PLNGraph → CDG
+
+```python
+# PLN atoms with TruthValue
+Atom → DistributedNode(
+    namespace="pln",
+    node_type="atom",
+    content="bird(tweety)",
+    properties={
+        "predicate": "bird",
+        "arguments": ["tweety"],
+        "truth_value": {
+            "strength": 0.99,
+            "confidence": 0.85
+        }
+    }
+)
+
+# PLN implication links
+ImplicationLink → DistributedEdge(
+    namespace="pln",
+    edge_type="implies",
+    properties={
+        "truth_value": {"strength": 0.85, "confidence": 0.9}
+    }
+)
+
+# Inference rules executed via CDG stored procedures
+deduce(), induce(), abduce() → CDG Query + Transaction
+```
+
+#### 4. TransitionGraph → CDG
+
+```python
+# Token transitions as edges with context
+SynapticTransition → DistributedEdge(
+    namespace="slm",
+    edge_type="transition",
+    source_id="token:quick",
+    target_id="token:brown",
+    weight=0.7,
+    properties={
+        "count": 42,
+        "decay_rate": 0.99,
+        "context": ("the", "quick")  # Context tuple as key
+    }
+)
+
+# Vocabulary as nodes
+Token → DistributedNode(
+    namespace="slm",
+    node_type="token",
+    content="quick",
+    properties={"frequency": 100}
+)
+
+# Context-based lookup via CDG pattern query
+graph.get_transitions(context) → cdg.pattern_match(
+    Pattern()
+        .edge("transition", context=context)
+        .node(node_type="token")
+)
+```
+
+#### 5. HiveNode/HiveEdge → CDG
+
+```python
+# Hebbian Hive nodes with activation state
+HiveNode → DistributedNode(
+    namespace="hive",
+    node_type="hive_node",
+    properties={
+        "activation": 0.5,
+        "trace": 0.8,
+        "trace_decay": 0.95,
+        "target_activation": 0.05,
+        "excitability": 1.0,
+        "activation_count": 50,
+        "last_activation_step": 1000
+    }
+)
+
+# STDP-inspired edges
+HiveEdge → DistributedEdge(
+    namespace="hive",
+    edge_type="synapse",
+    properties={
+        "pre_trace": 0.3,
+        "post_trace": 0.7,
+        "co_activations": 25,
+        "total_observations": 100,
+        "learning_rate": 0.01
+    }
+)
+```
+
+### Future Extensibility
+
+CDG is designed to support any future graph-based needs:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         EXTENSIBILITY PATTERNS                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  1. NEW NODE TYPES                                                       │
+│     Just create with new namespace and node_type:                       │
+│     DistributedNode(namespace="custom", node_type="my_entity")          │
+│                                                                          │
+│  2. NEW EDGE TYPES                                                       │
+│     Edge types are strings, add any:                                    │
+│     DistributedEdge(edge_type="CUSTOM_RELATION")                        │
+│                                                                          │
+│  3. CUSTOM PROPERTIES                                                    │
+│     Properties dict accepts any JSON-serializable data:                 │
+│     properties={"custom_field": value, "nested": {"data": [...]}}       │
+│                                                                          │
+│  4. CUSTOM ALGORITHMS                                                    │
+│     CDG query API supports custom traversal:                            │
+│     cdg.execute(CustomAlgorithm(graph_walker_spec))                     │
+│                                                                          │
+│  5. DOMAIN ADAPTERS                                                      │
+│     Wrap CDG with domain-specific API:                                  │
+│     class KnowledgeBaseAdapter(CDGAdapter): ...                         │
+│                                                                          │
+│  EXAMPLES OF FUTURE USE CASES:                                          │
+│  • Document knowledge graphs                                            │
+│  • User behavior graphs                                                  │
+│  • Semantic code dependency graphs                                       │
+│  • Agent collaboration networks                                          │
+│  • Temporal event graphs                                                 │
+│  • Multi-modal content graphs (text + code + diagrams)                  │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Knowledge Worker Universal Needs
+
+CDG supports all knowledge worker graph needs:
+
+| Knowledge Worker Need | CDG Solution |
+|----------------------|--------------|
+| **Store entities with relationships** | Universal Node + Edge models |
+| **Query by type, property, content** | Multi-index query engine |
+| **Find patterns in data** | Pattern matching with predicates |
+| **Navigate connections** | BFS/DFS with depth control |
+| **Discover shortest paths** | Dijkstra with weight support |
+| **Cluster related items** | Built-in clustering + partition strategies |
+| **Track changes over time** | MVCC versioning + temporal queries |
+| **Learn from usage patterns** | Synaptic property tracking |
+| **Reason with uncertainty** | TruthValue properties support |
+| **Scale with data growth** | Horizontal partition scaling |
+| **Survive failures** | WAL + snapshot + multi-level recovery |
+| **Search semantically** | Embedding field + vector similarity |
+| **Full-text search** | Inverted index on content |
+
+---
+
 ## Conclusion
 
 The Cortical Distributed Graph provides a unified foundation for all graph storage needs in the system. By building every component from first principles, we maintain complete sovereignty over the implementation while achieving service provider-grade performance targets.
 
-All existing graph implementations (GoT, ThoughtGraph, Knowledge Graph) can adopt CDG through adapters, enabling a gradual migration path while preserving backward compatibility.
+The coverage matrix above demonstrates that CDG can unify all existing graph implementations (ThoughtGraph, SynapticMemoryGraph, PLNGraph, TransitionGraph, HiveNode/HiveEdge) through adapters, enabling a gradual migration path while preserving backward compatibility.
+
+**Key Guarantees:**
+- All existing graph operations are supported
+- All synaptic/learning features are preserved
+- All probabilistic reasoning capabilities are maintained
+- Performance contracts meet service provider requirements
+- Future extensibility is unlimited through flexible properties
 
 ---
 
