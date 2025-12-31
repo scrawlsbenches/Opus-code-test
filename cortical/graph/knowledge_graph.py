@@ -524,38 +524,58 @@ class SemanticKnowledgeGraph:
                         )
 
     def _compute_pagerank(self, damping: float = 0.85, iterations: int = 20) -> None:
-        """Compute PageRank for all nodes."""
+        """Compute PageRank for all nodes using optimized O(E) algorithm."""
         if not self._nodes:
             return
 
-        # Initialize
+        # Use the optimized _pagerank_core from cortical/analysis/pagerank.py
+        # which is O(E × iterations) instead of O(n² × iterations)
+        try:
+            from ..analysis.pagerank import _pagerank_core
+
+            # Build adjacency list: Dict[str, List[Tuple[str, float]]]
+            graph: Dict[str, List[Tuple[str, float]]] = {
+                nid: [] for nid in self._nodes.keys()
+            }
+            for edge in self._edges:
+                if edge.source_id in graph:
+                    graph[edge.source_id].append((edge.target_id, edge.weight))
+
+            # Compute PageRank with early termination
+            pr = _pagerank_core(graph, damping=damping, iterations=iterations)
+
+            # Assign to nodes
+            for node_id, score in pr.items():
+                if node_id in self._nodes:
+                    self._nodes[node_id].pagerank = score
+
+        except ImportError:
+            # Fallback to simple implementation if module not available
+            self._compute_pagerank_simple(damping, iterations)
+
+    def _compute_pagerank_simple(self, damping: float = 0.85, iterations: int = 20) -> None:
+        """Simple O(n²) PageRank fallback (used if analysis module unavailable)."""
         n = len(self._nodes)
         node_ids = list(self._nodes.keys())
         pr = {nid: 1.0 / n for nid in node_ids}
 
-        # Build adjacency
         outgoing: Dict[str, List[str]] = {nid: [] for nid in node_ids}
         for edge in self._edges:
             if edge.source_id in outgoing:
                 outgoing[edge.source_id].append(edge.target_id)
 
-        # Iterate
         for _ in range(iterations):
             new_pr = {}
             for node_id in node_ids:
-                # Sum of PageRank from incoming nodes
                 incoming_sum = 0.0
                 for other_id in node_ids:
                     if node_id in outgoing.get(other_id, []):
                         out_count = len(outgoing[other_id])
                         if out_count > 0:
                             incoming_sum += pr[other_id] / out_count
-
                 new_pr[node_id] = (1 - damping) / n + damping * incoming_sum
-
             pr = new_pr
 
-        # Assign to nodes
         for node_id, score in pr.items():
             self._nodes[node_id].pagerank = score
 
