@@ -618,42 +618,139 @@ class ThoughtGraphAdapter:
 
 ## Performance Contracts
 
+**Design Note**: These contracts are TIERED based on deployment stage and operational
+state. Start with relaxed contracts during development, tighten as you approach production.
+Contracts are living targets - renegotiate as actual usage patterns emerge.
+
 ```python
 """
 ╔══════════════════════════════════════════════════════════════════════╗
 ║                    CDG PERFORMANCE CONTRACT                           ║
 ╠══════════════════════════════════════════════════════════════════════╣
 ║  Ratified:     2025-12-31                                            ║
-║  Guardian:     CI Pipeline                                            ║
-║  Renegotiation: Requires team review + documented justification      ║
+║  Guardian:     CI Pipeline (when enabled)                             ║
+║  Philosophy:   Realistic for small projects, scalable for big dreams ║
+║  Renegotiation: Document why, update tests, team acknowledgment      ║
 ╠══════════════════════════════════════════════════════════════════════╣
 ║                                                                       ║
-║  Query Latencies (single partition, warm cache):                     ║
-║  • Point query (get node by ID):     p50 < 5ms,  p95 < 20ms         ║
-║  • Range query (100 results):        p50 < 10ms, p95 < 50ms         ║
-║  • Pattern match (2-hop):            p50 < 20ms, p95 < 100ms        ║
-║  • Path query (up to 6 hops):        p50 < 50ms, p95 < 200ms        ║
+║  ═══════════════════════════════════════════════════════════════════ ║
+║  TIER 1: DEVELOPMENT (Laptop, Single Node)                           ║
+║  ═══════════════════════════════════════════════════════════════════ ║
 ║                                                                       ║
-║  Query Latencies (multi-partition):                                  ║
-║  • Fan-out query (all partitions):   p50 < 50ms, p95 < 150ms        ║
-║  • Cross-partition join:             p50 < 80ms, p95 < 200ms        ║
+║  Focus: Developer experience, fast iteration                         ║
+║  SLA: Best effort (no hard contracts)                                ║
+║                                                                       ║
+║  Guidelines (not enforced):                                          ║
+║  • Point query:      < 50ms (acceptable for dev)                     ║
+║  • Range query:      < 200ms                                         ║
+║  • Pattern match:    < 500ms                                         ║
+║  • Writes:           < 100ms                                         ║
+║                                                                       ║
+║  ═══════════════════════════════════════════════════════════════════ ║
+║  TIER 2: STAGING (Small Cluster, 3 Nodes)                            ║
+║  ═══════════════════════════════════════════════════════════════════ ║
+║                                                                       ║
+║  Focus: Validate distributed behavior                                ║
+║  SLA: Soft targets (monitor but don't block)                         ║
+║                                                                       ║
+║  Query Latencies (p95):                                              ║
+║  • Point query (get node by ID):     < 50ms                          ║
+║  • Range query (100 results):        < 150ms                         ║
+║  • Pattern match (2-hop):            < 300ms                         ║
+║  • Path query (up to 4 hops):        < 500ms                         ║
+║                                                                       ║
+║  Write Latencies (p95):                                              ║
+║  • Single-partition write:           < 100ms                         ║
+║  • Multi-partition 2PC:              < 300ms                         ║
+║                                                                       ║
+║  ═══════════════════════════════════════════════════════════════════ ║
+║  TIER 3: PRODUCTION (Full Cluster, Replicated)                       ║
+║  ═══════════════════════════════════════════════════════════════════ ║
+║                                                                       ║
+║  Focus: Reliability and consistency                                  ║
+║  SLA: Hard targets (alert on violation)                              ║
+║                                                                       ║
+║  NORMAL OPERATION:                                                   ║
+║  Query Latencies (warm cache):                                       ║
+║  • Point query:      p50 < 10ms,  p95 < 50ms,   p99 < 100ms         ║
+║  • Range query:      p50 < 30ms,  p95 < 100ms,  p99 < 200ms         ║
+║  • Pattern match:    p50 < 50ms,  p95 < 200ms,  p99 < 500ms         ║
+║  • Path query:       p50 < 100ms, p95 < 300ms,  p99 < 1000ms        ║
 ║                                                                       ║
 ║  Write Latencies:                                                    ║
-║  • Single-partition write:           p50 < 10ms, p95 < 30ms         ║
-║  • Multi-partition 2PC:              p50 < 30ms, p95 < 100ms        ║
+║  • Single-partition: p50 < 20ms,  p95 < 50ms,   p99 < 100ms         ║
+║  • Multi-partition:  p50 < 50ms,  p95 < 150ms,  p99 < 300ms         ║
 ║                                                                       ║
-║  Throughput (per partition):                                         ║
-║  • Reads: > 10,000 ops/sec                                          ║
-║  • Writes: > 1,000 ops/sec (PARANOID durability)                    ║
-║  • Writes: > 5,000 ops/sec (BALANCED durability)                    ║
+║  DEGRADED OPERATION (1 replica down, leader election, etc.):         ║
+║  • All latencies may be 3-5x higher                                  ║
+║  • p99 may spike to seconds                                          ║
+║  • System prioritizes consistency over latency                       ║
 ║                                                                       ║
-║  Scalability:                                                        ║
-║  • Linear read scaling with partition count                          ║
-║  • Sub-linear write scaling (due to 2PC overhead)                   ║
+║  RECOVERY OPERATION (restore, rebalance, etc.):                      ║
+║  • Best effort, no SLA                                               ║
+║  • Background operations throttled to avoid impact                   ║
+║                                                                       ║
+║  ═══════════════════════════════════════════════════════════════════ ║
+║  THROUGHPUT (Scale with Resources)                                   ║
+║  ═══════════════════════════════════════════════════════════════════ ║
+║                                                                       ║
+║  Per-Node Minimums:                                                  ║
+║  • Reads: > 1,000 ops/sec (baseline, scales with hardware)           ║
+║  • Writes: > 100 ops/sec with durability (WAL sync)                  ║
+║  • Writes: > 500 ops/sec without durability (async WAL)              ║
+║                                                                       ║
+║  Cluster Scaling:                                                    ║
+║  • Read throughput scales linearly with nodes                        ║
+║  • Write throughput scales sub-linearly (coordination overhead)      ║
+║  • Monitor and add capacity as needed                                ║
 ║                                                                       ║
 ╚══════════════════════════════════════════════════════════════════════╝
 """
+
+# Contract enforcement helpers
+
+class PerformanceContracts:
+    """
+    Helpers for performance contract enforcement.
+
+    Use sparingly - focus on functionality first, optimize when needed.
+    """
+
+    @staticmethod
+    def for_development() -> 'ContractConfig':
+        """No enforcement - just log slow queries for awareness."""
+        return ContractConfig(
+            enforce=False,
+            log_slow_queries=True,
+            slow_query_threshold_ms=500
+        )
+
+    @staticmethod
+    def for_staging() -> 'ContractConfig':
+        """Soft enforcement - warn but don't fail tests."""
+        return ContractConfig(
+            enforce=False,  # Don't block CI
+            warn_on_violation=True,
+            collect_metrics=True
+        )
+
+    @staticmethod
+    def for_production() -> 'ContractConfig':
+        """Hard enforcement - alert on violations."""
+        return ContractConfig(
+            enforce=True,
+            alert_on_violation=True,
+            collect_metrics=True,
+            track_degraded_state=True
+        )
 ```
+
+**Future Consideration**: These contracts will evolve as we:
+- Understand actual workload patterns
+- Identify bottlenecks through monitoring
+- Scale to larger deployments
+
+The observability framework (Section 16) tracks metrics to inform contract adjustments.
 
 ---
 
@@ -1308,13 +1405,125 @@ class DebugTools:
         pass
 ```
 
-### 14. Cortical Query Language (CQL)
+### 14. Query Interface
 
-A declarative query language inspired by community standards (Cypher/Gremlin/SQL):
+**Design Note**: Start with the **Fluent API** (primary) - it's simpler to implement and
+covers 80% of use cases. The full **CQL parser** is a future enhancement for complex queries.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    QUERY INTERFACE STRATEGY                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   PHASE 1 (NOW): FLUENT API                                             │
+│   • Pythonic method chaining                                            │
+│   • Type-safe, IDE-friendly                                             │
+│   • Covers common operations                                            │
+│   • Quick to implement                                                  │
+│                                                                          │
+│   PHASE 2 (LATER): CQL STRING PARSER                                    │
+│   • Full query language                                                 │
+│   • Complex patterns and paths                                          │
+│   • When fluent API isn't enough                                        │
+│   • Multi-year effort to get right                                      │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Fluent API (Primary - Implement First)
+
+```python
+class QueryBuilder:
+    """
+    Fluent API for building and executing queries.
+
+    PRIMARY INTERFACE - Implement this first.
+    Covers 80% of use cases with minimal implementation effort.
+    """
+
+    def __init__(self, client: CDGClient, namespace: str = None):
+        pass
+
+    def match(self, node_type: str = None, **properties) -> "QueryBuilder":
+        """Match nodes by type and/or properties."""
+        pass
+
+    def where(self, **conditions) -> "QueryBuilder":
+        """Filter by conditions."""
+        pass
+
+    def traverse(
+        self,
+        edge_type: str,
+        direction: Direction = Direction.OUTGOING,
+        depth: int = 1
+    ) -> "QueryBuilder":
+        """Traverse edges."""
+        pass
+
+    def limit(self, n: int) -> "QueryBuilder":
+        """Limit results."""
+        pass
+
+    def order_by(self, field: str, ascending: bool = True) -> "QueryBuilder":
+        """Order results."""
+        pass
+
+    def return_nodes(self) -> List[Node]:
+        """Execute and return nodes."""
+        pass
+
+    def return_paths(self) -> List[Path]:
+        """Execute and return paths."""
+        pass
+
+    def count(self) -> int:
+        """Execute and return count."""
+        pass
+
+
+# Usage examples:
+
+# Simple node lookup
+tasks = (cdg.query()
+    .match("Task", status="pending")
+    .limit(10)
+    .return_nodes())
+
+# Traversal query
+related = (cdg.query()
+    .match("Thought", id="t-123")
+    .traverse("RELATES_TO", depth=2)
+    .where(importance__gt=0.5)
+    .return_nodes())
+
+# Path finding
+path = (cdg.query()
+    .match("Task", id="start")
+    .traverse("DEPENDS_ON", depth=5)
+    .match("Task", id="end")
+    .return_paths())
+
+# Aggregation
+counts = (cdg.query()
+    .match("Task")
+    .group_by("status")
+    .count())
+```
+
+### CQL String Parser (Future - Phase 2)
+
+A declarative query language inspired by community standards (Cypher/Gremlin/SQL).
+
+**Implementation Plan**:
+1. Start with subset (MATCH, WHERE, RETURN only)
+2. Add features based on actual needs
+3. Full CQL is a multi-year effort - grow organically
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                    CORTICAL QUERY LANGUAGE (CQL)                         │
+│                         (Future Enhancement)                             │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │  Design Principles:                                                      │
@@ -1961,6 +2170,362 @@ class ConflictResolver:
         pass
 ```
 
+### Consistency Model Guide
+
+**Design Note**: CDG supports BOTH strong consistency (2PC) and tunable consistency
+(consistency levels). Developers choose based on their needs at different stages.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                   CONSISTENCY MODEL DECISION GUIDE                       │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   QUESTION: Does your operation span multiple partitions/nodes?          │
+│                                                                          │
+│   ┌─────────────────────────────────────────────────────────────────┐   │
+│   │  SINGLE PARTITION                 MULTI-PARTITION               │   │
+│   │  (most operations)                (complex transactions)        │   │
+│   │                                                                  │   │
+│   │  Use: Consistency Levels          Use: 2PC Transactions         │   │
+│   │  - ONE: Fastest, eventual         - ACID guarantees             │   │
+│   │  - QUORUM: Balanced               - All-or-nothing              │   │
+│   │  - ALL: Strongest                 - Higher latency              │   │
+│   └─────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
+│   DEPLOYMENT STAGE RECOMMENDATIONS:                                      │
+│                                                                          │
+│   Laptop (Development):                                                  │
+│   └── Use ONE consistency, single node, skip replication                │
+│       Fast iteration, no distributed complexity                         │
+│                                                                          │
+│   Cluster (Staging):                                                     │
+│   └── Use QUORUM consistency, 3 nodes                                   │
+│       Test distributed behavior, acceptable latency                     │
+│                                                                          │
+│   Cloud (Production):                                                    │
+│   └── Use QUORUM for reads, QUORUM or ALL for critical writes          │
+│       2PC for cross-partition transactions when needed                  │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+```python
+# Example: Choosing consistency based on operation type
+
+class ConsistencyGuide:
+    """
+    Helper to choose appropriate consistency for operations.
+
+    Both models are valid - choice depends on requirements.
+    """
+
+    @staticmethod
+    def for_read(critical: bool = False) -> ConsistencyLevel:
+        """
+        Choose read consistency.
+
+        - Non-critical reads: ONE (fast, may be stale)
+        - Critical reads: QUORUM (consistent, slightly slower)
+        """
+        return ConsistencyLevel.QUORUM if critical else ConsistencyLevel.ONE
+
+    @staticmethod
+    def for_write(critical: bool = True) -> ConsistencyLevel:
+        """
+        Choose write consistency.
+
+        - Most writes: QUORUM (durable, reasonable latency)
+        - Critical writes: ALL (fully durable, higher latency)
+        """
+        return ConsistencyLevel.ALL if critical else ConsistencyLevel.QUORUM
+
+    @staticmethod
+    def needs_transaction(operation: str) -> bool:
+        """
+        Determine if operation needs 2PC transaction.
+
+        USE 2PC when:
+        - Moving data between partitions atomically
+        - Multi-node operations that must all succeed or all fail
+        - Cross-namespace operations requiring consistency
+
+        USE Consistency Levels when:
+        - Single node/partition operations
+        - Read-heavy workloads
+        - Operations where eventual consistency is acceptable
+        """
+        # Examples of operations that need 2PC
+        transaction_patterns = [
+            "transfer",      # Moving data between entities
+            "swap",          # Atomic exchange
+            "multi_update",  # Update multiple entities atomically
+        ]
+        return any(pattern in operation.lower() for pattern in transaction_patterns)
+
+
+# Practical usage examples:
+
+# Development (laptop) - fast, simple
+cdg = CDGClient.connect(CDGConfig.development())
+node = cdg.create_node(data, consistency=ConsistencyLevel.ONE)  # Fast
+
+# Staging (cluster) - test distributed
+cdg = CDGClient.connect(CDGConfig.staging(nodes=3))
+node = cdg.create_node(data, consistency=ConsistencyLevel.QUORUM)  # Balanced
+
+# Production (cloud) - full durability
+cdg = CDGClient.connect(CDGConfig.production(key))
+
+# Simple write - use consistency level
+node = cdg.create_node(data, consistency=ConsistencyLevel.QUORUM)
+
+# Complex multi-partition operation - use 2PC
+with cdg.transaction() as tx:
+    tx.update_node(node_a, partition=1)
+    tx.update_node(node_b, partition=2)
+    tx.create_edge(node_a, node_b)
+    # All succeed or all rollback
+```
+
+**Future Consideration**: As usage patterns emerge, we may introduce:
+- Causal consistency for specific use cases
+- Session consistency for user-bound operations
+- Read-your-writes guarantees
+
+These can be added as plugins without changing the core API.
+
+### Cluster Lifecycle Operations
+
+**Design Note**: These operations are needed as you move from laptop to cluster to cloud.
+They're documented here but implementation can be deferred until needed.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    CLUSTER LIFECYCLE STAGES                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   BOOTSTRAP          SCALE             MAINTAIN           UPGRADE        │
+│   ─────────          ─────             ────────           ───────        │
+│                                                                          │
+│   ┌─────────┐       ┌─────────┐       ┌─────────┐       ┌─────────┐    │
+│   │ Initial │       │ Add/    │       │ Health  │       │ Rolling │    │
+│   │ Cluster │       │ Remove  │       │ Monitor │       │ Update  │    │
+│   │ Setup   │       │ Nodes   │       │ Repair  │       │ Deploy  │    │
+│   └─────────┘       └─────────┘       └─────────┘       └─────────┘    │
+│                                                                          │
+│   Laptop: Skip      Staging: Test     Always: Enable    Production:     │
+│   (single node)     (add 2 nodes)     (observability)   (zero-downtime) │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+```python
+class ClusterManager:
+    """
+    Manages cluster lifecycle operations.
+
+    Implementation Priority:
+    - Phase 1: Bootstrap (needed for any cluster)
+    - Phase 2: Node addition (scale out)
+    - Phase 3: Node removal (scale in)
+    - Phase 4: Rolling upgrades (production)
+    """
+
+    # ─────────────────────────────────────────────────────────────────
+    # BOOTSTRAP (Phase 1 - Implement First)
+    # ─────────────────────────────────────────────────────────────────
+
+    def bootstrap_single_node(self, config: CDGConfig) -> ClusterHandle:
+        """
+        Start a single-node cluster (development).
+
+        No replication, no consensus - just the storage engine.
+        Fast startup, simple debugging.
+        """
+        pass
+
+    def bootstrap_cluster(
+        self,
+        seed_nodes: List[str],
+        config: CDGConfig
+    ) -> ClusterHandle:
+        """
+        Bootstrap a new cluster with seed nodes.
+
+        Process:
+        1. Start seed nodes
+        2. Elect initial leader
+        3. Create initial partitions
+        4. Ready for operations
+
+        Example:
+            cluster = mgr.bootstrap_cluster(
+                seed_nodes=["node1:7000", "node2:7000", "node3:7000"],
+                config=CDGConfig.staging()
+            )
+        """
+        pass
+
+    def join_cluster(self, seed_node: str) -> JoinResult:
+        """
+        Join an existing cluster.
+
+        For adding this node to an existing cluster.
+        """
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # SCALING (Phase 2 - Implement for Production)
+    # ─────────────────────────────────────────────────────────────────
+
+    def add_node(
+        self,
+        node_address: str,
+        options: NodeOptions = None
+    ) -> AddNodeResult:
+        """
+        Add a new node to the cluster.
+
+        Process:
+        1. Node joins cluster
+        2. Receives partition assignments
+        3. Streams data from existing nodes
+        4. Becomes active once caught up
+
+        Options:
+        - rebalance: Whether to rebalance partitions (default: True)
+        - stream_throttle_mb_sec: Limit data streaming rate
+        - rack: Rack placement for fault tolerance
+        """
+        pass
+
+    def remove_node(
+        self,
+        node_id: str,
+        options: RemoveOptions = None
+    ) -> RemoveNodeResult:
+        """
+        Remove a node from the cluster.
+
+        Process:
+        1. Stop accepting new requests
+        2. Migrate partitions to other nodes
+        3. Wait for replication to catch up
+        4. Remove from cluster membership
+
+        Options:
+        - force: Remove even if data migration incomplete
+        - drain_timeout_sec: How long to wait for drainage
+        """
+        pass
+
+    def rebalance_partitions(self) -> RebalanceResult:
+        """
+        Manually trigger partition rebalancing.
+
+        Use when:
+        - After adding/removing multiple nodes
+        - Partition hotspots detected
+        - Uneven data distribution
+        """
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # MAINTENANCE (Ongoing - Enable Early)
+    # ─────────────────────────────────────────────────────────────────
+
+    def get_cluster_status(self) -> ClusterStatus:
+        """
+        Get comprehensive cluster status.
+
+        Returns:
+            ClusterStatus with:
+            - nodes: List of nodes with health status
+            - partitions: Partition distribution
+            - leader: Current leader node
+            - replication_lag: Per-node replication lag
+            - alerts: Active alerts
+        """
+        pass
+
+    def repair_node(self, node_id: str) -> RepairResult:
+        """
+        Trigger repair on a node.
+
+        Use when:
+        - Node was down and missed updates
+        - Data corruption detected
+        - Consistency check failed
+        """
+        pass
+
+    def run_consistency_check(
+        self,
+        deep: bool = False
+    ) -> ConsistencyCheckResult:
+        """
+        Run consistency check across cluster.
+
+        Light check: Verify checksums and metadata
+        Deep check: Compare data across replicas (slow)
+        """
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # UPGRADES (Phase 4 - Production Requirement)
+    # ─────────────────────────────────────────────────────────────────
+
+    def rolling_upgrade(
+        self,
+        new_version: str,
+        options: UpgradeOptions = None
+    ) -> UpgradeResult:
+        """
+        Perform rolling upgrade to new version.
+
+        Process:
+        1. Upgrade nodes one at a time
+        2. Verify health after each node
+        3. Roll back if issues detected
+
+        Options:
+        - pause_between_nodes_sec: Wait time between nodes
+        - health_check_timeout_sec: How long to verify health
+        - auto_rollback: Automatically rollback on failure
+        """
+        pass
+
+    def schema_migration(
+        self,
+        migration: Migration
+    ) -> MigrationResult:
+        """
+        Run online schema migration.
+
+        Supports:
+        - Adding new properties (safe)
+        - Adding new indexes (background)
+        - Removing properties (lazy cleanup)
+        """
+        pass
+```
+
+**What to Implement When**:
+
+| Stage | Operations Needed | Notes |
+|-------|-------------------|-------|
+| Development | `bootstrap_single_node` | Just works on laptop |
+| Staging | `bootstrap_cluster`, `add_node` | Test scaling |
+| Pre-Production | `get_cluster_status`, `repair_node` | Monitoring |
+| Production | All above + `rolling_upgrade` | Zero-downtime deploys |
+
+**Future Consideration**: Advanced operations like:
+- Cross-datacenter replication
+- Geographic load balancing
+- Automatic failure recovery
+
+These can be added when cloud deployment is the goal.
+
 ---
 
 ## 18. Security & Access Control
@@ -2252,15 +2817,58 @@ class SecurityManager:
         pass
 ```
 
-### Encryption at Rest
+### Encryption at Rest (Optional, Pluggable)
+
+**Design Note**: Encryption is OPTIONAL and PLUGGABLE. For development, run without
+encryption for simplicity. Enable encryption when moving toward production.
 
 ```python
-class EncryptionManager:
+class EncryptionProvider(Protocol):
     """
-    Manages encryption for data at rest.
+    Protocol for encryption providers.
 
-    Sovereignty Note: We implement AES-256-GCM ourselves.
-    Key management is under our control.
+    Pluggable design allows:
+    - NoOpEncryption: Development mode, no encryption overhead
+    - StdlibEncryption: Uses Python's cryptography stdlib (RECOMMENDED)
+    - CustomEncryption: For specialized requirements (HSM, etc.)
+
+    IMPORTANT: We use Python's standard library crypto (hashlib, secrets,
+    or the 'cryptography' package). We do NOT roll our own crypto primitives.
+    Sovereignty means controlling our systems, not reinventing secure algorithms.
+    """
+
+    def encrypt(self, plaintext: bytes, context: Optional[bytes] = None) -> EncryptedValue: ...
+    def decrypt(self, encrypted: EncryptedValue, context: Optional[bytes] = None) -> bytes: ...
+
+
+class NoOpEncryption:
+    """
+    No-op encryption for development.
+
+    USE ONLY IN DEVELOPMENT. Data is stored unencrypted.
+
+    Example:
+        # Development setup - fast, no encryption overhead
+        cdg = CDGClient(encryption=NoOpEncryption())
+    """
+
+    def encrypt(self, plaintext: bytes, context: Optional[bytes] = None) -> EncryptedValue:
+        return EncryptedValue(ciphertext=plaintext, nonce=b"", tag=b"", encrypted=False)
+
+    def decrypt(self, encrypted: EncryptedValue, context: Optional[bytes] = None) -> bytes:
+        return encrypted.ciphertext
+
+
+class StdlibEncryption:
+    """
+    Production encryption using Python stdlib/cryptography package.
+
+    Uses AES-256-GCM via the 'cryptography' package (a well-audited,
+    battle-tested library). This is the RECOMMENDED approach.
+
+    Example:
+        # Production setup
+        cdg = CDGClient(encryption=StdlibEncryption(master_key=load_key()))
     """
 
     def __init__(self, master_key: bytes):
@@ -2269,46 +2877,121 @@ class EncryptionManager:
 
         Master key should be:
         - 256 bits (32 bytes)
-        - Stored securely (HSM, secure enclave, or encrypted file)
-        - Rotated periodically
+        - Generated with secrets.token_bytes(32)
+        - Stored securely (environment variable, secrets manager, etc.)
         """
         pass
 
-    def encrypt_value(
+    def encrypt(self, plaintext: bytes, context: Optional[bytes] = None) -> EncryptedValue:
+        """Encrypt using AES-256-GCM from cryptography package."""
+        # Implementation uses: from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        pass
+
+    def decrypt(self, encrypted: EncryptedValue, context: Optional[bytes] = None) -> bytes:
+        """Decrypt using AES-256-GCM. Raises AuthenticationError if tampered."""
+        pass
+
+
+class EncryptionManager:
+    """
+    Manages encryption lifecycle with pluggable providers.
+    """
+
+    def __init__(
         self,
-        plaintext: bytes,
-        associated_data: Optional[bytes] = None
-    ) -> EncryptedValue:
+        provider: EncryptionProvider = None,
+        enabled: bool = False
+    ):
         """
-        Encrypt a value using AES-256-GCM.
+        Initialize encryption manager.
 
         Args:
-            plaintext: Data to encrypt
-            associated_data: Additional authenticated data (not encrypted, but authenticated)
+            provider: Encryption provider (default: NoOpEncryption if not enabled)
+            enabled: Whether encryption is enabled
 
-        Returns:
-            EncryptedValue with ciphertext, nonce, and tag
+        Example (Development):
+            # No encryption - fastest for development
+            mgr = EncryptionManager(enabled=False)
+
+        Example (Production):
+            # Enable encryption with stdlib provider
+            mgr = EncryptionManager(
+                provider=StdlibEncryption(master_key=load_key()),
+                enabled=True
+            )
         """
-        pass
+        self.provider = provider or NoOpEncryption()
+        self.enabled = enabled
 
-    def decrypt_value(
-        self,
-        encrypted: EncryptedValue,
-        associated_data: Optional[bytes] = None
-    ) -> bytes:
-        """Decrypt a value. Raises AuthenticationError if tampered."""
-        pass
+    def encrypt_value(self, plaintext: bytes, context: Optional[bytes] = None) -> EncryptedValue:
+        """Encrypt if enabled, pass-through if not."""
+        if not self.enabled:
+            return EncryptedValue(ciphertext=plaintext, encrypted=False)
+        return self.provider.encrypt(plaintext, context)
 
-    def rotate_master_key(self, new_master_key: bytes) -> KeyRotationResult:
+    def decrypt_value(self, encrypted: EncryptedValue, context: Optional[bytes] = None) -> bytes:
+        """Decrypt if was encrypted, pass-through if not."""
+        if not encrypted.encrypted:
+            return encrypted.ciphertext
+        return self.provider.decrypt(encrypted, context)
+
+    def rotate_master_key(self, new_key: bytes) -> KeyRotationResult:
         """
-        Rotate the master key.
+        Rotate the master key (production only).
 
         Process:
-        1. Generate new data encryption keys with new master
-        2. Re-encrypt all data encryption keys
+        1. Create new provider with new key
+        2. Re-encrypt data encryption keys
         3. Schedule background re-encryption of data
         """
         pass
+```
+
+**Development vs Production Configuration**:
+
+```python
+# config.py
+
+class CDGConfig:
+    """
+    Configuration that adapts to deployment context.
+
+    Laptop → Cluster → Cloud progression:
+    - Development: Single node, no encryption, relaxed timeouts
+    - Staging: Multi-node, optional encryption, moderate timeouts
+    - Production: Full cluster, encryption required, strict timeouts
+    """
+
+    @classmethod
+    def development(cls) -> 'CDGConfig':
+        """Fast setup for laptop development."""
+        return cls(
+            encryption_enabled=False,
+            replication_factor=1,  # Single node
+            consistency_level=ConsistencyLevel.ONE,
+            connection_timeout_ms=5000,
+        )
+
+    @classmethod
+    def staging(cls, nodes: int = 3) -> 'CDGConfig':
+        """Multi-node testing environment."""
+        return cls(
+            encryption_enabled=False,  # Optional
+            replication_factor=min(nodes, 3),
+            consistency_level=ConsistencyLevel.QUORUM,
+            connection_timeout_ms=2000,
+        )
+
+    @classmethod
+    def production(cls, master_key: bytes) -> 'CDGConfig':
+        """Production configuration with all safeguards."""
+        return cls(
+            encryption_enabled=True,
+            encryption_provider=StdlibEncryption(master_key),
+            replication_factor=3,
+            consistency_level=ConsistencyLevel.QUORUM,
+            connection_timeout_ms=1000,
+        )
 ```
 
 ---
@@ -3128,6 +3811,228 @@ traversals, neighborhood queries, and relationship-heavy operations.
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
+### Super-Node Handling (Optional, Non-Intrusive)
+
+**Design Note**: Super-nodes (nodes with millions of edges) are a real problem in graph
+databases. However, we don't optimize for problems we don't have yet. This section
+provides OPTIONS that can be enabled when needed, without slowing down normal development.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    SUPER-NODE STRATEGY                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   DEFAULT BEHAVIOR (No Overhead):                                        │
+│   • Nodes are stored normally                                           │
+│   • No special handling until threshold exceeded                        │
+│   • Monitoring tracks node degrees automatically                        │
+│                                                                          │
+│   WHEN THRESHOLD EXCEEDED (Configurable):                                │
+│   • degree > 10,000: Log warning, continue normally                     │
+│   • degree > 100,000: Auto-enable overflow storage                      │
+│   • degree > 1,000,000: Suggest partitioning strategy                   │
+│                                                                          │
+│   OPTIONAL STRATEGIES (Enable When Needed):                              │
+│   ┌─────────────────────────────────────────────────────────────────┐   │
+│   │  1. EDGE OVERFLOW      - Store excess edges separately          │   │
+│   │  2. EDGE SAMPLING      - Sample edges for traversals            │   │
+│   │  3. DEGREE PARTITIONING - Shard by edge type                    │   │
+│   │  4. LAZY LOADING       - Load edges on demand                   │   │
+│   └─────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+```python
+class SuperNodeConfig:
+    """
+    Configuration for super-node handling.
+
+    DESIGN: Opt-in, non-intrusive. Normal operations are not affected
+    until thresholds are exceeded. Then handling kicks in automatically.
+    """
+
+    def __init__(
+        self,
+        enabled: bool = True,  # Monitoring always on, handling opt-in
+        warning_threshold: int = 10_000,
+        overflow_threshold: int = 100_000,
+        partition_threshold: int = 1_000_000,
+        strategy: SuperNodeStrategy = SuperNodeStrategy.AUTO
+    ):
+        """
+        Configure super-node handling.
+
+        Args:
+            enabled: Enable automatic super-node handling
+            warning_threshold: Log warning when degree exceeds this
+            overflow_threshold: Auto-enable overflow storage
+            partition_threshold: Suggest partitioning at this level
+            strategy: How to handle super-nodes (AUTO, OVERFLOW, SAMPLE, PARTITION)
+
+        Example (Development - no overhead):
+            config = SuperNodeConfig(enabled=False)  # No special handling
+
+        Example (Production - automatic):
+            config = SuperNodeConfig(enabled=True)  # Auto-handle when needed
+        """
+        pass
+
+
+class SuperNodeHandler:
+    """
+    Handles super-nodes when they're detected.
+
+    Non-intrusive: Only activates when thresholds exceeded.
+    Monitorable: Exposes metrics for tracking.
+    Adaptable: Strategies can be changed at runtime.
+    """
+
+    def __init__(self, config: SuperNodeConfig):
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # DETECTION (Always Active, Low Overhead)
+    # ─────────────────────────────────────────────────────────────────
+
+    def get_high_degree_nodes(self, threshold: int = 10_000) -> List[NodeDegreeInfo]:
+        """
+        Get nodes exceeding degree threshold.
+
+        Use this for monitoring and capacity planning.
+        Called periodically by observability system.
+        """
+        pass
+
+    def get_degree_distribution(self) -> DegreeDistribution:
+        """
+        Get degree distribution statistics.
+
+        Returns histogram of node degrees for understanding
+        graph structure and identifying potential super-nodes.
+        """
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # STRATEGIES (Opt-In, Enable When Needed)
+    # ─────────────────────────────────────────────────────────────────
+
+    def enable_overflow_storage(self, node_id: str) -> OverflowResult:
+        """
+        Move excess edges to overflow storage.
+
+        Automatically triggered when overflow_threshold exceeded,
+        or can be called manually.
+
+        Edges beyond threshold stored separately, accessed via
+        get_overflow_edges() in EdgeColocationManager.
+        """
+        pass
+
+    def sample_edges(
+        self,
+        node_id: str,
+        sample_size: int,
+        strategy: SamplingStrategy = SamplingStrategy.RANDOM
+    ) -> List[Edge]:
+        """
+        Sample edges from a super-node.
+
+        Use when traversing all edges is too expensive.
+
+        Strategies:
+        - RANDOM: Uniform random sample
+        - WEIGHTED: Sample by edge weight
+        - RECENT: Sample most recently created edges
+        - TYPE_BALANCED: Equal representation of edge types
+        """
+        pass
+
+    def partition_by_edge_type(self, node_id: str) -> PartitionResult:
+        """
+        Partition super-node edges by type.
+
+        Creates virtual sub-nodes for each edge type:
+        - node:123:friends
+        - node:123:followers
+        - node:123:likes
+
+        Queries can target specific partitions.
+        """
+        pass
+
+    def lazy_edge_iterator(
+        self,
+        node_id: str,
+        batch_size: int = 1000
+    ) -> Iterator[List[Edge]]:
+        """
+        Lazily iterate over super-node edges.
+
+        Returns edges in batches, allowing processing
+        without loading all edges into memory.
+        """
+        pass
+
+    # ─────────────────────────────────────────────────────────────────
+    # QUERY PLANNING (Automatic When Enabled)
+    # ─────────────────────────────────────────────────────────────────
+
+    def suggest_query_strategy(
+        self,
+        query: Query,
+        super_nodes: List[str]
+    ) -> QuerySuggestion:
+        """
+        Suggest query optimization for super-nodes.
+
+        Returns:
+            QuerySuggestion with:
+            - use_sampling: Whether to sample edges
+            - filter_first: Whether to filter before traversing
+            - suggested_limit: Recommended result limit
+            - estimated_cost: Cost estimate with/without optimization
+
+        Called by query planner when super-nodes detected in query path.
+        """
+        pass
+```
+
+**Usage Examples**:
+
+```python
+# Development - no overhead, no special handling
+cdg = CDGClient(super_node_config=SuperNodeConfig(enabled=False))
+
+# Production - automatic handling when needed
+cdg = CDGClient(super_node_config=SuperNodeConfig(enabled=True))
+
+# Check for super-nodes (monitoring)
+high_degree = cdg.super_nodes.get_high_degree_nodes(threshold=10_000)
+if high_degree:
+    print(f"Found {len(high_degree)} potential super-nodes")
+    for node in high_degree:
+        print(f"  {node.id}: {node.degree} edges")
+
+# Sample edges from super-node (when needed)
+celebrity_followers = cdg.super_nodes.sample_edges(
+    node_id="user:celebrity",
+    sample_size=1000,
+    strategy=SamplingStrategy.RECENT
+)
+
+# Lazy iteration for batch processing
+for batch in cdg.super_nodes.lazy_edge_iterator("user:celebrity", batch_size=1000):
+    process_batch(batch)
+```
+
+**Future Consideration**: If super-nodes become a common problem, we may:
+- Add automatic degree-aware sharding during ingestion
+- Implement bloom filters for edge existence checks
+- Add precomputed aggregations for high-degree nodes
+
+These can be added when the need arises, tracked via observability.
+
 ### GraphOptimizer API
 
 ```python
@@ -3385,373 +4290,108 @@ class VertexCentricExecutor:
 
 ---
 
-## 23. Testing Framework
+## 23. Testing Strategy (Deferred)
 
-**Design Philosophy**: A distributed graph requires rigorous testing at all levels.
-We provide built-in tools for chaos, load, and fuzz testing.
-
-### Testing Architecture
+**Design Note**: Advanced testing frameworks (chaos, load, fuzz) are production concerns.
+We defer their implementation until we're approaching production readiness. For now,
+we rely on the existing Metus testing philosophy (behavioral scenarios, contracts, specs).
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                      TESTING PYRAMID                                     │
+│                    TESTING APPROACH BY STAGE                             │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
-│                        ┌───────────────┐                                │
-│                        │   CHAOS       │  ← Failure injection           │
-│                        │   TESTING     │    Network partitions          │
-│                        └───────────────┘    Node failures               │
-│                       ╱                 ╲                                │
-│                      ╱                   ╲                               │
-│               ┌───────────┐         ┌───────────┐                       │
-│               │   LOAD    │         │   FUZZ    │  ← Random inputs      │
-│               │  TESTING  │         │  TESTING  │    Edge cases         │
-│               └───────────┘         └───────────┘    Malformed data     │
-│              ╱             ╲       ╱             ╲                       │
-│             ╱               ╲     ╱               ╲                      │
-│      ┌───────────┐    ┌───────────┐    ┌───────────┐                   │
-│      │ CONTRACT  │    │ BEHAVIOR  │    │   UNIT    │  ← Fast, focused   │
-│      │   TESTS   │    │   TESTS   │    │   TESTS   │    Deterministic   │
-│      └───────────┘    └───────────┘    └───────────┘                   │
+│   DEVELOPMENT          STAGING              PRE-PRODUCTION               │
+│   ───────────          ───────              ──────────────               │
+│                                                                          │
+│   Use Metus:           Add:                 Consider:                    │
+│   • Unit specs         • Multi-node tests   • Chaos testing              │
+│   • Behavioral tests   • Basic load tests   • Load testing               │
+│   • Smoke tests        • Integration tests  • Fuzz testing               │
+│                                                                          │
+│   tests/               tests/               tests/                       │
+│   └── unit/            └── integration/     └── chaos/   (future)       │
+│   └── behavioral/      └── distributed/     └── load/    (future)       │
+│   └── smoke/                                └── fuzz/    (future)       │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### TestingFramework API
+### What We Have Now
+
+CDG testing uses the existing **Metus framework** (see CLAUDE.md):
 
 ```python
-class ChaosTestFramework:
+# Behavioral tests for CDG (exists now)
+class DeveloperUsesDistributedGraph:
     """
-    Framework for chaos engineering tests.
-
-    Tests system resilience by injecting failures:
-    - Network partitions
-    - Node crashes
-    - Disk failures
-    - Clock skew
-    - Resource exhaustion
-
-    Sovereignty Note: We build our own chaos framework.
-    No Chaos Monkey, no LitmusChaos. Our chaos, our control.
+    As a developer building on CDG,
+    I want reliable graph operations,
+    So that I can focus on my application logic.
     """
 
-    def __init__(self, cluster: CDGCluster):
-        self.cluster = cluster
-        self.injectors: List[FaultInjector] = []
+    def scenario_basic_crud_operations(self, cdg_client):
+        """Given a CDG client, When I perform CRUD, Then operations succeed."""
+        # Given
+        node = cdg_client.create_node({"name": "test"})
 
-    # ─────────────────────────────────────────────────────────────────
-    # FAULT INJECTION
-    # ─────────────────────────────────────────────────────────────────
+        # When
+        retrieved = cdg_client.get_node(node.id)
 
-    def inject_network_partition(
-        self,
-        partition_a: List[str],
-        partition_b: List[str],
-        duration_seconds: int
-    ) -> FaultHandle:
-        """
-        Create a network partition between two groups of nodes.
+        # Then
+        assert retrieved.properties["name"] == "test"
 
-        Example:
-            # Split cluster in half
-            handle = chaos.inject_network_partition(
-                partition_a=["node1", "node2"],
-                partition_b=["node3", "node4"],
-                duration_seconds=30
-            )
-
-            # Verify system behavior during partition
-            assert cluster.is_available()  # Should remain available
-            assert cluster.writes_succeed()  # With quorum
-
-            # Heal partition
-            handle.heal()
-        """
-        pass
-
-    def inject_node_crash(
-        self,
-        node_id: str,
-        crash_type: CrashType = CrashType.SIGKILL
-    ) -> FaultHandle:
-        """
-        Simulate a node crash.
-
-        CrashType options:
-        - SIGKILL: Immediate crash (no cleanup)
-        - SIGTERM: Graceful shutdown
-        - OOM: Out of memory killer
-        - HANG: Process hangs (no response)
-        """
-        pass
-
-    def inject_disk_failure(
-        self,
-        node_id: str,
-        failure_type: DiskFailureType
-    ) -> FaultHandle:
-        """
-        Simulate disk failure.
-
-        DiskFailureType options:
-        - READONLY: Disk becomes read-only
-        - SLOW: I/O latency increased 100x
-        - CORRUPT: Random bit flips
-        - FULL: Disk space exhausted
-        """
-        pass
-
-    def inject_clock_skew(
-        self,
-        node_id: str,
-        skew_seconds: int
-    ) -> FaultHandle:
-        """
-        Inject clock skew on a node.
-
-        Tests timestamp-dependent logic.
-        """
-        pass
-
-    def inject_network_delay(
-        self,
-        node_id: str,
-        delay_ms: int,
-        jitter_ms: int = 0
-    ) -> FaultHandle:
-        """
-        Add network latency to a node.
-
-        Example:
-            # Simulate cross-datacenter latency
-            handle = chaos.inject_network_delay(
-                node_id="node1",
-                delay_ms=100,
-                jitter_ms=20
-            )
-        """
-        pass
-
-    # ─────────────────────────────────────────────────────────────────
-    # CHAOS SCENARIOS
-    # ─────────────────────────────────────────────────────────────────
-
-    def run_scenario(self, scenario: ChaosScenario) -> ScenarioResult:
-        """
-        Run a predefined chaos scenario.
-
-        Example:
-            result = chaos.run_scenario(ChaosScenarios.LEADER_FAILURE)
-            assert result.recovery_time_seconds < 10
-            assert result.data_loss == 0
-        """
-        pass
-
-    @staticmethod
-    def scenarios() -> Dict[str, ChaosScenario]:
-        """
-        Get predefined chaos scenarios.
-
-        Available scenarios:
-        - LEADER_FAILURE: Kill leader, verify failover
-        - NETWORK_PARTITION_QUORUM: Partition with quorum preserved
-        - NETWORK_PARTITION_MINORITY: Partition with minority isolated
-        - ROLLING_RESTART: Restart nodes one by one
-        - DATACENTER_FAILURE: Lose entire datacenter
-        - SPLIT_BRAIN: Network partition causing split brain
-        """
-        pass
-
-
-class LoadTestFramework:
-    """
-    Framework for load and performance testing.
-    """
-
-    def __init__(self, cluster: CDGCluster):
-        pass
-
-    def run_load_test(
-        self,
-        workload: Workload,
-        duration_seconds: int,
-        target_ops_per_second: int,
-        ramp_up_seconds: int = 30
-    ) -> LoadTestResult:
-        """
-        Run a load test with specified workload.
-
-        Example:
-            result = load.run_load_test(
-                workload=Workloads.MIXED_READ_WRITE(read_pct=80),
-                duration_seconds=300,
-                target_ops_per_second=10000,
-                ramp_up_seconds=60
-            )
-
-            print(f"Achieved throughput: {result.actual_ops_per_second}")
-            print(f"p99 latency: {result.latency_p99_ms}ms")
-            print(f"Error rate: {result.error_rate_pct}%")
-        """
-        pass
-
-    def run_stress_test(
-        self,
-        workload: Workload,
-        max_duration_seconds: int = 600
-    ) -> StressTestResult:
-        """
-        Run stress test to find breaking point.
-
-        Increases load until system fails or degrades.
-        """
-        pass
-
-    def run_soak_test(
-        self,
-        workload: Workload,
-        duration_hours: int,
-        target_ops_per_second: int
-    ) -> SoakTestResult:
-        """
-        Run extended soak test to find memory leaks, degradation.
-        """
-        pass
-
-    @staticmethod
-    def workloads() -> Dict[str, Workload]:
-        """
-        Get predefined workloads.
-
-        Available workloads:
-        - READ_HEAVY: 95% reads, 5% writes
-        - WRITE_HEAVY: 30% reads, 70% writes
-        - MIXED_READ_WRITE: Configurable ratio
-        - TRAVERSAL_HEAVY: Graph traversals
-        - SCAN_HEAVY: Full partition scans
-        - POINT_LOOKUP: Single node lookups
-        """
-        pass
-
-
-class FuzzTestFramework:
-    """
-    Framework for fuzz testing.
-
-    Generates random/malformed inputs to find edge cases.
-    """
-
-    def __init__(self, cluster: CDGCluster):
-        pass
-
-    def fuzz_queries(
-        self,
-        iterations: int = 10000,
-        seed: Optional[int] = None
-    ) -> FuzzResult:
-        """
-        Fuzz the query parser and executor.
-
-        Generates random CQL queries to find:
-        - Parser crashes
-        - Executor panics
-        - Unexpected behavior
-        """
-        pass
-
-    def fuzz_input_data(
-        self,
-        iterations: int = 10000,
-        seed: Optional[int] = None
-    ) -> FuzzResult:
-        """
-        Fuzz input data (nodes, edges, properties).
-
-        Tests:
-        - Unicode handling
-        - Large values
-        - Special characters
-        - Null/empty values
-        """
-        pass
-
-    def fuzz_protocol(
-        self,
-        iterations: int = 10000,
-        seed: Optional[int] = None
-    ) -> FuzzResult:
-        """
-        Fuzz the wire protocol.
-
-        Sends malformed messages to test:
-        - Protocol parser robustness
-        - Error handling
-        - Resource limits
-        """
-        pass
-
-    def property_based_test(
-        self,
-        property_fn: Callable[[Any], bool],
-        generator: DataGenerator,
-        iterations: int = 1000
-    ) -> PropertyTestResult:
-        """
-        Run property-based testing.
-
-        Example:
-            # Property: insert then get returns same value
-            def insert_get_roundtrip(data):
-                node = cdg.insert_node(data)
-                retrieved = cdg.get_node(node.id)
-                return retrieved.properties == data
-
-            result = fuzz.property_based_test(
-                property_fn=insert_get_roundtrip,
-                generator=generators.random_node_data(),
-                iterations=10000
-            )
-        """
-        pass
-
-
-class TestDataGenerator:
-    """
-    Generate test data for various scenarios.
-    """
-
-    @staticmethod
-    def random_graph(
-        num_nodes: int,
-        num_edges: int,
-        node_types: List[str],
-        edge_types: List[str]
-    ) -> Tuple[List[Node], List[Edge]]:
-        """Generate a random graph."""
-        pass
-
-    @staticmethod
-    def scale_free_graph(num_nodes: int) -> Tuple[List[Node], List[Edge]]:
-        """Generate scale-free graph (power-law degree distribution)."""
-        pass
-
-    @staticmethod
-    def small_world_graph(
-        num_nodes: int,
-        k: int,
-        p: float
-    ) -> Tuple[List[Node], List[Edge]]:
-        """Generate small-world graph (Watts-Strogatz model)."""
-        pass
-
-    @staticmethod
-    def hierarchical_graph(
-        depth: int,
-        branching_factor: int
-    ) -> Tuple[List[Node], List[Edge]]:
-        """Generate hierarchical/tree graph."""
+    def scenario_graph_survives_restart(self, cdg_client):
+        """Given data in CDG, When I restart, Then data persists."""
         pass
 ```
+
+### What We'll Add Later (Production)
+
+**When approaching production**, implement:
+
+| Testing Type | Purpose | Implement When |
+|--------------|---------|----------------|
+| **Chaos Testing** | Verify resilience to failures | Pre-production |
+| **Load Testing** | Validate performance contracts | Pre-production |
+| **Fuzz Testing** | Find edge cases and bugs | Pre-production |
+| **Soak Testing** | Find memory leaks | Pre-production |
+
+### Testability Hooks (Implement Now)
+
+CDG should expose hooks that make future testing easier:
+
+```python
+class TestabilityHooks:
+    """
+    Hooks for testing - implement these during development.
+    They make advanced testing possible later without refactoring.
+    """
+
+    def inject_latency(self, operation: str, latency_ms: int) -> None:
+        """Inject artificial latency for testing."""
+        pass
+
+    def simulate_failure(self, component: str) -> ContextManager:
+        """Temporarily simulate component failure."""
+        pass
+
+    def get_internal_metrics(self) -> Dict[str, Any]:
+        """Expose internal metrics for testing."""
+        pass
+
+    def force_compaction(self) -> None:
+        """Force storage compaction for deterministic tests."""
+        pass
+
+    def reset_state(self) -> None:
+        """Reset to clean state (testing only)."""
+        pass
+```
+
+**Future Consideration**: Full chaos/load/fuzz frameworks will be documented
+and implemented when production deployment is imminent. The testability hooks
+above ensure we can add them without major refactoring.
 
 ---
 
