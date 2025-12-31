@@ -167,7 +167,7 @@ class SemanticKnowledgeGraph:
         enable_prism: bool = False,
         enable_spark: bool = False,
         persistence_dir: Optional[str] = None,
-        use_real_expansion: bool = False,
+        use_real_expansion: bool = True,
         max_edges_per_node: int = 50,
         edge_weight_threshold: float = 0.01,
     ):
@@ -337,6 +337,131 @@ class SemanticKnowledgeGraph:
             return True
         return False
 
+    def add_document_incremental(
+        self,
+        doc_id: str,
+        content: str,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """
+        Add a document with incremental graph update (no full rebuild).
+
+        This is faster than add_document + build() when adding documents
+        to an already-built graph. It:
+        1. Creates document and token nodes
+        2. Adds vertical edges (doc -> tokens)
+        3. Adds lateral edges between co-occurring tokens
+        4. Updates BM25 statistics incrementally
+
+        Note: PageRank is NOT updated. Call refresh_scores() periodically
+        to recalculate global scores.
+
+        Args:
+            doc_id: Unique document identifier
+            content: Document text content
+            metadata: Optional metadata
+        """
+        if not self._built:
+            # If not built yet, just add and wait for build()
+            self.add_document(doc_id, content, metadata)
+            return
+
+        # Add to document collection
+        self._documents[doc_id] = content
+        self._doc_metadata[doc_id] = metadata or {}
+
+        # Tokenize
+        tokens = tokenize(content)
+        unique_tokens = list(set(tokens))
+
+        # Create document node
+        doc_node_id = f"doc:{doc_id}"
+        if doc_node_id not in self._nodes:
+            self._nodes[doc_node_id] = GraphNode(
+                id=doc_node_id,
+                content=content[:200],
+                layer=CorticalLayer.DOCUMENTS,
+                properties={'full_content': content, 'tokens': tokens},
+            )
+
+        # Create/update token nodes and feedforward edges (token -> doc)
+        token_ids = []
+        for token in unique_tokens:
+            token_node_id = f"token:{token}"
+            if token_node_id not in self._nodes:
+                self._nodes[token_node_id] = GraphNode(
+                    id=token_node_id,
+                    content=token,
+                    layer=CorticalLayer.TOKENS,
+                )
+            token_ids.append(token_node_id)
+            # Add feedforward edge: token -> doc
+            self._add_edge(
+                token_node_id,
+                doc_node_id,
+                ConnectionType.FEEDFORWARD,
+            )
+
+        # Add lateral edges between co-occurring tokens in this doc
+        for i, node1 in enumerate(token_ids):
+            for node2 in token_ids[i+1:]:
+                # Simple weight based on co-occurrence
+                # (Approximation - true weight would require scanning all docs)
+                weight = 0.5
+                self._add_edge(
+                    node1, node2, ConnectionType.LATERAL,
+                    relation_type="CoOccurs", weight=weight
+                )
+
+        # Incrementally update BM25 stats
+        if hasattr(self, "_doc_lengths"):
+            self._doc_lengths[doc_id] = len(tokens)
+            # Update average doc length
+            total_len = sum(self._doc_lengths.values())
+            self._avg_doc_len = total_len / len(self._doc_lengths)
+            # Update term frequencies for this doc
+            tf: Dict[str, int] = {}
+            for t in tokens:
+                tf[t] = tf.get(t, 0) + 1
+            self._doc_tf[doc_id] = tf
+            self._doc_tokens_cache[doc_id] = tokens
+            # Update global document frequencies
+            for token in unique_tokens:
+                self._global_df[token] = self._global_df.get(token, 0) + 1
+
+        # Log CEL event
+        if self._enable_cel:
+            self._log_cel_event("OBSERVATION", {
+                "type": "document_added_incremental",
+                "doc_id": doc_id,
+                "content_length": len(content),
+                "tokens": len(unique_tokens),
+            })
+
+    def refresh_scores(self, recompute_pagerank: bool = True) -> None:
+        """
+        Refresh global scores (PageRank, etc.) without full rebuild.
+
+        Call this periodically after adding documents incrementally
+        to update global scoring metrics.
+
+        Args:
+            recompute_pagerank: Whether to recompute PageRank scores
+        """
+        if not self._built:
+            return
+
+        if recompute_pagerank:
+            self._compute_pagerank()
+
+        # Log CEL event
+        if self._enable_cel:
+            self._log_cel_event("COMPUTATION", {
+                "type": "scores_refreshed",
+                "nodes": len(self._nodes),
+                "edges": len(self._edges),
+            })
+
     def build(self) -> None:
         """
         Build the knowledge graph from documents.
@@ -377,6 +502,9 @@ class SemanticKnowledgeGraph:
         # Compute importance scores
         self._compute_pagerank()
         self._compute_tfidf()
+
+        # Precompute BM25 statistics for fast search
+        self._precompute_bm25_stats()
 
         self._built = True
         self._build_time = time.time() - start_time
@@ -489,23 +617,54 @@ class SemanticKnowledgeGraph:
         self._edge_index = new_edge_index
 
     def _build_connections(self) -> None:
-        """Build lateral connections within layers."""
-        # Connect tokens that co-occur in documents
+        """Build lateral connections within layers using co-occurrence counts."""
+        from collections import Counter
+
+        # Count co-occurrences across all documents
+        cooccurrence: Counter = Counter()
+        doc_freq: Counter = Counter()  # How many docs contain each token
+
         for doc_id, content in self._documents.items():
             tokens = tokenize(content)
             unique_tokens = list(set(tokens))
 
+            # Count document frequency for each token
+            for token in unique_tokens:
+                doc_freq[token] += 1
+
+            # Count co-occurrences (use sorted pair as key for consistency)
             for i, t1 in enumerate(unique_tokens):
                 for t2 in unique_tokens[i+1:]:
-                    node1 = f"token:{t1}"
-                    node2 = f"token:{t2}"
-                    if node1 in self._nodes and node2 in self._nodes:
-                        self._add_edge(
-                            node1, node2,
-                            ConnectionType.LATERAL,
-                            relation_type="CoOccurs",
-                            weight=0.5,
-                        )
+                    pair = tuple(sorted([t1, t2]))
+                    cooccurrence[pair] += 1
+
+        # Compute max for normalization
+        max_cooccur = max(cooccurrence.values()) if cooccurrence else 1
+        n_docs = len(self._documents)
+
+        # Create edges weighted by co-occurrence frequency
+        for (t1, t2), count in cooccurrence.items():
+            node1 = f"token:{t1}"
+            node2 = f"token:{t2}"
+
+            if node1 in self._nodes and node2 in self._nodes:
+                # Weight = normalized co-occurrence * IDF factor
+                # Higher weight for pairs that co-occur often but aren't too common
+                cooccur_weight = count / max_cooccur
+
+                # IDF-like factor: boost pairs where both tokens are distinctive
+                idf1 = 1.0 / (1.0 + doc_freq[t1] / n_docs)
+                idf2 = 1.0 / (1.0 + doc_freq[t2] / n_docs)
+                idf_factor = (idf1 + idf2) / 2
+
+                weight = 0.3 + 0.7 * cooccur_weight * idf_factor
+
+                self._add_edge(
+                    node1, node2,
+                    ConnectionType.LATERAL,
+                    relation_type="CoOccurs",
+                    weight=weight,
+                )
 
     def _extract_semantic_relations(self) -> None:
         """Extract semantic relations from text patterns."""
@@ -642,11 +801,40 @@ class SemanticKnowledgeGraph:
         self._compute_pagerank()
         self._compute_tfidf()
 
+    def _precompute_bm25_stats(self) -> None:
+        """Precompute BM25 statistics for fast search."""
+        # Document lengths and term frequencies
+        self._doc_lengths: Dict[str, int] = {}
+        self._doc_tf: Dict[str, Dict[str, int]] = {}
+        self._doc_tokens_cache: Dict[str, List[str]] = {}
+
+        total_len = 0
+        for doc_id, content in self._documents.items():
+            tokens = tokenize(content)
+            self._doc_tokens_cache[doc_id] = tokens
+            self._doc_lengths[doc_id] = len(tokens)
+            total_len += len(tokens)
+
+            # Term frequency for this doc
+            tf: Dict[str, int] = {}
+            for t in tokens:
+                tf[t] = tf.get(t, 0) + 1
+            self._doc_tf[doc_id] = tf
+
+        # Average document length
+        self._avg_doc_len = total_len / len(self._documents) if self._documents else 1.0
+
+        # Global document frequencies (how many docs contain each term)
+        self._global_df: Dict[str, int] = {}
+        for doc_id, tokens in self._doc_tokens_cache.items():
+            for token in set(tokens):
+                self._global_df[token] = self._global_df.get(token, 0) + 1
+
     def search(
         self,
         query: str,
         expand_query: bool = True,
-        ranking: str = "combined",
+        ranking: str = "bm25",
         limit: int = 10,
     ) -> List[SearchResult]:
         """
@@ -753,26 +941,27 @@ class SemanticKnowledgeGraph:
         k1: float = 1.5,
         b: float = 0.75,
     ) -> float:
-        """Compute BM25 score for a document."""
+        """Compute BM25 score for a document using precomputed stats."""
         import math
 
-        content = self._documents[doc_id]
-        doc_tokens = tokenize(content)
-        doc_len = len(doc_tokens)
-
-        # Average document length
-        avg_len = sum(len(tokenize(c)) for c in self._documents.values()) / len(self._documents)
-
-        # Term frequencies in this doc
-        tf = {}
-        for t in doc_tokens:
-            tf[t] = tf.get(t, 0) + 1
-
-        # Document frequencies
-        df = {}
-        for t in query_tokens:
-            count = sum(1 for c in self._documents.values() if t in tokenize(c))
-            df[t] = count
+        # Use precomputed values if available (O(1) lookups)
+        if hasattr(self, "_doc_lengths") and doc_id in self._doc_lengths:
+            doc_len = self._doc_lengths[doc_id]
+            avg_len = self._avg_doc_len
+            tf = self._doc_tf.get(doc_id, {})
+            df = self._global_df
+        else:
+            # Fallback: compute on-the-fly (slower)
+            content = self._documents[doc_id]
+            doc_tokens = tokenize(content)
+            doc_len = len(doc_tokens)
+            avg_len = sum(len(tokenize(c)) for c in self._documents.values()) / len(self._documents)
+            tf = {}
+            for t in doc_tokens:
+                tf[t] = tf.get(t, 0) + 1
+            df = {}
+            for t in query_tokens:
+                df[t] = sum(1 for c in self._documents.values() if t in tokenize(c))
 
         n_docs = len(self._documents)
         score = 0.0
