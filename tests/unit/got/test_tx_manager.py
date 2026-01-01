@@ -631,3 +631,179 @@ class TestProcessLock:
 
         lock.release()
         lock.release()
+
+
+class TestTransactionManagerKnowledgeTransfer:
+    """Test suite for TransactionManager KnowledgeTransfer methods."""
+
+    @pytest.fixture
+    def tmp_got_dir(self, tmp_path):
+        """Create temporary GoT directory for tests."""
+        got_dir = tmp_path / "got"
+        got_dir.mkdir()
+        return got_dir
+
+    @pytest.fixture
+    def manager(self, tmp_got_dir):
+        """Create TransactionManager instance."""
+        return TransactionManager(tmp_got_dir)
+
+    def test_create_knowledge_transfer(self, manager):
+        """Test creating a knowledge transfer."""
+        from cortical.got.types import KnowledgeTransfer
+
+        kt = manager.create_knowledge_transfer(
+            title="Test KT",
+            summary="Test summary",
+            session_id="sess123",
+        )
+
+        assert kt is not None
+        assert kt.id.startswith("KT-")
+        assert kt.title == "Test KT"
+        assert kt.summary == "Test summary"
+        assert kt.session_id == "sess123"
+        assert isinstance(kt, KnowledgeTransfer)
+
+    def test_create_knowledge_transfer_with_custom_id(self, manager):
+        """Test creating a knowledge transfer with custom ID."""
+        kt = manager.create_knowledge_transfer(
+            title="Custom ID KT",
+            kt_id="KT-CUSTOM-123",
+        )
+
+        assert kt.id == "KT-CUSTOM-123"
+
+    def test_create_knowledge_transfer_with_sections(self, manager):
+        """Test creating a knowledge transfer with sections."""
+        kt = manager.create_knowledge_transfer(
+            title="Sections KT",
+            sections={"Technical": "Tech content", "Notes": "Note content"},
+        )
+
+        assert "Technical" in kt.sections
+        assert kt.sections["Technical"] == "Tech content"
+        assert "Notes" in kt.sections
+
+    def test_create_knowledge_transfer_with_tags(self, manager):
+        """Test creating a knowledge transfer with tags."""
+        kt = manager.create_knowledge_transfer(
+            title="Tagged KT",
+            tags=["architecture", "testing"],
+        )
+
+        assert "architecture" in kt.tags
+        assert "testing" in kt.tags
+
+    def test_get_knowledge_transfer(self, manager):
+        """Test getting an existing knowledge transfer."""
+        # Create a KT
+        kt = manager.create_knowledge_transfer(
+            title="Get Test KT",
+            kt_id="KT-GET-TEST",
+        )
+
+        # Get it back
+        retrieved = manager.get_knowledge_transfer("KT-GET-TEST")
+
+        assert retrieved is not None
+        assert retrieved.id == "KT-GET-TEST"
+        assert retrieved.title == "Get Test KT"
+
+    def test_get_knowledge_transfer_not_found(self, manager):
+        """Test getting a non-existent knowledge transfer."""
+        result = manager.get_knowledge_transfer("KT-NONEXISTENT")
+        assert result is None
+
+    def test_list_knowledge_transfers_empty(self, manager):
+        """Test listing knowledge transfers when none exist."""
+        transfers = manager.list_knowledge_transfers()
+        assert transfers == []
+
+    def test_list_knowledge_transfers(self, manager):
+        """Test listing knowledge transfers."""
+        # Create multiple KTs
+        manager.create_knowledge_transfer(title="KT 1", kt_id="KT-LIST-1")
+        manager.create_knowledge_transfer(title="KT 2", kt_id="KT-LIST-2")
+
+        transfers = manager.list_knowledge_transfers()
+
+        assert len(transfers) == 2
+        ids = [kt.id for kt in transfers]
+        assert "KT-LIST-1" in ids
+        assert "KT-LIST-2" in ids
+
+    def test_list_knowledge_transfers_filter_by_status(self, manager):
+        """Test listing knowledge transfers filtered by status."""
+        # Create a KT - default status is 'published' (per cortical/got/types.py)
+        kt1 = manager.create_knowledge_transfer(title="Published KT", kt_id="KT-STATUS-1")
+
+        # List with status filter
+        drafts = manager.list_knowledge_transfers(status="draft")
+        published = manager.list_knowledge_transfers(status="published")
+
+        assert len(drafts) == 0  # No drafts - default is published
+        assert len(published) == 1
+
+    def test_list_knowledge_transfers_filter_by_tags(self, manager):
+        """Test listing knowledge transfers filtered by tags."""
+        manager.create_knowledge_transfer(
+            title="Tagged KT",
+            kt_id="KT-TAGS-1",
+            tags=["architecture", "testing"]
+        )
+        manager.create_knowledge_transfer(
+            title="Untagged KT",
+            kt_id="KT-TAGS-2",
+            tags=["performance"]
+        )
+
+        # Filter by tag
+        arch_kts = manager.list_knowledge_transfers(tags=["architecture"])
+
+        assert len(arch_kts) == 1
+        assert arch_kts[0].id == "KT-TAGS-1"
+
+    def test_append_to_knowledge_transfer_new_section(self, manager):
+        """Test appending to a new section."""
+        kt = manager.create_knowledge_transfer(
+            title="Append Test",
+            kt_id="KT-APPEND-1",
+        )
+
+        # Append to new section
+        updated = manager.append_to_knowledge_transfer(
+            "KT-APPEND-1",
+            "New Section",
+            "New content"
+        )
+
+        assert "New Section" in updated.sections
+        assert updated.sections["New Section"] == "New content"
+
+    def test_append_to_knowledge_transfer_existing_section(self, manager):
+        """Test appending to an existing section."""
+        kt = manager.create_knowledge_transfer(
+            title="Append Existing Test",
+            kt_id="KT-APPEND-2",
+            sections={"Existing": "Initial content"}
+        )
+
+        # Append to existing section
+        updated = manager.append_to_knowledge_transfer(
+            "KT-APPEND-2",
+            "Existing",
+            "Additional content"
+        )
+
+        assert "Initial content" in updated.sections["Existing"]
+        assert "Additional content" in updated.sections["Existing"]
+
+    def test_append_to_knowledge_transfer_not_found(self, manager):
+        """Test appending to non-existent KT raises error."""
+        with pytest.raises(TransactionError):
+            manager.append_to_knowledge_transfer(
+                "KT-NONEXISTENT",
+                "Section",
+                "Content"
+            )
