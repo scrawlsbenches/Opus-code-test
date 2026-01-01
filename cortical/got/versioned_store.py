@@ -28,13 +28,14 @@ from .types import (
     ClaudeMdLayer, ClaudeMdVersion, PersonaProfile, Team, Document,
     VALID_ENTITY_TYPES,
 )
-from .errors import ValidationError
+from .errors import ValidationError, CorruptionError
 from .config import DurabilityMode
 from .schema import get_registry
 
 # Import CDGStore for core storage operations
 from cortical.cdg.storage import CDGStore
 from cortical.cdg.config import DurabilityMode as CDGDurabilityMode
+from cortical.cdg.errors import CorruptionError as CDGCorruptionError
 
 
 def _got_entity_factory(data: Dict[str, Any]) -> Entity:
@@ -189,7 +190,10 @@ class VersionedStore:
         Raises:
             CorruptionError: If checksum verification fails
         """
-        return self._cdg_store.read(entity_id)
+        try:
+            return self._cdg_store.read(entity_id)
+        except CDGCorruptionError as e:
+            raise CorruptionError(e.message, **e.context) from e
 
     def read_at_version(self, entity_id: str, version: int) -> Optional[Entity]:
         """
@@ -206,7 +210,10 @@ class VersionedStore:
             For entities that were never modified (no history file),
             we assume they existed since version 1.
         """
-        return self._cdg_store.read_at_version(entity_id, version)
+        try:
+            return self._cdg_store.read_at_version(entity_id, version)
+        except CDGCorruptionError as e:
+            raise CorruptionError(e.message, **e.context) from e
 
     def write(self, entity: Entity) -> None:
         """
@@ -327,5 +334,13 @@ class VersionedStore:
 
     # Backward compatibility: expose _read_and_verify for advanced usage
     def _read_and_verify(self, path):
-        """Read JSON and verify checksum (for backward compatibility)."""
-        return self._cdg_store._read_and_verify(path)
+        """Read JSON and verify checksum (for backward compatibility).
+
+        Translates CDG CorruptionError to GoT CorruptionError for consistent
+        exception handling in GoT code.
+        """
+        try:
+            return self._cdg_store._read_and_verify(path)
+        except CDGCorruptionError as e:
+            # Translate CDG exception to GoT exception
+            raise CorruptionError(e.message, **e.context) from e
