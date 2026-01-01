@@ -271,6 +271,55 @@ From `tests/conftest.py` — use these instead of creating processors manually:
 | `got_manager_with_sample_tasks` | Class | Pre-populated with 20 tasks for read tests |
 | `got_manager_large` | Class | 100 tasks for performance testing |
 
+### Makefile Shortcuts
+
+The Makefile provides convenient test commands (verify with `make help`):
+
+```bash
+make test-smoke      # ~1s  - Quick sanity check
+make test-fast       # ~5s  - Fast tests, no slow markers
+make test-quick      # ~30s - Smoke + unit (default)
+make test-precommit  # ~2m  - Full pre-commit suite
+make test-coverage   # With coverage report
+make test-parallel   # Unit tests with 4 workers
+make install         # pip install -e ".[dev]"
+```
+
+### Slash Commands (Claude Code)
+
+Available in `.claude/commands/` (use with `/command-name`):
+
+| Command | Purpose |
+|---------|---------|
+| `/director` | Orchestrate complex tasks across parallel sub-agents |
+| `/delegate` | Delegate a task to a sub-agent with structured output |
+| `/sanity-check <branch>` | Pre-merge verification with tests |
+| `/context-recovery` | Restore cognitive state after context loss |
+| `/knowledge-transfer` | Generate knowledge transfer document |
+| `/ml-log` | Log chat exchanges for ML training data |
+| `/ml-stats` | Show ML data collection statistics |
+
+### Available Skills
+
+Invoke with the Skill tool (e.g., `skill: "codebase-search"`):
+
+| Skill | Purpose |
+|-------|---------|
+| `codebase-search` | Semantic search using project's own IR algorithms |
+| `ai-metadata` | View AI-friendly metadata for code modules |
+| `cognitive-state` | Manage cognitive state across sessions |
+| `corpus-indexer` | Index/re-index codebase for semantic search |
+
+### ML Data Collection Hooks
+
+This project collects ML training data via hooks in `.claude/settings.local.json`:
+
+- **SessionStart**: Logs session start for ML training
+- **PostToolUse**: Captures tool usage patterns
+- **Stop**: Captures session summary for training data
+
+Data is stored in `.git-ml/`. This is automatic and requires no action.
+
 ### Background Task Pattern
 
 For long-running tasks, use background execution to continue working:
