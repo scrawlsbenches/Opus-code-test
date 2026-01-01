@@ -1011,6 +1011,120 @@ got stats
 
 ---
 
+## Knowledge Transfer Lifecycle
+
+Knowledge transfers capture session learnings and enable continuity across agent handoffs.
+
+### Lifecycle Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     KNOWLEDGE TRANSFER LIFECYCLE                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  1. CREATE (start of session)                                           │
+│     got kt create "Session Title" --session <session_id>                │
+│                        │                                                 │
+│                        ▼                                                 │
+│                 [KT: draft] ◄─── Active, editable                       │
+│                        │                                                 │
+│  2. BUILD (during session)                                              │
+│     got kt append <kt_id> "Technical Insights" "Finding..."             │
+│     got kt append <kt_id> "Decisions" "Chose X because..."              │
+│     got kt link <kt_id> --task <task_id>                                │
+│                        │                                                 │
+│  3. FINALIZE (end of session)                                           │
+│     got kt finalize <kt_id>                                             │
+│                        │                                                 │
+│                        ▼                                                 │
+│                 [KT: published] ◄─── Immutable, searchable              │
+│                        │                                                 │
+│  4. HANDOFF (if continuation needed)                                    │
+│     got kt finalize <kt_id> --handoff-to <agent> -i "Continue..."       │
+│                        │                                                 │
+│                        ├──CONTINUES──► [Handoff]                        │
+│                        │                    │                            │
+│                        │                    ▼                            │
+│                        │              [New KT: draft]                   │
+│                        │                                                 │
+│  5. HISTORY (trace evolution)                                           │
+│     got kt history <kt_id>                                              │
+│     Shows: KT1 → Handoff1 → KT2 → Handoff2 → KT3 (current)              │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Rules
+
+1. **One draft KT at a time** - Only maintain one active knowledge transfer per work context
+2. **Finalize before handoff** - Must publish KT before creating continuation
+3. **Published is immutable** - Once finalized, a KT cannot be modified
+4. **History is traceable** - CONTINUES edges form queryable chain
+
+### Error Handling
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     IF SOMETHING GOES WRONG                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ERROR: "KT not found"                                                  │
+│  ───────────────────────                                                │
+│  → Run: got kt list                                                     │
+│  → Check the KT ID is correct (format: KT-YYYYMMDD-HHMMSS)              │
+│  → If imported, check: .got/entities/KT-*.json exists                   │
+│                                                                          │
+│  ERROR: "Cannot finalize - not in draft status"                         │
+│  ──────────────────────────────────────────────                         │
+│  → KT is already published or archived                                  │
+│  → Run: got kt show <kt_id> to check current status                     │
+│  → Create a new KT if you need to add more content                      │
+│                                                                          │
+│  ERROR: "Import failed - 'KnowledgeTransfer' object is not iterable"    │
+│  ────────────────────────────────────────────────────────────────────   │
+│  → This is a serialization bug (should be fixed)                        │
+│  → Verify scripts/got_utils.py uses asdict(kt) not dict(kt)             │
+│                                                                          │
+│  ERROR: "Cannot link - entity not found"                                │
+│  ────────────────────────────────────────                               │
+│  → The target entity (task, handoff, decision) doesn't exist            │
+│  → Run: got task list / got handoff list to find valid IDs              │
+│                                                                          │
+│  ERROR: Session context lost                                            │
+│  ───────────────────────────                                            │
+│  → Check: got kt list --status draft for active KTs                     │
+│  → Run: got kt history <kt_id> to trace where you are                   │
+│  → If no draft exists, create new KT and link to previous               │
+│                                                                          │
+│  RECOVERY: Orphaned work (no KT created)                                │
+│  ────────────────────────────────────────                               │
+│  → Create KT from session learnings:                                    │
+│    got kt create "Recovery: <topic>" --summary "Recovered from..."      │
+│  → Link to any related work that exists                                 │
+│  → Finalize immediately to preserve                                     │
+│                                                                          │
+│  RECOVERY: Need to continue but forgot to handoff                       │
+│  ─────────────────────────────────────────────                          │
+│  → Check if previous KT is still draft: got kt list --status draft      │
+│  → If draft: got kt finalize <kt_id> --handoff-to <self>                │
+│  → If published: Create new KT and manually link:                       │
+│    got kt create "Continuation of <prev>"                               │
+│    got kt link <new_kt> --handoff <previous_handoff_if_exists>          │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Best Practices
+
+1. **Create KT early** - Start capturing learnings at session start
+2. **Append frequently** - Don't wait until end to document
+3. **Use meaningful sections** - "Technical Insights", "Decisions", "Blockers", "Next Steps"
+4. **Always finalize** - Never leave a session with an orphaned draft
+5. **Link related work** - Connect KTs to tasks, decisions, handoffs for graph traversal
+6. **Import historical docs** - Use `got kt import` to bring in existing markdown
+
+---
+
 ## Quick Reference: Running Tests by Gate
 
 ```bash
