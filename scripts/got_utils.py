@@ -2798,7 +2798,7 @@ class TransactionalGoTAdapter:
             json.dump({
                 "version": 1,
                 "entity_type": "knowledge_transfer",
-                "data": kt.model_dump() if hasattr(kt, 'model_dump') else dict(kt),
+                "data": kt.model_dump() if hasattr(kt, 'model_dump') else asdict(kt),
             }, f, indent=2)
 
         self.save()

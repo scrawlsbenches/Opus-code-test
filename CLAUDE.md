@@ -951,6 +951,51 @@ tests/
 
 ---
 
+## Quick Reference: GoT CLI Commands
+
+```bash
+# Task Management
+got task create "Title" --priority high --sprint S1
+got task start <task_id>
+got task complete <task_id>
+got task list --status active
+
+# Sprint Management
+got sprint create "Sprint Name" --number 28
+got sprint list
+
+# Knowledge Transfer (Session Learning Capture)
+got kt create "Session Title" --session abc123 --summary "..."
+got kt append <kt_id> "Technical Insights" "New finding..."
+got kt append <kt_id> "Decisions" "Chose X because..."
+got kt link <kt_id> --handoff <handoff_id>
+got kt link <kt_id> --task <task_id>
+got kt import samples/memories/2025-12-29-session.md
+got kt list --status published --tags architecture
+got kt show <kt_id>
+
+# Handoff (Agent-to-Agent Work Transfer)
+got handoff initiate --source agent1 --target agent2 --task T1
+got handoff accept <handoff_id>
+got handoff complete <handoff_id>
+
+# Batch Operations (Atomic Multi-Entity Creation)
+got batch <<'EOF'
+epic create "Project X" as e1
+sprint create "Sprint 1" --epic $e1 as s1
+task create "Feature A" --sprint $s1 --priority high as t1
+task create "Tests" --sprint $s1 as t2
+edge add $t2 $t1 DEPENDS_ON
+EOF
+
+# Query and Analysis
+got query "status=active AND priority=high"
+got analyze --type dependencies
+got stats
+```
+
+---
+
 ## Quick Reference: Running Tests by Gate
 
 ```bash
