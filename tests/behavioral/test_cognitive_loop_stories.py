@@ -356,7 +356,8 @@ class TestDeveloperBuildsKnowledgeTransferSystem:
         # Then state is preserved
         assert loop.id in serialized
         assert loop.goal in serialized
-        assert "PRODUCE" in serialized
+        # Phase names are serialized as lowercase
+        assert "produce" in serialized.lower()
 
     def test_scenario_serialized_loops_can_be_restored(self):
         """
