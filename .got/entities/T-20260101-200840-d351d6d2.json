@@ -1,0 +1,19 @@
+{
+  "_checksum": "6a1598dd0f38a5d9",
+  "_written_at": "2026-01-01T20:08:40.957357+00:00",
+  "data": {
+    "created_at": "2026-01-01T20:08:40.952734+00:00",
+    "description": "## Overview\nBridge PRISM-Causal's CausalGraph with GoT edge data for advanced causal inference.\n\n## File References\n- PRISM-Causal: cortical/reasoning/prism_causal.py\n  - CausalGraph class (add_cause, observe, intervene)\n  - CausalWorld class (counterfactual)\n  - CausalAnalyzer class (necessity, sufficiency)\n- GoT edges: cortical/got/types.py (Edge dataclass)\n- GoT query: cortical/got/query_api.py (list_edges)\n\n## Integration Points\n1. **Build CausalGraph from GoT edges**\n   ```python\n   def build_causal_graph_from_got(got_manager) -> CausalGraph:\n       graph = CausalGraph()\n       for edge in got_manager.list_edges():\n           if edge.edge_type in ('CAUSED_BY', 'DEPENDS_ON', 'BLOCKS'):\n               graph.add_cause(edge.target_id, edge.source_id, \n                             strength=edge.weight)\n       return graph\n   ```\n\n2. **Map edge types to causal semantics**\n   - CAUSED_BY \u2192 Direct causation\n   - DEPENDS_ON \u2192 Enabling condition\n   - BLOCKS \u2192 Negative causation (prevents)\n\n3. **Enable interventional queries**\n   - \"What if we had completed T-100 on time?\"\n   - Uses do-calculus from PRISM-Causal\n\n4. **Counterfactual sprint analysis**\n   - \"Would sprint have succeeded if X was prioritized?\"\n\n## Acceptance Criteria\n- CausalGraph built from real GoT data\n- Interventional queries produce sensible results\n- Counterfactuals match intuition on known cases",
+    "entity_type": "task",
+    "id": "T-20260101-200840-d351d6d2",
+    "metadata": {},
+    "modified_at": "2026-01-01T20:08:40.957287+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Integrate PRISM-Causal CausalGraph with GoT edges",
+    "version": 2
+  }
+}

@@ -88,7 +88,8 @@ When you receive work, ask yourself:
 │                                                         │
 │  4. ARE THERE PERFORMANCE CONTRACTS?                    │
 │     Check tests/performance/contracts/                  │
-│     If touching search/indexing, contracts apply.       │
+│     Contracts exist for: search, algorithms, WAL,       │
+│     transactions, cognitive loops, event sourcing.      │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -716,6 +717,38 @@ class ResearcherSearchesForKnowledge:
 **Naming**: `{user_role}_{action}_stories.py`
 **Format**: Classes are epics, methods are scenarios
 
+**CRITICAL — Test Class Naming for Pytest Collection:**
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│   ⚠️  ALL TEST CLASSES MUST START WITH 'Test' PREFIX                    │
+│                                                                          │
+│   Pytest only collects classes that start with 'Test'.                  │
+│   Story-driven names are great, but MUST be prefixed.                   │
+│                                                                          │
+│   ❌ WRONG (not collected - tests are HIDDEN):                          │
+│      class DeveloperSearchesCorpus:                                     │
+│      class ResearcherBuildsKnowledge:                                   │
+│      class SystemArchitectOrchestratesWorkflows:                        │
+│                                                                          │
+│   ✅ RIGHT (collected and run):                                         │
+│      class TestDeveloperSearchesCorpus:                                 │
+│      class TestResearcherBuildsKnowledge:                               │
+│      class TestSystemArchitectOrchestratesWorkflows:                    │
+│                                                                          │
+│   The 'Test' prefix is NON-NEGOTIABLE. Without it:                      │
+│   - Tests silently don't run                                            │
+│   - Bugs hide undetected                                                │
+│   - CI passes when it shouldn't                                         │
+│   - Coverage numbers lie                                                │
+│                                                                          │
+│   AUDIT (2026-01-01): Found 169 hidden tests due to missing prefix.     │
+│   All fixed. Don't let it happen again.                                 │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
 **IMPORTANT — Test Content Must Embody Sovereignty:**
 
 Behavioral scenarios are living documentation. The example content within tests—the strings, the fake data, the hypothetical systems being described—must reflect our philosophy.
@@ -1161,6 +1194,61 @@ Each layer builds upon the last, creating assurance:
 
 ---
 
+## Test Coverage Reality
+
+As of 2025-12-31, the Metus test suite contains:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        BEHAVIORAL SCENARIOS                             │
+│                                                                          │
+│   ~900 scenarios across 68 test files                                   │
+│                                                                          │
+│   Coverage by module:                                                   │
+│   • cortical/processor/  — Document processing, queries, persistence   │
+│   • cortical/query/      — Search, passages, expansion, ranking        │
+│   • cortical/reasoning/  — Cognitive loops, woven mind, workflows      │
+│   • cortical/got/        — Graph of Thought operations                 │
+│   • cortical/spark/      — Code intelligence, predictions              │
+│   • cortical/cel/        — Event sourcing workflows                    │
+│   • examples/            — Demo conversions to behavioral tests        │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                       PERFORMANCE CONTRACTS                             │
+│                                                                          │
+│   ~300 contracts across 27 test files                                   │
+│                                                                          │
+│   Coverage by category:                                                 │
+│   • Search/Ranking       — Latency p50/p99, memory bounds              │
+│   • Core Algorithms      — PageRank, TF-IDF, clustering, connections   │
+│   • Cognitive Systems    — Goal stacks, loops, routing, homeostasis    │
+│   • Persistence          — WAL, transactions, recovery, indexing       │
+│   • Event Sourcing       — DAG operations, materialization, health     │
+│   • Language Models      — N-gram prediction, training, accuracy       │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Finding Relevant Tests
+
+When modifying a module, find related tests:
+
+```bash
+# Find behavioral tests for a module
+ls tests/behavioral/*processor* tests/behavioral/*query*
+
+# Find contract tests for an algorithm
+ls tests/performance/contracts/*pagerank* tests/performance/contracts/*tfidf*
+
+# Search for tests mentioning a concept
+grep -r "scenario.*search" tests/behavioral/
+grep -r "CONTRACT.*latency" tests/performance/contracts/
+```
+
+---
+
 ## The Metus Checklists
 
 ### Pre-Implementation Checklist
@@ -1227,6 +1315,67 @@ Before changing a performance contract:
 
 - [ ] **Announcement Made**
       Users/stakeholders are informed of the change
+```
+
+---
+
+## Contract Categories
+
+Performance contracts are organized by what they guarantee:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        CONTRACT CATEGORIES                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  LATENCY CONTRACTS                                                      │
+│  "Operations complete within X milliseconds"                            │
+│                                                                          │
+│    • Search p50 < 50ms, p99 < 200ms                                     │
+│    • PageRank convergence < 500ms for 1,000 nodes                       │
+│    • WAL write p50 < 8ms (with fsync)                                   │
+│    • Goal stack push/pop < 10ms                                         │
+│    • Event append < 5ms                                                 │
+│                                                                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  MEMORY CONTRACTS                                                       │
+│  "Resource usage stays bounded"                                         │
+│                                                                          │
+│    • Search memory < 100MB per 10,000 documents                         │
+│    • N-gram memory < 50MB per 10,000 unique n-grams                     │
+│    • Cache size respects configured bounds                              │
+│                                                                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  CORRECTNESS CONTRACTS                                                  │
+│  "Algorithms maintain mathematical properties"                          │
+│                                                                          │
+│    • PageRank scores sum to 1.0 (probability distribution)             │
+│    • TF-IDF: rare terms score higher than common terms                  │
+│    • Modularity Q ∈ [-0.5, 1.0]                                         │
+│    • Goal progress is monotonic (never regresses)                       │
+│    • Parallel = Sequential (deterministic parallelism)                  │
+│                                                                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  CONVERGENCE CONTRACTS                                                  │
+│  "Iterative algorithms terminate"                                       │
+│                                                                          │
+│    • PageRank converges in ≤ 20 iterations                              │
+│    • Louvain clustering converges in ≤ 10 iterations                    │
+│    • Spreading activation completes in ≤ 5 iterations                   │
+│                                                                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ACCURACY CONTRACTS                                                     │
+│  "Predictions meet quality thresholds"                                  │
+│                                                                          │
+│    • N-gram prediction accuracy ≥ 10% top-1, ≥ 25% top-5               │
+│    • Intent parsing accuracy > 90% for conventional commits             │
+│    • Cache hit rate > 80% for repeated access                           │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -1320,30 +1469,368 @@ tests/
 │   └── specifications/             # Gate 2: Atomic truths
 │       ├── tokenizer_spec.py
 │       ├── pagerank_spec.py
-│       ├── tfidf_spec.py
 │       └── ...
 │
 ├── integration/                    # Gate 5: Components together
 │   ├── test_search_pipeline.py
-│   ├── test_indexing_workflow.py
 │   └── ...
 │
-├── behavioral/                     # Gate 3: User stories
-│   ├── researcher_searches_corpus.py
-│   ├── developer_indexes_codebase.py
-│   ├── analyst_discovers_patterns.py
-│   └── system_handles_failures.py
+├── behavioral/                     # Gate 3: User stories (~900 scenarios)
+│   │
+│   │  # Processor & Query APIs
+│   ├── test_developer_processes_documents_incrementally.py
+│   ├── test_researcher_searches_corpus_stories.py
+│   ├── test_rag_system_retrieves_passages.py
+│   │
+│   │  # Cognitive Systems
+│   ├── test_cognitive_loop_stories.py
+│   ├── test_woven_mind_stories.py
+│   ├── developer_uses_woven_mind_stories.py
+│   │
+│   │  # Graph of Thought
+│   ├── test_developer_manages_tasks_in_graph.py
+│   ├── test_got_transactional_behavioral.py
+│   │
+│   │  # Code Intelligence
+│   ├── test_developer_uses_spark_language_model.py
+│   ├── developer_gets_code_intelligence_stories.py
+│   │
+│   │  # Event Sourcing
+│   ├── test_cel_event_sourcing_workflows.py
+│   └── ...
 │
 ├── performance/
-│   └── contracts/                  # Gate 4: Sacred promises
-│       ├── search_contract.py
-│       ├── indexing_contract.py
-│       └── memory_contract.py
+│   └── contracts/                  # Gate 4: Sacred promises (~300 contracts)
+│       │
+│       │  # Core Algorithms
+│       ├── test_pagerank_contract.py
+│       ├── test_tfidf_contract.py
+│       ├── test_clustering_contract.py
+│       │
+│       │  # Persistence
+│       ├── test_wal_contract.py
+│       ├── test_transaction_contract.py
+│       ├── test_recovery_contract.py
+│       │
+│       │  # Cognitive Systems
+│       ├── test_goal_loop_contract.py
+│       ├── test_neural_processing_contract.py
+│       │
+│       │  # Event Sourcing
+│       ├── test_cel_event_contract.py
+│       ├── test_cel_dag_contract.py
+│       └── ...
 │
 └── security/                       # Gate 6: Safety
     ├── test_injection.py
     └── test_fuzzing.py
 ```
+
+---
+
+## GoT Standard Operating Procedures (SOPs)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                              │
+│              GRAPH OF THOUGHT: STANDARD OPERATING PROCEDURES                │
+│                                                                              │
+│   These SOPs ensure consistent data collection for causal analysis.         │
+│   Following them enables: root cause analysis, impact prediction,           │
+│   sprint retrospectives, and counterfactual reasoning.                      │
+│                                                                              │
+│   Without consistent data, causal analysis produces unreliable results.     │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### SOP 1: Session Start Protocol
+
+**When**: At the beginning of every new session/thread.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  SESSION START CHECKLIST                                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  □ 1. CHECK FOR EXISTING CONTEXT                                            │
+│       python scripts/got_utils.py kt list --status draft                    │
+│       python scripts/got_utils.py task list --status in_progress            │
+│       python scripts/got_utils.py handoff list --status initiated           │
+│                                                                              │
+│  □ 2. CREATE OR CONTINUE KNOWLEDGE TRANSFER                                 │
+│       If continuing work:                                                   │
+│         → Find the relevant KT and review it                                │
+│       If new work:                                                          │
+│         → python scripts/got_utils.py kt create "Session: [topic]" \        │
+│             --summary "Working on [brief description]"                      │
+│                                                                              │
+│  □ 3. IDENTIFY ACTIVE SPRINT                                                │
+│       python scripts/got_utils.py sprint list --status in_progress          │
+│       → All tasks created should link to active sprint                      │
+│                                                                              │
+│  □ 4. REVIEW BLOCKING CHAINS                                                │
+│       python scripts/got_utils.py task list --status blocked                │
+│       → Understand what's blocked before creating new work                  │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### SOP 2: Task Creation Protocol
+
+**When**: Every time you create a new task.
+
+**Required Fields** (for causal analysis):
+
+| Field | Required | Why |
+|-------|----------|-----|
+| `title` | ✅ Always | Clear identification |
+| `priority` | ✅ Always | Impact analysis |
+| `category` | ✅ Always | Confounder control |
+| `description` | ✅ Always | Context for retrospectives |
+| Sprint link | ✅ Always | Temporal grouping |
+| DEPENDS_ON edges | ⚠️ If applicable | Causal chains |
+| CAUSED_BY edge | ⚠️ If applicable | Root cause tracing |
+
+**Commands**:
+
+```bash
+# Create task with all required fields
+python scripts/got_utils.py task create "Task title" \
+    --priority high \
+    --category feature \
+    --description "Detailed description of what and why"
+
+# Link to sprint (REQUIRED)
+python scripts/got_utils.py edge add S-XXX T-XXX CONTAINS
+
+# Add dependencies (if task depends on another)
+python scripts/got_utils.py edge add T-NEW T-DEPENDENCY DEPENDS_ON
+
+# Add causation (if task was caused by another - e.g., bug fix caused by bug)
+python scripts/got_utils.py edge add T-NEW T-CAUSE CAUSED_BY
+```
+
+**Decision Tree for CAUSED_BY vs DEPENDS_ON**:
+
+```
+Is this task a RESPONSE to something that happened?
+├─ YES: Bug fix, incident response, requirement change
+│       → Add CAUSED_BY edge to the originating task/event
+│
+└─ NO: Planned work that needs something else done first
+        → Add DEPENDS_ON edge to the prerequisite
+```
+
+### SOP 3: Task Start Protocol
+
+**When**: Before beginning work on a task.
+
+```bash
+# Mark task as started (records started_at timestamp)
+python scripts/got_utils.py task start T-XXX
+```
+
+**Why This Matters**: The `started_at` timestamp enables:
+- Duration calculation (how long tasks actually take)
+- Temporal ordering verification (cause must precede effect)
+- Velocity measurements
+
+**Current Gap**: Only 24% of tasks have `started_at` recorded!
+
+### SOP 4: Task Blocking Protocol
+
+**When**: A task becomes blocked.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  BLOCKING PROTOCOL                                                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  1. MARK AS BLOCKED with reason:                                            │
+│     python scripts/got_utils.py task block T-XXX \                          │
+│         --reason "Waiting for [specific blocker]"                           │
+│                                                                              │
+│  2. CREATE BLOCKS EDGE (if blocker is another task):                        │
+│     python scripts/got_utils.py edge add T-BLOCKER T-BLOCKED BLOCKS         │
+│                                                                              │
+│  3. ASSESS IMPACT:                                                          │
+│     → What else depends on this blocked task?                               │
+│     → Should we escalate?                                                   │
+│                                                                              │
+│  4. DOCUMENT in KT:                                                         │
+│     → Add to session KT so blockers are visible                            │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Why This Matters**: Blocking data enables:
+- Blocking chain analysis
+- Common blocker detection across sprints
+- Proactive risk identification
+
+### SOP 5: Task Completion Protocol
+
+**When**: A task is finished.
+
+```bash
+# Complete with retrospective (REQUIRED for causal learning)
+python scripts/got_utils.py task complete T-XXX \
+    --retrospective "What worked: [X]. What didn't: [Y]. Root cause of delays: [Z]"
+```
+
+**Retrospective Template**:
+
+```markdown
+## What worked
+- [Positive factors that helped completion]
+
+## What didn't work
+- [Challenges, delays, issues encountered]
+
+## Root cause of delays (if any)
+- [The underlying cause, not just symptoms]
+
+## Would have helped
+- [What would have made this easier/faster]
+```
+
+**Current Gap**: Only 27% of completed tasks have retrospectives!
+
+### SOP 6: Decision Documentation Protocol
+
+**When**: Making a significant decision.
+
+```bash
+# Log decision with rationale
+python scripts/got_utils.py decision log "Chose [option] over [alternatives]" \
+    --rationale "Because [reasoning]"
+
+# Link decision to affected tasks
+python scripts/got_utils.py edge add D-XXX T-AFFECTED JUSTIFIES
+python scripts/got_utils.py edge add D-XXX T-CREATED MOTIVATES
+```
+
+**Decision Types to Document**:
+- Architecture choices
+- Library/tool selections
+- Approach changes mid-task
+- Trade-off resolutions
+- Scope decisions
+
+### SOP 7: Session End Protocol
+
+**When**: Ending a session (context limit, break, handoff).
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  SESSION END CHECKLIST                                                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  □ 1. UPDATE ALL TASK STATUSES                                              │
+│       → Complete tasks that are done                                        │
+│       → Block tasks that are stuck (with reason!)                          │
+│       → Leave pending tasks as pending                                      │
+│                                                                              │
+│  □ 2. ADD RETROSPECTIVE TO COMPLETED TASKS                                  │
+│       python scripts/got_utils.py task update T-XXX \                       │
+│           --retrospective "..."                                             │
+│                                                                              │
+│  □ 3. FINALIZE KNOWLEDGE TRANSFER                                           │
+│       → Add final learnings to KT                                          │
+│       → python scripts/got_utils.py kt finalize KT-XXX                      │
+│                                                                              │
+│  □ 4. CREATE HANDOFF (if work continues)                                    │
+│       python scripts/got_utils.py handoff initiate \                        │
+│           --task T-XXX \                                                    │
+│           --instructions "Continue with [specific next steps]"              │
+│                                                                              │
+│  □ 5. COMMIT ALL CHANGES                                                    │
+│       → Code changes                                                        │
+│       → .got/ data (auto-persisted)                                        │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### SOP 8: Sprint Retrospective Protocol
+
+**When**: At sprint completion.
+
+```bash
+# Get sprint analysis
+python scripts/got_utils.py sprint status S-XXX
+
+# Review blocking chains
+python scripts/got_utils.py analyze dependencies --sprint S-XXX
+```
+
+**Retrospective Questions for Causal Analysis**:
+
+1. **What blocked us?**
+   - Common root causes across blocked tasks
+   - Could we have predicted these?
+
+2. **What caused delays?**
+   - Tasks that took longer than expected
+   - What was the root cause (not symptoms)?
+
+3. **What would have changed the outcome?**
+   - Counterfactual: "If we had done X, would Y have happened?"
+
+4. **What causal patterns do we see?**
+   - Are certain task types always blocked?
+   - Are certain dependencies always problematic?
+
+### Data Quality Checklist
+
+Before relying on causal analysis, verify data quality:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  CAUSAL DATA QUALITY CHECKLIST                                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Minimum for ROOT CAUSE ANALYSIS:                                           │
+│  □ DEPENDS_ON edges exist between related tasks                             │
+│  □ CAUSED_BY edges exist for reactive tasks (bugs, incidents)               │
+│                                                                              │
+│  Minimum for IMPACT ANALYSIS:                                               │
+│  □ All tasks linked to sprints (CONTAINS edges)                             │
+│  □ Priority set on all tasks                                                │
+│                                                                              │
+│  Minimum for BLOCKING ANALYSIS:                                             │
+│  □ Blocked tasks have blocked_reason set                                    │
+│  □ BLOCKS edges link blockers to blocked tasks                              │
+│                                                                              │
+│  Minimum for DURATION ANALYSIS:                                             │
+│  □ started_at timestamp on tasks                                            │
+│  □ completed_at timestamp on tasks                                          │
+│                                                                              │
+│  Minimum for RETROSPECTIVES:                                                │
+│  □ retrospective field populated on completed tasks                         │
+│  □ Decisions documented with rationale                                      │
+│                                                                              │
+│  Minimum for CONFOUNDER CONTROL:                                            │
+│  □ category set on all tasks                                                │
+│  □ complexity/effort estimates (future enhancement)                         │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Current Data Gaps (As of Assessment)
+
+| Metric | Current | Target | Gap |
+|--------|---------|--------|-----|
+| `started_at` | 24% | 90%+ | 🔴 Critical |
+| `retrospective` | 27% | 80%+ | 🔴 Critical |
+| `blocked_reason` | ~0% | 100% | 🔴 Critical |
+| CAUSED_BY edges | 0 | As needed | 🟡 Missing |
+| BLOCKS edges | 0 | As needed | 🟡 Missing |
+| Sprint links | ~95% | 100% | 🟢 Good |
+| Priority | ~100% | 100% | 🟢 Good |
+| Category | ~96% | 100% | 🟢 Good |
+
+**Action Required**: Start following SOPs consistently to build reliable causal data.
 
 ---
 
@@ -1528,20 +2015,23 @@ python -m pytest tests/smoke/ -v
 # Gate 2: Specifications (run frequently, ~2 minutes)
 python -m pytest tests/unit/ -v --cov=cortical --cov-fail-under=86
 
-# Gate 3: Behaviors (run before merge, ~5 minutes)
+# Gate 3: Behaviors (~900 scenarios, run before merge)
 python -m pytest tests/behavioral/ -v
 
-# Gate 4: Contracts (run before merge, ~10 minutes)
+# Gate 4: Contracts (~300 contracts, run before merge)
 python -m pytest tests/performance/contracts/ -v -m contract
 
-# Gate 5: Integration (run before merge, ~10 minutes)
+# Gate 5: Integration (run before merge)
 python -m pytest tests/integration/ -v
 
 # Gate 6: Security (run before release)
 python -m pytest tests/security/ -v
 
-# Full Metus Pipeline (what CI runs)
+# Full Metus Pipeline (~1,200 tests)
 python -m pytest tests/ -v --cov=cortical --cov-fail-under=86
+
+# Quick: Just behavioral + contracts (~1,200 tests, ~3 minutes)
+python -m pytest tests/behavioral/ tests/performance/contracts/ -v
 ```
 
 ---

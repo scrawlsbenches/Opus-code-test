@@ -1,0 +1,19 @@
+{
+  "_checksum": "b3406468fc4755bf",
+  "_written_at": "2026-01-01T22:42:11.042720+00:00",
+  "data": {
+    "created_at": "2026-01-01T22:42:11.038457+00:00",
+    "description": "Several contract thresholds were significantly relaxed during calibration, indicating potential optimization opportunities: 1) Transaction commits: 100ms->600ms for 100 entities (~5ms/entity due to per-entity disk I/O), 2) Recovery: 100ms->300ms for 1000 entities, 3) Empty commit: 5ms->20ms. Potential optimizations: batch writes to reduce fsync calls, async I/O, write buffering. These are optional improvements - current performance is acceptable but could be better. Only pursue if performance becomes a user concern.",
+    "entity_type": "task",
+    "id": "T-20260101-224211-d4f6417f",
+    "metadata": {},
+    "modified_at": "2026-01-01T22:42:11.042654+00:00",
+    "priority": "low",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Consider performance optimizations for relaxed contracts",
+    "version": 2
+  }
+}

@@ -94,7 +94,7 @@ class CDGTransaction:
 # ============================================================================
 
 @pytest.mark.skip(reason="CDG not yet implemented - tests document expected behavior")
-class DeveloperPerformsBasicGraphOperations:
+class TestDeveloperPerformsBasicGraphOperations:
     """
     Epic: Basic Graph Operations
 
@@ -220,7 +220,7 @@ class DeveloperPerformsBasicGraphOperations:
 
 
 @pytest.mark.skip(reason="CDG not yet implemented - tests document expected behavior")
-class DeveloperQueriesDistributedGraph:
+class TestDeveloperQueriesDistributedGraph:
     """
     Epic: Distributed Query Execution
 
@@ -353,7 +353,7 @@ class DeveloperQueriesDistributedGraph:
 
 
 @pytest.mark.skip(reason="CDG not yet implemented - tests document expected behavior")
-class DeveloperExecutesDistributedTransactions:
+class TestDeveloperExecutesDistributedTransactions:
     """
     Epic: Distributed Transactions
 
@@ -487,7 +487,7 @@ class DeveloperExecutesDistributedTransactions:
 
 
 @pytest.mark.skip(reason="CDG not yet implemented - tests document expected behavior")
-class DeveloperUsesUnifiedAdapters:
+class TestDeveloperUsesUnifiedAdapters:
     """
     Epic: Unified Graph Adapters
 
@@ -571,7 +571,7 @@ class DeveloperUsesUnifiedAdapters:
 
 
 @pytest.mark.skip(reason="CDG not yet implemented - tests document expected behavior")
-class SystemMeetsPerformanceContracts:
+class TestSystemMeetsPerformanceContracts:
     """
     Epic: Performance Contracts
 

@@ -1,0 +1,19 @@
+{
+  "_checksum": "3ebda632b8fbcf97",
+  "_written_at": "2026-01-01T20:06:28.533795+00:00",
+  "data": {
+    "created_at": "2026-01-01T20:06:28.530044+00:00",
+    "description": "## Overview\nImplement the core causal analysis module that integrates PRISM-Causal with GoT data.\n\n## File References\n- Implementation target: cortical/got/causal_analysis.py (NEW)\n- PRISM-Causal base: cortical/reasoning/prism_causal.py\n- GoT types: cortical/got/types.py\n- GoT API: cortical/got/api.py\n- Behavioral tests: tests/behavioral/test_got_causal_integration.py\n\n## Key Classes to Implement\n- GoTCausalAnalyzer: Main analyzer wrapping GoT store\n- Methods: trace_root_cause(), analyze_impact(), find_blocking_chains()\n- Methods: calculate_necessity(), analyze_sprint_causality()\n\n## Data Requirements (see CLAUDE.md SOPs)\n- Requires DEPENDS_ON edges between tasks\n- Requires CAUSED_BY edges for reactive tasks\n- Requires started_at/completed_at timestamps\n- Requires blocked_reason for blocked tasks\n\n## Acceptance Criteria\n- All 18 tests in test_got_causal_integration.py pass\n- Integrates with real GoT store (not mock)\n- Handles missing data gracefully with warnings",
+    "entity_type": "task",
+    "id": "T-20260101-200628-01101780",
+    "metadata": {},
+    "modified_at": "2026-01-01T20:06:28.533734+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Implement GoT-Causal core analysis module",
+    "version": 2
+  }
+}

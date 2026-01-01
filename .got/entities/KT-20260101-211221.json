@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "entity_type": "knowledge_transfer",
+  "data": {
+    "id": "KT-20260101-211221",
+    "entity_type": "knowledge_transfer",
+    "version": 1,
+    "created_at": "2026-01-01T21:12:21.362325",
+    "modified_at": "2026-01-01T21:30:17.400433",
+    "title": "Test Audit and PRISM-Causal Integration",
+    "session_id": "",
+    "session_date": "",
+    "summary": "Comprehensive session covering test audit findings, PRISM-Causal integration planning, GoT SOP establishment, and test health restoration sprint setup.",
+    "sections": {
+      "Test Audit Findings": "Comprehensive audit of test suite found 169 hidden tests that were not being collected by pytest. Root cause: Story-driven class names (e.g., DeveloperSearchesCorpus) lacked the required 'Test' prefix for pytest collection.\n\nFixed across 15 files:\n- test_agent_spawning_stories.py (4 classes, 14 tests)\n- test_cognitive_loop_stories.py (3 classes, 14 tests)  \n- test_workflow_orchestration_stories.py (4 classes, 12 tests)\n- test_pubsub_messaging_stories.py (5 classes, 15 tests)\n- test_distributed_graph_stories.py (5 classes, 13 tests)\n- test_woven_mind_stories.py (2 classes, 11 tests)\n- test_thought_graph_stories.py (3 classes, 12 tests)\n- test_developer_* files (various)\n- test_prism_got_stories.py (4 classes, 17 tests)\n\nThe fix revealed ~27 pre-existing test failures that had been hidden.",
+      "SOP Compliance Survey": "Surveyed agent compliance with GoT Standard Operating Procedures established in CLAUDE.md:\n\nOVERALL COMPLIANCE: 49%\n\nStrong areas (>75%):\n- SOP 2: Task Creation (98%) - Priority, category, sprint links well maintained\n- SOP 6: Decision Documentation (88%) - Decisions have rationale, JUSTIFIES edges\n- SOP 7: Session End (75%) - Handoffs active, KTs being created\n\nCritical gaps (<25%):\n- SOP 3: Task Start (23%) - started_at timestamps missing on 67% of tasks\n- SOP 4: Task Blocking (0%) - No blocked_reason, BLOCKS, or CAUSED_BY edges\n- SOP 8: Sprint Retrospective (0%) - No sprint-level retrospective data\n\nThe data quality gaps prevent reliable PRISM-Causal analysis. Cannot perform:\n- Root cause analysis (no CAUSED_BY edges)\n- Impact prediction (no BLOCKS edges)\n- Duration analysis (no started_at timestamps)",
+      "Test Health Restoration Sprint": "Created sprint S-20260101-210938-38a4978b with 10 tasks:\n\nCRITICAL Priority:\n- T-20260101-211029-dfd26b19: Fix agent spawning test failures (12 tests)\n- T-20260101-211032-a35b5f3f: Fix workflow orchestration test failures (7 tests)\n- T-20260101-211052-ffa58466: Block new features until test health restored\n\nHIGH Priority:\n- T-20260101-211034-cf2f7c35: Fix cognitive loop serialization test\n- T-20260101-211037-944ff744: Fix woven mind consolidation test\n- T-20260101-211047-17235a19: Add pre-commit hook for test class naming\n\nMEDIUM Priority:\n- T-20260101-211039-5fd0380b: Fix pubsub messaging expired message test\n- T-20260101-211042-d6b94050: Fix transaction caching tests (3 tests)\n- T-20260101-211044-c5dd752d: Fix task query and management tests (3 tests)\n\nLOW Priority:\n- T-20260101-211049-57b7b04f: Document test naming convention\n\nDependencies: T10 (blocking policy) depends on all bugfix tasks completing.",
+      "Key Files Reference": "Files critical to understanding and fixing the test failures:\n\nTest Files (with failures):\n- tests/behavioral/test_agent_spawning_stories.py - AgentSpawner import issues\n- tests/behavioral/test_workflow_orchestration_stories.py - Workflow transitions\n- tests/behavioral/test_cognitive_loop_stories.py - Serialization\n- tests/behavioral/test_woven_mind_stories.py - Pattern consolidation\n- tests/behavioral/test_pubsub_messaging_stories.py - Message status\n- tests/behavioral/test_developer_uses_transactions.py - Caching\n- tests/behavioral/test_developer_queries_task_graph.py - Query/sort\n- tests/behavioral/test_developer_manages_tasks_in_graph.py - Version tracking\n\nImplementation Files:\n- cortical/reasoning/spawning.py - Agent spawning logic\n- cortical/reasoning/workflow.py - Workflow phase transitions\n- cortical/reasoning/cognitive_loop.py - Loop status/serialization\n- cortical/reasoning/woven_mind.py - Pattern consolidation\n- cortical/messaging/pubsub.py - Message status enums\n- cortical/got/transactions.py - Caching layer\n\nDocumentation Updates:\n- CLAUDE.md - Added test naming convention section",
+      "Session Progress Summary": "Fixed 26+ tests in this session:\n\nCOMPLETED:\n- Agent spawning tests (14/14 passing)\n  - Root cause: Missing ParallelWorkBoundary required args (agent_id, scope_description)\n  - Removed non-existent files_forbidden parameter\n\n- Workflow orchestration tests (12/12 passing)\n  - Root cause: Tests skipping QAPV phase sequence\n  - Fixed attribute mismatches (concern_raised, task_description, in_progress_items)\n\n- CLAUDE.md updated with test naming convention\n- Test Health Restoration sprint created with 10 tasks\n\nREMAINING (9 failures for future sessions):\n- test_cognitive_loop_stories.py: 1 (serialization)\n- test_developer_manages_tasks_in_graph.py: 1 (version)\n- test_developer_queries_task_graph.py: 2 (sorting, sprint)\n- test_developer_uses_transactions.py: 3 (caching)\n- test_pubsub_messaging_stories.py: 1 (expired messages)\n- test_woven_mind_stories.py: 1 (consolidation)\n\nBranch: claude/fix-skipped-tests-VuqoK"
+    },
+    "code_refs": [],
+    "related_handoffs": [],
+    "related_tasks": [
+      "T-20260101-211029-dfd26b19"
+    ],
+    "related_decisions": [],
+    "source_file": null,
+    "tags": [],
+    "status": "published",
+    "properties": {}
+  }
+}

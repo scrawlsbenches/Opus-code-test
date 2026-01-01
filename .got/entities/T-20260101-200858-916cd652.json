@@ -1,0 +1,19 @@
+{
+  "_checksum": "07f698b7da67f26e",
+  "_written_at": "2026-01-01T20:08:58.444381+00:00",
+  "data": {
+    "created_at": "2026-01-01T20:08:58.440368+00:00",
+    "description": "## Overview\nCreate user documentation for the GoT-Causal analysis features.\n\n## File References\n- Existing docs: CLAUDE.md (SOPs section)\n- Demo script: examples/prism_causal_demo.py\n- Behavioral tests: tests/behavioral/test_got_causal_integration.py\n\n## Documentation to Create\n1. **Usage Guide** (docs/got-causal-guide.md)\n   - Quick start examples\n   - CLI command reference\n   - Interpreting results\n\n2. **Data Collection Best Practices**\n   - Link to CLAUDE.md SOPs\n   - Examples of good vs bad data\n\n3. **Causal Concepts Primer**\n   - DEPENDS_ON vs CAUSED_BY explained\n   - Necessity vs sufficiency\n   - Confounders and why they matter\n\n4. **Troubleshooting**\n   - \"Analysis unreliable\" warnings\n   - Data quality improvement steps\n\n## Format\n- Markdown for docs/\n- Examples should be runnable\n- Include diagrams for causal concepts\n\n## Acceptance Criteria\n- New user can understand causal analysis in 10 minutes\n- All CLI commands documented with examples\n- Links to deeper resources (Pearl, etc.)",
+    "entity_type": "task",
+    "id": "T-20260101-200858-916cd652",
+    "metadata": {},
+    "modified_at": "2026-01-01T20:08:58.444307+00:00",
+    "priority": "low",
+    "properties": {
+      "category": "docs"
+    },
+    "status": "pending",
+    "title": "Document GoT-Causal analysis capabilities",
+    "version": 2
+  }
+}
