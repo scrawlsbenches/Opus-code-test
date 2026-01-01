@@ -64,6 +64,118 @@ If you can't write the scenario, you don't understand the requirement. Go back t
 
 ---
 
+## Session Start: New Agent Orientation
+
+When starting a new session or continuing from a handoff, orient yourself quickly:
+
+### Immediate Health Check
+
+```bash
+# 1. Smoke test (~7 seconds) - Does the system breathe?
+python -m pytest tests/smoke/ -v
+
+# 2. Check git status - Are there uncommitted changes?
+git status
+
+# 3. Check current branch
+git branch --show-current
+```
+
+### Test Commands with Timing
+
+| Command | Duration | Timeout | Use When |
+|---------|----------|---------|----------|
+| `pytest tests/smoke/ -v` | ~7 sec | 60s | Quick sanity check |
+| `pytest tests/unit/ -v` | ~2 min | 180s | After code changes |
+| `pytest tests/behavioral/ -v` | ~5 min | 360s | Before commit |
+| `pytest tests/ -v` | ~8 min | 600s | Full verification |
+| `pytest tests/ --cov=cortical --cov-report=term` | ~8 min | 600s | Coverage check |
+
+**Coverage threshold: 86% minimum** (enforced in CI)
+
+### Background Task Pattern
+
+For long-running tasks, use background execution to continue working:
+
+```bash
+# Start coverage check in background
+python -m pytest tests/ --cov=cortical --cov-report=term -q 2>&1 &
+
+# Check if still running
+jobs
+
+# Or use the run_in_background parameter with Bash tool
+# Then check with BashOutput tool using the returned shell ID
+```
+
+**While waiting, you can:**
+- Read documentation
+- Plan next steps
+- Research the codebase
+- Update CLAUDE.md or task tracking
+
+### Edge Cases and Recovery
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                 COMMON ISSUES & RECOVERY                     │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  TEST HANGS (no output for 2+ minutes):                     │
+│  → Kill with Ctrl+C or KillShell tool                       │
+│  → Run smaller test subset to isolate issue                 │
+│  → Check for infinite loops in recent changes               │
+│                                                              │
+│  COVERAGE DROPS BELOW 86%:                                  │
+│  → Run: pytest --cov=cortical --cov-report=term-missing     │
+│  → Look for "Miss" column to find uncovered lines           │
+│  → Add tests for critical uncovered paths                   │
+│                                                              │
+│  GIT CONFLICTS ON PUSH:                                     │
+│  → git fetch origin <branch>                                │
+│  → git rebase origin/<branch>                               │
+│  → Resolve conflicts, then push                             │
+│                                                              │
+│  FLAKY TESTS:                                               │
+│  → Run the specific test 3x: pytest <test> -v --count=3     │
+│  → If intermittent, check for timing/race conditions        │
+│  → Performance contract failures may be environment-related │
+│                                                              │
+│  MODULE AT 0% COVERAGE:                                     │
+│  → Check if it's intentionally untested (stub/placeholder)  │
+│  → cortical/cdg/ and cortical/cel/ are newer modules        │
+│  → Add tests if the module has real implementation          │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Context Recovery
+
+If you're continuing from a previous session:
+
+1. **Check for handoffs**: `got kt list --status published | head -5`
+2. **Check active tasks**: `got task list --status active`
+3. **Read recent commits**: `git log --oneline -10`
+4. **Look for draft KTs**: `got kt list --status draft`
+
+If confused about current state, create a recovery KT:
+```bash
+got kt create "Recovery: [topic]" --summary "Recovering context from..."
+```
+
+### What to Do First
+
+```
+NEW SESSION CHECKLIST:
+□ Run smoke tests (7 seconds)
+□ Check git status (uncommitted work?)
+□ Read any handoff or KT from previous session
+□ Understand the current task before coding
+□ If unclear, ask for clarification
+```
+
+---
+
 ## METUS
 
 **Mindful Execution Through Unwavering Specification**
