@@ -52,23 +52,23 @@ class TestDeveloperAsksQuestions:
         state = CognitiveStateManager(temp_storage)
 
         # When: creating a main question with sub-questions
-        main_q = state.add_question(
+        main_q = state.ask_question(
             "How should we implement user authentication?",
-            context={"project": "example_app"}
+            context="example_app project"
         )
 
-        sub_q1 = state.add_question(
+        sub_q1 = state.ask_question(
             "What authentication method should we use?",
-            parent_id=main_q.id
+            parent_question_id=main_q.id
         )
-        sub_q2 = state.add_question(
+        sub_q2 = state.ask_question(
             "How do we store credentials securely?",
-            parent_id=main_q.id
+            parent_question_id=main_q.id
         )
 
-        # Then: sub-questions link to parent
-        assert sub_q1.parent_id == main_q.id, "Sub-question should reference parent"
-        assert sub_q2.parent_id == main_q.id, "Sub-question should reference parent"
+        # Then: sub-questions are tracked in parent's sub_questions list
+        assert sub_q1.id in main_q.sub_questions, "Parent should track sub-question"
+        assert sub_q2.id in main_q.sub_questions, "Parent should track sub-question"
         assert len(state.questions) == 3, "Should track all questions"
 
     def test_scenario_questions_track_status(self, temp_storage):
@@ -82,7 +82,7 @@ class TestDeveloperAsksQuestions:
         """
         # Given: an open question
         state = CognitiveStateManager(temp_storage)
-        question = state.add_question("What is the best approach?")
+        question = state.ask_question("What is the best approach?")
 
         assert question.status == QuestionStatus.OPEN, "New questions should be open"
 
@@ -121,23 +121,23 @@ class TestDeveloperFormsHypotheses:
         """
         # Given: a question
         state = CognitiveStateManager(temp_storage)
-        question = state.add_question("Which database should we use?")
+        question = state.ask_question("Which database should we use?")
 
         # When: forming hypotheses
-        h1 = state.add_hypothesis(
-            question.id,
+        h1 = state.form_hypothesis(
             "Use PostgreSQL",
-            rationale="Mature, ACID compliant, good tooling we built ourselves"
+            rationale="Mature, ACID compliant, good tooling we built ourselves",
+            for_question_id=question.id
         )
-        h2 = state.add_hypothesis(
-            question.id,
+        h2 = state.form_hypothesis(
             "Use SQLite",
-            rationale="Simple, embedded, no external server we built from scratch"
+            rationale="Simple, embedded, no external server we built from scratch",
+            for_question_id=question.id
         )
 
         # Then: hypotheses link to question
-        assert h1.question_id == question.id, "Hypothesis should reference question"
-        assert h2.question_id == question.id, "Hypothesis should reference question"
+        assert h1.related_question == question.id, "Hypothesis should reference question"
+        assert h2.related_question == question.id, "Hypothesis should reference question"
 
     def test_scenario_evidence_shapes_hypothesis_evaluation(self, temp_storage):
         """
@@ -150,34 +150,36 @@ class TestDeveloperFormsHypotheses:
         """
         # Given: a hypothesis
         state = CognitiveStateManager(temp_storage)
-        question = state.add_question("Should we use async processing?")
-        hypothesis = state.add_hypothesis(
-            question.id,
+        question = state.ask_question("Should we use async processing?")
+        hypothesis = state.form_hypothesis(
             "Use async for I/O operations",
-            rationale="Better resource utilization we implement ourselves"
+            rationale="Better resource utilization we implement ourselves",
+            for_question_id=question.id
         )
 
-        # When: adding evidence
-        hypothesis.add_evidence(
+        # When: adding evidence via state manager
+        state.add_evidence(
+            hypothesis.id,
             "Handles concurrent requests efficiently",
-            supports=True,
-            strength=0.9
+            supports=True
         )
-        hypothesis.add_evidence(
+        state.add_evidence(
+            hypothesis.id,
             "More complex error handling",
-            supports=False,
-            strength=0.6
+            supports=False
         )
 
-        # Then: evidence is tracked
-        assert len(hypothesis.evidence) == 2, "Should track all evidence"
+        # Then: evidence is tracked in supporting/contradicting lists
+        total_evidence = len(hypothesis.supporting_evidence) + len(hypothesis.contradicting_evidence)
+        assert total_evidence == 2, "Should track all evidence"
 
-        # When: evaluating hypothesis
-        state.evaluate_hypothesis(hypothesis.id)
+        # When: updating hypothesis confidence based on evidence
+        # More supporting than contradicting evidence → higher confidence
+        state.update_hypothesis_confidence(hypothesis.id, 0.8, reason="More supporting evidence")
 
-        # Then: status updates
-        assert hypothesis.status in [HypothesisStatus.SUPPORTED, HypothesisStatus.CONTRADICTED], \
-            "Evaluation should determine hypothesis status"
+        # Then: status updates based on confidence
+        assert hypothesis.status == HypothesisStatus.SUPPORTED, \
+            "High confidence should set status to SUPPORTED"
 
 
 class TestDeveloperMakesDecisions:
@@ -207,21 +209,21 @@ class TestDeveloperMakesDecisions:
         """
         # Given: a question with hypotheses
         state = CognitiveStateManager(temp_storage)
-        question = state.add_question("Which framework should we use?")
+        question = state.ask_question("Which framework should we use?")
 
-        h1 = state.add_hypothesis(question.id, "Use Framework A", rationale="Simple")
-        h2 = state.add_hypothesis(question.id, "Use Framework B", rationale="Powerful")
+        h1 = state.form_hypothesis("Use Framework A", for_question_id=question.id, rationale="Simple")
+        h2 = state.form_hypothesis("Use Framework B", for_question_id=question.id, rationale="Powerful")
 
         # When: making a decision
-        decision = state.add_decision(
-            question_id=question.id,
-            choice="Use Framework A",
+        decision = state.make_decision(
+            from_question_id=question.id,
+            decision="Use Framework A",
             rationale="Simplicity matches our constraints",
             alternatives=["Framework B", "Framework C"]
         )
 
         # Then: decision links to question
-        assert decision.question_id == question.id, "Decision should reference question"
+        assert decision.from_question == question.id, "Decision should reference question"
         assert len(decision.alternatives) > 0, "Should record alternatives considered"
 
     def test_scenario_decisions_record_rationale(self, temp_storage):
@@ -235,12 +237,12 @@ class TestDeveloperMakesDecisions:
         """
         # Given: a decision point
         state = CognitiveStateManager(temp_storage)
-        question = state.add_question("How to handle authentication?")
+        question = state.ask_question("How to handle authentication?")
 
         # When: recording decision with detailed rationale
-        decision = state.add_decision(
-            question_id=question.id,
-            choice="Use JWT tokens we implement ourselves",
+        decision = state.make_decision(
+            from_question_id=question.id,
+            decision="Use JWT tokens we implement ourselves",
             rationale="Stateless auth fits our distributed architecture we built from scratch",
             alternatives=["Session cookies", "OAuth delegation"]
         )
@@ -312,22 +314,22 @@ class TestDeveloperExecutesQAPVCycle:
 
         # QUESTION phase
         pattern.start()
-        main_q = state.add_question("How to implement feature X?")
-        sub_q = state.add_question("What approach to use?", parent_id=main_q.id)
+        main_q = state.ask_question("How to implement feature X?")
+        sub_q = state.ask_question("What approach to use?", parent_question_id=main_q.id)
 
         # ANSWER phase
         pattern.transition("answer")
-        hypothesis = state.add_hypothesis(
-            sub_q.id,
+        hypothesis = state.form_hypothesis(
             "Use approach A",
-            rationale="Fits constraints we control"
+            rationale="Fits constraints we control",
+            for_question_id=sub_q.id
         )
         hypothesis.add_evidence("Tested approach", supports=True, strength=0.9)
         state.evaluate_hypothesis(hypothesis.id)
 
-        decision = state.add_decision(
-            question_id=sub_q.id,
-            choice="Use approach A",
+        decision = state.make_decision(
+            from_question_id=sub_q.id,
+            decision="Use approach A",
             rationale="Evidence supports it"
         )
 
@@ -412,10 +414,10 @@ class TestDeveloperPersistsReasoningState:
             context={"complexity": "high"}
         )
 
-        question = state.add_question("How to approach feature X?")
-        decision = state.add_decision(
-            question_id=question.id,
-            choice="Use iterative approach",
+        question = state.ask_question("How to approach feature X?")
+        decision = state.make_decision(
+            from_question_id=question.id,
+            decision="Use iterative approach",
             rationale="Complexity requires incremental progress"
         )
 

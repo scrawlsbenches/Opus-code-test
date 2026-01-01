@@ -52,7 +52,7 @@ class TestAnalystUnderstandsNaturalLanguageQueries:
         # THEN the system identifies the "where" intent
         parsed = parse_intent_query(query)
 
-        assert parsed['intent'] == 'where', "Should detect 'where' intent"
+        assert parsed['intent'] == 'location', "Should detect location intent from 'where' question"
         assert parsed['question_word'] == 'where', "Should identify question word"
 
         # AND extracts the subject I'm asking about
@@ -89,7 +89,7 @@ class TestAnalystUnderstandsNaturalLanguageQueries:
         # THEN the system identifies the "how" intent
         parsed = parse_intent_query(query)
 
-        assert parsed['intent'] == 'how', "Should detect 'how' intent"
+        assert parsed['intent'] == 'implementation', "Should detect implementation intent from 'how' question"
 
         # AND understands I'm asking about implementation or process
         assert parsed['action'] is not None or parsed['subject'] is not None
@@ -126,7 +126,7 @@ class TestAnalystUnderstandsNaturalLanguageQueries:
         # THEN the system identifies the "what" intent
         parsed = parse_intent_query(query)
 
-        assert parsed['intent'] == 'what', "Should detect 'what' intent"
+        assert parsed['intent'] == 'definition', "Should detect definition intent from 'what' question"
 
         # AND recognizes I'm seeking a definition
         assert parsed['subject'] is not None
@@ -164,10 +164,13 @@ class TestAnalystUnderstandsNaturalLanguageQueries:
         # THEN the system identifies the "why" intent
         parsed = parse_intent_query(query)
 
-        assert parsed['intent'] == 'why', "Should detect 'why' intent"
+        assert parsed['intent'] == 'rationale', "Should detect rationale intent from 'why' question"
 
         # AND understands I'm seeking reasoning or justification
-        assert 'use' in parsed['action'] or 'tfidf' in parsed['subject'].lower() if parsed['subject'] else True
+        # Action may be None if 'use' is parsed as subject; check either
+        action_match = parsed['action'] is not None and 'use' in parsed['action']
+        subject_match = parsed['subject'] is not None and ('use' in parsed['subject'].lower() or 'tfidf' in parsed['subject'].lower())
+        assert action_match or subject_match, f"Should extract 'use' or 'tfidf', got action={parsed['action']}, subject={parsed['subject']}"
 
         # AND finds documents explaining motivations
         results = processor.find_documents_for_query(query, top_n=2)

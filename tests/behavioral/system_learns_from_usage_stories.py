@@ -33,14 +33,19 @@ class TestSystemSuggestsDefinitions:
         When a term appears frequently without definition
         Then it suggests defining that term
         Because frequency indicates importance.
+
+        Note: Confidence requires freq_score (count/10 * 0.6) + length_score
+        (len/10 * 0.2) + format_score + 0.1 >= 0.5. With 4 observations of
+        a 10-char term: 0.4*0.6 + 1.0*0.2 + 0.1 = 0.54 >= 0.5.
         """
         # Given a suggester observing queries
         suggester = SampleSuggester(min_frequency=3)
 
-        # When a term appears frequently
+        # When a term appears frequently (4 times to exceed confidence threshold)
         suggester.observe_query("minicolumn activation patterns", success=True)
         suggester.observe_query("minicolumn connectivity graph", success=True)
         suggester.observe_query("minicolumn response timing", success=True)
+        suggester.observe_query("minicolumn signal propagation", success=True)
 
         # Then it suggests definition
         suggestions = suggester.suggest_definitions()
@@ -140,19 +145,25 @@ class TestSystemIdentifiesPatterns:
         When a phrase appears repeatedly
         Then it suggests documenting that phrase
         Because common phrases may need definitions.
+
+        Note: Bigram confidence = count/20, needs >= min_confidence (0.5).
+        So count >= 10 is required for suggestions to be made.
         """
         # Given a suggester
         suggester = SampleSuggester(min_frequency=3)
 
-        # When a phrase repeats
-        suggester.observe_query("neural network training", success=True)
-        suggester.observe_query("neural network architecture", success=True)
-        suggester.observe_query("neural network optimization", success=True)
+        # When a phrase repeats (10+ times to exceed confidence threshold)
+        for topic in ["training", "architecture", "optimization", "inference",
+                      "deployment", "tuning", "scaling", "debugging",
+                      "monitoring", "evaluation"]:
+            suggester.observe_query(f"neural network {topic}", success=True)
 
         # Then phrase pattern is suggested
         patterns = suggester.suggest_patterns()
         # Should suggest "neural network" as a common phrase
         assert len(patterns) > 0
+        phrase_patterns = [p for p in patterns if 'neural network' in p.pattern_name]
+        assert len(phrase_patterns) > 0, "Should detect 'neural network' phrase"
 
 
 class TestSystemDetectsPreferences:
@@ -227,13 +238,18 @@ class TestSystemExportsSuggestions:
         When I export to markdown
         Then I get a formatted document
         Because humans need readable output.
+
+        Note: Definition confidence = freq/10*0.6 + len/10*0.2 + 0.1 >= 0.5.
+        For "cortical" (8 chars): need freq >= 5 for confidence ~0.5.
         """
-        # Given a suggester with observations
+        # Given a suggester with observations (5+ for confidence threshold)
         suggester = SampleSuggester(min_frequency=2)
 
         suggester.observe_query("cortical processing", success=True)
         suggester.observe_query("cortical architecture", success=True)
         suggester.observe_query("cortical model", success=True)
+        suggester.observe_query("cortical layers", success=True)
+        suggester.observe_query("cortical connections", success=True)
 
         # When I export
         markdown = suggester.export_suggestions_markdown()

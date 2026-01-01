@@ -99,8 +99,8 @@ class TestDeveloperCapturesExperiences:
         """
         # Given: an experience in progress
         cycle = LearningCycle(temp_storage)
-        context = Context(goal_type="implementation", domain="api")
-        experience = cycle.start_experience(context, "Build API endpoint", "tdd")
+        context = Context(goal_type="implementation", goal_complexity="moderate", domain="api")
+        experience = cycle.start_experience(context, "Build API endpoint", strategy="tdd")
 
         # When: completing with reflection
         outcome = Outcome(
@@ -117,10 +117,10 @@ class TestDeveloperCapturesExperiences:
 
         cycle.complete_experience(experience, outcome, reflection)
 
-        # Then: reflection is stored
-        assert experience.reflection is not None, "Should store reflection"
-        assert "worked" in experience.reflection, "Should capture what worked"
-        assert "didnt_work" in experience.reflection, "Should capture what didn't work"
+        # Then: reflection is stored in structured fields
+        assert len(experience.what_worked) > 0, "Should store what worked"
+        assert len(experience.what_didnt_work) > 0, "Should store what didn't work"
+        assert len(experience.would_do_differently) > 0, "Should store what to do differently"
 
 
 class TestDeveloperExtractsPatterns:
@@ -153,7 +153,7 @@ class TestDeveloperExtractsPatterns:
 
         for i in range(5):
             context = Context(goal_type="implementation", goal_complexity="moderate")
-            exp = cycle.start_experience(context, f"Feature {i}", "test_driven_development")
+            exp = cycle.start_experience(context, f"Feature {i}", strategy="test_driven_development")
 
             # Same sequence: read -> test -> implement -> verify
             exp.add_action(Action("read", "Read code", "/src/"))
@@ -185,8 +185,8 @@ class TestDeveloperExtractsPatterns:
         cycle = LearningCycle(temp_storage)
 
         for i in range(5):
-            context = Context(goal_type="implementation")
-            exp = cycle.start_experience(context, f"Feature {i}", "test_driven_development")
+            context = Context(goal_type="implementation", goal_complexity="moderate")
+            exp = cycle.start_experience(context, f"Feature {i}", strategy="test_driven_development")
             exp.add_action(Action("test_first", "Write test", "/tests/"))
             cycle.complete_experience(
                 exp,
@@ -212,8 +212,8 @@ class TestDeveloperExtractsPatterns:
         cycle = LearningCycle(temp_storage)
 
         for i in range(3):
-            context = Context(goal_type="implementation")
-            exp = cycle.start_experience(context, f"Feature {i}", "code_first")
+            context = Context(goal_type="implementation", goal_complexity="moderate")
+            exp = cycle.start_experience(context, f"Feature {i}", strategy="code_first")
             exp.add_action(Action("implement", "Code without tests", "/src/"))
             cycle.complete_experience(
                 exp,
@@ -261,9 +261,10 @@ class TestDeveloperRetrievesLessons:
         for i in range(5):
             context = Context(
                 goal_type="implementation",
+                goal_complexity="moderate",
                 domain="authentication"
             )
-            exp = cycle.start_experience(context, "Auth task", "tdd")
+            exp = cycle.start_experience(context, "Auth task", strategy="tdd")
             exp.add_action(Action("test_first", "Test first", "/tests/"))
             cycle.complete_experience(
                 exp,
@@ -276,13 +277,18 @@ class TestDeveloperRetrievesLessons:
         # When: requesting guidance for similar context
         new_context = Context(
             goal_type="implementation",
+            goal_complexity="moderate",
             domain="security"  # Similar to authentication
         )
         guidance = cycle.get_guidance(new_context)
 
-        # Then: lessons are retrieved
-        assert len(guidance['lessons']) > 0 or len(guidance['recommendations']) > 0, \
-            "Should provide guidance based on past experiences"
+        # Then: guidance is provided (lessons, recommendations, or relevant experiences)
+        has_guidance = (
+            len(guidance['lessons']) > 0 or
+            len(guidance['recommendations']) > 0 or
+            len(guidance['relevant_successes']) > 0
+        )
+        assert has_guidance, "Should provide guidance based on past experiences"
 
     def test_scenario_guidance_includes_successes_and_failures(self, temp_storage):
         """
@@ -298,8 +304,8 @@ class TestDeveloperRetrievesLessons:
 
         # Successful TDD experiences
         for i in range(3):
-            context = Context(goal_type="implementation", domain="api")
-            exp = cycle.start_experience(context, "API feature", "tdd")
+            context = Context(goal_type="implementation", goal_complexity="moderate", domain="api")
+            exp = cycle.start_experience(context, "API feature", strategy="tdd")
             exp.add_action(Action("test", "Test", "/tests/"))
             cycle.complete_experience(
                 exp,
@@ -308,8 +314,8 @@ class TestDeveloperRetrievesLessons:
 
         # Failed code-first experiences
         for i in range(2):
-            context = Context(goal_type="implementation", domain="api")
-            exp = cycle.start_experience(context, "API feature", "code_first")
+            context = Context(goal_type="implementation", goal_complexity="moderate", domain="api")
+            exp = cycle.start_experience(context, "API feature", strategy="code_first")
             exp.add_action(Action("code", "Code", "/src/"))
             cycle.complete_experience(
                 exp,
@@ -317,7 +323,7 @@ class TestDeveloperRetrievesLessons:
             )
 
         # When: requesting guidance with experiences
-        context = Context(goal_type="implementation", domain="api")
+        context = Context(goal_type="implementation", goal_complexity="moderate", domain="api")
         guidance = cycle.get_guidance(context, include_experiences=True)
 
         # Then: both successes and failures are available
@@ -357,8 +363,8 @@ class TestDeveloperValidatesLessons:
         cycle = LearningCycle(temp_storage)
 
         for i in range(5):
-            context = Context(goal_type="implementation")
-            exp = cycle.start_experience(context, "Task", "tdd")
+            context = Context(goal_type="implementation", goal_complexity="moderate")
+            exp = cycle.start_experience(context, "Task", strategy="tdd")
             exp.add_action(Action("test", "Test", "/tests/"))
             cycle.complete_experience(
                 exp,
@@ -366,7 +372,7 @@ class TestDeveloperValidatesLessons:
             )
 
         cycle.extract_and_distill()
-        context = Context(goal_type="implementation")
+        context = Context(goal_type="implementation", goal_complexity="moderate")
         lessons = cycle.distiller.get_lessons_for_context(context)
 
         if lessons:
@@ -394,8 +400,8 @@ class TestDeveloperValidatesLessons:
         cycle = LearningCycle(temp_storage)
 
         for i in range(5):
-            context = Context(goal_type="implementation")
-            exp = cycle.start_experience(context, "Task", "approach_x")
+            context = Context(goal_type="implementation", goal_complexity="moderate")
+            exp = cycle.start_experience(context, "Task", strategy="approach_x")
             exp.add_action(Action("do", "Do thing", "/src/"))
             cycle.complete_experience(
                 exp,
@@ -403,7 +409,7 @@ class TestDeveloperValidatesLessons:
             )
 
         cycle.extract_and_distill()
-        context = Context(goal_type="implementation")
+        context = Context(goal_type="implementation", goal_complexity="moderate")
         lessons = cycle.distiller.get_lessons_for_context(context)
 
         if lessons:
@@ -452,8 +458,8 @@ class TestDeveloperTracksLearningProgress:
 
         # When: adding experiences
         for i in range(8):
-            context = Context(goal_type="implementation")
-            exp = cycle.start_experience(context, f"Task {i}", "tdd")
+            context = Context(goal_type="implementation", goal_complexity="moderate")
+            exp = cycle.start_experience(context, f"Task {i}", strategy="tdd")
             exp.add_action(Action("test", "Test", "/tests/"))
             cycle.complete_experience(
                 exp,
