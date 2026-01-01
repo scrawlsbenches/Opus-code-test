@@ -9,8 +9,8 @@
 ║                                                                       ║
 ║  We solemnly contract the following guarantees:                      ║
 ║                                                                       ║
-║  • Activation propagation < 100ms per iteration for ≤ 1,000 nodes   ║
-║  • 3 iterations complete in < 300ms for ≤ 1,000 nodes               ║
+║  • Activation propagation < 100ms per iteration for ≤ 1,500 nodes   ║
+║  • 3 iterations complete in < 300ms for ≤ 1,500 nodes               ║
 ║  • Activation values decay over iterations                          ║
 ║  • Activation values remain non-negative                            ║
 ║  • Connected nodes receive activation                               ║
@@ -37,22 +37,21 @@ class TestActivationPropagationPerformanceContract:
     MAX_TOTAL_LATENCY_MS = 300
     DEFAULT_ITERATIONS = 3
 
-    @pytest.mark.skip(reason="CI environment variance or API mismatch - needs calibration")
     def test_activation_iteration_latency_honored(self, small_processor):
         """
-        CONTRACT: Single activation iteration < 100ms for ≤ 1,000 nodes.
+        CONTRACT: Single activation iteration < 100ms for ≤ 1,500 nodes.
 
         Each propagation step must be fast for interactive use.
         """
         from cortical.layers import CorticalLayer
         from cortical.analysis.activation import propagate_activation
 
-        # Verify within bounds
+        # Verify within bounds (small_processor has ~1100 nodes)
         total_nodes = sum(
             layer.column_count()
             for layer in small_processor.layers.values()
         )
-        assert total_nodes < 1000
+        assert total_nodes < 1500, f"Fixture too large: {total_nodes} nodes"
 
         # Set initial activation
         layer0 = small_processor.layers[CorticalLayer.TOKENS]
