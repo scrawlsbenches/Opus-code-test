@@ -88,7 +88,8 @@ When you receive work, ask yourself:
 │                                                         │
 │  4. ARE THERE PERFORMANCE CONTRACTS?                    │
 │     Check tests/performance/contracts/                  │
-│     If touching search/indexing, contracts apply.       │
+│     Contracts exist for: search, algorithms, WAL,       │
+│     transactions, cognitive loops, event sourcing.      │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -1161,6 +1162,61 @@ Each layer builds upon the last, creating assurance:
 
 ---
 
+## Test Coverage Reality
+
+As of 2025-12-31, the Metus test suite contains:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        BEHAVIORAL SCENARIOS                             │
+│                                                                          │
+│   ~900 scenarios across 68 test files                                   │
+│                                                                          │
+│   Coverage by module:                                                   │
+│   • cortical/processor/  — Document processing, queries, persistence   │
+│   • cortical/query/      — Search, passages, expansion, ranking        │
+│   • cortical/reasoning/  — Cognitive loops, woven mind, workflows      │
+│   • cortical/got/        — Graph of Thought operations                 │
+│   • cortical/spark/      — Code intelligence, predictions              │
+│   • cortical/cel/        — Event sourcing workflows                    │
+│   • examples/            — Demo conversions to behavioral tests        │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                       PERFORMANCE CONTRACTS                             │
+│                                                                          │
+│   ~300 contracts across 27 test files                                   │
+│                                                                          │
+│   Coverage by category:                                                 │
+│   • Search/Ranking       — Latency p50/p99, memory bounds              │
+│   • Core Algorithms      — PageRank, TF-IDF, clustering, connections   │
+│   • Cognitive Systems    — Goal stacks, loops, routing, homeostasis    │
+│   • Persistence          — WAL, transactions, recovery, indexing       │
+│   • Event Sourcing       — DAG operations, materialization, health     │
+│   • Language Models      — N-gram prediction, training, accuracy       │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Finding Relevant Tests
+
+When modifying a module, find related tests:
+
+```bash
+# Find behavioral tests for a module
+ls tests/behavioral/*processor* tests/behavioral/*query*
+
+# Find contract tests for an algorithm
+ls tests/performance/contracts/*pagerank* tests/performance/contracts/*tfidf*
+
+# Search for tests mentioning a concept
+grep -r "scenario.*search" tests/behavioral/
+grep -r "CONTRACT.*latency" tests/performance/contracts/
+```
+
+---
+
 ## The Metus Checklists
 
 ### Pre-Implementation Checklist
@@ -1227,6 +1283,67 @@ Before changing a performance contract:
 
 - [ ] **Announcement Made**
       Users/stakeholders are informed of the change
+```
+
+---
+
+## Contract Categories
+
+Performance contracts are organized by what they guarantee:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        CONTRACT CATEGORIES                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  LATENCY CONTRACTS                                                      │
+│  "Operations complete within X milliseconds"                            │
+│                                                                          │
+│    • Search p50 < 50ms, p99 < 200ms                                     │
+│    • PageRank convergence < 500ms for 1,000 nodes                       │
+│    • WAL write p50 < 8ms (with fsync)                                   │
+│    • Goal stack push/pop < 10ms                                         │
+│    • Event append < 5ms                                                 │
+│                                                                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  MEMORY CONTRACTS                                                       │
+│  "Resource usage stays bounded"                                         │
+│                                                                          │
+│    • Search memory < 100MB per 10,000 documents                         │
+│    • N-gram memory < 50MB per 10,000 unique n-grams                     │
+│    • Cache size respects configured bounds                              │
+│                                                                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  CORRECTNESS CONTRACTS                                                  │
+│  "Algorithms maintain mathematical properties"                          │
+│                                                                          │
+│    • PageRank scores sum to 1.0 (probability distribution)             │
+│    • TF-IDF: rare terms score higher than common terms                  │
+│    • Modularity Q ∈ [-0.5, 1.0]                                         │
+│    • Goal progress is monotonic (never regresses)                       │
+│    • Parallel = Sequential (deterministic parallelism)                  │
+│                                                                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  CONVERGENCE CONTRACTS                                                  │
+│  "Iterative algorithms terminate"                                       │
+│                                                                          │
+│    • PageRank converges in ≤ 20 iterations                              │
+│    • Louvain clustering converges in ≤ 10 iterations                    │
+│    • Spreading activation completes in ≤ 5 iterations                   │
+│                                                                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ACCURACY CONTRACTS                                                     │
+│  "Predictions meet quality thresholds"                                  │
+│                                                                          │
+│    • N-gram prediction accuracy ≥ 10% top-1, ≥ 25% top-5               │
+│    • Intent parsing accuracy > 90% for conventional commits             │
+│    • Cache hit rate > 80% for repeated access                           │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -1320,25 +1437,57 @@ tests/
 │   └── specifications/             # Gate 2: Atomic truths
 │       ├── tokenizer_spec.py
 │       ├── pagerank_spec.py
-│       ├── tfidf_spec.py
 │       └── ...
 │
 ├── integration/                    # Gate 5: Components together
 │   ├── test_search_pipeline.py
-│   ├── test_indexing_workflow.py
 │   └── ...
 │
-├── behavioral/                     # Gate 3: User stories
-│   ├── researcher_searches_corpus.py
-│   ├── developer_indexes_codebase.py
-│   ├── analyst_discovers_patterns.py
-│   └── system_handles_failures.py
+├── behavioral/                     # Gate 3: User stories (~900 scenarios)
+│   │
+│   │  # Processor & Query APIs
+│   ├── test_developer_processes_documents_incrementally.py
+│   ├── test_researcher_searches_corpus_stories.py
+│   ├── test_rag_system_retrieves_passages.py
+│   │
+│   │  # Cognitive Systems
+│   ├── test_cognitive_loop_stories.py
+│   ├── test_woven_mind_stories.py
+│   ├── developer_uses_woven_mind_stories.py
+│   │
+│   │  # Graph of Thought
+│   ├── test_developer_manages_tasks_in_graph.py
+│   ├── test_got_transactional_behavioral.py
+│   │
+│   │  # Code Intelligence
+│   ├── test_developer_uses_spark_language_model.py
+│   ├── developer_gets_code_intelligence_stories.py
+│   │
+│   │  # Event Sourcing
+│   ├── test_cel_event_sourcing_workflows.py
+│   └── ...
 │
 ├── performance/
-│   └── contracts/                  # Gate 4: Sacred promises
-│       ├── search_contract.py
-│       ├── indexing_contract.py
-│       └── memory_contract.py
+│   └── contracts/                  # Gate 4: Sacred promises (~300 contracts)
+│       │
+│       │  # Core Algorithms
+│       ├── test_pagerank_contract.py
+│       ├── test_tfidf_contract.py
+│       ├── test_clustering_contract.py
+│       │
+│       │  # Persistence
+│       ├── test_wal_contract.py
+│       ├── test_transaction_contract.py
+│       ├── test_recovery_contract.py
+│       │
+│       │  # Cognitive Systems
+│       ├── test_goal_loop_contract.py
+│       ├── test_neural_processing_contract.py
+│       │
+│       │  # Event Sourcing
+│       ├── test_cel_event_contract.py
+│       ├── test_cel_dag_contract.py
+│       └── ...
 │
 └── security/                       # Gate 6: Safety
     ├── test_injection.py
@@ -1528,20 +1677,23 @@ python -m pytest tests/smoke/ -v
 # Gate 2: Specifications (run frequently, ~2 minutes)
 python -m pytest tests/unit/ -v --cov=cortical --cov-fail-under=86
 
-# Gate 3: Behaviors (run before merge, ~5 minutes)
+# Gate 3: Behaviors (~900 scenarios, run before merge)
 python -m pytest tests/behavioral/ -v
 
-# Gate 4: Contracts (run before merge, ~10 minutes)
+# Gate 4: Contracts (~300 contracts, run before merge)
 python -m pytest tests/performance/contracts/ -v -m contract
 
-# Gate 5: Integration (run before merge, ~10 minutes)
+# Gate 5: Integration (run before merge)
 python -m pytest tests/integration/ -v
 
 # Gate 6: Security (run before release)
 python -m pytest tests/security/ -v
 
-# Full Metus Pipeline (what CI runs)
+# Full Metus Pipeline (~1,200 tests)
 python -m pytest tests/ -v --cov=cortical --cov-fail-under=86
+
+# Quick: Just behavioral + contracts (~1,200 tests, ~3 minutes)
+python -m pytest tests/behavioral/ tests/performance/contracts/ -v
 ```
 
 ---
