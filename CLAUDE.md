@@ -299,16 +299,20 @@ Available in `.claude/commands/` (use with `/command-name`):
 | `/ml-log` | Log chat exchanges for ML training data |
 | `/ml-stats` | Show ML data collection statistics |
 
+**Verify commands**: Read `.claude/commands/<command>.md` to understand what each does before using.
+
 ### Available Skills
 
 Invoke with the Skill tool (e.g., `skill: "codebase-search"`):
 
-| Skill | Purpose |
-|-------|---------|
-| `codebase-search` | Semantic search using project's own IR algorithms |
-| `ai-metadata` | View AI-friendly metadata for code modules |
-| `cognitive-state` | Manage cognitive state across sessions |
-| `corpus-indexer` | Index/re-index codebase for semantic search |
+| Skill | Purpose | Prerequisites |
+|-------|---------|---------------|
+| `codebase-search` | Semantic search using project's IR algorithms | Requires `corpus_dev.pkl` (run `python scripts/index_codebase.py` first) |
+| `ai-metadata` | View AI-friendly metadata for code modules | None |
+| `cognitive-state` | Manage cognitive state across sessions | None |
+| `corpus-indexer` | Index/re-index codebase for semantic search | None (creates the index) |
+
+**Verify skills work**: Read `.claude/skills/<skill-name>/SKILL.md` for full documentation.
 
 ### ML Data Collection Hooks
 
