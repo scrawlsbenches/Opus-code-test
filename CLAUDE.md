@@ -1,6 +1,63 @@
 # Metus Development Philosophy
 
-*Last updated: 2025-12-30*
+*Last updated: 2026-01-01*
+
+---
+
+## ⚠️ Trust But Verify — Documentation Can Drift
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│                      TRUST BUT VERIFY                                    │
+│                                                                          │
+│   This documentation describes INTENT. The codebase is TRUTH.           │
+│                                                                          │
+│   Before following any instruction in this file:                        │
+│                                                                          │
+│   1. VERIFY commands work by running them                               │
+│      Documentation can become outdated. Test before trusting.           │
+│                                                                          │
+│   2. CHECK the actual source files                                      │
+│      - pyproject.toml for test config and markers                       │
+│      - .github/workflows/ci.yml for what CI actually runs               │
+│      - tests/conftest.py for available fixtures                         │
+│                                                                          │
+│   3. CROSS-REFERENCE multiple sources                                   │
+│      If CLAUDE.md says one thing and the code says another,             │
+│      the code is correct. Update this file.                             │
+│                                                                          │
+│   4. WHEN IN DOUBT, read the implementation                             │
+│      Comments lie. Tests lie less. Code doesn't lie.                    │
+│                                                                          │
+│   Known areas where docs may drift:                                     │
+│   - CLI command syntax (scripts evolve)                                 │
+│   - Coverage thresholds (may be adjusted)                               │
+│   - Test markers and default behavior                                   │
+│   - Directory structure as project grows                                │
+│                                                                          │
+│   If you find an inaccuracy, FIX IT. Don't just work around it.        │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Verification Commands
+
+When starting a session, verify key assumptions:
+
+```bash
+# Check if pytest is available (if not, run: pip install -e ".[dev]")
+python -m pytest --version
+
+# Check actual test markers and defaults
+grep -A 5 "addopts" pyproject.toml
+
+# Check actual coverage threshold in CI
+grep "fail-under" .github/workflows/ci.yml
+
+# Check GoT CLI is working
+python scripts/got_utils.py --help
+```
 
 ---
 
@@ -8,9 +65,10 @@
 
 ### First Steps (Do Once)
 
-1. Read this file — Understand the Metus philosophy
-2. Read `MANIFEST.md` — Know where things are
-3. Run `python -m pytest tests/smoke/ -v` — Verify your environment
+1. **Install dependencies** — `pip install -e ".[dev]"` (required for pytest)
+2. Read this file — Understand the Metus philosophy
+3. Read `MANIFEST.md` — Know where things are (but verify against code)
+4. Run `python -m pytest tests/smoke/ -v` — Verify your environment
 
 ### Before Every Task
 
@@ -178,7 +236,40 @@ Step 6 - Verify:
 | `pytest tests/ -v` | ~8 min | 600s | Full verification |
 | `pytest tests/ --cov=cortical --cov-report=term` | ~8 min | 600s | Coverage check |
 
-**Coverage threshold: 86% minimum** (enforced in CI)
+**Coverage threshold: 86% minimum** (enforced in CI at `.github/workflows/ci.yml:468`)
+
+### Test Markers and Default Behavior
+
+**IMPORTANT**: Default pytest runs EXCLUDE optional and slow tests.
+
+From `pyproject.toml`:
+```toml
+addopts = "-m 'not optional and not slow'"
+```
+
+| Marker | Default | CI | Purpose |
+|--------|---------|-----|---------|
+| `optional` | ❌ Skipped | ✅ Included | Tests needing hypothesis, mcp, etc. |
+| `slow` | ❌ Skipped | ✅ Included | Tests taking >5 seconds |
+| `contract` | ✅ Included | ✅ Included | Sacred performance promises |
+
+To run ALL tests (like CI does):
+```bash
+python -m pytest tests/ -m ""   # Empty marker = include all
+```
+
+### Available Test Fixtures
+
+From `tests/conftest.py` — use these instead of creating processors manually:
+
+| Fixture | Scope | Use Case |
+|---------|-------|----------|
+| `small_processor` | Session | Pre-built with synthetic corpus (~1s) |
+| `shared_processor` | Session | Full sample corpus (~10-20s, use sparingly) |
+| `fresh_processor` | Function | Empty processor for tests that modify state |
+| `fresh_got_manager` | Function | Isolated GoT manager per test |
+| `got_manager_with_sample_tasks` | Class | Pre-populated with 20 tasks for read tests |
+| `got_manager_large` | Class | 100 tasks for performance testing |
 
 ### Background Task Pattern
 
@@ -240,14 +331,14 @@ jobs
 
 If you're continuing from a previous session:
 
-1. **Check for handoffs**: `got kt list --status published | head -5`
-2. **Check active tasks**: `got task list --status active`
+1. **Check for handoffs**: `python scripts/got_utils.py kt list --status published | head -5`
+2. **Check active tasks**: `python scripts/got_utils.py task list --status active`
 3. **Read recent commits**: `git log --oneline -10`
-4. **Look for draft KTs**: `got kt list --status draft`
+4. **Look for draft KTs**: `python scripts/got_utils.py kt list --status draft`
 
 If confused about current state, create a recovery KT:
 ```bash
-got kt create "Recovery: [topic]" --summary "Recovering context from..."
+python scripts/got_utils.py kt create "Recovery: [topic]" --summary "Recovering context from..."
 ```
 
 ### What to Do First
@@ -830,7 +921,7 @@ jobs:
         run: |
           python -m pytest tests/unit/ -v \
             --cov=cortical --cov-report=xml \
-            --cov-fail-under=95
+            --cov-fail-under=86  # Actual threshold from CI
       - name: Upload coverage
         uses: codecov/codecov-action@v3
         with:
@@ -1152,49 +1243,48 @@ tests/
 
 ## Quick Reference: GoT CLI Commands
 
+**IMPORTANT**: The GoT CLI is invoked via `python scripts/got_utils.py`, not a standalone `got` command.
+
 ```bash
+# Alias for convenience (optional, add to your shell profile)
+alias got='python scripts/got_utils.py'
+
+# --- ACTUAL COMMANDS (use python scripts/got_utils.py) ---
+
 # Task Management
-got task create "Title" --priority high --sprint S1
-got task start <task_id>
-got task complete <task_id>
-got task list --status active
+python scripts/got_utils.py task create "Title" --priority high
+python scripts/got_utils.py task start <task_id>
+python scripts/got_utils.py task complete <task_id>
+python scripts/got_utils.py task list --status active
 
 # Sprint Management
-got sprint create "Sprint Name" --number 28
-got sprint list
+python scripts/got_utils.py sprint create "Sprint Name"
+python scripts/got_utils.py sprint list
+python scripts/got_utils.py sprint status
 
 # Knowledge Transfer (Session Learning Capture)
-# Create and build during session
-got kt create "Session Title" --session abc123 --summary "..."
-got kt append <kt_id> "Technical Insights" "New finding..."
-got kt append <kt_id> "Decisions" "Chose X because..."
+python scripts/got_utils.py kt create "Session Title" --summary "..."
+python scripts/got_utils.py kt list --status draft
+python scripts/got_utils.py kt show <kt_id>
 
-# Link to related work
-got kt link <kt_id> --handoff <handoff_id>
-got kt link <kt_id> --task <task_id>
+# Decisions with Rationale
+python scripts/got_utils.py decision create "Use BM25" --rationale "Better for short queries"
 
-# Import historical markdown
-got kt import samples/memories/2025-12-29-session.md
+# Query the Graph
+python scripts/got_utils.py query "status=pending AND priority=high"
 
-# Search and view
-got kt list --status published --tags architecture
-got kt show <kt_id>
-
-# Lifecycle: Finalize and hand off for continuation
-got kt finalize <kt_id>                              # Publish (draft → published)
-got kt finalize <kt_id> --handoff-to agent2          # Publish + create handoff
-got kt finalize <kt_id> --handoff-to agent2 -i "Continue testing..."
-
-# Trace knowledge evolution
-got kt history <kt_id>   # Shows: KT1 → Handoff1 → KT2 → ...
+# Graph Health & Analysis
+python scripts/got_utils.py validate
+python scripts/got_utils.py stats
+python scripts/got_utils.py analyze
 
 # Handoff (Agent-to-Agent Work Transfer)
-got handoff initiate --source agent1 --target agent2 --task T1
-got handoff accept <handoff_id>
-got handoff complete <handoff_id>
+python scripts/got_utils.py handoff initiate --source agent1 --target agent2 --task T1
+python scripts/got_utils.py handoff accept <handoff_id>
+python scripts/got_utils.py handoff complete <handoff_id>
 
 # Batch Operations (Atomic Multi-Entity Creation)
-got batch <<'EOF'
+python scripts/got_utils.py batch <<'EOF'
 epic create "Project X" as e1
 sprint create "Sprint 1" --epic $e1 as s1
 task create "Feature A" --sprint $s1 --priority high as t1
@@ -1202,10 +1292,10 @@ task create "Tests" --sprint $s1 as t2
 edge add $t2 $t1 DEPENDS_ON
 EOF
 
-# Query and Analysis
-got query "status=active AND priority=high"
-got analyze --type dependencies
-got stats
+# View all available commands
+python scripts/got_utils.py --help
+python scripts/got_utils.py task --help
+python scripts/got_utils.py kt --help
 ```
 
 ---
@@ -1222,24 +1312,24 @@ Knowledge transfers capture session learnings and enable continuity across agent
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │  1. CREATE (start of session)                                           │
-│     got kt create "Session Title" --session <session_id>                │
+│     python scripts/got_utils.py kt create "Session Title" --summary "..." │
 │                        │                                                 │
 │                        ▼                                                 │
 │                 [KT: draft] ◄─── Active, editable                       │
 │                        │                                                 │
 │  2. BUILD (during session)                                              │
-│     got kt append <kt_id> "Technical Insights" "Finding..."             │
-│     got kt append <kt_id> "Decisions" "Chose X because..."              │
-│     got kt link <kt_id> --task <task_id>                                │
+│     python scripts/got_utils.py kt show <kt_id>                         │
+│     (Add learnings via kt commands or manual updates)                   │
+│                                                                          │
 │                        │                                                 │
 │  3. FINALIZE (end of session)                                           │
-│     got kt finalize <kt_id>                                             │
+│     python scripts/got_utils.py kt finalize <kt_id>                     │
 │                        │                                                 │
 │                        ▼                                                 │
 │                 [KT: published] ◄─── Immutable, searchable              │
 │                        │                                                 │
 │  4. HANDOFF (if continuation needed)                                    │
-│     got kt finalize <kt_id> --handoff-to <agent> -i "Continue..."       │
+│     python scripts/got_utils.py handoff initiate --target <agent>       │
 │                        │                                                 │
 │                        ├──CONTINUES──► [Handoff]                        │
 │                        │                    │                            │
@@ -1247,8 +1337,8 @@ Knowledge transfers capture session learnings and enable continuity across agent
 │                        │              [New KT: draft]                   │
 │                        │                                                 │
 │  5. HISTORY (trace evolution)                                           │
-│     got kt history <kt_id>                                              │
-│     Shows: KT1 → Handoff1 → KT2 → Handoff2 → KT3 (current)              │
+│     python scripts/got_utils.py kt list                                 │
+│     python scripts/got_utils.py kt show <kt_id>                         │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -1269,14 +1359,14 @@ Knowledge transfers capture session learnings and enable continuity across agent
 │                                                                          │
 │  ERROR: "KT not found"                                                  │
 │  ───────────────────────                                                │
-│  → Run: got kt list                                                     │
+│  → Run: python scripts/got_utils.py kt list                             │
 │  → Check the KT ID is correct (format: KT-YYYYMMDD-HHMMSS)              │
 │  → If imported, check: .got/entities/KT-*.json exists                   │
 │                                                                          │
 │  ERROR: "Cannot finalize - not in draft status"                         │
 │  ──────────────────────────────────────────────                         │
 │  → KT is already published or archived                                  │
-│  → Run: got kt show <kt_id> to check current status                     │
+│  → Run: python scripts/got_utils.py kt show <kt_id> to check status     │
 │  → Create a new KT if you need to add more content                      │
 │                                                                          │
 │  ERROR: "Import failed - 'KnowledgeTransfer' object is not iterable"    │
@@ -1287,28 +1377,27 @@ Knowledge transfers capture session learnings and enable continuity across agent
 │  ERROR: "Cannot link - entity not found"                                │
 │  ────────────────────────────────────────                               │
 │  → The target entity (task, handoff, decision) doesn't exist            │
-│  → Run: got task list / got handoff list to find valid IDs              │
+│  → Run: python scripts/got_utils.py task list to find valid IDs         │
 │                                                                          │
 │  ERROR: Session context lost                                            │
 │  ───────────────────────────                                            │
-│  → Check: got kt list --status draft for active KTs                     │
-│  → Run: got kt history <kt_id> to trace where you are                   │
+│  → Check: python scripts/got_utils.py kt list --status draft            │
+│  → Run: python scripts/got_utils.py kt show <kt_id>                     │
 │  → If no draft exists, create new KT and link to previous               │
 │                                                                          │
 │  RECOVERY: Orphaned work (no KT created)                                │
 │  ────────────────────────────────────────                               │
 │  → Create KT from session learnings:                                    │
-│    got kt create "Recovery: <topic>" --summary "Recovered from..."      │
+│    python scripts/got_utils.py kt create "Recovery" --summary "..."     │
 │  → Link to any related work that exists                                 │
 │  → Finalize immediately to preserve                                     │
 │                                                                          │
 │  RECOVERY: Need to continue but forgot to handoff                       │
 │  ─────────────────────────────────────────────                          │
-│  → Check if previous KT is still draft: got kt list --status draft      │
-│  → If draft: got kt finalize <kt_id> --handoff-to <self>                │
-│  → If published: Create new KT and manually link:                       │
-│    got kt create "Continuation of <prev>"                               │
-│    got kt link <new_kt> --handoff <previous_handoff_if_exists>          │
+│  → Check if previous KT is still draft:                                 │
+│    python scripts/got_utils.py kt list --status draft                   │
+│  → If published: Create new KT:                                         │
+│    python scripts/got_utils.py kt create "Continuation" --summary "..." │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -1320,7 +1409,7 @@ Knowledge transfers capture session learnings and enable continuity across agent
 3. **Use meaningful sections** - "Technical Insights", "Decisions", "Blockers", "Next Steps"
 4. **Always finalize** - Never leave a session with an orphaned draft
 5. **Link related work** - Connect KTs to tasks, decisions, handoffs for graph traversal
-6. **Import historical docs** - Use `got kt import` to bring in existing markdown
+6. **Import historical docs** - Check `python scripts/got_utils.py kt --help` for import options
 
 ---
 
