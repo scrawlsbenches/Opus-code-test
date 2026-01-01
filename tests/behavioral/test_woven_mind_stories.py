@@ -121,7 +121,9 @@ class TestCognitiveResearcherBuildsReasoningSystem:
         # Then consolidation completes
         assert result is not None
         stats = mind.get_consolidation_stats()
-        assert "pattern_frequencies" in stats or "total_consolidations" in stats
+        # Stats include cycle count and pattern tracking info
+        assert "total_cycles" in stats or "tracked_patterns" in stats
+        assert stats.get("total_cycles", 0) >= 1 or stats.get("tracked_patterns", 0) >= 1
 
     def test_scenario_system_tracks_cognitive_statistics(self):
         """
