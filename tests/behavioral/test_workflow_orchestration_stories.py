@@ -58,9 +58,10 @@ class TestSystemArchitectOrchestratesWorkflows:
         Then knowledge is captured in our system
         Because we built knowledge capture ourselves
         """
-        # Given active session
+        # Given active session (must start with question phase per QAPV loop)
         workflow = ReasoningWorkflow()
         context = workflow.start_session("Design custom indexing strategy")
+        workflow.begin_question_phase(context)
         workflow.begin_answer_phase(context)
 
         # When recording decisions
@@ -90,9 +91,11 @@ class TestSystemArchitectOrchestratesWorkflows:
         Then they're tracked in our system
         Because we monitor production ourselves
         """
-        # Given production phase
+        # Given production phase (must go through Q/A phases first per QAPV loop)
         workflow = ReasoningWorkflow()
         context = workflow.start_session("Implement custom search module")
+        workflow.begin_question_phase(context)
+        workflow.begin_answer_phase(context)
         workflow.begin_production_phase(context)
 
         # When creating artifacts
@@ -137,9 +140,11 @@ class TestSystemArchitectOrchestratesWorkflows:
         Then workflow coordinates validation
         Because we built verification ourselves
         """
-        # Given completed production
+        # Given completed production (must go through Q/A phases first per QAPV loop)
         workflow = ReasoningWorkflow()
         context = workflow.start_session("Validate custom implementation")
+        workflow.begin_question_phase(context)
+        workflow.begin_answer_phase(context)
         workflow.begin_production_phase(context)
         workflow.begin_verify_phase(context)
 
@@ -194,9 +199,11 @@ class TestWorkflowManagesCrisisAndRecovery:
         Then abandonment is recorded
         Because we handle failures ourselves
         """
-        # Given failing session
+        # Given failing session (must go through Q/A phases first per QAPV loop)
         workflow = ReasoningWorkflow()
         context = workflow.start_session("Attempt impossible task")
+        workflow.begin_question_phase(context)
+        workflow.begin_answer_phase(context)
         workflow.begin_production_phase(context)
 
         # When abandoning
@@ -229,9 +236,11 @@ class TestCollaborationWorkflowCoordinatesHumanAI:
         Then collaborators are informed
         Because we built status tracking ourselves
         """
-        # Given ongoing work
+        # Given ongoing work (must go through Q/A phases first per QAPV loop)
         workflow = ReasoningWorkflow(CollaborationMode.SEMI_SYNCHRONOUS)
         context = workflow.start_session("Build custom feature")
+        workflow.begin_question_phase(context)
+        workflow.begin_answer_phase(context)
         workflow.begin_production_phase(context)
 
         # When posting status
@@ -243,7 +252,9 @@ class TestCollaborationWorkflowCoordinatesHumanAI:
 
         # Then status communicated
         assert update.progress_percent == 60
-        assert "indexing" in update.current_activity.lower()
+        # current_activity is stored in in_progress_items list
+        assert len(update.in_progress_items) > 0
+        assert "indexing" in update.in_progress_items[0].lower()
 
     def test_scenario_workflow_generates_handoff_documentation(self):
         """
@@ -254,9 +265,11 @@ class TestCollaborationWorkflowCoordinatesHumanAI:
         Then context is preserved for continuation
         Because we built handoff generation ourselves
         """
-        # Given work to hand off
+        # Given work to hand off (must go through Q/A phases first per QAPV loop)
         workflow = ReasoningWorkflow()
         context = workflow.start_session("Complex multi-phase work")
+        workflow.begin_question_phase(context)
+        workflow.begin_answer_phase(context)
         workflow.begin_production_phase(context)
         workflow.record_decision(context, "Use custom approach", "Best fit")
         workflow.record_artifact(context, "/module.py", "file")
@@ -265,7 +278,7 @@ class TestCollaborationWorkflowCoordinatesHumanAI:
         handoff = workflow.create_handoff(context)
 
         # Then context preserved
-        assert handoff.task == context.goal
+        assert handoff.task_description == context.goal
         assert len(handoff.key_decisions) > 0
         assert handoff.files_working is not None
 
@@ -294,7 +307,7 @@ class TestCollaborationWorkflowCoordinatesHumanAI:
 
         # Then concern documented
         assert disagreement is not None
-        assert "build-everything-ourselves" in disagreement.concern.lower()
+        assert "build-everything-ourselves" in disagreement.concern_raised.lower()
 
 
 class TestWorkflowProvidesComprehensiveReporting:
@@ -315,9 +328,11 @@ class TestWorkflowProvidesComprehensiveReporting:
         Then comprehensive health metrics are shown
         Because we built monitoring ourselves
         """
-        # Given active workflows
+        # Given active workflows (must go through Q/A phases first per QAPV loop)
         workflow = ReasoningWorkflow()
         ctx1 = workflow.start_session("Task 1")
+        workflow.begin_question_phase(ctx1)
+        workflow.begin_answer_phase(ctx1)
         workflow.begin_production_phase(ctx1)
         ctx2 = workflow.start_session("Task 2")
 
