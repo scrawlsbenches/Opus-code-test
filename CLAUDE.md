@@ -717,6 +717,38 @@ class ResearcherSearchesForKnowledge:
 **Naming**: `{user_role}_{action}_stories.py`
 **Format**: Classes are epics, methods are scenarios
 
+**CRITICAL — Test Class Naming for Pytest Collection:**
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│   ⚠️  ALL TEST CLASSES MUST START WITH 'Test' PREFIX                    │
+│                                                                          │
+│   Pytest only collects classes that start with 'Test'.                  │
+│   Story-driven names are great, but MUST be prefixed.                   │
+│                                                                          │
+│   ❌ WRONG (not collected - tests are HIDDEN):                          │
+│      class DeveloperSearchesCorpus:                                     │
+│      class ResearcherBuildsKnowledge:                                   │
+│      class SystemArchitectOrchestratesWorkflows:                        │
+│                                                                          │
+│   ✅ RIGHT (collected and run):                                         │
+│      class TestDeveloperSearchesCorpus:                                 │
+│      class TestResearcherBuildsKnowledge:                               │
+│      class TestSystemArchitectOrchestratesWorkflows:                    │
+│                                                                          │
+│   The 'Test' prefix is NON-NEGOTIABLE. Without it:                      │
+│   - Tests silently don't run                                            │
+│   - Bugs hide undetected                                                │
+│   - CI passes when it shouldn't                                         │
+│   - Coverage numbers lie                                                │
+│                                                                          │
+│   AUDIT (2026-01-01): Found 169 hidden tests due to missing prefix.     │
+│   All fixed. Don't let it happen again.                                 │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
 **IMPORTANT — Test Content Must Embody Sovereignty:**
 
 Behavioral scenarios are living documentation. The example content within tests—the strings, the fake data, the hypothetical systems being described—must reflect our philosophy.
