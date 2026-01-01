@@ -81,6 +81,93 @@ git status
 git branch --show-current
 ```
 
+### Before You Fix Anything: Reasoning Checklist
+
+**STOP. Before writing any code, complete this checklist:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│              CRITICAL REASONING CHECKLIST                    │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  □ 1. CHECK GIT HISTORY                                     │
+│       git log --oneline -10 -- <file>                       │
+│       git show <commit>  # Read WHY changes were made       │
+│       git blame <file>   # Who changed what, when           │
+│                                                              │
+│  □ 2. UNDERSTAND THE ORIGINAL INTENT                        │
+│       - Why is the code structured this way?                │
+│       - What problem was it solving?                        │
+│       - Is there a comment, commit message, or PR?          │
+│                                                              │
+│  □ 3. CONFIRM THE TESTS FAIL (RED)                          │
+│       - Run the failing tests FIRST                         │
+│       - Understand exactly WHY they fail                    │
+│       - Don't guess - read the error messages               │
+│                                                              │
+│  □ 4. CONSIDER MULTIPLE APPROACHES                          │
+│       - What are at least 2 ways to fix this?               │
+│       - What are the trade-offs of each?                    │
+│       - Which preserves the original architectural intent?  │
+│                                                              │
+│  □ 5. CHOOSE THE SIMPLEST FIX                               │
+│       - Fewer lines of code is usually better               │
+│       - Avoid adding layers/indirection if possible         │
+│       - Ask: "Am I undoing someone's deliberate decision?"  │
+│                                                              │
+│  □ 6. VERIFY GREEN                                          │
+│       - Run the specific failing tests                      │
+│       - Run related tests (same module/feature)             │
+│       - Run smoke tests for regressions                     │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Common Reasoning Failures to Avoid:**
+
+| Failure Mode | Symptom | Correction |
+|--------------|---------|------------|
+| **Jumping to code** | Writing fix before understanding problem | Complete steps 1-4 first |
+| **Ignoring history** | Breaking intentional design decisions | Always `git log` before changing |
+| **Single solution bias** | Only considering one approach | Force yourself to list 2+ options |
+| **Fixing symptoms** | Patching without understanding root cause | Ask "why?" 5 times |
+| **Over-engineering** | Adding complexity to "future-proof" | Solve today's problem only |
+
+**Example of Good Reasoning:**
+
+```
+Problem: CorruptionError tests failing after CDG/GoT unification
+
+Step 1 - Git History:
+  $ git log --oneline -5 -- cortical/got/errors.py
+  → Found commit 7b6e6f24: "Unified CorruptionError: GoT's
+    CorruptionError now aliases CDG's..."
+
+Step 2 - Original Intent:
+  → The aliasing was INTENTIONAL to catch CDG exceptions in GoT code
+
+Step 3 - Why Tests Fail:
+  → CDGCorruptionError lacks to_dict() and has different __str__
+  → CDGCorruptionError doesn't inherit from GoTError
+
+Step 4 - Multiple Approaches:
+  A) Add to_dict() to CDGError, fix __str__ → Still breaks inheritance test
+  B) Make CDGError inherit from GoTError → Circular import
+  C) Keep separate classes + boundary translation → Works, slightly complex
+  D) Shared base exception module → Requires refactoring both layers
+
+Step 5 - Chosen Fix:
+  → Option C: Boundary translation in versioned_store.py
+  → Preserves GoTError inheritance (tests pass)
+  → Translates exceptions at layer boundary (clean separation)
+  → Minimal code changes
+
+Step 6 - Verify:
+  → Run test_errors.py: 18 passed
+  → Run test_recovery.py: All passed
+  → Run smoke tests: All passed
+```
+
 ### Test Commands with Timing
 
 | Command | Duration | Timeout | Use When |
