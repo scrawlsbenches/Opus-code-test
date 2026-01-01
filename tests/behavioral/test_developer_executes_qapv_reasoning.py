@@ -19,7 +19,7 @@ from llm_orchestration.cognitive_state import (
     HypothesisStatus,
     DecisionStatus
 )
-from llm_orchestration.thought_patterns import QAPVPattern, create_pattern
+from llm_orchestration.thought_patterns import QAPVPattern, QAPVPhase, create_pattern
 
 
 class TestDeveloperAsksQuestions:
@@ -226,7 +226,6 @@ class TestDeveloperMakesDecisions:
         assert decision.from_question == question.id, "Decision should reference question"
         assert len(decision.alternatives) > 0, "Should record alternatives considered"
 
-    @pytest.mark.skip(reason="API mismatch - needs alignment with implementation")
     def test_scenario_decisions_record_rationale(self, temp_storage):
         """
         Scenario: Decisions preserve reasoning for future reference
@@ -251,7 +250,7 @@ class TestDeveloperMakesDecisions:
         # Then: rationale is preserved
         assert decision.rationale is not None, "Should store rationale"
         assert "stateless" in decision.rationale.lower(), "Should capture key reasoning"
-        assert decision.status == DecisionStatus.ACTIVE, "New decisions should be active"
+        assert decision.status == DecisionStatus.TENTATIVE, "New decisions should be tentative"
 
 
 class TestDeveloperExecutesQAPVCycle:
@@ -270,7 +269,6 @@ class TestDeveloperExecutesQAPVCycle:
         if temp_dir.exists():
             shutil.rmtree(temp_dir)
 
-    @pytest.mark.skip(reason="API mismatch - needs alignment with implementation")
     def test_scenario_qapv_phases_execute_in_order(self, temp_storage):
         """
         Scenario: QAPV cycle progresses through phases
@@ -280,28 +278,40 @@ class TestDeveloperExecutesQAPVCycle:
         Then the pattern tracks phase transitions
         Because structured flow ensures nothing is skipped
         """
-        # Given: a QAPV pattern
-        pattern = create_pattern("qapv")
+        # Given: a QAPV pattern with cognitive state
+        state = CognitiveStateManager(temp_storage)
+        pattern = create_pattern("qapv", state, goal="Test goal")
 
-        # When: executing phases in order
-        pattern.start()  # Starts in QUESTION phase
-        assert pattern.current_phase == "question", "Should start in question phase"
+        # Pattern starts in QUESTION phase automatically
+        assert pattern.current_phase == QAPVPhase.QUESTION, "Should start in question phase"
 
-        pattern.transition("answer")
-        assert pattern.current_phase == "answer", "Should transition to answer phase"
+        # Set question to satisfy phase requirements
+        pattern.set_question("What should we build?", "Working feature")
 
-        pattern.transition("produce")
-        assert pattern.current_phase == "produce", "Should transition to produce phase"
+        # When: executing phases in order via advance()
+        pattern.advance()
+        assert pattern.current_phase == QAPVPhase.ANSWER, "Should transition to answer phase"
 
-        pattern.transition("verify")
-        assert pattern.current_phase == "verify", "Should transition to verify phase"
+        # Record a decision to satisfy ANSWER phase requirements
+        pattern.record_decision(
+            decision="Use approach A",
+            rationale="Best fit for requirements we control"
+        )
 
-        # Then: pattern tracks all transitions
-        pattern.complete()
-        summary = pattern.get_summary()
-        assert summary['phases_completed'] == 4, "Should complete all four phases"
+        pattern.advance()
+        assert pattern.current_phase == QAPVPhase.PRODUCE, "Should transition to produce phase"
 
-    @pytest.mark.skip(reason="API mismatch - needs alignment with implementation")
+        # Set artifact to satisfy PRODUCE phase requirements
+        pattern.set_artifact({"code": "implementation"}, "Feature implemented")
+
+        pattern.advance()
+        assert pattern.current_phase == QAPVPhase.VERIFY, "Should transition to verify phase"
+
+        # Then: pattern tracks progress through phases
+        progress = pattern.get_progress()
+        assert progress['current_phase'] == 'VERIFY', "Should be in verify phase"
+        assert progress['steps_taken'] > 0, "Should track steps taken"
+
     def test_scenario_complete_qapv_cycle_reaches_verified_output(self, temp_storage):
         """
         Scenario: Full QAPV cycle produces verified result
@@ -313,77 +323,90 @@ class TestDeveloperExecutesQAPVCycle:
         """
         # Given: a problem to solve
         state = CognitiveStateManager(temp_storage)
-        pattern = create_pattern("qapv")
+        pattern = create_pattern("qapv", state, goal="Implement feature X")
 
-        # QUESTION phase
-        pattern.start()
-        main_q = state.ask_question("How to implement feature X?")
-        sub_q = state.ask_question("What approach to use?", parent_question_id=main_q.id)
+        # QUESTION phase - pattern starts here automatically
+        assert pattern.current_phase == QAPVPhase.QUESTION
+        pattern.set_question("How to implement feature X?", "Working, tested feature")
 
         # ANSWER phase
-        pattern.transition("answer")
+        pattern.advance()
+        assert pattern.current_phase == QAPVPhase.ANSWER
+
         hypothesis = state.form_hypothesis(
             "Use approach A",
             rationale="Fits constraints we control",
-            for_question_id=sub_q.id
+            for_question_id=pattern.question.id
         )
-        hypothesis.add_evidence("Tested approach", supports=True, strength=0.9)
-        state.evaluate_hypothesis(hypothesis.id)
+        state.add_evidence(hypothesis.id, "Tested approach works well", supports=True)
+        state.update_hypothesis_confidence(hypothesis.id, 0.9, reason="Evidence supports it")
 
-        decision = state.make_decision(
-            from_question_id=sub_q.id,
+        pattern.record_decision(
             decision="Use approach A",
             rationale="Evidence supports it"
         )
 
         # PRODUCE phase
-        pattern.transition("produce")
-        pattern.add_note("Artifact produced based on decisions")
+        pattern.advance()
+        assert pattern.current_phase == QAPVPhase.PRODUCE
+        pattern.set_artifact({"feature": "implemented"}, "Feature X implemented")
+        pattern.record_step("implementation", "Code written and ready for verification")
 
         # VERIFY phase
-        pattern.transition("verify")
-        pattern.add_note("Verification checks passed")
+        pattern.advance()
+        assert pattern.current_phase == QAPVPhase.VERIFY
+        pattern.record_verification(passed=True, details={"tests": "all passing"})
+
+        # Complete cycle by advancing from VERIFY with passed=True
+        pattern.advance()
+        assert pattern.current_phase == QAPVPhase.COMPLETE, "Should reach COMPLETE phase"
 
         # Then: cycle completes successfully
-        pattern.complete()
-        summary = pattern.get_summary()
+        progress = pattern.get_progress()
+        assert progress['current_phase'] == 'COMPLETE', "QAPV cycle should complete"
+        assert progress['steps_taken'] > 0, "Should record progress steps"
 
-        assert summary['completed'], "QAPV cycle should complete"
-        assert len(summary['notes']) > 0, "Should record progress notes"
-
-    @pytest.mark.skip(reason="API mismatch - needs alignment with implementation")
-    def test_scenario_verification_failures_loop_back_to_produce(self, temp_storage):
+    def test_scenario_verification_failures_loop_back_to_question(self, temp_storage):
         """
-        Scenario: Failed verification returns to production phase
+        Scenario: Failed verification returns to question phase for re-evaluation
 
         Given a QAPV cycle in verify phase
         When verification reveals problems
-        Then the cycle can return to produce to fix issues
-        Because verification ensures quality through iteration
+        Then the cycle loops back to question phase with new understanding
+        Because verification failures require re-examining our approach
         """
-        # Given: a QAPV cycle in verify phase
-        pattern = create_pattern("qapv")
-        pattern.start()
-        pattern.transition("answer")
-        pattern.transition("produce")
-        pattern.transition("verify")
+        # Given: a QAPV cycle progressed to verify phase
+        state = CognitiveStateManager(temp_storage)
+        pattern = create_pattern("qapv", state, goal="Build feature with quality")
 
-        # When: verification finds issues
-        pattern.add_note("Verification found missing error handling")
+        # Progress through phases to VERIFY
+        pattern.set_question("How to build this feature?", "Passing tests")
+        pattern.advance()  # -> ANSWER
 
-        # Then: can loop back to produce
-        pattern.transition("produce")  # Loop back
-        assert pattern.current_phase == "produce", "Should allow return to produce phase"
+        pattern.record_decision(
+            decision="Use quick approach",
+            rationale="Faster implementation we control"
+        )
+        pattern.advance()  # -> PRODUCE
 
-        pattern.add_note("Added error handling")
-        pattern.transition("verify")
-        pattern.add_note("Verification now passes")
+        pattern.set_artifact({"code": "v1"}, "First implementation")
+        pattern.advance()  # -> VERIFY
 
-        # Complete cycle
-        pattern.complete()
-        summary = pattern.get_summary()
+        # When: verification finds issues (fails)
+        pattern.record_verification(
+            passed=False,
+            details={"error": "Missing error handling"}
+        )
+        pattern.record_step("verification_issue", "Found missing error handling")
 
-        assert len(summary['notes']) >= 3, "Should track all notes including loop back"
+        # Then: advancing loops back to QUESTION phase for re-evaluation
+        pattern.advance()
+        assert pattern.current_phase == QAPVPhase.QUESTION, \
+            "Failed verification should loop back to question phase"
+
+        # Can now start a new iteration with better understanding
+        progress = pattern.get_progress()
+        assert progress['steps_taken'] > 3, "Should track all steps including loop back"
 
 
 class TestDeveloperPersistsReasoningState:
@@ -402,7 +425,6 @@ class TestDeveloperPersistsReasoningState:
         if temp_dir.exists():
             shutil.rmtree(temp_dir)
 
-    @pytest.mark.skip(reason="API mismatch - needs alignment with implementation")
     def test_scenario_state_saves_and_restores(self, temp_storage):
         """
         Scenario: Cognitive state survives session boundaries
@@ -412,12 +434,9 @@ class TestDeveloperPersistsReasoningState:
         Then restoring loads all state correctly
         Because persistence enables work continuity
         """
-        # Given: cognitive state with content
+        # Given: cognitive state with content (auto-saves on each mutation)
         state = CognitiveStateManager(temp_storage)
-        state.set_focus(
-            current_goal="Implement feature X",
-            context={"complexity": "high"}
-        )
+        state.set_focus("Implement feature X")
 
         question = state.ask_question("How to approach feature X?")
         decision = state.make_decision(
@@ -426,21 +445,18 @@ class TestDeveloperPersistsReasoningState:
             rationale="Complexity requires incremental progress"
         )
 
-        # When: saving checkpoint
-        checkpoint = state.save_checkpoint()
+        # State auto-saves, capture checkpoint data
+        checkpoint = state.checkpoint()
         assert checkpoint is not None, "Should create checkpoint"
 
-        # Create new state manager (simulates new session)
+        # Create new state manager (simulates new session - auto-loads on init)
         new_state = CognitiveStateManager(temp_storage)
-        restored_checkpoint = new_state.load_latest_checkpoint()
 
-        # Then: state is restored
-        assert restored_checkpoint is not None, "Should restore checkpoint"
+        # Then: state is restored automatically
         assert len(new_state.questions) > 0, "Should restore questions"
         assert len(new_state.decisions) > 0, "Should restore decisions"
         assert new_state.focus is not None, "Should restore focus"
 
-    @pytest.mark.skip(reason="API mismatch - needs alignment with implementation")
     def test_scenario_observations_persist_across_sessions(self, temp_storage):
         """
         Scenario: Observations made during research persist
@@ -450,23 +466,20 @@ class TestDeveloperPersistsReasoningState:
         Then observations are preserved
         Because accumulated knowledge shouldn't be lost
         """
-        # Given: observations recorded
+        # Given: observations recorded (auto-saves on each mutation)
         state = CognitiveStateManager(temp_storage)
 
-        state.add_observation(
-            content="Framework X requires Python 3.8+",
+        state.record_observation(
+            observation="Framework X requires Python 3.8+",
             source="documentation review"
         )
-        state.add_observation(
-            content="Framework Y has better async support we can implement",
+        state.record_observation(
+            observation="Framework Y has better async support we can implement",
             source="technical analysis we performed"
         )
 
-        # When: saving and restoring
-        state.save_checkpoint()
-
+        # When: creating new session (auto-loads on init)
         new_state = CognitiveStateManager(temp_storage)
-        new_state.load_latest_checkpoint()
 
         # Then: observations preserved
         assert len(new_state.observations) >= 2, "Should preserve observations"
