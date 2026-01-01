@@ -355,6 +355,27 @@ class CDGTransactionManager:
         # Delegate to recovery manager
         return recovery_manager.recover()
 
+    def has_active_transactions(self) -> bool:
+        """
+        Check if there are any active transactions.
+
+        This is used by sync operations to ensure that sync only happens
+        when there are no in-flight transactions.
+
+        Returns:
+            True if there are active transactions, False otherwise
+        """
+        return len(self._active_tx) > 0
+
+    def get_active_transaction_ids(self) -> List[str]:
+        """
+        Get list of active transaction IDs.
+
+        Returns:
+            List of transaction IDs currently active
+        """
+        return list(self._active_tx.keys())
+
     def _detect_conflicts(self, tx: Transaction) -> List[Conflict]:
         """
         Detect version conflicts between transaction and current store.

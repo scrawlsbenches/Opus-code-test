@@ -2,7 +2,7 @@
 ╔══════════════════════════════════════════════════════════════════════╗
 ║             CORTICAL DISTRIBUTED GRAPH PERFORMANCE CONTRACT          ║
 ╠══════════════════════════════════════════════════════════════════════╣
-║  Ratified:     2025-12-31                                            ║
+║  Ratified:     2026-01-01                                            ║
 ║  Guardian:     CI Pipeline                                            ║
 ║  Renegotiation: Requires team review + documented justification      ║
 ╠══════════════════════════════════════════════════════════════════════╣
@@ -28,8 +28,27 @@
 ║  • Writes: > 1,000 ops/sec (PARANOID durability)                    ║
 ║  • Writes: > 5,000 ops/sec (BALANCED durability)                    ║
 ║                                                                       ║
-║  Note: These tests are marked as skip until CDG is implemented.      ║
-║  The contracts define the expected behavior we must achieve.         ║
+║  WAL Performance (CDGWALManager):                                    ║
+║  • log_tx_begin latency:             p50 < 1ms,  p95 < 5ms          ║
+║  • log_write latency:                p50 < 1ms,  p95 < 5ms          ║
+║  • fsync_now latency:                p95 < 50ms (BALANCED mode)     ║
+║  • Throughput (FAST mode):           > 5,000 ops/sec                ║
+║  • Throughput (PARANOID mode):       > 1,000 ops/sec                ║
+║                                                                       ║
+║  Transaction Performance (CDGTransactionManager):                    ║
+║  • begin() latency:                  p50 < 1ms,  p95 < 5ms          ║
+║  • read() latency:                   p50 < 2ms,  p95 < 10ms         ║
+║  • commit() small (5 entities):      p50 < 10ms (FAST mode)         ║
+║  • commit() large (100 entities):    p50 < 50ms (FAST mode)         ║
+║                                                                       ║
+║  Recovery Performance (CDGRecoveryManager):                          ║
+║  • Recovery time (1K WAL entries):   < 500ms (FULL mode)            ║
+║  • Orphan detection (1K entities):   < 100ms                        ║
+║  • Orphan detection (10K entities):  < 1000ms                       ║
+║                                                                       ║
+║  Note: High-level query tests marked as skip until CDG query layer   ║
+║  is implemented. Transactional layer contracts are active and will   ║
+║  enforce performance as CDG components are integrated.               ║
 ║                                                                       ║
 ╚══════════════════════════════════════════════════════════════════════╝
 """
@@ -434,3 +453,653 @@ def benchmark_graph(cdg_client, benchmark_nodes):
                 "DEPENDS_ON"
             )
     return benchmark_nodes
+
+
+# ============================================================================
+# WAL PERFORMANCE CONTRACTS
+# ============================================================================
+
+@pytest.mark.contract
+class TestCDGWALContract:
+    """
+    Write-Ahead Log Performance Contract
+
+    As a transactional system developer,
+    I expect WAL operations to be fast and predictable,
+    So that logging overhead does not dominate transaction latency.
+
+    Rationale:
+    - WAL must be fast: every transaction operation logs to WAL
+    - Fast mode (no fsync) should sustain >5000 ops/sec for write-heavy workloads
+    - Paranoid mode (fsync per write) should still sustain >1000 ops/sec
+    - Individual log operations must be sub-millisecond p50
+    """
+
+    # The sacred numbers
+    LOG_TX_BEGIN_P50_MS = 1.0   # p50 latency for log_tx_begin
+    LOG_TX_BEGIN_P95_MS = 5.0   # p95 latency for log_tx_begin
+    LOG_WRITE_P50_MS = 1.0      # p50 latency for log_write
+    LOG_WRITE_P95_MS = 5.0      # p95 latency for log_write
+    FSYNC_P95_MS = 50.0         # p95 latency for fsync_now (PARANOID mode)
+
+    # Throughput targets
+    THROUGHPUT_FAST_OPS_SEC = 5_000      # FAST mode (no fsync)
+    THROUGHPUT_PARANOID_OPS_SEC = 1_000  # PARANOID mode (fsync per write)
+
+    SAMPLE_SIZE = 1000
+
+    def test_log_tx_begin_p50_latency_honored(self, temp_cdg_dir):
+        """
+        CONTRACT: Half of log_tx_begin calls complete in under 1ms.
+
+        This guarantees that transaction start overhead is negligible.
+        """
+        from cortical.cdg.wal import CDGWALManager
+        from cortical.cdg.config import CDGConfig, DurabilityMode
+
+        config = CDGConfig(durability=DurabilityMode.FAST)
+        wal = CDGWALManager(temp_cdg_dir / "wal", config)
+
+        latencies = []
+        for i in range(self.SAMPLE_SIZE):
+            tx_id = f"TX-{i:06d}"
+            start = time.perf_counter()
+            wal.log_tx_begin(tx_id, snapshot_version=1)
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            latencies.append(elapsed_ms)
+
+        p50 = percentile(latencies, 50)
+
+        assert p50 < self.LOG_TX_BEGIN_P50_MS, (
+            f"CONTRACT VIOLATION: log_tx_begin p50 latency is {p50:.2f}ms, "
+            f"contract requires <{self.LOG_TX_BEGIN_P50_MS}ms"
+        )
+
+    def test_log_tx_begin_p95_latency_honored(self, temp_cdg_dir):
+        """
+        CONTRACT: 95% of log_tx_begin calls complete in under 5ms.
+
+        This guarantees predictable transaction start even at tail latency.
+        """
+        from cortical.cdg.wal import CDGWALManager
+        from cortical.cdg.config import CDGConfig, DurabilityMode
+
+        config = CDGConfig(durability=DurabilityMode.FAST)
+        wal = CDGWALManager(temp_cdg_dir / "wal", config)
+
+        latencies = []
+        for i in range(self.SAMPLE_SIZE):
+            tx_id = f"TX-{i:06d}"
+            start = time.perf_counter()
+            wal.log_tx_begin(tx_id, snapshot_version=1)
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            latencies.append(elapsed_ms)
+
+        p95 = percentile(latencies, 95)
+
+        assert p95 < self.LOG_TX_BEGIN_P95_MS, (
+            f"CONTRACT VIOLATION: log_tx_begin p95 latency is {p95:.2f}ms, "
+            f"contract requires <{self.LOG_TX_BEGIN_P95_MS}ms"
+        )
+
+    def test_log_write_throughput_fast_mode(self, temp_cdg_dir):
+        """
+        CONTRACT: WAL sustains >5000 writes/sec in FAST mode.
+
+        FAST mode (no fsync) should maximize throughput for write-heavy
+        workloads where durability is handled at commit time.
+
+        Rationale: FAST mode is used for buffering writes during transaction
+        execution. High throughput is critical for complex transactions that
+        modify many entities.
+        """
+        from cortical.cdg.wal import CDGWALManager
+        from cortical.cdg.config import CDGConfig, DurabilityMode
+
+        config = CDGConfig(durability=DurabilityMode.FAST)
+        wal = CDGWALManager(temp_cdg_dir / "wal", config)
+
+        # Measure throughput over 2 seconds
+        duration = 2.0
+        start = time.perf_counter()
+        ops = 0
+
+        tx_id = "TX-throughput-test"
+        wal.log_tx_begin(tx_id, snapshot_version=1)
+
+        while time.perf_counter() - start < duration:
+            wal.log_write(tx_id, f"E-{ops:06d}", old_version=1, new_version=2)
+            ops += 1
+
+        elapsed = time.perf_counter() - start
+        ops_per_sec = ops / elapsed
+
+        assert ops_per_sec > self.THROUGHPUT_FAST_OPS_SEC, (
+            f"CONTRACT VIOLATION: FAST mode throughput is {ops_per_sec:.0f} ops/sec, "
+            f"contract requires >{self.THROUGHPUT_FAST_OPS_SEC} ops/sec"
+        )
+
+    def test_log_write_throughput_paranoid_mode(self, temp_cdg_dir):
+        """
+        CONTRACT: WAL sustains >1000 writes/sec in PARANOID mode.
+
+        PARANOID mode (fsync per write) provides maximum durability but
+        should still maintain reasonable throughput for safety-critical apps.
+
+        Rationale: Even with fsync overhead, we must sustain 1000 ops/sec
+        to support real-world transactional workloads without unacceptable
+        slowdown.
+
+        Note: This test may be sensitive to disk performance. On slow disks
+        (e.g., spinning HDD), contract may need adjustment.
+        """
+        from cortical.cdg.wal import CDGWALManager
+        from cortical.cdg.config import CDGConfig, DurabilityMode
+
+        config = CDGConfig(durability=DurabilityMode.PARANOID)
+        wal = CDGWALManager(temp_cdg_dir / "wal", config)
+
+        # Measure throughput over 2 seconds
+        duration = 2.0
+        start = time.perf_counter()
+        ops = 0
+
+        tx_id = "TX-paranoid-test"
+        wal.log_tx_begin(tx_id, snapshot_version=1)
+
+        while time.perf_counter() - start < duration:
+            wal.log_write(tx_id, f"E-{ops:06d}", old_version=1, new_version=2)
+            ops += 1
+
+        elapsed = time.perf_counter() - start
+        ops_per_sec = ops / elapsed
+
+        assert ops_per_sec > self.THROUGHPUT_PARANOID_OPS_SEC, (
+            f"CONTRACT VIOLATION: PARANOID mode throughput is {ops_per_sec:.0f} ops/sec, "
+            f"contract requires >{self.THROUGHPUT_PARANOID_OPS_SEC} ops/sec"
+        )
+
+    def test_fsync_latency_bounded(self, temp_cdg_dir):
+        """
+        CONTRACT: 95% of fsync_now calls complete in under 50ms.
+
+        fsync is inherently slow (disk I/O), but we must bound the worst case
+        to ensure BALANCED mode commit latency remains acceptable.
+
+        Rationale: BALANCED mode calls fsync_now() once per commit. We contract
+        that 95% of commits fsync in <50ms, meaning total commit latency stays
+        <100ms p95 (assuming 50ms for other work).
+
+        Note: Highly dependent on disk speed and OS. May need adjustment for
+        slow hardware or heavily loaded systems.
+        """
+        from cortical.cdg.wal import CDGWALManager
+        from cortical.cdg.config import CDGConfig, DurabilityMode
+
+        config = CDGConfig(durability=DurabilityMode.BALANCED)
+        wal = CDGWALManager(temp_cdg_dir / "wal", config)
+
+        # Write some entries to the WAL first
+        tx_id = "TX-fsync-test"
+        for i in range(100):
+            wal.log_write(tx_id, f"E-{i:06d}", old_version=1, new_version=2)
+
+        # Measure fsync latency
+        latencies = []
+        for _ in range(100):
+            start = time.perf_counter()
+            wal.fsync_now()
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            latencies.append(elapsed_ms)
+
+        p95 = percentile(latencies, 95)
+
+        assert p95 < self.FSYNC_P95_MS, (
+            f"CONTRACT VIOLATION: fsync_now p95 latency is {p95:.2f}ms, "
+            f"contract requires <{self.FSYNC_P95_MS}ms"
+        )
+
+
+# ============================================================================
+# TRANSACTION PERFORMANCE CONTRACTS
+# ============================================================================
+
+@pytest.mark.contract
+class TestCDGTransactionContract:
+    """
+    Transaction Manager Performance Contract
+
+    As a developer using transactional operations,
+    I expect transactions to have predictable, low latency,
+    So that my application remains responsive.
+
+    Rationale:
+    - begin() must be instant (<1ms p50) to avoid startup overhead
+    - commit() latency must scale linearly with write set size
+    - read() must be fast (<2ms p50) for interactive workloads
+    """
+
+    # The sacred numbers
+    BEGIN_P50_MS = 1.0      # Transaction start must be instant
+    BEGIN_P95_MS = 5.0      # Even at p95, negligible overhead
+    READ_P50_MS = 2.0       # Individual reads fast for interactive use
+    READ_P95_MS = 10.0      # Bounded tail latency
+    COMMIT_SMALL_P50_MS = 10.0   # Commit with <10 entities
+    COMMIT_LARGE_P50_MS = 50.0   # Commit with 100 entities
+
+    SAMPLE_SIZE = 1000
+
+    def test_begin_p50_latency_honored(self, temp_cdg_dir):
+        """
+        CONTRACT: Half of begin() calls complete in under 1ms.
+
+        This guarantees that starting a transaction has negligible overhead
+        for latency-sensitive operations.
+
+        Rationale: begin() should only allocate a transaction ID and capture
+        a snapshot version. No I/O should be required.
+        """
+        from cortical.cdg.transaction_manager import CDGTransactionManager
+        from cortical.cdg.config import CDGConfig
+
+        config = CDGConfig.for_got()
+        manager = CDGTransactionManager(temp_cdg_dir, config)
+
+        latencies = []
+        for _ in range(self.SAMPLE_SIZE):
+            start = time.perf_counter()
+            tx = manager.begin()
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            latencies.append(elapsed_ms)
+
+        p50 = percentile(latencies, 50)
+
+        assert p50 < self.BEGIN_P50_MS, (
+            f"CONTRACT VIOLATION: begin() p50 latency is {p50:.2f}ms, "
+            f"contract requires <{self.BEGIN_P50_MS}ms"
+        )
+
+    def test_begin_p95_latency_honored(self, temp_cdg_dir):
+        """
+        CONTRACT: 95% of begin() calls complete in under 5ms.
+
+        This guarantees predictable transaction start even at tail latency.
+        """
+        from cortical.cdg.transaction_manager import CDGTransactionManager
+        from cortical.cdg.config import CDGConfig
+
+        config = CDGConfig.for_got()
+        manager = CDGTransactionManager(temp_cdg_dir, config)
+
+        latencies = []
+        for _ in range(self.SAMPLE_SIZE):
+            start = time.perf_counter()
+            tx = manager.begin()
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            latencies.append(elapsed_ms)
+
+        p95 = percentile(latencies, 95)
+
+        assert p95 < self.BEGIN_P95_MS, (
+            f"CONTRACT VIOLATION: begin() p95 latency is {p95:.2f}ms, "
+            f"contract requires <{self.BEGIN_P95_MS}ms"
+        )
+
+    def test_read_p50_latency_honored(self, temp_cdg_dir):
+        """
+        CONTRACT: Half of read() calls complete in under 2ms.
+
+        This guarantees that reading entities within transactions remains
+        fast enough for interactive applications.
+
+        Rationale: read() should check write_set (in-memory) then delegate
+        to store.read_at_version() which should be fast for local disk I/O.
+        """
+        from cortical.cdg.transaction_manager import CDGTransactionManager
+        from cortical.cdg.config import CDGConfig
+        from cortical.cdg.types import Entity
+
+        config = CDGConfig.for_got()
+        manager = CDGTransactionManager(temp_cdg_dir, config)
+
+        # Create some entities outside transaction
+        for i in range(100):
+            entity = Entity(
+                id=f"E-{i:06d}",
+                namespace="test",
+                entity_type="task",
+                properties={"index": i},
+                version=1
+            )
+            manager.store.write(entity)
+
+        # Measure read latency within transaction
+        tx = manager.begin()
+        entity_ids = [f"E-{i:06d}" for i in range(100)]
+
+        latencies = []
+        for entity_id in entity_ids * 10:  # Read each entity 10 times
+            start = time.perf_counter()
+            entity = manager.read(tx, entity_id)
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            latencies.append(elapsed_ms)
+
+        p50 = percentile(latencies, 50)
+
+        assert p50 < self.READ_P50_MS, (
+            f"CONTRACT VIOLATION: read() p50 latency is {p50:.2f}ms, "
+            f"contract requires <{self.READ_P50_MS}ms"
+        )
+
+    def test_read_p95_latency_honored(self, temp_cdg_dir):
+        """
+        CONTRACT: 95% of read() calls complete in under 10ms.
+
+        This guarantees bounded tail latency for reads.
+        """
+        from cortical.cdg.transaction_manager import CDGTransactionManager
+        from cortical.cdg.config import CDGConfig
+        from cortical.cdg.types import Entity
+
+        config = CDGConfig.for_got()
+        manager = CDGTransactionManager(temp_cdg_dir, config)
+
+        # Create some entities outside transaction
+        for i in range(100):
+            entity = Entity(
+                id=f"E-{i:06d}",
+                namespace="test",
+                entity_type="task",
+                properties={"index": i},
+                version=1
+            )
+            manager.store.write(entity)
+
+        # Measure read latency within transaction
+        tx = manager.begin()
+        entity_ids = [f"E-{i:06d}" for i in range(100)]
+
+        latencies = []
+        for entity_id in entity_ids * 10:  # Read each entity 10 times
+            start = time.perf_counter()
+            entity = manager.read(tx, entity_id)
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            latencies.append(elapsed_ms)
+
+        p95 = percentile(latencies, 95)
+
+        assert p95 < self.READ_P95_MS, (
+            f"CONTRACT VIOLATION: read() p95 latency is {p95:.2f}ms, "
+            f"contract requires <{self.READ_P95_MS}ms"
+        )
+
+    def test_commit_small_write_set_latency(self, temp_cdg_dir):
+        """
+        CONTRACT: Half of commits with <10 entities complete in under 10ms.
+
+        This guarantees that small transactions (typical for interactive apps)
+        have low latency even with WAL logging and conflict detection.
+
+        Rationale: Small transactions are common in OLTP workloads. We must
+        keep latency low to maintain user experience.
+        """
+        from cortical.cdg.transaction_manager import CDGTransactionManager
+        from cortical.cdg.config import CDGConfig, DurabilityMode
+        from cortical.cdg.types import Entity
+
+        # Use FAST mode to isolate commit logic from fsync overhead
+        config = CDGConfig.for_got()
+        config.durability = DurabilityMode.FAST
+        manager = CDGTransactionManager(temp_cdg_dir, config)
+
+        latencies = []
+        for i in range(100):
+            tx = manager.begin()
+
+            # Write 5 entities
+            for j in range(5):
+                entity = Entity(
+                    id=f"E-{i:06d}-{j}",
+                    namespace="test",
+                    entity_type="task",
+                    properties={"batch": i, "index": j},
+                    version=1
+                )
+                manager.write(tx, entity)
+
+            start = time.perf_counter()
+            result = manager.commit(tx)
+            elapsed_ms = (time.perf_counter() - start) * 1000
+
+            assert result.success, f"Commit failed: {result.reason}"
+            latencies.append(elapsed_ms)
+
+        p50 = percentile(latencies, 50)
+
+        assert p50 < self.COMMIT_SMALL_P50_MS, (
+            f"CONTRACT VIOLATION: commit() p50 latency (5 entities) is {p50:.2f}ms, "
+            f"contract requires <{self.COMMIT_SMALL_P50_MS}ms"
+        )
+
+    def test_commit_large_write_set_latency(self, temp_cdg_dir):
+        """
+        CONTRACT: Half of commits with 100 entities complete in under 50ms.
+
+        This guarantees that commit latency scales linearly with write set size.
+        100 entities in 50ms = 0.5ms per entity overhead.
+
+        Rationale: Large transactions occur during batch operations and ETL.
+        We must ensure they complete in reasonable time without blocking the
+        system.
+
+        Note: This test uses FAST mode to isolate the commit logic from fsync
+        overhead. Real-world BALANCED/PARANOID mode will be slower.
+        """
+        from cortical.cdg.transaction_manager import CDGTransactionManager
+        from cortical.cdg.config import CDGConfig, DurabilityMode
+        from cortical.cdg.types import Entity
+
+        # Use FAST mode to isolate commit logic from fsync overhead
+        config = CDGConfig.for_got()
+        config.durability = DurabilityMode.FAST
+        manager = CDGTransactionManager(temp_cdg_dir, config)
+
+        latencies = []
+        for i in range(20):  # Fewer iterations due to larger write sets
+            tx = manager.begin()
+
+            # Write 100 entities
+            for j in range(100):
+                entity = Entity(
+                    id=f"E-{i:06d}-{j:03d}",
+                    namespace="test",
+                    entity_type="task",
+                    properties={"batch": i, "index": j},
+                    version=1
+                )
+                manager.write(tx, entity)
+
+            start = time.perf_counter()
+            result = manager.commit(tx)
+            elapsed_ms = (time.perf_counter() - start) * 1000
+
+            assert result.success, f"Commit failed: {result.reason}"
+            latencies.append(elapsed_ms)
+
+        p50 = percentile(latencies, 50)
+
+        assert p50 < self.COMMIT_LARGE_P50_MS, (
+            f"CONTRACT VIOLATION: commit() p50 latency (100 entities) is {p50:.2f}ms, "
+            f"contract requires <{self.COMMIT_LARGE_P50_MS}ms"
+        )
+
+
+# ============================================================================
+# RECOVERY PERFORMANCE CONTRACTS
+# ============================================================================
+
+@pytest.mark.contract
+class TestCDGRecoveryContract:
+    """
+    Recovery Manager Performance Contract
+
+    As a system administrator recovering from a crash,
+    I expect recovery time to scale linearly with data size,
+    So that recovery completes in predictable time.
+
+    Rationale:
+    - Recovery must be fast: long recovery = extended downtime
+    - Recovery time must scale linearly, not exponentially
+    - Orphan detection must be bounded to avoid startup delays
+    """
+
+    # The sacred numbers
+    RECOVERY_TIME_PER_1K_ENTRIES_MS = 500   # 500ms per 1000 WAL entries
+    ORPHAN_DETECTION_1K_MS = 100            # 100ms to detect orphans in 1K entities
+    ORPHAN_DETECTION_10K_MS = 1000          # 1000ms to detect orphans in 10K entities
+
+    def test_recovery_time_scales_linearly(self, temp_cdg_dir):
+        """
+        CONTRACT: Recovery time scales linearly with WAL size.
+
+        We contract that recovery of 1000 WAL entries completes in <500ms.
+        This implies:
+        - 2000 entries: <1000ms
+        - 5000 entries: <2500ms
+        - 10000 entries: <5000ms
+
+        Rationale: Recovery is rare but critical. Linear scaling ensures
+        predictable recovery time regardless of WAL size. Sub-linear would
+        be ideal but is not contracted.
+
+        Note: This test measures FULL recovery mode which includes:
+        - WAL replay
+        - Incomplete transaction rollback
+        - Entity checksum verification
+        - Orphan detection and repair
+        """
+        from cortical.cdg.recovery import CDGRecoveryManager
+        from cortical.cdg.wal import CDGWALManager
+        from cortical.cdg.config import CDGConfig, RecoveryMode, DurabilityMode
+        from cortical.cdg.types import Entity
+
+        config = CDGConfig(
+            recovery_mode=RecoveryMode.FULL,
+            durability=DurabilityMode.FAST,
+            enable_wal=True
+        )
+
+        # Create WAL with 1000 entries
+        wal = CDGWALManager(temp_cdg_dir / "wal", config)
+        tx_id = "TX-recovery-test"
+        wal.log_tx_begin(tx_id, snapshot_version=1)
+
+        for i in range(1000):
+            wal.log_write(tx_id, f"E-{i:06d}", old_version=0, new_version=1)
+
+        wal.log_tx_commit(tx_id, version=1000)
+
+        # Measure recovery time
+        recovery_manager = CDGRecoveryManager(temp_cdg_dir, config)
+
+        start = time.perf_counter()
+        result = recovery_manager.recover()
+        elapsed_ms = (time.perf_counter() - start) * 1000
+
+        assert result.success, f"Recovery failed: {result.actions_taken}"
+
+        assert elapsed_ms < self.RECOVERY_TIME_PER_1K_ENTRIES_MS, (
+            f"CONTRACT VIOLATION: Recovery of 1000 entries took {elapsed_ms:.2f}ms, "
+            f"contract requires <{self.RECOVERY_TIME_PER_1K_ENTRIES_MS}ms"
+        )
+
+    def test_orphan_detection_1k_bounded(self, temp_cdg_dir):
+        """
+        CONTRACT: Orphan detection for 1000 entities completes in <100ms.
+
+        This guarantees that orphan detection doesn't add significant overhead
+        during recovery for small to medium datasets.
+
+        Rationale: Orphan detection scans disk files and WAL entries. We must
+        ensure this doesn't become a bottleneck during recovery.
+        """
+        from cortical.cdg.recovery import CDGRecoveryManager
+        from cortical.cdg.config import CDGConfig, RecoveryMode
+        from cortical.cdg.types import Entity
+
+        config = CDGConfig(
+            recovery_mode=RecoveryMode.FULL,
+            enable_wal=True
+        )
+
+        recovery_manager = CDGRecoveryManager(temp_cdg_dir, config)
+
+        # Create 1000 entities on disk (without WAL entries = orphans)
+        for i in range(1000):
+            entity = Entity(
+                id=f"E-{i:06d}",
+                namespace="test",
+                entity_type="task",
+                properties={"index": i},
+                version=1
+            )
+            recovery_manager.store.write(entity)
+
+        # Measure orphan detection time
+        start = time.perf_counter()
+        orphans = recovery_manager.detect_orphaned_entities()
+        elapsed_ms = (time.perf_counter() - start) * 1000
+
+        assert len(orphans) == 1000, f"Expected 1000 orphans, got {len(orphans)}"
+
+        assert elapsed_ms < self.ORPHAN_DETECTION_1K_MS, (
+            f"CONTRACT VIOLATION: Orphan detection (1K entities) took {elapsed_ms:.2f}ms, "
+            f"contract requires <{self.ORPHAN_DETECTION_1K_MS}ms"
+        )
+
+    def test_orphan_detection_10k_bounded(self, temp_cdg_dir):
+        """
+        CONTRACT: Orphan detection for 10,000 entities completes in <1000ms.
+
+        This guarantees that orphan detection scales linearly and remains
+        bounded even for larger datasets.
+
+        Rationale: 10K entities in 1 second = 0.1ms per entity overhead.
+        This is acceptable for recovery which is infrequent.
+
+        Note: This test may be slow on CI runners with limited I/O. Consider
+        skipping on slow hardware if it becomes flaky.
+        """
+        from cortical.cdg.recovery import CDGRecoveryManager
+        from cortical.cdg.config import CDGConfig, RecoveryMode
+        from cortical.cdg.types import Entity
+
+        config = CDGConfig(
+            recovery_mode=RecoveryMode.FULL,
+            enable_wal=True
+        )
+
+        recovery_manager = CDGRecoveryManager(temp_cdg_dir, config)
+
+        # Create 10,000 entities on disk (without WAL entries = orphans)
+        for i in range(10_000):
+            entity = Entity(
+                id=f"E-{i:06d}",
+                namespace="test",
+                entity_type="task",
+                properties={"index": i},
+                version=1
+            )
+            recovery_manager.store.write(entity)
+
+        # Measure orphan detection time
+        start = time.perf_counter()
+        orphans = recovery_manager.detect_orphaned_entities()
+        elapsed_ms = (time.perf_counter() - start) * 1000
+
+        assert len(orphans) == 10_000, f"Expected 10,000 orphans, got {len(orphans)}"
+
+        assert elapsed_ms < self.ORPHAN_DETECTION_10K_MS, (
+            f"CONTRACT VIOLATION: Orphan detection (10K entities) took {elapsed_ms:.2f}ms, "
+            f"contract requires <{self.ORPHAN_DETECTION_10K_MS}ms"
+        )
