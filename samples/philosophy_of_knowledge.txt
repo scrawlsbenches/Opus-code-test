@@ -1,0 +1,97 @@
+Philosophy of Knowledge: Epistemology and Understanding
+
+Epistemology, the branch of philosophy concerned with knowledge, examines the
+nature, sources, and limits of what we can know. Its central questions persist
+through millennia: What is knowledge? How do we acquire it? Can we ever be
+certain of what we know?
+
+The classical definition frames knowledge as justified true belief. A person
+knows something if they believe it, if it is actually true, and if they have
+adequate justification for that belief. This tripartite analysis, traceable
+to Plato, provided a starting point for centuries of philosophical inquiry.
+
+Gettier cases challenged this classical formulation. Edmund Gettier presented
+scenarios where someone holds a justified true belief that nonetheless fails
+to constitute knowledge. Consider someone who believes their coworker owns a
+particular car based on seeing them drive it daily. Unknown to them, the
+coworker recently sold that car and bought an identical one. The belief is
+true, justified, yet seems accidentally correct rather than genuinely known.
+
+Rationalism holds that reason provides the primary source of knowledge.
+Descartes sought certainty through methodical doubt, famously concluding that
+thinking itself proves existence. Innate ideas, logical deduction, and the
+power of pure thought characterize rationalist epistemology. Mathematical
+knowledge exemplifies this approach: we know geometric truths through reason,
+not sensory observation.
+
+Empiricism counters that experience grounds all knowledge. Locke's tabula rasa
+depicts the mind as a blank slate written upon by sensory impressions. Hume's
+radical empiricism questions causation itself, noting we observe conjunction
+but never necessary connection. Knowledge claims must trace back to observable
+evidence to hold legitimacy in empiricist frameworks.
+
+Kant synthesized these traditions, proposing that knowledge requires both
+experience and innate cognitive structures. The mind actively organizes
+sensory data through categories like space, time, and causality. Experience
+without concepts is blind; concepts without experience are empty. Neither
+pure reason nor pure sensation alone generates knowledge.
+
+Pragmatism reframes epistemology around practical consequences. William James
+evaluated beliefs by their fruits, their real-world implications. Charles
+Peirce grounded truth in the long-term consensus of inquiry. Knowledge claims
+matter insofar as they guide action and prediction successfully. Abstract
+certainty concerns yield to concrete usefulness.
+
+Skepticism questions whether genuine knowledge is possible at all. From
+ancient Pyrrhonism to modern Cartesian doubt, skeptical arguments expose
+the fragility of our epistemic foundations. Brain-in-a-vat scenarios and
+evil demon hypotheses challenge our ability to rule out systematic deception.
+Responding to skepticism remains central to epistemological projects.
+
+Foundationalism seeks secure knowledge through basic beliefs that require no
+further justification. Some beliefs stand on their own, supporting others
+without themselves needing support. Sense perceptions or self-evident truths
+might serve as epistemic foundations upon which the rest of knowledge builds.
+
+Coherentism rejects the need for foundational beliefs. Knowledge consists in
+a web of mutually supporting beliefs rather than a hierarchy resting on
+foundations. Justification emerges from coherence among beliefs, from how
+well they fit together into a consistent, comprehensive system. No single
+belief holds privileged epistemic status.
+
+Virtue epistemology shifts focus from justified beliefs to intellectual
+virtues. Open-mindedness, intellectual courage, careful reasoning, and
+epistemic humility characterize the good knower. Knowledge arises from
+exercising cognitive virtues, from exemplifying excellence in thinking.
+Character matters as much as evidence.
+
+Social epistemology examines knowledge as a collective phenomenon. Testimony
+transmits knowledge between individuals. Scientific communities establish
+warranted consensus through peer review and replication. Epistemic injustice
+occurs when prejudice undermines credibility. Knowledge production is deeply
+social, not merely individual.
+
+Philosophy of science applies epistemology to scientific knowledge. Popper's
+falsificationism distinguishes science by its openness to refutation. Kuhn's
+paradigm shifts describe revolutionary changes in scientific worldviews.
+Lakatos and Feyerabend debate whether scientific method can be systematically
+characterized. These inquiries clarify what makes scientific knowledge special.
+
+The ethics of belief considers obligations in forming opinions. Clifford argued
+we have a duty to proportion belief to evidence. James defended the right to
+believe beyond evidence in certain cases. Contemporary discussions address
+epistemic responsibility, self-deception, and the moral dimensions of what
+we choose to believe.
+
+Understanding differs from mere knowledge. To understand something requires
+grasping how it works, seeing connections, appreciating why things are as
+they are. Understanding admits of degrees in ways knowledge may not. A student
+might know that acceleration equals force divided by mass without yet
+understanding Newtonian mechanics.
+
+Wisdom transcends both knowledge and understanding. The wise person not only
+knows facts and understands connections but exercises good judgment about
+what matters. Wisdom involves values, priorities, and practical insight that
+mere information cannot provide. Philosophy, as love of wisdom, ultimately
+aims beyond knowing to living well.
+
