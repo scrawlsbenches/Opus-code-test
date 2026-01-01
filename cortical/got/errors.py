@@ -3,18 +3,9 @@ Exception classes for GoT (Graph of Thought) system.
 
 All exceptions are designed to be text-friendly for JSON error messages
 and CLI output.
-
-Note on Error Hierarchy:
-    After CDG/GoT unification, GoT's CorruptionError inherits from CDG's
-    CorruptionError. This ensures that code catching GoT's CorruptionError
-    will also catch exceptions raised by CDGStore operations.
 """
 
-from typing import Optional, Dict, Any
-
-# Import CDG error for inheritance
-from cortical.cdg.errors import CorruptionError as CDGCorruptionError
-
+from typing import Dict, Any
 
 class GoTError(Exception):
     """Base exception for all GoT errors."""
@@ -50,10 +41,9 @@ class ConflictError(GoTError):
     pass
 
 
-# CorruptionError is re-exported from CDG for unified error handling.
-# After CDG/GoT unification, CDGStore raises CDGCorruptionError, so GoT code
-# that catches CorruptionError needs to catch the same class.
-CorruptionError = CDGCorruptionError
+class CorruptionError(GoTError):
+    """Data corruption errors (checksum mismatch, invalid event log, etc.)."""
+    pass
 
 
 class SyncError(GoTError):

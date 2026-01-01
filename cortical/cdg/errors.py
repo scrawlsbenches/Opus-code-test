@@ -43,11 +43,13 @@ class CDGError(Exception):
         self.message = message
         self.context = context
 
-    def __str__(self) -> str:
-        if self.context:
-            context_str = ", ".join(f"{k}={v!r}" for k, v in self.context.items())
-            return f"{self.message} ({context_str})"
-        return self.message
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert exception to JSON-serializable dictionary."""
+        return {
+            "error_type": self.__class__.__name__,
+            "message": self.message,
+            "context": self.context
+        }
 
 
 class ValidationError(CDGError):
