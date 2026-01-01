@@ -6,7 +6,7 @@
     "entity_type": "knowledge_transfer",
     "version": 1,
     "created_at": "2026-01-01T23:12:49.423849",
-    "modified_at": "2026-01-01T23:14:11.543870",
+    "modified_at": "2026-01-01T23:14:27.797121",
     "title": "Test Audit Session: Fix Skipped Tests",
     "session_id": "",
     "session_date": "",
@@ -14,7 +14,8 @@
     "sections": {
       "Technical Changes": "## Files Modified\n\n### cortical/got/api.py\n- Added cache check to get_task() before transaction\n- Added cache invalidation after update_task()\n- Removed explicit bump_version() from all update methods (storage handles it)\n\n### cortical/got/query_builder.py\n- Fixed priority_order: {critical: 3, high: 2, medium: 1, low: 0}\n- Descending sort now shows critical first\n\n### cortical/reasoning/pubsub.py\n- Fixed _move_to_dead_letter() to preserve EXPIRED status\n\n### Test Fixes\n- Edge direction: incoming \u2192 outgoing for CONTAINS edges\n- Stats keys: total_cycles, tracked_patterns\n- Phase check: case-insensitive comparison\n- Version check: after commit, not inside transaction\n- Priority expectations: aligned with behavioral tests",
       "Root Causes Found": "1. **Double Version Bump**: API layer AND storage layer both called bump_version()\n2. **Cache Bypass**: get_task() used transaction without checking cache first\n3. **Priority Sort Logic**: Original mapping worked for ascending but broke descending\n4. **Edge Direction Semantics**: CONTAINS edges go FROM sprint TO task (outgoing)\n5. **Test vs Implementation Drift**: Unit tests had expectations opposite to behavioral tests",
-      "Test Results": "All tests passing:\n- Smoke: 18/18 \u2705\n- Unit (GoT): 1166/1166 \u2705\n- Behavioral: 1214/1214 (32 skipped) \u2705\n\nBranch: claude/fix-skipped-tests-VuqoK\nCommits: 6 in this session"
+      "Test Results": "All tests passing:\n- Smoke: 18/18 \u2705\n- Unit (GoT): 1166/1166 \u2705\n- Behavioral: 1214/1214 (32 skipped) \u2705\n\nBranch: claude/fix-skipped-tests-VuqoK\nCommits: 6 in this session",
+      "Next Steps": "1. Create PR for branch claude/fix-skipped-tests-VuqoK\n2. Review CI results on PR\n3. Merge to main after approval\n4. Consider adding cache invalidation to other entity update methods if needed"
     },
     "code_refs": [],
     "related_handoffs": [],
