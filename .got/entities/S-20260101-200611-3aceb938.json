@@ -1,0 +1,21 @@
+{
+  "_checksum": "a3f06a6f825a1cd1",
+  "_written_at": "2026-01-01T20:06:11.018694+00:00",
+  "data": {
+    "created_at": "2026-01-01T20:06:11.014908+00:00",
+    "entity_type": "sprint",
+    "epic_id": "",
+    "goals": [],
+    "id": "S-20260101-200611-3aceb938",
+    "isolation": [],
+    "metadata": {},
+    "modified_at": "2026-01-01T20:06:11.018634+00:00",
+    "notes": [],
+    "number": null,
+    "properties": {},
+    "session_id": "",
+    "status": "available",
+    "title": "GoT-Causal Analysis Implementation",
+    "version": 2
+  }
+}

@@ -583,7 +583,9 @@ class PubSubBroker:
 
     def _move_to_dead_letter(self, message: Message) -> None:
         """Move a message to the dead letter queue."""
-        message.status = MessageStatus.DEAD_LETTER
+        # Preserve EXPIRED status if already set, otherwise mark as DEAD_LETTER
+        if message.status != MessageStatus.EXPIRED:
+            message.status = MessageStatus.DEAD_LETTER
         self.dead_letters[message.id] = message
         if message.id in self.messages:
             del self.messages[message.id]

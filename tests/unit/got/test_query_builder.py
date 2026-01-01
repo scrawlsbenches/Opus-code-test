@@ -149,9 +149,12 @@ class TestFluentQueryBuilder:
             .execute()
         )
 
-        # Priority order: critical, high, medium, low
+        # Ascending = low importance first: low, medium, high, critical
         priorities = [r.priority for r in results]
-        assert priorities == sorted(priorities)
+        # Check that lower priority values come before higher ones
+        priority_rank = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+        ranks = [priority_rank[p] for p in priorities]
+        assert ranks == sorted(ranks)
 
     def test_order_by_descending(self, manager):
         """order_by() with desc=True sorts descending."""
@@ -165,8 +168,8 @@ class TestFluentQueryBuilder:
         )
 
         priorities = [r.priority for r in results]
-        # Should be reverse sorted
-        assert priorities[0] in ("low", "medium")
+        # Descending = high importance first: critical, high, medium, low
+        assert priorities[0] in ("critical", "high")
 
     def test_limit(self, manager):
         """limit() restricts result count."""
@@ -1422,12 +1425,12 @@ class TestOrderByEdgeCases:
             .execute()
         )
 
-        # Priority should be ordered: critical, high, medium, low
+        # Ascending order: low importance first (low, medium, high, critical)
         priorities = [r.priority for r in results]
-        # high should come before low
+        # low should come before high in ascending order
         high_idx = next(i for i, p in enumerate(priorities) if p == "high")
         low_idx = next(i for i, p in enumerate(priorities) if p == "low")
-        assert high_idx < low_idx
+        assert low_idx < high_idx
 
     def test_order_by_empty_list(self, manager):
         """order_by() with no clauses returns unsorted."""

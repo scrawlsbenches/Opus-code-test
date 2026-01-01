@@ -558,14 +558,27 @@ class GoTManager:
         """
         Get a task by ID (read-only).
 
+        Uses cache if enabled for faster repeated reads.
+
         Args:
             task_id: Task identifier
 
         Returns:
             Task object or None if not found
         """
+        # Check cache first
+        cached = self._cache_get(task_id)
+        if cached is not None and isinstance(cached, Task):
+            return cached
+
+        # Cache miss - read from storage
         with self.transaction(read_only=True) as tx:
             task = tx.get_task(task_id)
+
+        # Populate cache on miss
+        if task is not None:
+            self._cache_set(task_id, task)
+
         return task
 
     def update_task(self, task_id: str, **updates) -> Task:
@@ -584,6 +597,10 @@ class GoTManager:
         """
         with self.transaction() as tx:
             task = tx.update_task(task_id, **updates)
+
+        # Invalidate cache to ensure fresh reads
+        self._cache_invalidate(task_id)
+
         return task
 
     def create_decision(
@@ -2233,8 +2250,7 @@ class TransactionContext:
             if hasattr(task, key):
                 setattr(task, key, value)
 
-        # Bump version
-        task.bump_version()
+        # Note: Version is bumped automatically by storage layer during commit
 
         # Write back
         self.tx_manager.write(self.tx, task)
@@ -2402,8 +2418,7 @@ class TransactionContext:
             if hasattr(sprint, key):
                 setattr(sprint, key, value)
 
-        # Bump version
-        sprint.bump_version()
+        # Note: Version is bumped automatically by storage layer during commit
 
         # Write back
         self.tx_manager.write(self.tx, sprint)
@@ -2476,8 +2491,7 @@ class TransactionContext:
             if hasattr(epic, key):
                 setattr(epic, key, value)
 
-        # Bump version
-        epic.bump_version()
+        # Note: Version is bumped automatically by storage layer during commit
 
         # Write back
         self.tx_manager.write(self.tx, epic)
@@ -2549,8 +2563,7 @@ class TransactionContext:
             if hasattr(doc, key):
                 setattr(doc, key, value)
 
-        # Bump version
-        doc.bump_version()
+        # Note: Version is bumped automatically by storage layer during commit
 
         # Write back
         self.tx_manager.write(self.tx, doc)
@@ -2640,7 +2653,7 @@ class TransactionContext:
         handoff.accepted_at = datetime.now(timezone.utc).isoformat()
         if acknowledgment:
             handoff.properties["acknowledgment"] = acknowledgment
-        handoff.bump_version()
+        # Note: Version is bumped automatically by storage layer during commit
 
         self.tx_manager.write(self.tx, handoff)
         return handoff
@@ -2675,7 +2688,7 @@ class TransactionContext:
         handoff.completed_at = datetime.now(timezone.utc).isoformat()
         handoff.result = result
         handoff.artifacts = artifacts
-        handoff.bump_version()
+        # Note: Version is bumped automatically by storage layer during commit
 
         self.tx_manager.write(self.tx, handoff)
         return handoff
@@ -2707,7 +2720,7 @@ class TransactionContext:
         handoff.status = "rejected"
         handoff.rejected_at = datetime.now(timezone.utc).isoformat()
         handoff.reject_reason = reason
-        handoff.bump_version()
+        # Note: Version is bumped automatically by storage layer during commit
 
         self.tx_manager.write(self.tx, handoff)
         return handoff
@@ -2822,7 +2835,7 @@ class TransactionContext:
         if "content" in updates:
             layer.content_hash = layer.compute_content_hash()
 
-        layer.bump_version()
+        # Note: Version is bumped automatically by storage layer during commit
         self.tx_manager.write(self.tx, layer)
         return layer
 

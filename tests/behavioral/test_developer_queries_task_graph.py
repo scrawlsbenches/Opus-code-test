@@ -13,7 +13,7 @@ from cortical.got.api import GoTManager
 from cortical.got.query_builder import Query, Count, Collect, Avg
 
 
-class DeveloperFiltersTasksWithFluentQueries:
+class TestDeveloperFiltersTasksWithFluentQueries:
     """
     As a developer analyzing my task backlog,
     I want to filter tasks by status and priority using a fluent query API,
@@ -133,7 +133,7 @@ class DeveloperFiltersTasksWithFluentQueries:
         assert results[3].priority == "low"
 
 
-class DeveloperAggregatesTaskStatistics:
+class TestDeveloperAggregatesTaskStatistics:
     """
     As a developer tracking project health,
     I want to aggregate tasks by status and priority,
@@ -237,7 +237,7 @@ class DeveloperAggregatesTaskStatistics:
         assert len(results["completed"]["task_ids"]) == 1
 
 
-class DeveloperPaginatesQueryResults:
+class TestDeveloperPaginatesQueryResults:
     """
     As a developer working with large task graphs,
     I want to paginate query results,
@@ -300,7 +300,7 @@ class DeveloperPaginatesQueryResults:
         # Verify we got the middle portion after sorting
 
 
-class DeveloperQueriesConnectedTasks:
+class TestDeveloperQueriesConnectedTasks:
     """
     As a developer analyzing task relationships,
     I want to query tasks connected to a specific node,
@@ -328,10 +328,11 @@ class DeveloperQueriesConnectedTasks:
         manager.add_task_to_sprint(task3.id, sprint.id)
 
         # When I query for tasks connected to the sprint
+        # Edge is Sprint --CONTAINS--> Task, so we use "outgoing" from sprint
         results = (
             Query(manager)
             .tasks()
-            .connected_to(sprint.id, via="CONTAINS", direction="incoming")
+            .connected_to(sprint.id, via="CONTAINS", direction="outgoing")
             .execute()
         )
 

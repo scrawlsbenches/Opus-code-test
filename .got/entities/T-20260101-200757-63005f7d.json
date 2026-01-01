@@ -1,0 +1,19 @@
+{
+  "_checksum": "7c108a6ba88388d6",
+  "_written_at": "2026-01-01T20:07:57.558702+00:00",
+  "data": {
+    "created_at": "2026-01-01T20:07:57.554730+00:00",
+    "description": "## Overview\nGenerate comprehensive sprint retrospective reports using causal analysis.\n\n## File References\n- Implementation: cortical/got/causal_analysis.py (add SprintRetrospective class)\n- CLI command: cortical/got/cli/causal.py\n- Report templates: Consider markdown output\n\n## Report Sections\n1. **Sprint Overview**\n   - Completion rate, velocity\n   - Goals achieved vs missed\n\n2. **Blocking Analysis**\n   - Top blockers by impact\n   - Blocking chains visualization\n   - Time lost to blockers\n\n3. **Causal Patterns**\n   - Common root causes\n   - Recurring dependency issues\n   - Categories most often blocked\n\n4. **Counterfactual Analysis**\n   - \"What if we had resolved X earlier?\"\n   - Estimated impact of different prioritization\n\n5. **Recommendations**\n   - Process improvements\n   - Dependency management suggestions\n   - Risk mitigation for next sprint\n\n## Output Format\n- Markdown report for sharing\n- JSON for programmatic access\n- Terminal-friendly summary\n\n## Acceptance Criteria\n- Report is actionable\n- Causal claims are supported by data\n- Includes confidence levels",
+    "entity_type": "task",
+    "id": "T-20260101-200757-63005f7d",
+    "metadata": {},
+    "modified_at": "2026-01-01T20:07:57.558627+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Implement causal sprint retrospective report generator",
+    "version": 2
+  }
+}

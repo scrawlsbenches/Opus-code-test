@@ -22,7 +22,7 @@ from cortical.reasoning.collaboration import (
 )
 
 
-class OrchestratorManagesParallelAgents:
+class TestOrchestratorManagesParallelAgents:
     """
     Epic: Orchestrator Manages Parallel Agent Workforce
 
@@ -43,6 +43,8 @@ class OrchestratorManagesParallelAgents:
         # Given work to distribute
         spawner = ClaudeCodeSpawner(branch="main")
         boundary = ParallelWorkBoundary(
+            agent_id="agent-indexer-001",
+            scope_description="Implement custom inverted index",
             files_owned={"custom/indexer.py", "tests/test_indexer.py"},
             files_read_only={"custom/base.py"}
         )
@@ -73,9 +75,10 @@ class OrchestratorManagesParallelAgents:
         # Given defined boundaries
         spawner = ClaudeCodeSpawner()
         boundary = ParallelWorkBoundary(
+            agent_id="agent-module-a",
+            scope_description="Build custom module A implementation",
             files_owned={"module_a/impl.py"},
-            files_read_only={"shared/types.py"},
-            files_forbidden={"module_b/impl.py"}
+            files_read_only={"shared/types.py"}
         )
 
         # When assigning work
@@ -101,7 +104,11 @@ class OrchestratorManagesParallelAgents:
         """
         # Given managed agents
         spawner = ClaudeCodeSpawner()
-        boundary = ParallelWorkBoundary(files_owned={"task.py"})
+        boundary = ParallelWorkBoundary(
+            agent_id="agent-task-001",
+            scope_description="Implement task",
+            files_owned={"task.py"}
+        )
 
         agent_id = spawner.spawn("Implement task", boundary)
 
@@ -125,7 +132,11 @@ class OrchestratorManagesParallelAgents:
         """
         # Given completed work
         spawner = ClaudeCodeSpawner()
-        boundary = ParallelWorkBoundary(files_owned={"output.py"})
+        boundary = ParallelWorkBoundary(
+            agent_id="agent-output-001",
+            scope_description="Generate file",
+            files_owned={"output.py"}
+        )
         agent_id = spawner.spawn("Generate file", boundary)
 
         # When recording result
@@ -159,6 +170,8 @@ class OrchestratorManagesParallelAgents:
         # Given strict boundary
         spawner = ClaudeCodeSpawner()
         boundary = ParallelWorkBoundary(
+            agent_id="agent-boundary-001",
+            scope_description="Respect boundaries",
             files_owned={"allowed/file.py"}
         )
         agent_id = spawner.spawn("Respect boundaries", boundary)
@@ -176,7 +189,7 @@ class OrchestratorManagesParallelAgents:
         assert "forbidden/other.py" in result.error
 
 
-class ParallelCoordinatorDistributesWork:
+class TestParallelCoordinatorDistributesWork:
     """
     Epic: Parallel Coordinator Distributes Complex Work
 
@@ -200,12 +213,18 @@ class ParallelCoordinatorDistributesWork:
         # When decomposing
         tasks_and_boundaries = [
             ("Build custom indexer", ParallelWorkBoundary(
+                agent_id="agent-indexer",
+                scope_description="Build custom indexer",
                 files_owned={"indexing/core.py"}
             )),
             ("Build custom ranker", ParallelWorkBoundary(
+                agent_id="agent-ranker",
+                scope_description="Build custom ranker",
                 files_owned={"ranking/core.py"}
             )),
             ("Build custom parser", ParallelWorkBoundary(
+                agent_id="agent-parser",
+                scope_description="Build custom parser",
                 files_owned={"parsing/core.py"}
             )),
         ]
@@ -233,8 +252,16 @@ class ParallelCoordinatorDistributesWork:
         # Given completed agents
         spawner = ClaudeCodeSpawner()
 
-        boundary1 = ParallelWorkBoundary(files_owned={"task1.py"})
-        boundary2 = ParallelWorkBoundary(files_owned={"task2.py"})
+        boundary1 = ParallelWorkBoundary(
+            agent_id="agent-task1",
+            scope_description="Task 1",
+            files_owned={"task1.py"}
+        )
+        boundary2 = ParallelWorkBoundary(
+            agent_id="agent-task2",
+            scope_description="Task 2",
+            files_owned={"task2.py"}
+        )
 
         id1 = spawner.spawn("Task 1", boundary1)
         id2 = spawner.spawn("Task 2", boundary2)
@@ -251,7 +278,7 @@ class ParallelCoordinatorDistributesWork:
         assert summary['by_status']['COMPLETED'] == 2
 
 
-class SubprocessSpawnerManagesRealProcesses:
+class TestSubprocessSpawnerManagesRealProcesses:
     """
     Epic: Subprocess Spawner Manages Real Process Execution
 
@@ -347,7 +374,7 @@ class SubprocessSpawnerManagesRealProcesses:
         assert sig.return_annotation != inspect.Signature.empty
 
 
-class SpawningSystemEnablesCodeGeneration:
+class TestSpawningSystemEnablesCodeGeneration:
     """
     Epic: Spawning System Enables Parallel Code Generation
 
@@ -367,7 +394,11 @@ class SpawningSystemEnablesCodeGeneration:
         """
         # Given agent instructions
         spawner = ClaudeCodeSpawner()
-        boundary = ParallelWorkBoundary(files_owned={"gen.py"})
+        boundary = ParallelWorkBoundary(
+            agent_id="agent-gen",
+            scope_description="Generate code",
+            files_owned={"gen.py"}
+        )
 
         agent_id = spawner.spawn("Generate code", boundary)
         config = spawner.get_config(agent_id)
@@ -389,7 +420,11 @@ class SpawningSystemEnablesCodeGeneration:
         """
         # Given various output formats
         spawner = ClaudeCodeSpawner()
-        boundary = ParallelWorkBoundary(files_owned={"test.py"})
+        boundary = ParallelWorkBoundary(
+            agent_id="agent-test",
+            scope_description="Test parsing",
+            files_owned={"test.py"}
+        )
 
         # Test with minimal output
         id1 = spawner.spawn("Task 1", boundary)
@@ -421,6 +456,8 @@ class SpawningSystemEnablesCodeGeneration:
         # Given agent with context
         spawner = ClaudeCodeSpawner(branch="feature/custom-impl")
         boundary = ParallelWorkBoundary(
+            agent_id="agent-feature",
+            scope_description="Implement custom feature",
             files_owned={"feature/impl.py"},
             files_read_only={"core/base.py"}
         )

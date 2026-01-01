@@ -24,7 +24,7 @@ from cortical.reasoning.prism_got import (
 from cortical.reasoning.graph_of_thought import NodeType, EdgeType
 
 
-class CognitiveResearcherBuildsAdaptiveReasoning:
+class TestCognitiveResearcherBuildsAdaptiveReasoning:
     """
     Epic: Cognitive Researcher Builds Adaptive Reasoning System
 
@@ -45,9 +45,9 @@ class CognitiveResearcherBuildsAdaptiveReasoning:
         # Given reasoning paths
         graph = SynapticMemoryGraph()
         graph.add_node("Q1", NodeType.QUESTION, "How to optimize custom search?")
-        graph.add_node("A1", NodeType.ANSWER, "Build inverted index ourselves")
+        graph.add_node("A1", NodeType.INSIGHT, "Build inverted index ourselves")
 
-        edge = graph.add_synaptic_edge("Q1", "A1", EdgeType.ANSWERS, weight=0.5)
+        edge = graph.add_synaptic_edge("Q1", "A1", EdgeType.SUPPORTS, weight=0.5)
 
         # When repeatedly activated
         initial_weight = edge.weight
@@ -137,7 +137,7 @@ class CognitiveResearcherBuildsAdaptiveReasoning:
         assert edge.weight >= initial_weight
 
 
-class IncrementalReasonerBuildsKnowledge:
+class TestIncrementalReasonerBuildsKnowledge:
     """
     Epic: Incremental Reasoner Builds Knowledge From Experience
 
@@ -195,8 +195,8 @@ class IncrementalReasonerBuildsKnowledge:
         reasoner = IncrementalReasoner(graph)
 
         q = reasoner.process_thought("How to optimize?", NodeType.QUESTION)
-        a = reasoner.process_thought("Build caching ourselves", NodeType.ANSWER,
-                                    relation_to_focus=EdgeType.ANSWERS)
+        a = reasoner.process_thought("Build caching ourselves", NodeType.INSIGHT,
+                                    relation_to_focus=EdgeType.SUPPORTS)
 
         # When predicting next
         predictions = reasoner.predict_next(q.id, top_n=3)
@@ -223,7 +223,7 @@ class IncrementalReasonerBuildsKnowledge:
         h = reasoner.process_thought("Custom implementation", NodeType.HYPOTHESIS,
                                     relation_to_focus=EdgeType.EXPLORES)
         d = reasoner.process_thought("Build it ourselves", NodeType.DECISION,
-                                    relation_to_focus=EdgeType.SELECTS)
+                                    relation_to_focus=EdgeType.IMPLEMENTS)
 
         # Get initial edge weight
         edges = graph.get_synaptic_edges_from(q.id)
@@ -288,7 +288,7 @@ class IncrementalReasonerBuildsKnowledge:
         assert reasoner.current_focus is None
 
 
-class PredictiveReasoningAnticipatesPatterns:
+class TestPredictiveReasoningAnticipatesPatterns:
     """
     Epic: Predictive Reasoning Anticipates Future Thoughts
 
@@ -313,12 +313,12 @@ class PredictiveReasoningAnticipatesPatterns:
         start = reasoner.process_thought("Starting point", NodeType.QUESTION)
 
         # Create multiple branches with different weights
-        opt1 = reasoner.process_thought("High probability path", NodeType.ANSWER,
-                                       relation_to_focus=EdgeType.ANSWERS)
+        opt1 = reasoner.process_thought("High probability path", NodeType.INSIGHT,
+                                       relation_to_focus=EdgeType.SUPPORTS)
         reasoner.set_focus(start.id)
 
-        opt2 = reasoner.process_thought("Lower probability path", NodeType.ANSWER,
-                                       relation_to_focus=EdgeType.ANSWERS)
+        opt2 = reasoner.process_thought("Lower probability path", NodeType.INSIGHT,
+                                       relation_to_focus=EdgeType.SUPPORTS)
 
         # Strengthen one path more
         edges = graph.get_synaptic_edges_from(start.id)
@@ -347,8 +347,8 @@ class PredictiveReasoningAnticipatesPatterns:
         reasoner = IncrementalReasoner(graph)
 
         q = reasoner.process_thought("Question", NodeType.QUESTION)
-        a = reasoner.process_thought("Answer", NodeType.ANSWER,
-                                    relation_to_focus=EdgeType.ANSWERS)
+        a = reasoner.process_thought("Answer", NodeType.INSIGHT,
+                                    relation_to_focus=EdgeType.SUPPORTS)
 
         edges = graph.get_synaptic_edges_from(q.id)
         edge = edges[0] if edges else None
@@ -406,7 +406,7 @@ class PredictiveReasoningAnticipatesPatterns:
         assert len(similarity_edges) > 0
 
 
-class SynapticMemoryProvidesInsights:
+class TestSynapticMemoryProvidesInsights:
     """
     Epic: Synaptic Memory Provides Cognitive Insights
 
@@ -538,7 +538,7 @@ class SynapticMemoryProvidesInsights:
         reasoner = IncrementalReasoner(graph)
 
         reasoner.process_thought("Q1", NodeType.QUESTION)
-        reasoner.process_thought("A1", NodeType.ANSWER, relation_to_focus=EdgeType.ANSWERS)
+        reasoner.process_thought("A1", NodeType.INSIGHT, relation_to_focus=EdgeType.SUPPORTS)
         reasoner.process_thought("C1", NodeType.CONCEPT)
 
         # When requesting summary

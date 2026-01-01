@@ -1,0 +1,19 @@
+{
+  "_checksum": "bfc2de304464eb5c",
+  "_written_at": "2026-01-01T20:07:06.206405+00:00",
+  "data": {
+    "created_at": "2026-01-01T20:07:06.202690+00:00",
+    "description": "## Overview\nCreate a data quality checker that validates GoT data meets requirements for causal analysis.\n\n## File References\n- Implementation: cortical/got/causal_analysis.py (add CausalDataQuality class)\n- Data gaps reference: CLAUDE.md (section: Current Data Gaps)\n- GoT store: cortical/got/versioned_store.py\n\n## Quality Metrics to Check\n| Metric | Target | Calculation |\n|--------|--------|-------------|\n| started_at coverage | 90%+ | tasks with started_at / total tasks |\n| completed_at coverage | 90%+ | completed tasks with timestamp / completed |\n| retrospective coverage | 80%+ | tasks with retrospective / completed |\n| blocked_reason coverage | 100% | blocked with reason / blocked |\n| edge density | 1.5+ | total edges / total tasks |\n| causal edge ratio | 30%+ | (DEPENDS_ON + CAUSED_BY + BLOCKS) / total edges |\n\n## Output Format\n```\nCAUSAL DATA QUALITY REPORT\n==========================\nOverall Score: 78/100 (GOLD TIER)\n\n\u2705 Task volume: 263 tasks (excellent)\n\u2705 Priority coverage: 100%\n\u26a0\ufe0f started_at coverage: 24% (target: 90%)\n\u274c retrospective coverage: 27% (target: 80%)\n...\n\nRecommendations:\n1. Run 'task start' before beginning work\n2. Add retrospectives when completing tasks\n```\n\n## Acceptance Criteria\n- Produces actionable report\n- Tiered scoring (Bronze/Silver/Gold/Platinum)\n- Specific recommendations for improvement",
+    "entity_type": "task",
+    "id": "T-20260101-200706-8dc43832",
+    "metadata": {},
+    "modified_at": "2026-01-01T20:07:06.206332+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Implement causal data quality assessment",
+    "version": 2
+  }
+}

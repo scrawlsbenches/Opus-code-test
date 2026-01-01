@@ -1,0 +1,19 @@
+{
+  "_checksum": "5dcbaed3109572da",
+  "_written_at": "2026-01-01T20:06:46.506986+00:00",
+  "data": {
+    "created_at": "2026-01-01T20:06:46.503628+00:00",
+    "description": "## Overview\nAdd CLI subcommands for causal analysis to the GoT CLI.\n\n## File References\n- CLI entry point: scripts/got_utils.py\n- CLI modules: cortical/got/cli/ (add causal.py)\n- Existing CLI patterns: cortical/got/cli/task.py, cortical/got/cli/analyze.py\n\n## Commands to Implement\n```bash\ngot causal chain <task_id>      # Trace dependency chain to root cause\ngot causal impact <task_id>     # Show downstream impact of delays\ngot causal blockers             # List all blocking chains sorted by impact\ngot causal sprint <sprint_id>   # Sprint retrospective causal analysis\ngot causal necessity <cause> <effect>  # Calculate causal necessity\ngot causal health               # Data quality assessment for causal analysis\n```\n\n## Implementation Notes\n- Follow existing CLI patterns (click decorators)\n- Output should be human-readable with optional --json flag\n- Include data quality warnings when analysis is unreliable\n\n## Acceptance Criteria\n- All commands execute without error\n- Output is clear and actionable\n- --help provides usage examples",
+    "entity_type": "task",
+    "id": "T-20260101-200646-9b00dd5f",
+    "metadata": {},
+    "modified_at": "2026-01-01T20:06:46.506926+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Add causal CLI commands to got_utils.py",
+    "version": 2
+  }
+}

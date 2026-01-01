@@ -16,7 +16,7 @@ from cortical.reasoning.woven_mind import WovenMind, WovenMindConfig, WovenMindR
 from cortical.reasoning.loom import ThinkingMode
 
 
-class CognitiveResearcherBuildsReasoningSystem:
+class TestCognitiveResearcherBuildsReasoningSystem:
     """
     Epic: Cognitive Researcher Builds Custom Dual-Process System
 
@@ -121,7 +121,9 @@ class CognitiveResearcherBuildsReasoningSystem:
         # Then consolidation completes
         assert result is not None
         stats = mind.get_consolidation_stats()
-        assert "pattern_frequencies" in stats or "total_consolidations" in stats
+        # Stats include cycle count and pattern tracking info
+        assert "total_cycles" in stats or "tracked_patterns" in stats
+        assert stats.get("total_cycles", 0) >= 1 or stats.get("tracked_patterns", 0) >= 1
 
     def test_scenario_system_tracks_cognitive_statistics(self):
         """
@@ -195,7 +197,7 @@ class CognitiveResearcherBuildsReasoningSystem:
         assert all(hasattr(t, 'to_mode') for t in history)
 
 
-class DeveloperIntegratesCustomCognitiveArchitecture:
+class TestDeveloperIntegratesCustomCognitiveArchitecture:
     """
     Epic: Developer Integrates Custom Cognitive Architecture
 

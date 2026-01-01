@@ -14,7 +14,7 @@ from cortical.got.path_finder import PathFinder
 from cortical.got.graph_walker import GraphWalker
 
 
-class DeveloperFindsShortestPathsBetweenTasks:
+class TestDeveloperFindsShortestPathsBetweenTasks:
     """
     As a developer planning work order,
     I want to find the shortest dependency path between tasks,
@@ -95,7 +95,7 @@ class DeveloperFindsShortestPathsBetweenTasks:
         assert finder.path_exists(task_a.id, task_c.id) is False
 
 
-class DeveloperFindsAllPathsBetweenTasks:
+class TestDeveloperFindsAllPathsBetweenTasks:
     """
     As a developer analyzing alternative dependency routes,
     I want to find all paths between two tasks,
@@ -167,7 +167,7 @@ class DeveloperFindsAllPathsBetweenTasks:
             assert result.truncated is True
 
 
-class DeveloperTraversesGraphWithCustomLogic:
+class TestDeveloperTraversesGraphWithCustomLogic:
     """
     As a developer collecting graph statistics,
     I want to traverse the graph with custom visitor functions,

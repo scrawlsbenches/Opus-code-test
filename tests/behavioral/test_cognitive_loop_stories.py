@@ -20,7 +20,7 @@ from cortical.reasoning.cognitive_loop import (
 )
 
 
-class DeveloperOrchestratesComplexReasoning:
+class TestDeveloperOrchestratesComplexReasoning:
     """
     Epic: Developer Orchestrates Complex Reasoning Workflows
 
@@ -192,7 +192,7 @@ class DeveloperOrchestratesComplexReasoning:
         assert loop.completed_at is not None
 
 
-class ReasoningSystemManagesMultipleLoops:
+class TestReasoningSystemManagesMultipleLoops:
     """
     Epic: System Manages Multiple Concurrent Reasoning Loops
 
@@ -324,7 +324,7 @@ class ReasoningSystemManagesMultipleLoops:
         assert any(e[2] == LoopPhase.ANSWER for e in events_received)
 
 
-class DeveloperBuildsKnowledgeTransferSystem:
+class TestDeveloperBuildsKnowledgeTransferSystem:
     """
     Epic: Developer Builds Knowledge Transfer System
 
@@ -356,7 +356,8 @@ class DeveloperBuildsKnowledgeTransferSystem:
         # Then state is preserved
         assert loop.id in serialized
         assert loop.goal in serialized
-        assert "PRODUCE" in serialized
+        # Phase names are serialized as lowercase
+        assert "produce" in serialized.lower()
 
     def test_scenario_serialized_loops_can_be_restored(self):
         """

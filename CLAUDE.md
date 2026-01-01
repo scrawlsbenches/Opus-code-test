@@ -717,6 +717,38 @@ class ResearcherSearchesForKnowledge:
 **Naming**: `{user_role}_{action}_stories.py`
 **Format**: Classes are epics, methods are scenarios
 
+**CRITICAL — Test Class Naming for Pytest Collection:**
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│   ⚠️  ALL TEST CLASSES MUST START WITH 'Test' PREFIX                    │
+│                                                                          │
+│   Pytest only collects classes that start with 'Test'.                  │
+│   Story-driven names are great, but MUST be prefixed.                   │
+│                                                                          │
+│   ❌ WRONG (not collected - tests are HIDDEN):                          │
+│      class DeveloperSearchesCorpus:                                     │
+│      class ResearcherBuildsKnowledge:                                   │
+│      class SystemArchitectOrchestratesWorkflows:                        │
+│                                                                          │
+│   ✅ RIGHT (collected and run):                                         │
+│      class TestDeveloperSearchesCorpus:                                 │
+│      class TestResearcherBuildsKnowledge:                               │
+│      class TestSystemArchitectOrchestratesWorkflows:                    │
+│                                                                          │
+│   The 'Test' prefix is NON-NEGOTIABLE. Without it:                      │
+│   - Tests silently don't run                                            │
+│   - Bugs hide undetected                                                │
+│   - CI passes when it shouldn't                                         │
+│   - Coverage numbers lie                                                │
+│                                                                          │
+│   AUDIT (2026-01-01): Found 169 hidden tests due to missing prefix.     │
+│   All fixed. Don't let it happen again.                                 │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
 **IMPORTANT — Test Content Must Embody Sovereignty:**
 
 Behavioral scenarios are living documentation. The example content within tests—the strings, the fake data, the hypothetical systems being described—must reflect our philosophy.
@@ -1493,6 +1525,312 @@ tests/
     ├── test_injection.py
     └── test_fuzzing.py
 ```
+
+---
+
+## GoT Standard Operating Procedures (SOPs)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                              │
+│              GRAPH OF THOUGHT: STANDARD OPERATING PROCEDURES                │
+│                                                                              │
+│   These SOPs ensure consistent data collection for causal analysis.         │
+│   Following them enables: root cause analysis, impact prediction,           │
+│   sprint retrospectives, and counterfactual reasoning.                      │
+│                                                                              │
+│   Without consistent data, causal analysis produces unreliable results.     │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### SOP 1: Session Start Protocol
+
+**When**: At the beginning of every new session/thread.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  SESSION START CHECKLIST                                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  □ 1. CHECK FOR EXISTING CONTEXT                                            │
+│       python scripts/got_utils.py kt list --status draft                    │
+│       python scripts/got_utils.py task list --status in_progress            │
+│       python scripts/got_utils.py handoff list --status initiated           │
+│                                                                              │
+│  □ 2. CREATE OR CONTINUE KNOWLEDGE TRANSFER                                 │
+│       If continuing work:                                                   │
+│         → Find the relevant KT and review it                                │
+│       If new work:                                                          │
+│         → python scripts/got_utils.py kt create "Session: [topic]" \        │
+│             --summary "Working on [brief description]"                      │
+│                                                                              │
+│  □ 3. IDENTIFY ACTIVE SPRINT                                                │
+│       python scripts/got_utils.py sprint list --status in_progress          │
+│       → All tasks created should link to active sprint                      │
+│                                                                              │
+│  □ 4. REVIEW BLOCKING CHAINS                                                │
+│       python scripts/got_utils.py task list --status blocked                │
+│       → Understand what's blocked before creating new work                  │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### SOP 2: Task Creation Protocol
+
+**When**: Every time you create a new task.
+
+**Required Fields** (for causal analysis):
+
+| Field | Required | Why |
+|-------|----------|-----|
+| `title` | ✅ Always | Clear identification |
+| `priority` | ✅ Always | Impact analysis |
+| `category` | ✅ Always | Confounder control |
+| `description` | ✅ Always | Context for retrospectives |
+| Sprint link | ✅ Always | Temporal grouping |
+| DEPENDS_ON edges | ⚠️ If applicable | Causal chains |
+| CAUSED_BY edge | ⚠️ If applicable | Root cause tracing |
+
+**Commands**:
+
+```bash
+# Create task with all required fields
+python scripts/got_utils.py task create "Task title" \
+    --priority high \
+    --category feature \
+    --description "Detailed description of what and why"
+
+# Link to sprint (REQUIRED)
+python scripts/got_utils.py edge add S-XXX T-XXX CONTAINS
+
+# Add dependencies (if task depends on another)
+python scripts/got_utils.py edge add T-NEW T-DEPENDENCY DEPENDS_ON
+
+# Add causation (if task was caused by another - e.g., bug fix caused by bug)
+python scripts/got_utils.py edge add T-NEW T-CAUSE CAUSED_BY
+```
+
+**Decision Tree for CAUSED_BY vs DEPENDS_ON**:
+
+```
+Is this task a RESPONSE to something that happened?
+├─ YES: Bug fix, incident response, requirement change
+│       → Add CAUSED_BY edge to the originating task/event
+│
+└─ NO: Planned work that needs something else done first
+        → Add DEPENDS_ON edge to the prerequisite
+```
+
+### SOP 3: Task Start Protocol
+
+**When**: Before beginning work on a task.
+
+```bash
+# Mark task as started (records started_at timestamp)
+python scripts/got_utils.py task start T-XXX
+```
+
+**Why This Matters**: The `started_at` timestamp enables:
+- Duration calculation (how long tasks actually take)
+- Temporal ordering verification (cause must precede effect)
+- Velocity measurements
+
+**Current Gap**: Only 24% of tasks have `started_at` recorded!
+
+### SOP 4: Task Blocking Protocol
+
+**When**: A task becomes blocked.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  BLOCKING PROTOCOL                                                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  1. MARK AS BLOCKED with reason:                                            │
+│     python scripts/got_utils.py task block T-XXX \                          │
+│         --reason "Waiting for [specific blocker]"                           │
+│                                                                              │
+│  2. CREATE BLOCKS EDGE (if blocker is another task):                        │
+│     python scripts/got_utils.py edge add T-BLOCKER T-BLOCKED BLOCKS         │
+│                                                                              │
+│  3. ASSESS IMPACT:                                                          │
+│     → What else depends on this blocked task?                               │
+│     → Should we escalate?                                                   │
+│                                                                              │
+│  4. DOCUMENT in KT:                                                         │
+│     → Add to session KT so blockers are visible                            │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Why This Matters**: Blocking data enables:
+- Blocking chain analysis
+- Common blocker detection across sprints
+- Proactive risk identification
+
+### SOP 5: Task Completion Protocol
+
+**When**: A task is finished.
+
+```bash
+# Complete with retrospective (REQUIRED for causal learning)
+python scripts/got_utils.py task complete T-XXX \
+    --retrospective "What worked: [X]. What didn't: [Y]. Root cause of delays: [Z]"
+```
+
+**Retrospective Template**:
+
+```markdown
+## What worked
+- [Positive factors that helped completion]
+
+## What didn't work
+- [Challenges, delays, issues encountered]
+
+## Root cause of delays (if any)
+- [The underlying cause, not just symptoms]
+
+## Would have helped
+- [What would have made this easier/faster]
+```
+
+**Current Gap**: Only 27% of completed tasks have retrospectives!
+
+### SOP 6: Decision Documentation Protocol
+
+**When**: Making a significant decision.
+
+```bash
+# Log decision with rationale
+python scripts/got_utils.py decision log "Chose [option] over [alternatives]" \
+    --rationale "Because [reasoning]"
+
+# Link decision to affected tasks
+python scripts/got_utils.py edge add D-XXX T-AFFECTED JUSTIFIES
+python scripts/got_utils.py edge add D-XXX T-CREATED MOTIVATES
+```
+
+**Decision Types to Document**:
+- Architecture choices
+- Library/tool selections
+- Approach changes mid-task
+- Trade-off resolutions
+- Scope decisions
+
+### SOP 7: Session End Protocol
+
+**When**: Ending a session (context limit, break, handoff).
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  SESSION END CHECKLIST                                                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  □ 1. UPDATE ALL TASK STATUSES                                              │
+│       → Complete tasks that are done                                        │
+│       → Block tasks that are stuck (with reason!)                          │
+│       → Leave pending tasks as pending                                      │
+│                                                                              │
+│  □ 2. ADD RETROSPECTIVE TO COMPLETED TASKS                                  │
+│       python scripts/got_utils.py task update T-XXX \                       │
+│           --retrospective "..."                                             │
+│                                                                              │
+│  □ 3. FINALIZE KNOWLEDGE TRANSFER                                           │
+│       → Add final learnings to KT                                          │
+│       → python scripts/got_utils.py kt finalize KT-XXX                      │
+│                                                                              │
+│  □ 4. CREATE HANDOFF (if work continues)                                    │
+│       python scripts/got_utils.py handoff initiate \                        │
+│           --task T-XXX \                                                    │
+│           --instructions "Continue with [specific next steps]"              │
+│                                                                              │
+│  □ 5. COMMIT ALL CHANGES                                                    │
+│       → Code changes                                                        │
+│       → .got/ data (auto-persisted)                                        │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### SOP 8: Sprint Retrospective Protocol
+
+**When**: At sprint completion.
+
+```bash
+# Get sprint analysis
+python scripts/got_utils.py sprint status S-XXX
+
+# Review blocking chains
+python scripts/got_utils.py analyze dependencies --sprint S-XXX
+```
+
+**Retrospective Questions for Causal Analysis**:
+
+1. **What blocked us?**
+   - Common root causes across blocked tasks
+   - Could we have predicted these?
+
+2. **What caused delays?**
+   - Tasks that took longer than expected
+   - What was the root cause (not symptoms)?
+
+3. **What would have changed the outcome?**
+   - Counterfactual: "If we had done X, would Y have happened?"
+
+4. **What causal patterns do we see?**
+   - Are certain task types always blocked?
+   - Are certain dependencies always problematic?
+
+### Data Quality Checklist
+
+Before relying on causal analysis, verify data quality:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  CAUSAL DATA QUALITY CHECKLIST                                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Minimum for ROOT CAUSE ANALYSIS:                                           │
+│  □ DEPENDS_ON edges exist between related tasks                             │
+│  □ CAUSED_BY edges exist for reactive tasks (bugs, incidents)               │
+│                                                                              │
+│  Minimum for IMPACT ANALYSIS:                                               │
+│  □ All tasks linked to sprints (CONTAINS edges)                             │
+│  □ Priority set on all tasks                                                │
+│                                                                              │
+│  Minimum for BLOCKING ANALYSIS:                                             │
+│  □ Blocked tasks have blocked_reason set                                    │
+│  □ BLOCKS edges link blockers to blocked tasks                              │
+│                                                                              │
+│  Minimum for DURATION ANALYSIS:                                             │
+│  □ started_at timestamp on tasks                                            │
+│  □ completed_at timestamp on tasks                                          │
+│                                                                              │
+│  Minimum for RETROSPECTIVES:                                                │
+│  □ retrospective field populated on completed tasks                         │
+│  □ Decisions documented with rationale                                      │
+│                                                                              │
+│  Minimum for CONFOUNDER CONTROL:                                            │
+│  □ category set on all tasks                                                │
+│  □ complexity/effort estimates (future enhancement)                         │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Current Data Gaps (As of Assessment)
+
+| Metric | Current | Target | Gap |
+|--------|---------|--------|-----|
+| `started_at` | 24% | 90%+ | 🔴 Critical |
+| `retrospective` | 27% | 80%+ | 🔴 Critical |
+| `blocked_reason` | ~0% | 100% | 🔴 Critical |
+| CAUSED_BY edges | 0 | As needed | 🟡 Missing |
+| BLOCKS edges | 0 | As needed | 🟡 Missing |
+| Sprint links | ~95% | 100% | 🟢 Good |
+| Priority | ~100% | 100% | 🟢 Good |
+| Category | ~96% | 100% | 🟢 Good |
+
+**Action Required**: Start following SOPs consistently to build reliable causal data.
 
 ---
 

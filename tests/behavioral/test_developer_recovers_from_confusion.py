@@ -392,7 +392,6 @@ class TestDeveloperMonitorsContinuously:
         # Then: no alerts
         assert len(alerts_received) == 0, "Should not alert on normal operations"
 
-    @pytest.mark.skip(reason="API mismatch - needs alignment with implementation")
     def test_scenario_auto_recovery_mode_recovers_automatically(self):
         """
         Scenario: Auto-recovery mode triggers recovery without manual intervention
@@ -421,23 +420,27 @@ class TestDeveloperMonitorsContinuously:
 
         checkpoint_manager = MockCheckpointManager()
 
+        # Monitor constructor takes only coordinator, alert_threshold, auto_recover
         monitor = ConfusionMonitor(
             coordinator,
             alert_threshold=0.5,
-            auto_recover=True,
-            recovery_context={
-                "checkpoint_manager": checkpoint_manager,
-                "tried_approaches": [],
-                "available_approaches": ["a", "b"],
-                "summary": "Test"
-            }
+            auto_recover=True
         )
+
+        # Recovery context is passed to check() method, not constructor
+        recovery_context = {
+            "checkpoint_manager": checkpoint_manager,
+            "tried_approaches": [],
+            "available_approaches": ["a", "b"],
+            "summary": "Test"
+        }
 
         # When: creating confusion
         for i in range(5):
             coordinator.record_action("edit", "/file.py", "failure", {"same": True})
 
-        monitor.check()
+        # Pass context to check() method
+        monitor.check(context=recovery_context)
 
         # Then: recovery stats should show attempts
         stats = coordinator.get_recovery_stats()
