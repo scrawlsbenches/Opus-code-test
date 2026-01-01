@@ -324,6 +324,59 @@ This project collects ML training data via hooks in `.claude/settings.local.json
 
 Data is stored in `.git-ml/`. This is automatic and requires no action.
 
+### Tool Reliability Policy
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                 WHEN A TOOL FAILS OR IS MISSING                      │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│  1. STOP - Do NOT attempt workarounds (sed, manual edits, etc.)      │
+│  2. ASSESS - Is the tool missing or buggy?                           │
+│  3. FIX - Add the missing command or fix the bug                     │
+│  4. USE - Now use the fixed tool                                     │
+│  5. DOCUMENT - Update CLAUDE.md if needed                            │
+│                                                                       │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Why:** Workarounds accumulate as tech debt. Each agent fixing tools = progressively better system.
+
+### GoT File Safety
+
+```
+⚠️ NEVER edit .got/ files directly!
+
+GoT data is transactional with checksum integrity. Direct edits:
+- Break checksums → files auto-deleted as "corrupted"
+- Break event log → orphaned references
+- Corrupt dependency tracking
+
+Always use: python scripts/got_utils.py <command>
+```
+
+### Cognitive Breakdown Detection
+
+Recognize these patterns and STOP:
+
+| Signal | Meaning | Response |
+|--------|---------|----------|
+| Repeating same failed approach | Loop detected | Stop, analyze, replan |
+| Contradicting earlier statements | State confusion | Re-read context, reconcile |
+| Making changes without reading | Premature action | Read first, then act |
+| Generating placeholder content | Uncertainty masked | Admit uncertainty, ask |
+
+### Sub-Agent Verification
+
+Sub-agent changes may not persist. **Always verify after completion:**
+
+```bash
+git status                    # Check if files actually changed
+git diff path/to/file.py     # Verify the actual changes
+```
+
+If changes didn't persist, apply them manually in main context.
+
 ### Background Task Pattern
 
 For long-running tasks, use background execution to continue working:
