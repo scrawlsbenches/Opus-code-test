@@ -36,20 +36,31 @@ from cortical.ml_experiments.utils import ensure_directory, append_jsonl, read_j
 
 @pytest.fixture
 def temp_experiments_dir(tmp_path):
-    """Create a temporary experiments directory."""
+    """Create a temporary experiments directory with isolated metrics."""
     import cortical.ml_experiments.experiment as experiment_module
+    import cortical.ml_experiments.metrics as metrics_module
 
+    # Save original paths
     old_experiments_dir = experiment_module.EXPERIMENTS_DIR
     old_experiments_ledger = experiment_module.EXPERIMENTS_LEDGER
+    old_metrics_dir = metrics_module.METRICS_DIR
+    old_metrics_ledger = metrics_module.METRICS_LEDGER
 
+    # Patch experiment module
     experiment_module.EXPERIMENTS_DIR = tmp_path / 'experiments'
     experiment_module.EXPERIMENTS_LEDGER = experiment_module.EXPERIMENTS_DIR / 'experiments.jsonl'
+
+    # Patch metrics module to prevent test pollution
+    metrics_module.METRICS_DIR = tmp_path / 'metrics'
+    metrics_module.METRICS_LEDGER = metrics_module.METRICS_DIR / 'metrics.jsonl'
 
     yield tmp_path / 'experiments'
 
     # Restore originals
     experiment_module.EXPERIMENTS_DIR = old_experiments_dir
     experiment_module.EXPERIMENTS_LEDGER = old_experiments_ledger
+    metrics_module.METRICS_DIR = old_metrics_dir
+    metrics_module.METRICS_LEDGER = old_metrics_ledger
 
 
 @pytest.fixture
