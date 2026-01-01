@@ -13,7 +13,7 @@ from cortical.got.api import GoTManager
 from cortical.got.orphan import OrphanDetector
 
 
-class DeveloperIdentifiesOrphanTasks:
+class TestDeveloperIdentifiesOrphanTasks:
     """
     As a developer maintaining graph connectivity,
     I want to find tasks with no edges,
@@ -102,7 +102,7 @@ class DeveloperIdentifiesOrphanTasks:
         assert connected.id not in orphans
 
 
-class DeveloperGetsSuggestionsForOrphans:
+class TestDeveloperGetsSuggestionsForOrphans:
     """
     As a developer organizing orphaned work,
     I want to get sprint and connection suggestions,
@@ -213,7 +213,7 @@ class DeveloperGetsSuggestionsForOrphans:
         assert len(check["sprint_suggestions"]) > 0
 
 
-class DeveloperAutoLinksOrphansToSprints:
+class TestDeveloperAutoLinksOrphansToSprints:
     """
     As a developer batch-organizing orphaned work,
     I want to auto-link orphans to sprints,
@@ -282,7 +282,7 @@ class DeveloperAutoLinksOrphansToSprints:
         assert task.id in [t.id for t in sprint_tasks]
 
 
-class DeveloperGetsOrphanSummary:
+class TestDeveloperGetsOrphanSummary:
     """
     As a developer reviewing graph health,
     I want a human-readable orphan summary,

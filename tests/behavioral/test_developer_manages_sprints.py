@@ -12,7 +12,7 @@ import pytest
 from cortical.got.api import GoTManager
 
 
-class DeveloperCreatesAndManagesSprints:
+class TestDeveloperCreatesAndManagesSprints:
     """
     As a developer planning iterations,
     I want to create sprints with metadata,
@@ -97,7 +97,7 @@ class DeveloperCreatesAndManagesSprints:
         assert active2.id in sprint_ids
 
 
-class DeveloperOrganizesTasksIntoSprints:
+class TestDeveloperOrganizesTasksIntoSprints:
     """
     As a developer managing sprint backlogs,
     I want to add tasks to sprints,
@@ -173,7 +173,7 @@ class DeveloperOrganizesTasksIntoSprints:
         assert progress["completion_rate"] == 0.5  # 2/4
 
 
-class DeveloperManagesCurrentSprint:
+class TestDeveloperManagesCurrentSprint:
     """
     As a developer tracking active work,
     I want to identify the current sprint,
@@ -222,7 +222,7 @@ class DeveloperManagesCurrentSprint:
         assert active is None
 
 
-class DeveloperDeletesSprintsWithSafety:
+class TestDeveloperDeletesSprintsWithSafety:
     """
     As a developer cleaning up old sprints,
     I want to delete sprints with safety checks,

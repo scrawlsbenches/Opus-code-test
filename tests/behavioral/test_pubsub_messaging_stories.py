@@ -21,7 +21,7 @@ from cortical.reasoning.pubsub import (
 )
 
 
-class DistributedSystemCoordinatesAgents:
+class TestDistributedSystemCoordinatesAgents:
     """
     Epic: Distributed System Coordinates Agents
 
@@ -138,7 +138,7 @@ class DistributedSystemCoordinatesAgents:
         assert messages[2].priority == 0   # Info last
 
 
-class MessagingSystemEnsuresReliability:
+class TestMessagingSystemEnsuresReliability:
     """
     Epic: Messaging System Ensures Reliable Delivery
 
@@ -260,7 +260,7 @@ class MessagingSystemEnsuresReliability:
         assert len(messages) == 1
 
 
-class MessagingSystemSupportsFiltering:
+class TestMessagingSystemSupportsFiltering:
     """
     Epic: Messaging System Supports Advanced Filtering
 
@@ -322,7 +322,7 @@ class MessagingSystemSupportsFiltering:
         assert "priority" in messages[0].payload
 
 
-class MessagingSystemProvidesObservability:
+class TestMessagingSystemProvidesObservability:
     """
     Epic: Messaging System Provides Observability
 
@@ -405,7 +405,7 @@ class MessagingSystemProvidesObservability:
         assert pending == 5
 
 
-class MessagingSystemSupportsPersistence:
+class TestMessagingSystemSupportsPersistence:
     """
     Epic: Messaging System Supports Durability
 

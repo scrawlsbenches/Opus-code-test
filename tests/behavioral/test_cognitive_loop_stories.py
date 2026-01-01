@@ -20,7 +20,7 @@ from cortical.reasoning.cognitive_loop import (
 )
 
 
-class DeveloperOrchestratesComplexReasoning:
+class TestDeveloperOrchestratesComplexReasoning:
     """
     Epic: Developer Orchestrates Complex Reasoning Workflows
 
@@ -192,7 +192,7 @@ class DeveloperOrchestratesComplexReasoning:
         assert loop.completed_at is not None
 
 
-class ReasoningSystemManagesMultipleLoops:
+class TestReasoningSystemManagesMultipleLoops:
     """
     Epic: System Manages Multiple Concurrent Reasoning Loops
 
@@ -324,7 +324,7 @@ class ReasoningSystemManagesMultipleLoops:
         assert any(e[2] == LoopPhase.ANSWER for e in events_received)
 
 
-class DeveloperBuildsKnowledgeTransferSystem:
+class TestDeveloperBuildsKnowledgeTransferSystem:
     """
     Epic: Developer Builds Knowledge Transfer System
 

@@ -14,7 +14,7 @@ from cortical.got.api import GoTManager
 from cortical.got.pattern_matcher import Pattern, PatternMatcher
 
 
-class DeveloperFindsDependencyChains:
+class TestDeveloperFindsDependencyChains:
     """
     As a developer analyzing task dependencies,
     I want to find chains of dependent tasks,
@@ -126,7 +126,7 @@ class DeveloperFindsDependencyChains:
         assert blocker2.id in blocker_ids
 
 
-class DeveloperFindsPatternsWithLimitedResults:
+class TestDeveloperFindsPatternsWithLimitedResults:
     """
     As a developer analyzing large graphs,
     I want to limit pattern search results,
@@ -200,7 +200,7 @@ class DeveloperFindsPatternsWithLimitedResults:
         assert match["b"].id == task_b.id
 
 
-class DeveloperExplainsPatternExecutionPlan:
+class TestDeveloperExplainsPatternExecutionPlan:
     """
     As a developer optimizing pattern searches,
     I want to see the execution plan before running,

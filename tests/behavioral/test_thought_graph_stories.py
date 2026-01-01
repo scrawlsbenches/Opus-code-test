@@ -15,7 +15,7 @@ from cortical.reasoning.graph_of_thought import NodeType, EdgeType
 from cortical.reasoning.thought_graph import ThoughtGraph
 
 
-class ResearcherMapsComplexReasoningNetworks:
+class TestResearcherMapsComplexReasoningNetworks:
     """
     Epic: Researcher Maps Complex Reasoning Networks
 
@@ -188,7 +188,7 @@ class ResearcherMapsComplexReasoningNetworks:
         assert not indexing.contains_node("rank1")
 
 
-class DeveloperBuildsReasoningVisualization:
+class TestDeveloperBuildsReasoningVisualization:
     """
     Epic: Developer Builds Reasoning Visualization
 
@@ -272,7 +272,7 @@ class DeveloperBuildsReasoningVisualization:
         assert "└──" in ascii_tree or "├──" in ascii_tree
 
 
-class ReasonerManipulatesThoughtStructures:
+class TestReasonerManipulatesThoughtStructures:
     """
     Epic: Reasoner Manipulates Thought Structures
 

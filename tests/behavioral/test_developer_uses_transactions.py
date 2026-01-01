@@ -13,7 +13,7 @@ from cortical.got.api import GoTManager
 from cortical.got.errors import TransactionError
 
 
-class DeveloperExecutesAtomicOperations:
+class TestDeveloperExecutesAtomicOperations:
     """
     As a developer performing multi-step operations,
     I want transactions that commit or rollback atomically,
@@ -133,7 +133,7 @@ class DeveloperExecutesAtomicOperations:
         assert retrieved.priority == "high"
 
 
-class DeveloperUsesCachingForPerformance:
+class TestDeveloperUsesCachingForPerformance:
     """
     As a developer optimizing query performance,
     I want entity caching for faster repeated queries,
@@ -236,7 +236,7 @@ class DeveloperUsesCachingForPerformance:
         assert stats_after['misses'] == 0
 
 
-class DeveloperPreloadsEntitiesForFastQueries:
+class TestDeveloperPreloadsEntitiesForFastQueries:
     """
     As a developer optimizing batch operations,
     I want to pre-load all entities into memory,
@@ -274,7 +274,7 @@ class DeveloperPreloadsEntitiesForFastQueries:
         assert stats_after['hits'] > stats_before['hits']
 
 
-class DeveloperHandlesTransactionFailures:
+class TestDeveloperHandlesTransactionFailures:
     """
     As a developer dealing with errors,
     I want clear error messages on transaction failures,

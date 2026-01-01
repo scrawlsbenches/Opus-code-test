@@ -16,7 +16,7 @@ from cortical.reasoning.woven_mind import WovenMind, WovenMindConfig, WovenMindR
 from cortical.reasoning.loom import ThinkingMode
 
 
-class CognitiveResearcherBuildsReasoningSystem:
+class TestCognitiveResearcherBuildsReasoningSystem:
     """
     Epic: Cognitive Researcher Builds Custom Dual-Process System
 
@@ -195,7 +195,7 @@ class CognitiveResearcherBuildsReasoningSystem:
         assert all(hasattr(t, 'to_mode') for t in history)
 
 
-class DeveloperIntegratesCustomCognitiveArchitecture:
+class TestDeveloperIntegratesCustomCognitiveArchitecture:
     """
     Epic: Developer Integrates Custom Cognitive Architecture
 

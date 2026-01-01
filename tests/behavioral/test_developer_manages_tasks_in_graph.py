@@ -15,7 +15,7 @@ from cortical.got.api import GoTManager
 from cortical.got.errors import TransactionError
 
 
-class DeveloperCreatesAndUpdatesTasksInGraph:
+class TestDeveloperCreatesAndUpdatesTasksInGraph:
     """
     As a developer managing a complex project,
     I want to create tasks and update their properties,
@@ -125,7 +125,7 @@ class DeveloperCreatesAndUpdatesTasksInGraph:
         assert retrieved.properties["estimated_hours"] == 8
 
 
-class DeveloperEstablishesTaskRelationships:
+class TestDeveloperEstablishesTaskRelationships:
     """
     As a developer managing task dependencies,
     I want to create relationships between tasks,
@@ -232,7 +232,7 @@ class DeveloperEstablishesTaskRelationships:
         assert dependent3.id in dependent_ids
 
 
-class DeveloperDeletesTasksWithSafetyChecks:
+class TestDeveloperDeletesTasksWithSafetyChecks:
     """
     As a developer maintaining graph integrity,
     I want to safely delete tasks with dependency checks,

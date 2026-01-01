@@ -16,7 +16,7 @@ from cortical.reasoning.cognitive_loop import LoopPhase, TerminationReason
 from cortical.reasoning.collaboration import CollaborationMode
 
 
-class SystemArchitectOrchestratesWorkflows:
+class TestSystemArchitectOrchestratesWorkflows:
     """
     Epic: System Architect Orchestrates Complex Workflows
 
@@ -151,7 +151,7 @@ class SystemArchitectOrchestratesWorkflows:
         assert 'passed' in results or 'pending' in results
 
 
-class WorkflowManagesCrisisAndRecovery:
+class TestWorkflowManagesCrisisAndRecovery:
     """
     Epic: Workflow Manages Crisis and Recovery
 
@@ -211,7 +211,7 @@ class WorkflowManagesCrisisAndRecovery:
         assert 'lessons_learned' in record
 
 
-class CollaborationWorkflowCoordinatesHumanAI:
+class TestCollaborationWorkflowCoordinatesHumanAI:
     """
     Epic: Collaboration Workflow Coordinates Human-AI Work
 
@@ -297,7 +297,7 @@ class CollaborationWorkflowCoordinatesHumanAI:
         assert "build-everything-ourselves" in disagreement.concern.lower()
 
 
-class WorkflowProvidesComprehensiveReporting:
+class TestWorkflowProvidesComprehensiveReporting:
     """
     Epic: Workflow Provides Comprehensive Reporting
 

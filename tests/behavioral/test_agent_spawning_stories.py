@@ -22,7 +22,7 @@ from cortical.reasoning.collaboration import (
 )
 
 
-class OrchestratorManagesParallelAgents:
+class TestOrchestratorManagesParallelAgents:
     """
     Epic: Orchestrator Manages Parallel Agent Workforce
 
@@ -176,7 +176,7 @@ class OrchestratorManagesParallelAgents:
         assert "forbidden/other.py" in result.error
 
 
-class ParallelCoordinatorDistributesWork:
+class TestParallelCoordinatorDistributesWork:
     """
     Epic: Parallel Coordinator Distributes Complex Work
 
@@ -251,7 +251,7 @@ class ParallelCoordinatorDistributesWork:
         assert summary['by_status']['COMPLETED'] == 2
 
 
-class SubprocessSpawnerManagesRealProcesses:
+class TestSubprocessSpawnerManagesRealProcesses:
     """
     Epic: Subprocess Spawner Manages Real Process Execution
 
@@ -347,7 +347,7 @@ class SubprocessSpawnerManagesRealProcesses:
         assert sig.return_annotation != inspect.Signature.empty
 
 
-class SpawningSystemEnablesCodeGeneration:
+class TestSpawningSystemEnablesCodeGeneration:
     """
     Epic: Spawning System Enables Parallel Code Generation
 
