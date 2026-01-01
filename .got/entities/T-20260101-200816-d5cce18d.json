@@ -1,0 +1,19 @@
+{
+  "_checksum": "8aeb1146ddb7279e",
+  "_written_at": "2026-01-01T20:08:16.499121+00:00",
+  "data": {
+    "created_at": "2026-01-01T20:08:16.495269+00:00",
+    "description": "## Overview\nCreate integration tests that validate causal analysis against real GoT data.\n\n## File References\n- Test location: tests/integration/test_got_causal_real_data.py (NEW)\n- Behavioral tests: tests/behavioral/test_got_causal_integration.py\n- GoT fixtures: tests/conftest.py (got_manager fixtures)\n- Real data: .got/entities/\n\n## Test Scenarios\n1. **Data Quality Assessment**\n   - Run quality check on real .got/ data\n   - Verify metrics match manual inspection\n\n2. **Root Cause Tracing**\n   - Select tasks with known DEPENDS_ON chains\n   - Verify trace_root_cause() finds correct root\n\n3. **Impact Analysis**\n   - Pick a task with known dependents\n   - Verify analyze_impact() finds all affected\n\n4. **Blocking Chain Detection**\n   - If blocked tasks exist, verify detection\n   - If none, test with synthetic blocked task\n\n5. **Sprint Analysis**\n   - Run on a completed sprint\n   - Verify completion rate matches reality\n\n## Test Requirements\n- Use @pytest.mark.integration marker\n- Skip gracefully if .got/ is empty\n- Don't modify real data\n\n## Acceptance Criteria\n- Tests pass on current .got/ data\n- Clear skip messages if data insufficient\n- No false positives in causal claims",
+    "entity_type": "task",
+    "id": "T-20260101-200816-d5cce18d",
+    "metadata": {},
+    "modified_at": "2026-01-01T20:08:16.499037+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "test"
+    },
+    "status": "pending",
+    "title": "Write integration tests for GoT-Causal with real data",
+    "version": 2
+  }
+}
