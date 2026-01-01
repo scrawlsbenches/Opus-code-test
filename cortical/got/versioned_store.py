@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Dict, Optional, Any
 
 from .types import (
-    Entity, Task, Decision, Edge, Sprint, Epic, Handoff,
+    Entity, Task, Decision, Edge, Sprint, Epic, Handoff, KnowledgeTransfer,
     ClaudeMdLayer, ClaudeMdVersion, PersonaProfile, Team, Document,
     VALID_ENTITY_TYPES,
 )
@@ -84,6 +84,8 @@ def _got_entity_factory(data: Dict[str, Any]) -> Entity:
         return Epic.from_dict(data)
     elif entity_type == "handoff":
         return Handoff.from_dict(data)
+    elif entity_type == "knowledge_transfer":
+        return KnowledgeTransfer.from_dict(data)
     elif entity_type == "claudemd_layer":
         return ClaudeMdLayer.from_dict(data)
     elif entity_type == "claudemd_version":

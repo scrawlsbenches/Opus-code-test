@@ -133,6 +133,10 @@ from cortical.got.cli.backlog import setup_backlog_parser, handle_backlog_comman
 from cortical.got.cli.analyze import setup_analyze_parser, handle_analyze_command
 from cortical.got.cli.edge import setup_edge_parser, handle_edge_command
 from cortical.got.cli.batch import setup_batch_parser, handle_batch_command
+from cortical.got.cli.knowledge_transfer import (
+    setup_knowledge_transfer_parser,
+    handle_knowledge_transfer_command,
+)
 
 # Import shared constants from canonical source (single source of truth)
 from cortical.got.cli.shared import (
@@ -206,6 +210,8 @@ MUTATING_COMMANDS = {
     "epic": {"create"},
     "decision": {"log"},
     "handoff": {"initiate", "accept", "complete"},
+    "knowledge": {"create", "append", "link", "import"},
+    "kt": {"create", "append", "link", "import"},
     "batch": True,  # Always mutating (creates multiple entities)
     "compact": True,  # Always mutating
     "migrate": True,
@@ -2724,6 +2730,261 @@ class TransactionalGoTAdapter:
 
         return all_edges
 
+    # =========================================================================
+    # KNOWLEDGE TRANSFER METHODS
+    # =========================================================================
+
+    def create_knowledge_transfer(
+        self,
+        title: str,
+        session_id: str = "",
+        session_date: str = "",
+        summary: str = "",
+        sections: Optional[Dict[str, str]] = None,
+        code_refs: Optional[List[str]] = None,
+        tags: Optional[List[str]] = None,
+        status: str = "published",
+        source_file: Optional[str] = None,
+    ) -> str:
+        """
+        Create a knowledge transfer document.
+
+        Args:
+            title: Document title
+            session_id: Session identifier
+            session_date: Session date (ISO 8601)
+            summary: Executive summary
+            sections: Dictionary mapping section headings to content
+            code_refs: List of file:line references
+            tags: Classification tags
+            status: Publication status (draft, published, archived)
+            source_file: Original source file path
+
+        Returns:
+            Knowledge transfer entity ID
+        """
+        from cortical.got.types import KnowledgeTransfer
+        from datetime import datetime
+
+        # Generate ID
+        kt_id = f"KT-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+
+        # Create entity
+        kt = KnowledgeTransfer(
+            id=kt_id,
+            entity_type="knowledge_transfer",
+            title=title,
+            session_id=session_id,
+            session_date=session_date,
+            summary=summary,
+            sections=sections or {},
+            code_refs=code_refs or [],
+            related_handoffs=[],
+            related_tasks=[],
+            related_decisions=[],
+            tags=tags or [],
+            status=status,
+            source_file=source_file,
+            created_at=datetime.now().isoformat(),
+            modified_at=datetime.now().isoformat(),
+        )
+
+        # Save entity
+        entities_dir = self.got_dir / "entities"
+        entities_dir.mkdir(parents=True, exist_ok=True)
+
+        entity_file = entities_dir / f"{kt_id}.json"
+        with open(entity_file, 'w') as f:
+            json.dump({
+                "version": 1,
+                "entity_type": "knowledge_transfer",
+                "data": kt.model_dump() if hasattr(kt, 'model_dump') else dict(kt),
+            }, f, indent=2)
+
+        self.save()
+        return kt_id
+
+    def append_kt_section(
+        self,
+        kt_id: str,
+        section_heading: str,
+        content: str,
+    ) -> bool:
+        """
+        Append or update a section in a knowledge transfer document.
+
+        Args:
+            kt_id: Knowledge transfer entity ID
+            section_heading: Section heading
+            content: Section content
+
+        Returns:
+            True if successful, False otherwise
+        """
+        kt = self.get_knowledge_transfer(kt_id)
+        if not kt:
+            return False
+
+        # Update sections
+        sections = kt.get('sections', {})
+        sections[section_heading] = content
+
+        # Update entity
+        return self._update_kt_entity(kt_id, {'sections': sections})
+
+    def link_kt_handoff(self, kt_id: str, handoff_id: str) -> bool:
+        """Link a knowledge transfer to a handoff entity."""
+        kt = self.get_knowledge_transfer(kt_id)
+        if not kt:
+            return False
+
+        related_handoffs = kt.get('related_handoffs', [])
+        if handoff_id not in related_handoffs:
+            related_handoffs.append(handoff_id)
+
+        return self._update_kt_entity(kt_id, {'related_handoffs': related_handoffs})
+
+    def link_kt_task(self, kt_id: str, task_id: str) -> bool:
+        """Link a knowledge transfer to a task entity."""
+        kt = self.get_knowledge_transfer(kt_id)
+        if not kt:
+            return False
+
+        related_tasks = kt.get('related_tasks', [])
+        if task_id not in related_tasks:
+            related_tasks.append(task_id)
+
+        return self._update_kt_entity(kt_id, {'related_tasks': related_tasks})
+
+    def link_kt_decision(self, kt_id: str, decision_id: str) -> bool:
+        """Link a knowledge transfer to a decision entity."""
+        kt = self.get_knowledge_transfer(kt_id)
+        if not kt:
+            return False
+
+        related_decisions = kt.get('related_decisions', [])
+        if decision_id not in related_decisions:
+            related_decisions.append(decision_id)
+
+        return self._update_kt_entity(kt_id, {'related_decisions': related_decisions})
+
+    def list_knowledge_transfers(
+        self,
+        status: Optional[str] = None,
+        tags: Optional[List[str]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        List knowledge transfer documents with optional filters.
+
+        Args:
+            status: Filter by status (draft, published, archived)
+            tags: Filter by tags (matches if any tag matches)
+
+        Returns:
+            List of knowledge transfer dictionaries
+        """
+        entities_dir = self.got_dir / "entities"
+        if not entities_dir.exists():
+            return []
+
+        kts = []
+        for kt_file in entities_dir.glob("KT-*.json"):
+            try:
+                with open(kt_file, 'r') as f:
+                    wrapper = json.load(f)
+                data = wrapper.get("data", wrapper)
+
+                if data.get("entity_type") == "knowledge_transfer":
+                    # Apply filters
+                    if status and data.get("status") != status:
+                        continue
+
+                    if tags:
+                        kt_tags = data.get("tags", [])
+                        if not any(tag in kt_tags for tag in tags):
+                            continue
+
+                    kts.append(data)
+            except Exception as e:
+                logger.debug(f"Skipping KT file {kt_file}: {e}")
+
+        # Sort by creation date (newest first)
+        kts.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+
+        return kts
+
+    def get_knowledge_transfer(self, kt_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get a knowledge transfer document by ID.
+
+        Args:
+            kt_id: Knowledge transfer entity ID
+
+        Returns:
+            Knowledge transfer dictionary or None if not found
+        """
+        entities_dir = self.got_dir / "entities"
+        kt_file = entities_dir / f"{kt_id}.json"
+
+        if not kt_file.exists():
+            return None
+
+        try:
+            with open(kt_file, 'r') as f:
+                wrapper = json.load(f)
+            data = wrapper.get("data", wrapper)
+
+            if data.get("entity_type") == "knowledge_transfer":
+                return data
+        except Exception as e:
+            logger.error(f"Failed to load KT {kt_id}: {e}")
+
+        return None
+
+    def _update_kt_entity(self, kt_id: str, updates: Dict[str, Any]) -> bool:
+        """
+        Internal method to update a knowledge transfer entity.
+
+        Args:
+            kt_id: Knowledge transfer entity ID
+            updates: Dictionary of fields to update
+
+        Returns:
+            True if successful, False otherwise
+        """
+        from datetime import datetime
+
+        entities_dir = self.got_dir / "entities"
+        kt_file = entities_dir / f"{kt_id}.json"
+
+        if not kt_file.exists():
+            return False
+
+        try:
+            # Load current entity
+            with open(kt_file, 'r') as f:
+                wrapper = json.load(f)
+
+            data = wrapper.get("data", wrapper)
+
+            # Apply updates
+            data.update(updates)
+            data['modified_at'] = datetime.now().isoformat()
+
+            # Save updated entity
+            with open(kt_file, 'w') as f:
+                json.dump({
+                    "version": wrapper.get("version", 1),
+                    "entity_type": "knowledge_transfer",
+                    "data": data,
+                }, f, indent=2)
+
+            self.save()
+            return True
+        except Exception as e:
+            logger.error(f"Failed to update KT {kt_id}: {e}")
+            return False
+
 
 # =============================================================================
 # CLI FORMATTING
@@ -2808,7 +3069,7 @@ VALID_COMMANDS = [
     "task", "sprint", "epic", "handoff", "decision", "doc", "query",
     "blocked", "active", "stats", "dashboard", "validate", "infer",
     "export", "backup", "sync", "orphan", "backlog", "analyze", "edge",
-    "batch",
+    "batch", "knowledge", "kt",
 ]
 
 
@@ -2888,6 +3149,7 @@ def main():
     setup_analyze_parser(subparsers)  # Graph analysis using fluent Query API
     setup_edge_parser(subparsers)  # Direct edge management
     setup_batch_parser(subparsers)  # Batch operations with heredoc DSL
+    setup_knowledge_transfer_parser(subparsers)  # Knowledge transfer documents
 
     # Pre-check for invalid commands to provide better error messages
     # This runs before argparse's default error handling
@@ -2951,6 +3213,9 @@ def main():
 
     elif args.command == "batch":
         return handle_batch_command(args, manager)
+
+    elif args.command in ("knowledge", "kt"):
+        return handle_knowledge_transfer_command(args, manager)
 
     # Query-related commands (query, blocked, active, stats, etc.)
     result = handle_query_commands(args, manager)
