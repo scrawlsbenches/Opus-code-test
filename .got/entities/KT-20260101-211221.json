@@ -6,13 +6,14 @@
     "entity_type": "knowledge_transfer",
     "version": 1,
     "created_at": "2026-01-01T21:12:21.362325",
-    "modified_at": "2026-01-01T21:13:32.877010",
+    "modified_at": "2026-01-01T21:13:49.309117",
     "title": "Test Audit and PRISM-Causal Integration",
     "session_id": "",
     "session_date": "",
     "summary": "Comprehensive session covering test audit findings, PRISM-Causal integration planning, GoT SOP establishment, and test health restoration sprint setup.",
     "sections": {
-      "Test Audit Findings": "Comprehensive audit of test suite found 169 hidden tests that were not being collected by pytest. Root cause: Story-driven class names (e.g., DeveloperSearchesCorpus) lacked the required 'Test' prefix for pytest collection.\n\nFixed across 15 files:\n- test_agent_spawning_stories.py (4 classes, 14 tests)\n- test_cognitive_loop_stories.py (3 classes, 14 tests)  \n- test_workflow_orchestration_stories.py (4 classes, 12 tests)\n- test_pubsub_messaging_stories.py (5 classes, 15 tests)\n- test_distributed_graph_stories.py (5 classes, 13 tests)\n- test_woven_mind_stories.py (2 classes, 11 tests)\n- test_thought_graph_stories.py (3 classes, 12 tests)\n- test_developer_* files (various)\n- test_prism_got_stories.py (4 classes, 17 tests)\n\nThe fix revealed ~27 pre-existing test failures that had been hidden."
+      "Test Audit Findings": "Comprehensive audit of test suite found 169 hidden tests that were not being collected by pytest. Root cause: Story-driven class names (e.g., DeveloperSearchesCorpus) lacked the required 'Test' prefix for pytest collection.\n\nFixed across 15 files:\n- test_agent_spawning_stories.py (4 classes, 14 tests)\n- test_cognitive_loop_stories.py (3 classes, 14 tests)  \n- test_workflow_orchestration_stories.py (4 classes, 12 tests)\n- test_pubsub_messaging_stories.py (5 classes, 15 tests)\n- test_distributed_graph_stories.py (5 classes, 13 tests)\n- test_woven_mind_stories.py (2 classes, 11 tests)\n- test_thought_graph_stories.py (3 classes, 12 tests)\n- test_developer_* files (various)\n- test_prism_got_stories.py (4 classes, 17 tests)\n\nThe fix revealed ~27 pre-existing test failures that had been hidden.",
+      "SOP Compliance Survey": "Surveyed agent compliance with GoT Standard Operating Procedures established in CLAUDE.md:\n\nOVERALL COMPLIANCE: 49%\n\nStrong areas (>75%):\n- SOP 2: Task Creation (98%) - Priority, category, sprint links well maintained\n- SOP 6: Decision Documentation (88%) - Decisions have rationale, JUSTIFIES edges\n- SOP 7: Session End (75%) - Handoffs active, KTs being created\n\nCritical gaps (<25%):\n- SOP 3: Task Start (23%) - started_at timestamps missing on 67% of tasks\n- SOP 4: Task Blocking (0%) - No blocked_reason, BLOCKS, or CAUSED_BY edges\n- SOP 8: Sprint Retrospective (0%) - No sprint-level retrospective data\n\nThe data quality gaps prevent reliable PRISM-Causal analysis. Cannot perform:\n- Root cause analysis (no CAUSED_BY edges)\n- Impact prediction (no BLOCKS edges)\n- Duration analysis (no started_at timestamps)"
     },
     "code_refs": [],
     "related_handoffs": [],
