@@ -210,8 +210,8 @@ MUTATING_COMMANDS = {
     "epic": {"create"},
     "decision": {"log"},
     "handoff": {"initiate", "accept", "complete"},
-    "knowledge": {"create", "append", "link", "import"},
-    "kt": {"create", "append", "link", "import"},
+    "knowledge": {"create", "append", "link", "import", "finalize"},
+    "kt": {"create", "append", "link", "import", "finalize"},
     "batch": True,  # Always mutating (creates multiple entities)
     "compact": True,  # Always mutating
     "migrate": True,
@@ -2984,6 +2984,167 @@ class TransactionalGoTAdapter:
         except Exception as e:
             logger.error(f"Failed to update KT {kt_id}: {e}")
             return False
+
+    def finalize_knowledge_transfer(
+        self,
+        kt_id: str,
+        handoff_to: Optional[str] = None,
+        instructions: str = "",
+    ) -> bool:
+        """
+        Finalize a knowledge transfer and optionally create handoff for continuation.
+
+        Args:
+            kt_id: Knowledge transfer entity ID
+            handoff_to: Optional agent to hand off continuation work to
+            instructions: Instructions for continuation handoff
+
+        Returns:
+            True if successful, False otherwise
+        """
+        from datetime import datetime
+
+        # Get the KT
+        kt = self.get_knowledge_transfer(kt_id)
+        if not kt:
+            logger.error(f"Knowledge transfer not found: {kt_id}")
+            return False
+
+        # Verify it's in draft status
+        if kt.get('status') != 'draft':
+            logger.error(f"Knowledge transfer {kt_id} is not in draft status (current: {kt.get('status')})")
+            return False
+
+        # Change status to published
+        if not self._update_kt_entity(kt_id, {'status': 'published'}):
+            return False
+
+        # If handoff requested, create it
+        if handoff_to:
+            try:
+                # Create a handoff entity for continuation
+                handoff_id = self.initiate_handoff(
+                    source_agent="main",
+                    target_agent=handoff_to,
+                    task_id=kt_id,  # Link to KT instead of task
+                    context={
+                        "kt_title": kt.get('title', ''),
+                        "kt_summary": kt.get('summary', ''),
+                        "session_id": kt.get('session_id', ''),
+                        "type": "knowledge_transfer_continuation",
+                    },
+                    instructions=instructions,
+                )
+
+                # Add CONTINUES edge from KT to Handoff
+                edge = self.add_edge(kt_id, handoff_id, "CONTINUES", weight=1.0)
+                if edge is None:
+                    logger.warning(f"Failed to create CONTINUES edge from {kt_id} to {handoff_id}")
+
+                logger.info(f"Created continuation handoff {handoff_id} for KT {kt_id}")
+
+            except Exception as e:
+                logger.error(f"Failed to create handoff for KT {kt_id}: {e}")
+                return False
+
+        return True
+
+    def get_kt_history(self, kt_id: str) -> List[tuple]:
+        """
+        Get the history chain for a knowledge transfer.
+
+        Traces CONTINUES edges to show evolution:
+        KT1 → Handoff1 → KT2 → Handoff2 → KT3 (current)
+
+        Args:
+            kt_id: Knowledge transfer entity ID
+
+        Returns:
+            List of (entity_type, entity_id, title) tuples representing chain
+        """
+        # Get all edges using the query API
+        try:
+            all_edges = self._manager.query_api.list_edges()
+        except Exception as e:
+            logger.error(f"Failed to list edges: {e}")
+            return []
+
+        # Build a mapping of CONTINUES edges
+        continues_edges = {}  # source_id -> target_id
+        reverse_continues = {}  # target_id -> source_id
+
+        for edge in all_edges:
+            if edge.edge_type.upper() == "CONTINUES":
+                continues_edges[edge.source_id] = edge.target_id
+                reverse_continues[edge.target_id] = edge.source_id
+
+        # Walk backward to find origin
+        current_id = kt_id
+        while current_id in reverse_continues:
+            current_id = reverse_continues[current_id]
+
+        # Now walk forward to build full chain
+        chain = []
+        visited = set()  # Prevent infinite loops
+
+        while current_id and current_id not in visited:
+            visited.add(current_id)
+
+            # Determine entity type and get title
+            entity_type = self._infer_entity_type(current_id)
+            title = self._get_entity_title(current_id, entity_type)
+
+            chain.append((entity_type, current_id, title))
+
+            # Move to next in chain
+            current_id = continues_edges.get(current_id)
+
+        return chain
+
+    def _infer_entity_type(self, entity_id: str) -> str:
+        """Infer entity type from ID prefix."""
+        if entity_id.startswith("KT-"):
+            return "knowledge_transfer"
+        elif entity_id.startswith("H-"):
+            return "handoff"
+        elif entity_id.startswith("T-"):
+            return "task"
+        elif entity_id.startswith("D-"):
+            return "decision"
+        elif entity_id.startswith("S-"):
+            return "sprint"
+        elif entity_id.startswith("E-"):
+            if "-" in entity_id[2:]:  # E-xxx-yyy format
+                return "edge"
+            return "epic"
+        else:
+            return "unknown"
+
+    def _get_entity_title(self, entity_id: str, entity_type: str) -> str:
+        """Get title/name for an entity."""
+        try:
+            if entity_type == "knowledge_transfer":
+                kt = self.get_knowledge_transfer(entity_id)
+                return kt.get('title', 'Untitled') if kt else '?'
+            elif entity_type == "handoff":
+                handoff = self.get_handoff(entity_id)
+                return f"{handoff.get('source_agent', '?')} → {handoff.get('target_agent', '?')}" if handoff else '?'
+            elif entity_type == "task":
+                task = self.get_task(entity_id)
+                return task.content if task else '?'
+            elif entity_type == "decision":
+                # Read decision file
+                entities_dir = self.got_dir / "entities"
+                decision_file = entities_dir / f"{entity_id}.json"
+                if decision_file.exists():
+                    with open(decision_file, 'r') as f:
+                        wrapper = json.load(f)
+                    data = wrapper.get("data", wrapper)
+                    return data.get('title', '?')
+            return '?'
+        except Exception as e:
+            logger.debug(f"Failed to get title for {entity_id}: {e}")
+            return '?'
 
 
 # =============================================================================

@@ -965,14 +965,29 @@ got sprint create "Sprint Name" --number 28
 got sprint list
 
 # Knowledge Transfer (Session Learning Capture)
+# Create and build during session
 got kt create "Session Title" --session abc123 --summary "..."
 got kt append <kt_id> "Technical Insights" "New finding..."
 got kt append <kt_id> "Decisions" "Chose X because..."
+
+# Link to related work
 got kt link <kt_id> --handoff <handoff_id>
 got kt link <kt_id> --task <task_id>
+
+# Import historical markdown
 got kt import samples/memories/2025-12-29-session.md
+
+# Search and view
 got kt list --status published --tags architecture
 got kt show <kt_id>
+
+# Lifecycle: Finalize and hand off for continuation
+got kt finalize <kt_id>                              # Publish (draft → published)
+got kt finalize <kt_id> --handoff-to agent2          # Publish + create handoff
+got kt finalize <kt_id> --handoff-to agent2 -i "Continue testing..."
+
+# Trace knowledge evolution
+got kt history <kt_id>   # Shows: KT1 → Handoff1 → KT2 → ...
 
 # Handoff (Agent-to-Agent Work Transfer)
 got handoff initiate --source agent1 --target agent2 --task T1

@@ -468,6 +468,90 @@ def cmd_kt_import(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
+def cmd_kt_finalize(args, manager: "TransactionalGoTAdapter") -> int:
+    """
+    Handle 'got knowledge finalize' command.
+
+    Finalizes a knowledge transfer and optionally creates a continuation handoff.
+    """
+    kt_id = args.kt_id
+
+    # Read instructions from stdin if '-' is specified
+    instructions = getattr(args, 'instructions', '')
+    if instructions == '-':
+        instructions = sys.stdin.read().strip()
+
+    # Get handoff-to agent if specified
+    handoff_to = getattr(args, 'handoff_to', None)
+
+    # Finalize the KT
+    success = manager.finalize_knowledge_transfer(
+        kt_id=kt_id,
+        handoff_to=handoff_to,
+        instructions=instructions,
+    )
+
+    if not success:
+        print(f"Failed to finalize knowledge transfer: {kt_id}")
+        return 1
+
+    print(f"✅ Finalized: {kt_id}")
+    print(f"   Status: draft → published")
+
+    if handoff_to:
+        print(f"   Created handoff to: {handoff_to}")
+        if instructions:
+            instr_preview = instructions[:60] + "..." if len(instructions) > 60 else instructions
+            print(f"   Instructions: {instr_preview}")
+
+    return 0
+
+
+def cmd_kt_history(args, manager: "TransactionalGoTAdapter") -> int:
+    """
+    Handle 'got knowledge history' command.
+
+    Shows the history chain for a knowledge transfer by tracing CONTINUES edges.
+    """
+    kt_id = args.kt_id
+
+    # Get the history chain
+    chain = manager.get_kt_history(kt_id)
+
+    if not chain:
+        print(f"No history found for: {kt_id}")
+        return 0
+
+    print("=" * 70)
+    print(f"KNOWLEDGE TRANSFER HISTORY: {kt_id}")
+    print("=" * 70)
+    print()
+
+    for i, (entity_type, entity_id, title) in enumerate(chain):
+        # Format entity type for display
+        type_display = {
+            "knowledge_transfer": "KT",
+            "handoff": "Handoff",
+            "task": "Task",
+            "decision": "Decision",
+        }.get(entity_type, entity_type)
+
+        # Indicator
+        if i == len(chain) - 1:
+            indicator = "→ (current)"
+        else:
+            indicator = "→"
+
+        print(f"{i + 1}. [{type_display}] {entity_id}")
+        print(f"   {title}")
+        print(f"   {indicator}")
+        print()
+
+    print("=" * 70)
+
+    return 0
+
+
 # =============================================================================
 # CLI INTEGRATION
 # =============================================================================
@@ -595,6 +679,29 @@ def setup_knowledge_transfer_parser(subparsers) -> None:
         help="Classification tags (auto-detected if not provided)"
     )
 
+    # kt finalize
+    finalize_parser = kt_subparsers.add_parser(
+        "finalize",
+        help="Finalize a knowledge transfer and optionally create continuation handoff"
+    )
+    finalize_parser.add_argument("kt_id", help="Knowledge transfer ID to finalize")
+    finalize_parser.add_argument(
+        "--handoff-to",
+        help="Agent to hand off continuation work to"
+    )
+    finalize_parser.add_argument(
+        "--instructions", "-i",
+        default="",
+        help="Instructions for continuation handoff (use '-' to read from stdin)"
+    )
+
+    # kt history
+    history_parser = kt_subparsers.add_parser(
+        "history",
+        help="Show knowledge transfer history chain"
+    )
+    history_parser.add_argument("kt_id", help="Knowledge transfer ID to trace")
+
 
 def handle_knowledge_transfer_command(args, manager: "TransactionalGoTAdapter") -> int:
     """
@@ -618,6 +725,8 @@ def handle_knowledge_transfer_command(args, manager: "TransactionalGoTAdapter") 
         "list": cmd_kt_list,
         "show": cmd_kt_show,
         "import": cmd_kt_import,
+        "finalize": cmd_kt_finalize,
+        "history": cmd_kt_history,
     }
 
     handler = command_handlers.get(args.kt_command)
