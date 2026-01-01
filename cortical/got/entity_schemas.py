@@ -3,7 +3,7 @@ Schema definitions for all GoT entity types.
 
 Defines declarative schemas for validation and migration of:
 - Task, Decision, Sprint, Epic, Edge
-- Handoff, ClaudeMdLayer, ClaudeMdVersion
+- Handoff, KnowledgeTransfer, ClaudeMdLayer, ClaudeMdVersion
 - Team, PersonaProfile, Document
 
 All schemas are registered with the global registry on module import.
@@ -310,6 +310,69 @@ class HandoffSchema(BaseSchema):
 
 
 # =============================================================================
+# KnowledgeTransfer Schema
+# =============================================================================
+
+class KnowledgeTransferSchema(BaseSchema):
+    """
+    Schema for KnowledgeTransfer entities.
+
+    KnowledgeTransfer entities capture session learning documentation with
+    structured sections, code references, and relationships to other entities.
+    """
+    schema_version = 1
+    entity_type = 'knowledge_transfer'
+
+    fields = {
+        **BASE_ENTITY_FIELDS,
+        'title': Field('title', FieldType.STRING, required=True,
+                      description="Knowledge transfer document title"),
+        'session_id': Field('session_id', FieldType.STRING, required=False,
+                           default='',
+                           description="Associated session identifier"),
+        'session_date': Field('session_date', FieldType.STRING, required=False,
+                             default='',
+                             description="Session date (ISO 8601)"),
+        'summary': Field('summary', FieldType.STRING, required=False,
+                        default='',
+                        description="Executive summary of session learnings"),
+        'sections': Field('sections', FieldType.DICT, required=False,
+                         default={},
+                         description="Structured content sections"),
+        'code_refs': Field('code_refs', FieldType.LIST, required=False,
+                          default=[],
+                          item_type=FieldType.STRING,
+                          description="Code file:line references"),
+        'related_handoffs': Field('related_handoffs', FieldType.LIST, required=False,
+                                 default=[],
+                                 item_type=FieldType.STRING,
+                                 description="Related handoff entity IDs"),
+        'related_tasks': Field('related_tasks', FieldType.LIST, required=False,
+                              default=[],
+                              item_type=FieldType.STRING,
+                              description="Related task entity IDs"),
+        'related_decisions': Field('related_decisions', FieldType.LIST, required=False,
+                                  default=[],
+                                  item_type=FieldType.STRING,
+                                  description="Related decision entity IDs"),
+        'source_file': Field('source_file', FieldType.STRING, required=False,
+                            default=None,
+                            description="Source markdown file path"),
+        'tags': Field('tags', FieldType.LIST, required=False,
+                     default=[],
+                     item_type=FieldType.STRING,
+                     description="Classification tags"),
+        'status': Field('status', FieldType.ENUM, required=False,
+                       choices=['draft', 'published', 'archived'],
+                       default='published',
+                       description="Publication status"),
+        'properties': Field('properties', FieldType.DICT, required=False,
+                           default={},
+                           description="Additional properties"),
+    }
+
+
+# =============================================================================
 # ClaudeMdLayer Schema
 # =============================================================================
 
@@ -568,6 +631,7 @@ ALL_SCHEMAS = {
     'epic': EpicSchema,
     'edge': EdgeSchema,
     'handoff': HandoffSchema,
+    'knowledge_transfer': KnowledgeTransferSchema,
     'claudemd_layer': ClaudeMdLayerSchema,
     'claudemd_version': ClaudeMdVersionSchema,
     'team': TeamSchema,

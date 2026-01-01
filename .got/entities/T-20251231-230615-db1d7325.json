@@ -1,0 +1,17 @@
+{
+  "_checksum": "7d0e76b8e4493a0d",
+  "_written_at": "2025-12-31T23:06:15.372011+00:00",
+  "data": {
+    "created_at": "2025-12-31T23:06:15.363842+00:00",
+    "description": "Build PropertyIndex for fast WHERE clause lookups",
+    "entity_type": "task",
+    "id": "T-20251231-230615-db1d7325",
+    "metadata": {},
+    "modified_at": "2025-12-31T23:06:15.371957+00:00",
+    "priority": "medium",
+    "properties": {},
+    "status": "pending",
+    "title": "Add property indexing for CDG",
+    "version": 2
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "_checksum": "9f9eebfaa3d333d0",
+  "_written_at": "2025-12-31T23:05:42.582348+00:00",
+  "data": {
+    "created_at": "2025-12-31T23:05:42.579285+00:00",
+    "entity_type": "epic",
+    "id": "EPIC-20251231-230542-cd55cada",
+    "metadata": {},
+    "modified_at": "2025-12-31T23:05:42.582256+00:00",
+    "phase": 1,
+    "phases": [],
+    "properties": {},
+    "status": "active",
+    "title": "CDG: Cortical Distributed Graph",
+    "version": 2
+  }
+}
