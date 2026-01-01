@@ -1,0 +1,17 @@
+{
+  "_checksum": "df1d11c08a71be56",
+  "_written_at": "2025-12-31T23:06:15.368823+00:00",
+  "data": {
+    "created_at": "2025-12-31T23:06:15.362933+00:00",
+    "description": "Move QueryBuilder to cortical/cdg/query.py with partition hints",
+    "entity_type": "task",
+    "id": "T-20251231-230615-f21f6294",
+    "metadata": {},
+    "modified_at": "2025-12-31T23:06:15.368793+00:00",
+    "priority": "high",
+    "properties": {},
+    "status": "pending",
+    "title": "Lift QueryBuilder from GoT to CDG",
+    "version": 2
+  }
+}

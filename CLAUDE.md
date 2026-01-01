@@ -64,6 +64,118 @@ If you can't write the scenario, you don't understand the requirement. Go back t
 
 ---
 
+## Session Start: New Agent Orientation
+
+When starting a new session or continuing from a handoff, orient yourself quickly:
+
+### Immediate Health Check
+
+```bash
+# 1. Smoke test (~7 seconds) - Does the system breathe?
+python -m pytest tests/smoke/ -v
+
+# 2. Check git status - Are there uncommitted changes?
+git status
+
+# 3. Check current branch
+git branch --show-current
+```
+
+### Test Commands with Timing
+
+| Command | Duration | Timeout | Use When |
+|---------|----------|---------|----------|
+| `pytest tests/smoke/ -v` | ~7 sec | 60s | Quick sanity check |
+| `pytest tests/unit/ -v` | ~2 min | 180s | After code changes |
+| `pytest tests/behavioral/ -v` | ~5 min | 360s | Before commit |
+| `pytest tests/ -v` | ~8 min | 600s | Full verification |
+| `pytest tests/ --cov=cortical --cov-report=term` | ~8 min | 600s | Coverage check |
+
+**Coverage threshold: 86% minimum** (enforced in CI)
+
+### Background Task Pattern
+
+For long-running tasks, use background execution to continue working:
+
+```bash
+# Start coverage check in background
+python -m pytest tests/ --cov=cortical --cov-report=term -q 2>&1 &
+
+# Check if still running
+jobs
+
+# Or use the run_in_background parameter with Bash tool
+# Then check with BashOutput tool using the returned shell ID
+```
+
+**While waiting, you can:**
+- Read documentation
+- Plan next steps
+- Research the codebase
+- Update CLAUDE.md or task tracking
+
+### Edge Cases and Recovery
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                 COMMON ISSUES & RECOVERY                     │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  TEST HANGS (no output for 2+ minutes):                     │
+│  → Kill with Ctrl+C or KillShell tool                       │
+│  → Run smaller test subset to isolate issue                 │
+│  → Check for infinite loops in recent changes               │
+│                                                              │
+│  COVERAGE DROPS BELOW 86%:                                  │
+│  → Run: pytest --cov=cortical --cov-report=term-missing     │
+│  → Look for "Miss" column to find uncovered lines           │
+│  → Add tests for critical uncovered paths                   │
+│                                                              │
+│  GIT CONFLICTS ON PUSH:                                     │
+│  → git fetch origin <branch>                                │
+│  → git rebase origin/<branch>                               │
+│  → Resolve conflicts, then push                             │
+│                                                              │
+│  FLAKY TESTS:                                               │
+│  → Run the specific test 3x: pytest <test> -v --count=3     │
+│  → If intermittent, check for timing/race conditions        │
+│  → Performance contract failures may be environment-related │
+│                                                              │
+│  MODULE AT 0% COVERAGE:                                     │
+│  → Check if it's intentionally untested (stub/placeholder)  │
+│  → cortical/cdg/ and cortical/cel/ are newer modules        │
+│  → Add tests if the module has real implementation          │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Context Recovery
+
+If you're continuing from a previous session:
+
+1. **Check for handoffs**: `got kt list --status published | head -5`
+2. **Check active tasks**: `got task list --status active`
+3. **Read recent commits**: `git log --oneline -10`
+4. **Look for draft KTs**: `got kt list --status draft`
+
+If confused about current state, create a recovery KT:
+```bash
+got kt create "Recovery: [topic]" --summary "Recovering context from..."
+```
+
+### What to Do First
+
+```
+NEW SESSION CHECKLIST:
+□ Run smoke tests (7 seconds)
+□ Check git status (uncommitted work?)
+□ Read any handoff or KT from previous session
+□ Understand the current task before coding
+□ If unclear, ask for clarification
+```
+
+---
+
 ## METUS
 
 **Mindful Execution Through Unwavering Specification**
@@ -948,6 +1060,180 @@ tests/
     ├── test_injection.py
     └── test_fuzzing.py
 ```
+
+---
+
+## Quick Reference: GoT CLI Commands
+
+```bash
+# Task Management
+got task create "Title" --priority high --sprint S1
+got task start <task_id>
+got task complete <task_id>
+got task list --status active
+
+# Sprint Management
+got sprint create "Sprint Name" --number 28
+got sprint list
+
+# Knowledge Transfer (Session Learning Capture)
+# Create and build during session
+got kt create "Session Title" --session abc123 --summary "..."
+got kt append <kt_id> "Technical Insights" "New finding..."
+got kt append <kt_id> "Decisions" "Chose X because..."
+
+# Link to related work
+got kt link <kt_id> --handoff <handoff_id>
+got kt link <kt_id> --task <task_id>
+
+# Import historical markdown
+got kt import samples/memories/2025-12-29-session.md
+
+# Search and view
+got kt list --status published --tags architecture
+got kt show <kt_id>
+
+# Lifecycle: Finalize and hand off for continuation
+got kt finalize <kt_id>                              # Publish (draft → published)
+got kt finalize <kt_id> --handoff-to agent2          # Publish + create handoff
+got kt finalize <kt_id> --handoff-to agent2 -i "Continue testing..."
+
+# Trace knowledge evolution
+got kt history <kt_id>   # Shows: KT1 → Handoff1 → KT2 → ...
+
+# Handoff (Agent-to-Agent Work Transfer)
+got handoff initiate --source agent1 --target agent2 --task T1
+got handoff accept <handoff_id>
+got handoff complete <handoff_id>
+
+# Batch Operations (Atomic Multi-Entity Creation)
+got batch <<'EOF'
+epic create "Project X" as e1
+sprint create "Sprint 1" --epic $e1 as s1
+task create "Feature A" --sprint $s1 --priority high as t1
+task create "Tests" --sprint $s1 as t2
+edge add $t2 $t1 DEPENDS_ON
+EOF
+
+# Query and Analysis
+got query "status=active AND priority=high"
+got analyze --type dependencies
+got stats
+```
+
+---
+
+## Knowledge Transfer Lifecycle
+
+Knowledge transfers capture session learnings and enable continuity across agent handoffs.
+
+### Lifecycle Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     KNOWLEDGE TRANSFER LIFECYCLE                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  1. CREATE (start of session)                                           │
+│     got kt create "Session Title" --session <session_id>                │
+│                        │                                                 │
+│                        ▼                                                 │
+│                 [KT: draft] ◄─── Active, editable                       │
+│                        │                                                 │
+│  2. BUILD (during session)                                              │
+│     got kt append <kt_id> "Technical Insights" "Finding..."             │
+│     got kt append <kt_id> "Decisions" "Chose X because..."              │
+│     got kt link <kt_id> --task <task_id>                                │
+│                        │                                                 │
+│  3. FINALIZE (end of session)                                           │
+│     got kt finalize <kt_id>                                             │
+│                        │                                                 │
+│                        ▼                                                 │
+│                 [KT: published] ◄─── Immutable, searchable              │
+│                        │                                                 │
+│  4. HANDOFF (if continuation needed)                                    │
+│     got kt finalize <kt_id> --handoff-to <agent> -i "Continue..."       │
+│                        │                                                 │
+│                        ├──CONTINUES──► [Handoff]                        │
+│                        │                    │                            │
+│                        │                    ▼                            │
+│                        │              [New KT: draft]                   │
+│                        │                                                 │
+│  5. HISTORY (trace evolution)                                           │
+│     got kt history <kt_id>                                              │
+│     Shows: KT1 → Handoff1 → KT2 → Handoff2 → KT3 (current)              │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Rules
+
+1. **One draft KT at a time** - Only maintain one active knowledge transfer per work context
+2. **Finalize before handoff** - Must publish KT before creating continuation
+3. **Published is immutable** - Once finalized, a KT cannot be modified
+4. **History is traceable** - CONTINUES edges form queryable chain
+
+### Error Handling
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     IF SOMETHING GOES WRONG                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ERROR: "KT not found"                                                  │
+│  ───────────────────────                                                │
+│  → Run: got kt list                                                     │
+│  → Check the KT ID is correct (format: KT-YYYYMMDD-HHMMSS)              │
+│  → If imported, check: .got/entities/KT-*.json exists                   │
+│                                                                          │
+│  ERROR: "Cannot finalize - not in draft status"                         │
+│  ──────────────────────────────────────────────                         │
+│  → KT is already published or archived                                  │
+│  → Run: got kt show <kt_id> to check current status                     │
+│  → Create a new KT if you need to add more content                      │
+│                                                                          │
+│  ERROR: "Import failed - 'KnowledgeTransfer' object is not iterable"    │
+│  ────────────────────────────────────────────────────────────────────   │
+│  → This is a serialization bug (should be fixed)                        │
+│  → Verify scripts/got_utils.py uses asdict(kt) not dict(kt)             │
+│                                                                          │
+│  ERROR: "Cannot link - entity not found"                                │
+│  ────────────────────────────────────────                               │
+│  → The target entity (task, handoff, decision) doesn't exist            │
+│  → Run: got task list / got handoff list to find valid IDs              │
+│                                                                          │
+│  ERROR: Session context lost                                            │
+│  ───────────────────────────                                            │
+│  → Check: got kt list --status draft for active KTs                     │
+│  → Run: got kt history <kt_id> to trace where you are                   │
+│  → If no draft exists, create new KT and link to previous               │
+│                                                                          │
+│  RECOVERY: Orphaned work (no KT created)                                │
+│  ────────────────────────────────────────                               │
+│  → Create KT from session learnings:                                    │
+│    got kt create "Recovery: <topic>" --summary "Recovered from..."      │
+│  → Link to any related work that exists                                 │
+│  → Finalize immediately to preserve                                     │
+│                                                                          │
+│  RECOVERY: Need to continue but forgot to handoff                       │
+│  ─────────────────────────────────────────────                          │
+│  → Check if previous KT is still draft: got kt list --status draft      │
+│  → If draft: got kt finalize <kt_id> --handoff-to <self>                │
+│  → If published: Create new KT and manually link:                       │
+│    got kt create "Continuation of <prev>"                               │
+│    got kt link <new_kt> --handoff <previous_handoff_if_exists>          │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Best Practices
+
+1. **Create KT early** - Start capturing learnings at session start
+2. **Append frequently** - Don't wait until end to document
+3. **Use meaningful sections** - "Technical Insights", "Decisions", "Blockers", "Next Steps"
+4. **Always finalize** - Never leave a session with an orphaned draft
+5. **Link related work** - Connect KTs to tasks, decisions, handoffs for graph traversal
+6. **Import historical docs** - Use `got kt import` to bring in existing markdown
 
 ---
 

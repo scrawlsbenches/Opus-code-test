@@ -10,10 +10,13 @@ from __future__ import annotations
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 
 from .errors import SyncError
 from .conflict import SyncConflict
+
+if TYPE_CHECKING:
+    from cortical.cdg.transaction_manager import CDGTransactionManager
 
 
 @dataclass
@@ -67,16 +70,24 @@ class SyncManager:
     - Detects merge conflicts during pull
     """
 
-    def __init__(self, got_dir: Path, git_dir: Optional[Path] = None):
+    def __init__(
+        self,
+        got_dir: Path,
+        git_dir: Optional[Path] = None,
+        tx_manager: Optional["CDGTransactionManager"] = None
+    ):
         """
         Initialize sync manager.
 
         Args:
             got_dir: Path to GoT data directory (e.g., .got/)
             git_dir: Path to git repository root (auto-detected if None)
+            tx_manager: Optional CDGTransactionManager to check for active transactions.
+                       If not provided, sync is always allowed.
         """
         self.got_dir = Path(got_dir)
         self.git_dir = Path(git_dir) if git_dir else self._find_git_root()
+        self.tx_manager = tx_manager
 
         if not self.git_dir:
             raise SyncError("Not in a git repository", got_dir=str(self.got_dir))
@@ -88,33 +99,18 @@ class SyncManager:
         Sync is blocked if there are active transactions.
         This prevents syncing incomplete/uncommitted work.
 
+        If a CDGTransactionManager is configured, it is queried for active
+        transactions. Otherwise, sync is allowed (assumes no transaction system).
+
         Returns:
             True if sync is safe, False otherwise
         """
-        # Check for active transaction files in WAL
-        wal_dir = self.got_dir / "wal"
-        if not wal_dir.exists():
-            return True
+        # If we have a transaction manager, use it to check for active transactions
+        if self.tx_manager is not None:
+            return not self.tx_manager.has_active_transactions()
 
-        # Look for active transaction markers
-        # Active transactions have WAL entries but no COMMIT/ROLLBACK
-        try:
-            result = subprocess.run(
-                ["grep", "-l", "TX_BEGIN", str(wal_dir / "*.wal")],
-                capture_output=True,
-                text=True,
-                timeout=5,
-                shell=True
-            )
-            if result.returncode == 0:
-                # Found TX_BEGIN, check if committed/rolled back
-                # This is a simplified check - real implementation would
-                # parse WAL to find incomplete transactions
-                return False
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError):
-            # If we can't check, be conservative and block
-            return False
-
+        # No transaction manager configured - allow sync
+        # This handles the case where CDG components aren't initialized
         return True
 
     def push(self) -> SyncResult:
