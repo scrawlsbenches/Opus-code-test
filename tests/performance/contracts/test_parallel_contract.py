@@ -271,7 +271,6 @@ class TestParallelDependenciesContract:
     So that we control our own infrastructure.
     """
 
-    @pytest.mark.skip(reason="CI environment variance or API mismatch - needs calibration")
     def test_parallel_uses_only_stdlib(self):
         """
         CONTRACT: Parallel module uses only Python stdlib.
@@ -279,7 +278,6 @@ class TestParallelDependenciesContract:
         No external dependencies - we build it ourselves.
         """
         import cortical.analysis.parallel as parallel_module
-        import sys
 
         # Get all imported modules
         imports = []
@@ -289,13 +287,14 @@ class TestParallelDependenciesContract:
                 if module and not module.startswith('cortical'):
                     imports.append(module.split('.')[0])
 
-        # Remove builtins
+        # Known stdlib modules
         stdlib_modules = {
             'concurrent', 'dataclasses', 'typing', 'math',
-            '__builtin__', 'builtins', '_collections_abc'
+            '__builtin__', 'builtins',
         }
 
-        external_deps = set(imports) - stdlib_modules
+        # Filter out Python internals (start with _) and known stdlib
+        external_deps = {m for m in imports if not m.startswith('_')} - stdlib_modules
 
         assert not external_deps, (
             f"CONTRACT VIOLATION: Parallel module has external dependencies: {external_deps}"
