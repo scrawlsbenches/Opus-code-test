@@ -60,7 +60,6 @@ class TestDeveloperUsesTypedResults:
         assert first_match.doc_id == "neural_networks.md", "Should preserve doc_id"
         assert first_match.score == 0.95, "Should preserve score"
 
-    @pytest.mark.skip(reason="API mismatch - needs alignment with implementation")
     def test_scenario_developer_creates_passage_matches_with_context(self):
         """
         Scenario: Working with passage-level results
@@ -88,9 +87,9 @@ class TestDeveloperUsesTypedResults:
         assert passage.start == 1500, "Should store start position"
         assert passage.end == 1580, "Should store end position"
 
-        # AND can easily cite passages
+        # AND can easily cite passages (location uses dash: "doc:start-end")
         location = passage.location
-        assert "1500:1580" in location, "Location property should format position"
+        assert "1500-1580" in location, "Location property should format position"
         assert passage.length == 80, "Length property should calculate correctly"
 
     def test_scenario_developer_integrates_with_cortical_processor(self):
@@ -309,7 +308,6 @@ class TestDeveloperUsesTypedResults:
         # AND I can gradually migrate codebase
         # Old code can continue using tuples while new code uses typed objects
 
-    @pytest.mark.skip(reason="API mismatch - needs alignment with implementation")
     def test_scenario_developer_accesses_passage_properties(self):
         """
         Scenario: Using computed properties on passages
@@ -333,15 +331,14 @@ class TestDeveloperUsesTypedResults:
         location = passage.location
         length = passage.length
 
-        # THEN location and length are calculated correctly
-        assert location == "document.py:100:124", "Location should format correctly"
+        # THEN location and length are calculated correctly (format: "doc:start-end")
+        assert location == "document.py:100-124", "Location should format correctly"
         assert length == 24, "Length should be end - start"
 
         # AND I can easily format citations
         citation = f"[{passage.location}]"
-        assert citation == "[document.py:100:124]", "Should create proper citation"
+        assert citation == "[document.py:100-124]", "Should create proper citation"
 
-    @pytest.mark.skip(reason="API mismatch - needs alignment with implementation")
     def test_scenario_developer_works_with_passage_conversion(self):
         """
         Scenario: Converting passage tuples to typed objects
@@ -353,9 +350,10 @@ class TestDeveloperUsesTypedResults:
         Because passage results are more complex than document results.
         """
         # GIVEN raw passage results from processor
+        # Tuple format is: (doc_id, text, start, end, score)
         raw_passages = [
-            ("Sample passage text", "doc1.txt", 0, 50, 0.92),
-            ("Another passage", "doc2.txt", 100, 115, 0.85)
+            ("doc1.txt", "Sample passage text", 0, 50, 0.92),
+            ("doc2.txt", "Another passage", 100, 115, 0.85)
         ]
 
         # WHEN I convert to PassageMatch objects
