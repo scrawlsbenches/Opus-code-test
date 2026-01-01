@@ -3,11 +3,18 @@ CDG configuration types.
 
 Provides configuration dataclasses for the Cortical Distributed Graph,
 controlling durability modes, partition settings, and operational parameters.
+
+This module defines the configuration options that make CDG a flexible,
+configurable storage layer that can serve different use cases:
+
+- Simple apps: transactions=False, wal=False (fast, ephemeral)
+- GoT workloads: transactions=True, wal=True, recovery=full (ACID)
+- High-performance: transactions=False, recovery=none (maximum speed)
 """
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
+from typing import Optional, Callable, Any
 
 
 class DurabilityMode(Enum):
@@ -28,6 +35,64 @@ class DurabilityMode(Enum):
     FAST = "fast"           # No fsync, maximum performance
     BALANCED = "balanced"   # Fsync on commit
     PARANOID = "paranoid"   # Fsync on every write
+
+
+class IsolationLevel(Enum):
+    """
+    Transaction isolation level.
+
+    Controls how transactions see concurrent modifications:
+
+    - SNAPSHOT: Transactions see a consistent snapshot from start time
+                (recommended, prevents dirty reads and non-repeatable reads)
+    - READ_COMMITTED: Transactions see committed changes from other transactions
+                      (allows non-repeatable reads but prevents dirty reads)
+
+    Note: CDG currently only implements SNAPSHOT isolation.
+    READ_COMMITTED is reserved for future use.
+    """
+    SNAPSHOT = "snapshot"
+    READ_COMMITTED = "read_committed"
+
+
+class RecoveryMode(Enum):
+    """
+    Recovery strategy on startup.
+
+    Controls how aggressively CDG attempts to recover from crashes:
+
+    - NONE: No recovery, fastest startup (use for ephemeral data)
+    - CHECKSUM: Verify entity checksums, quarantine corrupt (basic safety)
+    - FULL: WAL replay + checksum verification + orphan repair (maximum safety)
+
+    Recommendation:
+    - Development: NONE (fast iteration)
+    - Testing: CHECKSUM (catch corruption)
+    - Production: FULL (complete crash recovery)
+    """
+    NONE = "none"
+    CHECKSUM = "checksum"
+    FULL = "full"
+
+
+class OrphanStrategy(Enum):
+    """
+    Strategy for handling orphaned entities.
+
+    Orphans are entity files that exist on disk but have no corresponding
+    WAL record. This can happen from:
+    - Pre-transaction era data
+    - Manual file edits
+    - Crashes during non-WAL writes
+
+    Strategies:
+    - FAIL: Raise error, refuse to start (strict mode)
+    - DELETE: Remove orphaned files (clean slate)
+    - REPAIR: Adopt orphans by creating synthetic WAL entries (preserve data)
+    """
+    FAIL = "fail"
+    DELETE = "delete"
+    REPAIR = "repair"
 
 
 @dataclass
@@ -67,13 +132,29 @@ class CDGConfig:
     validate_on_write: bool = True
     strict_edge_types: bool = True
 
+    # Transaction settings
+    transactions_enabled: bool = False  # Enable begin/commit/rollback semantics
+    isolation_level: IsolationLevel = IsolationLevel.SNAPSHOT
+    transaction_timeout_seconds: int = 300  # 5 minutes default
+
     # WAL settings
-    enable_wal: bool = True
+    enable_wal: bool = False  # Enable write-ahead log (requires transactions)
     wal_archive_enabled: bool = True
+    wal_archive_threshold: int = 1000  # Archive after N entries
+
+    # Recovery settings
+    recovery_mode: RecoveryMode = RecoveryMode.CHECKSUM
+    orphan_strategy: OrphanStrategy = OrphanStrategy.REPAIR
+    auto_recover_on_startup: bool = True
 
     # History settings (for MVCC)
     enable_history: bool = True
     history_retention_days: int = 30
+
+    # Index callback (for GoT integration)
+    # Called during recovery to rebuild indexes
+    # Signature: Callable[[Path], int] where Path is store_dir, returns count
+    index_rebuild_callback: Optional[Callable[[Any], int]] = None
 
     # Storage optimization
     compression_enabled: bool = False
@@ -106,6 +187,96 @@ class CDGConfig:
             raise ValueError(
                 "super_node_overflow_threshold must be less than partition_threshold"
             )
+
+        # Validate transaction/WAL consistency
+        if self.enable_wal and not self.transactions_enabled:
+            # WAL without transactions is allowed but unusual
+            # WAL can still be used for crash recovery of non-transactional writes
+            pass
+
+    @classmethod
+    def for_got(cls) -> "CDGConfig":
+        """
+        Pre-configured for GoT workloads.
+
+        Enables full ACID transactions with WAL-based crash recovery.
+        This is the configuration that GoT uses when delegating to CDG.
+
+        Features enabled:
+        - Transactions (begin/commit/rollback)
+        - Write-Ahead Log (crash recovery)
+        - Full recovery mode (WAL replay + orphan repair)
+        - Snapshot isolation
+
+        Returns:
+            CDGConfig configured for GoT
+        """
+        return cls(
+            transactions_enabled=True,
+            isolation_level=IsolationLevel.SNAPSHOT,
+            enable_wal=True,
+            wal_archive_enabled=True,
+            recovery_mode=RecoveryMode.FULL,
+            orphan_strategy=OrphanStrategy.REPAIR,
+            auto_recover_on_startup=True,
+            durability=DurabilityMode.BALANCED,
+            enable_history=True,
+        )
+
+    @classmethod
+    def for_simple_storage(cls) -> "CDGConfig":
+        """
+        Pre-configured for simple storage without transactions.
+
+        Provides basic entity storage with checksum verification
+        but no transaction overhead. Good for simple applications.
+
+        Features enabled:
+        - Checksum verification (data integrity)
+        - History (MVCC for snapshot reads)
+        - No transactions (writes are auto-committed)
+        - No WAL (no crash recovery)
+
+        Returns:
+            CDGConfig for simple storage
+        """
+        return cls(
+            transactions_enabled=False,
+            enable_wal=False,
+            recovery_mode=RecoveryMode.CHECKSUM,
+            orphan_strategy=OrphanStrategy.REPAIR,
+            auto_recover_on_startup=True,
+            durability=DurabilityMode.BALANCED,
+            enable_history=True,
+        )
+
+    @classmethod
+    def for_high_performance(cls) -> "CDGConfig":
+        """
+        Pre-configured for maximum throughput, ephemeral data.
+
+        Disables all safety features for maximum write speed.
+        Use only when data loss is acceptable.
+
+        Features disabled:
+        - Transactions
+        - WAL
+        - Recovery
+        - Fsync
+
+        Returns:
+            CDGConfig for high-performance ephemeral storage
+        """
+        return cls(
+            transactions_enabled=False,
+            enable_wal=False,
+            recovery_mode=RecoveryMode.NONE,
+            orphan_strategy=OrphanStrategy.DELETE,
+            auto_recover_on_startup=False,
+            durability=DurabilityMode.FAST,
+            enable_history=False,
+            validate_on_write=False,
+        )
 
 
 @dataclass

@@ -40,8 +40,25 @@ from .errors import (
     ConflictError,
     StorageError,
 )
-from .config import CDGConfig, DurabilityMode
+from .config import (
+    CDGConfig,
+    DurabilityMode,
+    IsolationLevel,
+    RecoveryMode,
+    OrphanStrategy,
+)
 from .storage import CDGStore, EntityFactory, default_entity_factory
+from .wal import CDGWALManager
+from .transaction_manager import (
+    CDGTransactionManager,
+    Conflict,
+    CommitResult,
+)
+from .recovery import (
+    CDGRecoveryManager,
+    RecoveryResult,
+    RepairResult,
+)
 
 __all__ = [
     # Types
@@ -57,6 +74,16 @@ __all__ = [
     "Transaction",
     "TransactionState",
     "generate_transaction_id",
+    # Transaction Manager
+    "CDGTransactionManager",
+    "Conflict",
+    "CommitResult",
+    # Recovery
+    "CDGRecoveryManager",
+    "RecoveryResult",
+    "RepairResult",
+    # WAL
+    "CDGWALManager",
     # Errors
     "CDGError",
     "ValidationError",
@@ -67,4 +94,7 @@ __all__ = [
     # Configuration
     "CDGConfig",
     "DurabilityMode",
+    "IsolationLevel",
+    "RecoveryMode",
+    "OrphanStrategy",
 ]
