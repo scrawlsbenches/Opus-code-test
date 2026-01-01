@@ -328,10 +328,11 @@ class TestDeveloperQueriesConnectedTasks:
         manager.add_task_to_sprint(task3.id, sprint.id)
 
         # When I query for tasks connected to the sprint
+        # Edge is Sprint --CONTAINS--> Task, so we use "outgoing" from sprint
         results = (
             Query(manager)
             .tasks()
-            .connected_to(sprint.id, via="CONTAINS", direction="incoming")
+            .connected_to(sprint.id, via="CONTAINS", direction="outgoing")
             .execute()
         )
 

@@ -558,14 +558,27 @@ class GoTManager:
         """
         Get a task by ID (read-only).
 
+        Uses cache if enabled for faster repeated reads.
+
         Args:
             task_id: Task identifier
 
         Returns:
             Task object or None if not found
         """
+        # Check cache first
+        cached = self._cache_get(task_id)
+        if cached is not None and isinstance(cached, Task):
+            return cached
+
+        # Cache miss - read from storage
         with self.transaction(read_only=True) as tx:
             task = tx.get_task(task_id)
+
+        # Populate cache on miss
+        if task is not None:
+            self._cache_set(task_id, task)
+
         return task
 
     def update_task(self, task_id: str, **updates) -> Task:
@@ -2233,8 +2246,7 @@ class TransactionContext:
             if hasattr(task, key):
                 setattr(task, key, value)
 
-        # Bump version
-        task.bump_version()
+        # Note: Version is bumped automatically by storage layer during commit
 
         # Write back
         self.tx_manager.write(self.tx, task)
