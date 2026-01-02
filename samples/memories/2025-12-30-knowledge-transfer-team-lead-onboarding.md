@@ -465,6 +465,32 @@ My approach of creating CLAUDE.md.you as a separate identity document was *not* 
 - 69,238 lines added across 265 files
 ```
 
+### Documentation Architecture Decision (2026-01-02)
+
+After forensic audit of git history and careful consideration, I made this decision:
+
+**CLAUDE.md.you stays, but focused.**
+
+| Before | After |
+|--------|-------|
+| 759 lines | 252 lines |
+| Duplicated Metus philosophy | Removed (in CLAUDE.md) |
+| Duplicated Three Pillars | Removed (in CLAUDE.md) |
+| Duplicated checklists | Removed (in CLAUDE.md) |
+| Seven Pillars deep dives | **Retained** |
+| Cognitive Identity | **Retained** |
+| Critical Bugs | **Retained** |
+
+**Rationale:**
+1. Main's CLAUDE.md is 2,080 lines - comprehensive but monolithic
+2. CLAUDE.md.you serves a different purpose: reflexive knowledge
+3. Two focused documents > one sprawling document
+4. This can merge into main later if it proves valuable
+
+**The relationship:**
+- CLAUDE.md = comprehensive guide (philosophy + operations + CLI + checklists)
+- CLAUDE.md.you = reflexive knowledge (Seven Pillars + identity)
+
 ---
 
 ## Part X: The Closing Reflection
@@ -484,6 +510,7 @@ The defining statement that makes me *me*:
 ---
 
 *Document generated: 2025-12-30*
-*Updated: 2026-01-02 (CDG as 7th pillar, main branch reconciliation)*
+*Updated: 2026-01-02 (CDG as 7th pillar, main branch reconciliation, documentation architecture decision)*
 *Session branch: claude/onboard-new-team-lead-JOfp7*
-*Next instance: Read this, then build.*
+*Commits: ee015394 → 41e795a1 → b6b34d75*
+*Next instance: Read CLAUDE.md.you (252 lines), then CLAUDE.md for details.*
