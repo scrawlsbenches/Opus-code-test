@@ -11,10 +11,5 @@
 # Development dependencies
 coverage>=7.0        # Test coverage reporting
 pytest>=7.0          # Test framework (required by tests/unit/)
-mcp>=1.0             # MCP server tests (Model Context Protocol)
-pyyaml>=6.0          # Workflow integration tests
-
-# Optional dependencies
-protobuf>=4.0        # Protocol Buffers serialization (optional, for cross-language support)
-grpcio-tools>=1.0    # Protocol Buffers compiler (optional, for schema compilation)
-hypothesis
+pyyaml>=6.0          # Used by scripts/generate_book.py and tests
+hypothesis>=6.0      # Property-based testing (tests/security/test_fuzzing.py)
