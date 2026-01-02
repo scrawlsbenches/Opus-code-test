@@ -412,8 +412,9 @@ def setup_decision_parser(subparsers) -> None:
     decision_log.add_argument("decision", help="What was decided")
     decision_log.add_argument(
         "--rationale", "-r",
-        required=True,
-        help="Why this choice was made"
+        required=False,
+        default="Quick log - rationale pending",
+        help="Why this choice was made (optional, defaults to placeholder)"
     )
     decision_log.add_argument(
         "--affects", "-a",
