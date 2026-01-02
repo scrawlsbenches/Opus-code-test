@@ -1,0 +1,17 @@
+{
+  "_checksum": "40961ad3f82463fe",
+  "_written_at": "2026-01-02T12:04:53.001428+00:00",
+  "data": {
+    "affects": [
+      "T-20260102-110258-99c0e016"
+    ],
+    "created_at": "2026-01-02T12:04:52.997208+00:00",
+    "entity_type": "decision",
+    "id": "D-20260102-120452-6cc97d53",
+    "modified_at": "2026-01-02T12:04:53.001326+00:00",
+    "properties": {},
+    "rationale": "Sprint was the only core entity type missing a way to capture context/description at creation time. Task has --description, Decision has --rationale, KT has --summary. Now Sprint has --description/--notes. This prevents loss of intent when creating sprints and protects against forgetting why a sprint was created.",
+    "title": "Added --description/--notes to sprint create CLI for context preservation",
+    "version": 2
+  }
+}
