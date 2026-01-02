@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "entity_type": "knowledge_transfer",
+  "data": {
+    "id": "KT-20260102-163709",
+    "entity_type": "knowledge_transfer",
+    "version": 1,
+    "created_at": "2026-01-02T16:37:09.800351",
+    "modified_at": "2026-01-02T16:37:09.800359",
+    "title": "CLI Fix Test",
+    "session_id": "",
+    "session_date": "",
+    "summary": "Testing CLI fixes",
+    "sections": {},
+    "code_refs": [],
+    "related_handoffs": [],
+    "related_tasks": [],
+    "related_decisions": [],
+    "source_file": null,
+    "tags": [],
+    "status": "draft",
+    "properties": {}
+  }
+}
