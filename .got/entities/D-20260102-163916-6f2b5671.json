@@ -1,0 +1,15 @@
+{
+  "_checksum": "59da6527944a7648",
+  "_written_at": "2026-01-02T16:39:16.284107+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-02T16:39:16.280490+00:00",
+    "entity_type": "decision",
+    "id": "D-20260102-163916-6f2b5671",
+    "modified_at": "2026-01-02T16:39:16.284054+00:00",
+    "properties": {},
+    "rationale": "Exit code 2 errors were caused by required args that blocked quick usage. Made rationale optional with default for fast logging. Added named flag aliases to kt append for clearer syntax alongside positional args.",
+    "title": "Fixed CLI usability issues: decision log rationale now optional, kt append supports both positional and named args",
+    "version": 2
+  }
+}

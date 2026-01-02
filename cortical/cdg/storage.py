@@ -144,6 +144,10 @@ class CDGStore:
         self.history_dir = self.store_dir / "_history"
         self.history_dir.mkdir(exist_ok=True)
 
+        # Pending history directory for crash-safe history writes
+        self._pending_history_dir = self.history_dir / "_pending"
+        self._pending_history_dir.mkdir(exist_ok=True)
+
         # Process lock for concurrent history file access protection
         self._history_lock = ProcessLock(self.history_dir / ".history.lock")
 
@@ -161,6 +165,9 @@ class CDGStore:
 
         # Load current version
         self._version = self._load_version()
+
+        # Recover any pending history entries from interrupted writes
+        self._recover_pending_history()
 
     def current_version(self) -> int:
         """
@@ -257,16 +264,29 @@ class CDGStore:
                 # Validate entity before writing
                 self._validate_entity(entity)
 
-                # Save current state to history before overwriting
-                if self.exists(entity.id):
-                    self._save_to_history(entity.id, self._version)
+                # Calculate expected entity version after write
+                current_entity = self.read(entity.id)
+                expected_entity_version = (current_entity.version + 1) if current_entity else 1
 
-                # Increment entity version
+                # Phase 1: Capture and write pending history (crash-safe)
+                # This happens BEFORE entity write so we can recover on crash
+                pending_path = None
+                if current_entity is not None:
+                    history_entry = self._capture_history_entry(
+                        entity.id, self._version, expected_entity_version
+                    )
+                    if history_entry is not None:
+                        pending_path = self._write_pending_history(entity.id, history_entry)
+
+                # Phase 2: Write entity
                 entity.bump_version()
-
-                # Write entity to file
                 path = self._entity_path(entity.id)
                 self._write_with_checksum(path, entity.to_dict())
+
+                # Phase 3: Finalize history (move from pending to main)
+                # If crash after phase 2 but before phase 3, recovery will finalize
+                if pending_path is not None:
+                    self._finalize_pending_history(entity.id, pending_path)
 
                 # Increment global version
                 self._version += 1
@@ -307,14 +327,24 @@ class CDGStore:
 
                 temp_files = []
                 renamed_files = []  # Track successful renames for rollback
+                pending_history = []  # (entity_id, pending_path) for crash-safe history
 
                 try:
-                    # Step 1: Save old states to history and write new states to temp files
+                    # Step 1: Capture history and write to pending files (crash-safe)
+                    # Pending files are written BEFORE entity writes so crash recovery works
                     for entity_id, entity in write_set.items():
-                        # Save current state to history if entity exists
-                        if self.exists(entity_id):
-                            self._save_to_history(entity_id, self._version)
+                        current_entity = self.read(entity_id)
+                        if current_entity is not None:
+                            expected_version = current_entity.version + 1
+                            entry = self._capture_history_entry(
+                                entity_id, self._version, expected_version
+                            )
+                            if entry is not None:
+                                pending_path = self._write_pending_history(entity_id, entry)
+                                pending_history.append((entity_id, pending_path))
 
+                    # Step 2: Write new states to temp files
+                    for entity_id, entity in write_set.items():
                         # Increment entity version
                         entity.bump_version()
 
@@ -323,16 +353,21 @@ class CDGStore:
                         self._write_with_checksum(temp_path, entity.to_dict())
                         temp_files.append((temp_path, self._entity_path(entity_id)))
 
-                    # Step 2: Fsync all temp files (respects durability mode)
+                    # Step 3: Fsync all temp files (respects durability mode)
                     for temp_path, _ in temp_files:
                         self._fsync_file(temp_path)
 
-                    # Step 3: Rename all temp files to final (atomic on POSIX)
+                    # Step 4: Rename all temp files to final (atomic on POSIX)
                     for temp_path, final_path in temp_files:
                         temp_path.rename(final_path)
                         renamed_files.append(final_path)
 
-                    # Step 4: Update global version
+                    # Step 5: Finalize pending history files
+                    # If crash after step 4 but before step 5, recovery will finalize
+                    for entity_id, pending_path in pending_history:
+                        self._finalize_pending_history(entity_id, pending_path)
+
+                    # Step 6: Update global version
                     self._version += 1
                     self._save_version()
 
@@ -348,6 +383,12 @@ class CDGStore:
                     for temp_path, _ in temp_files:
                         if temp_path.exists():
                             temp_path.unlink()
+
+                    # Clean up pending history files (writes didn't complete)
+                    for _, pending_path in pending_history:
+                        if pending_path.exists():
+                            pending_path.unlink()
+
                     raise
 
     def exists(self, entity_id: str) -> bool:
@@ -392,6 +433,61 @@ class CDGStore:
                 self._save_version()
 
                 return True
+
+    def apply_deletes(self, delete_set: set) -> int:
+        """
+        Delete multiple entities atomically.
+
+        Thread-safe and process-safe via write locks.
+        Either all deletes succeed or none do (rollback on failure).
+
+        Args:
+            delete_set: Set of entity IDs to delete
+
+        Returns:
+            New global version after deletes
+
+        Raises:
+            Exception: If any delete fails (with rollback attempted)
+        """
+        if not delete_set:
+            return self._version
+
+        # Acquire both thread and process locks for full safety
+        with self._write_lock:
+            with self._write_process_lock:
+                deleted_files = []  # Track for rollback: (entity_id, entity_data)
+
+                try:
+                    # Step 1: Save all entities to history and capture data for rollback
+                    for entity_id in delete_set:
+                        path = self._entity_path(entity_id)
+                        if path.exists():
+                            # Read entity data for potential rollback
+                            entity_data = path.read_text()
+
+                            # Save to history before deleting
+                            self._save_to_history(entity_id, self._version)
+
+                            # Delete file
+                            path.unlink()
+                            deleted_files.append((entity_id, entity_data, path))
+
+                    # Step 2: Update global version (only if we deleted something)
+                    if deleted_files:
+                        self._version += 1
+                        self._save_version()
+
+                    return self._version
+
+                except Exception:
+                    # Rollback: Restore deleted files
+                    for entity_id, entity_data, path in deleted_files:
+                        try:
+                            path.write_text(entity_data)
+                        except Exception:
+                            pass  # Best effort rollback
+                    raise
 
     def _entity_path(self, entity_id: str) -> Path:
         """Get path for entity JSON file."""
@@ -577,6 +673,166 @@ class CDGStore:
             with open(history_path, 'a', encoding='utf-8') as f:
                 json.dump(history_entry, f, sort_keys=True)
                 f.write('\n')
+
+    def _capture_history_entry(
+        self, entity_id: str, global_version: int, expected_entity_version: int
+    ) -> Optional[dict]:
+        """
+        Capture current entity state for history WITHOUT persisting.
+
+        This allows us to capture the "before" state and use atomic
+        pending file pattern for crash-safe history persistence.
+
+        Args:
+            entity_id: Entity identifier
+            global_version: Global version to associate with this snapshot
+            expected_entity_version: Entity version AFTER the write completes
+                                    (used for crash recovery validation)
+
+        Returns:
+            History entry dict, or None if entity doesn't exist
+        """
+        path = self._entity_path(entity_id)
+        if not path.exists():
+            return None
+
+        wrapper = self._read_and_verify(path)
+        data = wrapper["data"]
+
+        return {
+            "global_version": global_version,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "data": data,
+            "expected_entity_version": expected_entity_version,  # For crash recovery
+        }
+
+    def _write_pending_history(self, entity_id: str, history_entry: dict) -> Path:
+        """
+        Write history entry to pending file (crash-safe first phase).
+
+        The pending file is written and fsynced BEFORE entity write.
+        On crash recovery, pending files are validated and finalized.
+
+        Args:
+            entity_id: Entity identifier
+            history_entry: History entry dict from _capture_history_entry
+
+        Returns:
+            Path to the pending file
+        """
+        pending_path = self._pending_history_dir / f"{entity_id}.pending"
+
+        with open(pending_path, 'w', encoding='utf-8') as f:
+            json.dump(history_entry, f, sort_keys=True)
+            f.write('\n')
+            if self.durability != DurabilityMode.FAST:
+                f.flush()
+                os.fsync(f.fileno())
+
+        return pending_path
+
+    def _finalize_pending_history(self, entity_id: str, pending_path: Path) -> None:
+        """
+        Finalize pending history by appending to main history file.
+
+        Called AFTER entity write succeeds. Removes the pending file after
+        successful append.
+
+        Args:
+            entity_id: Entity identifier
+            pending_path: Path to the pending file
+        """
+        if not pending_path.exists():
+            return
+
+        history_path = self._history_path(entity_id)
+
+        # Read pending entry
+        with open(pending_path, 'r', encoding='utf-8') as f:
+            entry_line = f.read()
+
+        # Parse to remove the recovery metadata before storing
+        entry = json.loads(entry_line.strip())
+        entry.pop("expected_entity_version", None)  # Remove recovery metadata
+
+        # Append to main history file
+        with self._history_lock:
+            with open(history_path, 'a', encoding='utf-8') as f:
+                json.dump(entry, f, sort_keys=True)
+                f.write('\n')
+                if self.durability != DurabilityMode.FAST:
+                    f.flush()
+                    os.fsync(f.fileno())
+
+        # Remove pending file
+        pending_path.unlink()
+
+    def _recover_pending_history(self) -> None:
+        """
+        Recover any pending history entries from interrupted writes.
+
+        Called on startup to handle crash recovery. For each pending file:
+        - If entity version matches expected_entity_version: finalize (write succeeded)
+        - Otherwise: delete pending (write did not complete)
+
+        This ensures history is never lost if crash happens after entity
+        write but before history finalization.
+        """
+        if not self._pending_history_dir.exists():
+            return
+
+        for pending_path in self._pending_history_dir.glob("*.pending"):
+            entity_id = pending_path.stem
+
+            try:
+                with open(pending_path, 'r', encoding='utf-8') as f:
+                    entry = json.loads(f.read().strip())
+
+                expected_version = entry.get("expected_entity_version")
+                if expected_version is None:
+                    # Old format pending file, delete it
+                    pending_path.unlink()
+                    continue
+
+                # Check if entity write completed
+                entity = self.read(entity_id)
+                if entity is not None and entity.version == expected_version:
+                    # Entity write succeeded, finalize history
+                    self._finalize_pending_history(entity_id, pending_path)
+                else:
+                    # Entity write did not complete, discard pending history
+                    pending_path.unlink()
+
+            except (json.JSONDecodeError, OSError):
+                # Corrupted pending file, delete it
+                pending_path.unlink()
+
+    def _persist_history_entry(self, entity_id: str, history_entry: dict) -> None:
+        """
+        Persist a previously captured history entry (legacy direct append).
+
+        NOTE: For crash-safe history, use _write_pending_history + _finalize_pending_history.
+        This method is kept for backward compatibility but does NOT guarantee
+        history persistence on crash between entity write and history write.
+
+        Args:
+            entity_id: Entity identifier
+            history_entry: History entry dict from _capture_history_entry
+        """
+        # Remove recovery metadata if present
+        entry = dict(history_entry)
+        entry.pop("expected_entity_version", None)
+
+        history_path = self._history_path(entity_id)
+
+        with self._history_lock:
+            with open(history_path, 'a', encoding='utf-8') as f:
+                json.dump(entry, f, sort_keys=True)
+                f.write('\n')
+                # fsync history file for durability
+                if self.durability != DurabilityMode.FAST:
+                    f.flush()
+                    os.fsync(f.fileno())
 
     def _load_version(self) -> int:
         """

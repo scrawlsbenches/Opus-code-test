@@ -1,0 +1,19 @@
+{
+  "_checksum": "538956039dbfe960",
+  "_written_at": "2026-01-02T17:07:45.362235+00:00",
+  "data": {
+    "created_at": "2026-01-02T17:07:45.358490+00:00",
+    "description": "storage.py:318-324. bump_version modifies entity before successful write. Failed write leaves caller with wrong version. Fix: Copy entity before bumping.",
+    "entity_type": "task",
+    "id": "T-20260102-170745-1bfa0abb",
+    "metadata": {},
+    "modified_at": "2026-01-02T17:07:45.362186+00:00",
+    "priority": "critical",
+    "properties": {
+      "category": "bugfix"
+    },
+    "status": "pending",
+    "title": "CRITICAL: CDG mutations persist after failed writes",
+    "version": 2
+  }
+}

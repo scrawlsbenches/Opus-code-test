@@ -1,0 +1,19 @@
+{
+  "_checksum": "c11635f9c91e12f9",
+  "_written_at": "2026-01-02T17:07:19.469139+00:00",
+  "data": {
+    "created_at": "2026-01-02T17:07:19.464864+00:00",
+    "description": "tx_manager.py:315-318. Catch-all exception masks rollback failures. Fix: Nested try-except with proper error chaining.",
+    "entity_type": "task",
+    "id": "T-20260102-170719-b7d5a506",
+    "metadata": {},
+    "modified_at": "2026-01-02T17:07:19.469068+00:00",
+    "priority": "critical",
+    "properties": {
+      "category": "bugfix"
+    },
+    "status": "pending",
+    "title": "CRITICAL: Fix transaction rollback failure leaves unknown state",
+    "version": 2
+  }
+}

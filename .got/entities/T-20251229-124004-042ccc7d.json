@@ -1,19 +1,19 @@
 {
-  "_checksum": "d55bf0772259d857",
-  "_written_at": "2025-12-29T12:40:04.465638+00:00",
+  "_checksum": "40736e0e2ce87433",
+  "_written_at": "2026-01-02T17:49:49.434872+00:00",
   "data": {
     "created_at": "2025-12-29T12:40:04.462037+00:00",
-    "description": "Location: cortical/got/versioned_store.py:51-84. Two ProcessLocks with no defined acquisition order. Define and enforce lock ordering (alphabetical: history_lock \u2192 version_lock).",
+    "description": "STALE: versioned_store.py was refactored (2025-12-31) and now delegates to CDGStore. Lock ordering in CDGStore is consistent: write_lock -> write_process_lock -> history_lock/version_locks. Original issue may have been fixed during migration. Needs verification that no other code paths violate lock ordering.",
     "entity_type": "task",
     "id": "T-20251229-124004-042ccc7d",
     "metadata": {},
-    "modified_at": "2025-12-29T12:40:04.465564+00:00",
+    "modified_at": "2026-01-02T17:49:49.434823+00:00",
     "priority": "critical",
     "properties": {
       "category": "feature"
     },
     "status": "pending",
     "title": "Fix potential deadlock in versioned_store lock acquisition",
-    "version": 2
+    "version": 3
   }
 }

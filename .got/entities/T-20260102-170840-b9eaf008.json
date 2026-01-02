@@ -1,0 +1,19 @@
+{
+  "_checksum": "881a7b55fc50d8d0",
+  "_written_at": "2026-01-02T17:08:40.247562+00:00",
+  "data": {
+    "created_at": "2026-01-02T17:08:40.243039+00:00",
+    "description": "transaction_manager.py:252-302. tx passed by reference, can be modified during commit. Conflict check invalidated. Fix: Snapshot write_set before commit.",
+    "entity_type": "task",
+    "id": "T-20260102-170840-b9eaf008",
+    "metadata": {},
+    "modified_at": "2026-01-02T17:08:40.247488+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "bugfix"
+    },
+    "status": "pending",
+    "title": "HIGH: CDG write-set modified during conflict detection",
+    "version": 2
+  }
+}

@@ -198,13 +198,32 @@ def cmd_kt_append(args, manager: "TransactionalGoTAdapter") -> int:
     Handle 'got knowledge append' command.
 
     Appends a section to an existing knowledge transfer document.
-    Content can be provided as argument or via stdin.
+    Content can be provided as positional argument or via named flags.
+
+    Supports both:
+        kt append KT-xxx "Section" "Content"  (positional)
+        kt append KT-xxx --section "Section" --content "Content"  (named)
     """
     kt_id = args.kt_id
-    section_heading = args.section_heading
+
+    # Prefer named flags over positional args (allows both syntaxes)
+    section_heading = getattr(args, 'section_flag', None) or args.section_heading
+    content = getattr(args, 'content_flag', None) or args.content
+
+    # Validate required arguments
+    if not section_heading:
+        print("Error: Section heading required. Use positional arg or --section/-s")
+        print("Usage: kt append KT-xxx \"Section\" \"Content\"")
+        print("   or: kt append KT-xxx --section \"Section\" --content \"Content\"")
+        return 1
+
+    if not content:
+        print("Error: Content required. Use positional arg or --content/-c")
+        print("Usage: kt append KT-xxx \"Section\" \"Content\"")
+        print("   or: kt append KT-xxx --section \"Section\" --content \"Content\"")
+        return 1
 
     # Read content from stdin if '-' is specified
-    content = args.content
     if content == '-':
         content = sys.stdin.read().strip()
 
@@ -615,15 +634,36 @@ def setup_knowledge_transfer_parser(subparsers) -> None:
     )
 
     # kt append
+    # Supports both positional and named arguments for flexibility:
+    #   kt append KT-xxx "Section" "Content"  (positional)
+    #   kt append KT-xxx --section "Section" --content "Content"  (named)
     append_parser = kt_subparsers.add_parser(
         "append",
         help="Append a section to existing document"
     )
     append_parser.add_argument("kt_id", help="Knowledge transfer ID")
-    append_parser.add_argument("section_heading", help="Section heading")
+    append_parser.add_argument(
+        "section_heading",
+        nargs="?",
+        default=None,
+        help="Section heading (positional, or use --section)"
+    )
     append_parser.add_argument(
         "content",
-        help="Section content (use '-' to read from stdin)"
+        nargs="?",
+        default=None,
+        help="Section content (positional, or use --content; use '-' for stdin)"
+    )
+    # Named flag alternatives for clearer usage
+    append_parser.add_argument(
+        "--section", "-s",
+        dest="section_flag",
+        help="Section heading (alternative to positional)"
+    )
+    append_parser.add_argument(
+        "--content", "-c",
+        dest="content_flag",
+        help="Section content (alternative to positional)"
     )
 
     # kt link

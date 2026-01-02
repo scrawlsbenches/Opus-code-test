@@ -35,7 +35,7 @@ import secrets
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Dict, Optional, Any, Set
+from typing import Dict, Optional, Any, Set, FrozenSet
 
 from .types import Entity
 
@@ -123,6 +123,7 @@ class Transaction:
     snapshot_version: int
     write_set: Dict[str, Entity] = field(default_factory=dict)
     read_set: Dict[str, int] = field(default_factory=dict)
+    delete_set: Set[str] = field(default_factory=set)  # Entity IDs to delete atomically
 
     # CDG extension: partition tracking
     touched_partitions: Set[int] = field(default_factory=set)
@@ -194,6 +195,35 @@ class Transaction:
         """
         self.write_set[entity.id] = entity
         self.touched_partitions.add(partition_id)
+
+    def add_delete(self, entity_id: str, partition_id: int = 0) -> None:
+        """
+        Mark an entity for deletion.
+
+        Deletes are buffered until commit and applied atomically.
+        If the same entity_id is in write_set, it will be removed
+        (delete overrides write within same transaction).
+
+        Args:
+            entity_id: Entity to delete
+            partition_id: Partition the entity is in (CDG extension)
+        """
+        self.delete_set.add(entity_id)
+        # Remove from write_set if present (delete wins over write)
+        self.write_set.pop(entity_id, None)
+        self.touched_partitions.add(partition_id)
+
+    def has_delete(self, entity_id: str) -> bool:
+        """
+        Check if entity is marked for deletion.
+
+        Args:
+            entity_id: Entity ID to check
+
+        Returns:
+            True if entity is pending deletion
+        """
+        return entity_id in self.delete_set
 
     def get_write(self, entity_id: str) -> Optional[Entity]:
         """
