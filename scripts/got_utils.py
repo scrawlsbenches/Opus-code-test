@@ -926,7 +926,28 @@ class TransactionalGoTAdapter:
         blocked_only: bool = False,
     ) -> List[ThoughtNode]:
         """List tasks with optional filters."""
-        tasks = self._manager.find_tasks(status=status, priority=priority)
+        # If sprint_id specified, get tasks from that sprint first
+        if sprint_id:
+            sprint_task_ids = set()
+            try:
+                # Get all edges and filter to CONTAINS from this sprint
+                all_edges = self._manager.list_edges()
+                for edge in all_edges:
+                    if (edge.source_id == sprint_id and
+                        edge.edge_type == "CONTAINS" and
+                        edge.target_id.startswith("T-")):
+                        sprint_task_ids.add(edge.target_id)
+            except Exception as e:
+                logger.debug(f"Could not get sprint tasks: {e}")
+
+            if not sprint_task_ids:
+                return []
+
+            # Get all tasks and filter to sprint members
+            all_tasks = self._manager.find_tasks(status=status, priority=priority)
+            tasks = [t for t in all_tasks if t.id in sprint_task_ids]
+        else:
+            tasks = self._manager.find_tasks(status=status, priority=priority)
 
         # Apply additional filters
         result = []
