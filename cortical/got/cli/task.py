@@ -291,6 +291,116 @@ def cmd_task_delete(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
+def cmd_task_history(args, manager: "TransactionalGoTAdapter") -> int:
+    """Handle 'got task history' command.
+
+    Shows the version history of a task, including:
+    - All previous versions with timestamps
+    - Changes between versions
+    - Useful for auditing and recovery
+
+    The history is stored in .got/entities/_history/{entity_id}.jsonl
+    """
+    from datetime import datetime
+
+    task_id = args.task_id
+
+    # Get the history file path
+    # Support both TransactionalGoTAdapter (got_dir) and direct GoTManager (got_dir)
+    got_dir = getattr(manager, 'got_dir', None)
+    if got_dir is None:
+        # Fallback for direct managers
+        got_dir = getattr(manager, '_store_dir', Path('.got'))
+    history_dir = got_dir / "entities" / "_history"
+    history_file = history_dir / f"{task_id}.jsonl"
+
+    if not history_file.exists():
+        # Check if task exists but has no history (never modified)
+        task = manager.get_task(task_id)
+        if task:
+            print(f"Task {task_id} has no modification history (never modified).")
+            print(f"\nCurrent state:")
+            print(format_task_details(task))
+            return 0
+        else:
+            print(f"No history found for: {task_id}")
+            print("The task may not exist or may have been deleted without history.")
+            return 1
+
+    # Read and parse history entries
+    entries = []
+    with open(history_file, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                try:
+                    entry = json.loads(line)
+                    entries.append(entry)
+                except json.JSONDecodeError:
+                    continue
+
+    if not entries:
+        print(f"History file exists but is empty for: {task_id}")
+        return 1
+
+    # Display history
+    print(f"History for: {task_id}")
+    print(f"Total versions: {len(entries)}")
+    print("-" * 70)
+
+    if getattr(args, 'json', False):
+        # JSON output for programmatic access
+        print(json.dumps(entries, indent=2))
+        return 0
+
+    # Show entries in reverse chronological order (most recent first)
+    limit = getattr(args, 'limit', 10)
+    entries_to_show = entries[-limit:] if limit else entries
+    entries_to_show = list(reversed(entries_to_show))
+
+    for i, entry in enumerate(entries_to_show):
+        timestamp = entry.get('timestamp', 'unknown')
+        global_version = entry.get('global_version', '?')
+        data = entry.get('data', {})
+
+        # Format timestamp
+        try:
+            dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+            timestamp_str = dt.strftime('%Y-%m-%d %H:%M:%S UTC')
+        except (ValueError, AttributeError):
+            timestamp_str = timestamp
+
+        print(f"\n[Version {global_version}] {timestamp_str}")
+        print(f"  Title:    {data.get('title', 'N/A')}")
+        print(f"  Status:   {data.get('status', 'N/A')}")
+        print(f"  Priority: {data.get('priority', 'N/A')}")
+
+        if getattr(args, 'verbose', False):
+            desc = data.get('description', '')
+            if desc:
+                print(f"  Description: {desc[:100]}{'...' if len(desc) > 100 else ''}")
+            props = data.get('properties', {})
+            if props:
+                print(f"  Properties: {json.dumps(props)}")
+
+    if len(entries) > limit:
+        print(f"\n... {len(entries) - limit} more entries (use --limit to see more)")
+
+    # Show current state if task still exists
+    task = manager.get_task(task_id)
+    if task:
+        print(f"\n{'='*70}")
+        print("CURRENT STATE:")
+        print(f"  Title:    {task.content}")
+        print(f"  Status:   {task.properties.get('status', 'N/A')}")
+        print(f"  Priority: {task.properties.get('priority', 'N/A')}")
+    else:
+        print(f"\n{'='*70}")
+        print("⚠️  TASK DELETED - above history shows state before deletion")
+
+    return 0
+
+
 def cmd_task_import(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got task import' command.
 
@@ -537,6 +647,26 @@ def setup_task_parser(subparsers) -> None:
         help="Force delete even if task has dependencies or is in progress"
     )
 
+    # task history - view modification history for audit/recovery
+    history_parser = task_subparsers.add_parser("history", help="View task modification history")
+    history_parser.add_argument("task_id", help="Task ID to view history for")
+    history_parser.add_argument(
+        "--limit", "-n",
+        type=int,
+        default=10,
+        help="Number of history entries to show (default: 10)"
+    )
+    history_parser.add_argument(
+        "--json", "-j",
+        action="store_true",
+        help="Output history as JSON for programmatic access"
+    )
+    history_parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Show full details including description and properties"
+    )
+
     # task depends
     depends_parser = task_subparsers.add_parser("depends", help="Create task dependency")
     depends_parser.add_argument("task_id", help="Task that depends on another")
@@ -581,6 +711,7 @@ def handle_task_command(args, manager: "TransactionalGoTAdapter") -> int:
         "block": cmd_task_block,
         "update": cmd_task_update,
         "delete": cmd_task_delete,
+        "history": cmd_task_history,
         "depends": cmd_task_depends,
         "import": cmd_task_import,
     }
