@@ -1,0 +1,23 @@
+{
+  "_checksum": "49fa39d92b3a0ae7",
+  "_written_at": "2025-12-30T13:53:07.846378+00:00",
+  "data": {
+    "created_at": "2025-12-30T13:52:40.970462+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251230-135240-f5e0688c",
+    "metadata": {
+      "completed_at": "2025-12-30T13:53:07.839461+00:00",
+      "updated_at": "2025-12-30T13:53:07.839467+00:00"
+    },
+    "modified_at": "2025-12-30T13:53:07.846324+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature",
+      "retrospective": "Test completion"
+    },
+    "status": "completed",
+    "title": "Test Task",
+    "version": 4
+  }
+}

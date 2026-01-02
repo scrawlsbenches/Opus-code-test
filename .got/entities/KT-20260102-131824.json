@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "entity_type": "knowledge_transfer",
+  "data": {
+    "id": "KT-20260102-131824",
+    "entity_type": "knowledge_transfer",
+    "version": 1,
+    "created_at": "2026-01-02T13:18:24.951130",
+    "modified_at": "2026-01-02T13:18:24.951140",
+    "title": "Session: Hubris Training & ContinuityExpert",
+    "session_id": "",
+    "session_date": "",
+    "summary": "Completed Team Lead Cognitive Onboarding sprint. Trained Hubris experts (TestExpert on 2000 commits, RefactorExpert on 119 commits, CommandExpert on 17 actions). Designed and implemented ContinuityExpert for predicting context restoration during cognitive recovery. Decided against over-engineering cognitive_bootstrap.py. Sprint completed at 100%.",
+    "sections": {},
+    "code_refs": [],
+    "related_handoffs": [],
+    "related_tasks": [],
+    "related_decisions": [],
+    "source_file": null,
+    "tags": [],
+    "status": "published",
+    "properties": {}
+  }
+}

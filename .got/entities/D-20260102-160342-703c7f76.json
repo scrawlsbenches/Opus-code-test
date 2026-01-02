@@ -1,0 +1,15 @@
+{
+  "_checksum": "19038503ab1611f5",
+  "_written_at": "2026-01-02T16:03:42.608461+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-02T16:03:42.604647+00:00",
+    "entity_type": "decision",
+    "id": "D-20260102-160342-703c7f76",
+    "modified_at": "2026-01-02T16:03:42.608378+00:00",
+    "properties": {},
+    "rationale": "Behavioral and regression tests were running WITHOUT coverage collection, causing modules like prism_causal.py to show 0% coverage despite having 71% actual coverage. Fixed by adding coverage collection to behavioral-tests and regression-tests jobs, then combining all 4 sources. Result: 84% \u2192 89% overall coverage.",
+    "title": "Combined ALL test types for TRUE coverage measurement",
+    "version": 2
+  }
+}

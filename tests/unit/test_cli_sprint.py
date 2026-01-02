@@ -70,7 +70,7 @@ class TestCmdSprintCreate(unittest.TestCase):
         mock_manager = Mock()
         mock_manager.create_sprint.return_value = "S-001"
 
-        args = Namespace(name="Sprint 1", number=1, epic=None)
+        args = Namespace(name="Sprint 1", number=1, epic=None, description=None)
 
         with patch('builtins.print') as mock_print:
             result = cmd_sprint_create(args, mock_manager)
@@ -80,6 +80,7 @@ class TestCmdSprintCreate(unittest.TestCase):
             name="Sprint 1",
             number=1,
             epic_id=None,
+            description=None,
         )
         mock_manager.save.assert_called_once()
         mock_print.assert_called_with("Created: S-001")
@@ -89,7 +90,7 @@ class TestCmdSprintCreate(unittest.TestCase):
         mock_manager = Mock()
         mock_manager.create_sprint.return_value = "S-002"
 
-        args = Namespace(name="Sprint 2", number=2, epic="EPIC-001")
+        args = Namespace(name="Sprint 2", number=2, epic="EPIC-001", description=None)
 
         with patch('builtins.print'):
             result = cmd_sprint_create(args, mock_manager)
@@ -99,6 +100,7 @@ class TestCmdSprintCreate(unittest.TestCase):
             name="Sprint 2",
             number=2,
             epic_id="EPIC-001",
+            description=None,
         )
 
 

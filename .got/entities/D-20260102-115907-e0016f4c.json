@@ -1,0 +1,15 @@
+{
+  "_checksum": "ec8257feb86ff7c7",
+  "_written_at": "2026-01-02T11:59:07.074478+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-02T11:59:07.070264+00:00",
+    "entity_type": "decision",
+    "id": "D-20260102-115907-e0016f4c",
+    "modified_at": "2026-01-02T11:59:07.074395+00:00",
+    "properties": {},
+    "rationale": "CURRENT STATE:\n- Task: Has --description/--notes \u2713\n- Decision: Has --rationale, --file, --alternatives \u2713\n- KT: Has --summary, --content, --sections, --tags \u2713\n- Sprint: MISSING context fields \u2717\n\nPROPOSAL:\n1. QUICK FIX: Add --description/--notes to sprint create\n2. PATTERN: All entities should support freeform context\n3. SELF-PROTECTION: Help text should be comprehensive and show examples\n4. FUTURE: Consider a 'context' edge type that links entities to explanatory material\n\nThe batch DSL already exists for complex operations. The gap is simple context on simple operations.\n\nDECISION: Start with sprint --description, then evaluate if pattern needs extraction.",
+    "title": "How to add meaningful context capture to GoT entities",
+    "version": 2
+  }
+}

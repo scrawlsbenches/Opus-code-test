@@ -281,6 +281,91 @@ class TestDeveloperDeletesSprintsWithSafety:
         assert manager.get_task(task2.id) is not None
 
 
+class TestDeveloperCapturesSprintContext:
+    """
+    As a developer creating sprints,
+    I want to capture context and notes at creation time,
+    So that I preserve the reasoning behind sprint goals.
+    """
+
+    def test_scenario_create_sprint_with_description(self, tmp_path):
+        """
+        Scenario: Creating a sprint with descriptive context
+
+        Given a GoT manager
+        When I create a sprint with notes
+        Then the notes are stored with the sprint
+        And I can retrieve them later
+        """
+        # Given a GoT manager
+        manager = GoTManager(tmp_path / ".got")
+
+        # When I create a sprint with notes
+        sprint = manager.create_sprint(
+            title="Build custom search engine",
+            notes=["Focus on semantic understanding over keyword matching"]
+        )
+
+        # Then the notes are stored with the sprint
+        assert sprint.notes is not None
+        assert len(sprint.notes) == 1
+        assert "semantic understanding" in sprint.notes[0]
+
+        # And I can retrieve them later
+        retrieved = manager.get_sprint(sprint.id)
+        assert retrieved.notes == sprint.notes
+
+    def test_scenario_sprint_context_persists_across_save_load(self, tmp_path):
+        """
+        Scenario: Sprint notes survive persistence
+
+        Given a sprint with detailed notes
+        When I reload the manager from the same path
+        Then the notes are preserved
+        """
+        # Given a sprint with detailed notes
+        got_path = tmp_path / ".got"
+        manager = GoTManager(got_path)
+        sprint = manager.create_sprint(
+            title="Implement custom IR algorithms",
+            notes=[
+                "Building from first principles - no external dependencies",
+                "Focus on TF-IDF and PageRank implementations"
+            ]
+        )
+        sprint_id = sprint.id
+
+        # When I reload the manager from the same path
+        # (transaction commits are auto-persisted)
+        manager2 = GoTManager(got_path)
+
+        # Then the notes are preserved
+        retrieved = manager2.get_sprint(sprint_id)
+        assert retrieved is not None
+        assert len(retrieved.notes) == 2
+        assert "first principles" in retrieved.notes[0]
+        assert "PageRank" in retrieved.notes[1]
+
+    def test_scenario_sprint_without_notes_has_empty_list(self, tmp_path):
+        """
+        Scenario: Sprints created without notes have empty notes list
+
+        Given a GoT manager
+        When I create a sprint without providing notes
+        Then the notes field is an empty list (not None)
+        """
+        # Given a GoT manager
+        manager = GoTManager(tmp_path / ".got")
+
+        # When I create a sprint without providing notes
+        sprint = manager.create_sprint(title="Minimal sprint")
+
+        # Then the notes field is an empty list (not None)
+        assert sprint.notes is not None
+        assert sprint.notes == []
+        assert isinstance(sprint.notes, list)
+
+
 @pytest.fixture
 def tmp_path(tmp_path_factory):
     """Provide temporary directory for test isolation."""

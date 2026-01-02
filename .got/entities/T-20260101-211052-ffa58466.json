@@ -1,19 +1,22 @@
 {
-  "_checksum": "b135976e05b1b3b3",
-  "_written_at": "2026-01-01T21:10:52.525439+00:00",
+  "_checksum": "03a50829212e2aad",
+  "_written_at": "2026-01-02T09:57:47.686515+00:00",
   "data": {
     "created_at": "2026-01-01T21:10:52.520846+00:00",
     "description": "Policy task: No new feature PRs merged until all 27 test failures are resolved. This task represents the blocking policy and should be completed when all bugfix tasks in this sprint are done.",
     "entity_type": "task",
     "id": "T-20260101-211052-ffa58466",
-    "metadata": {},
-    "modified_at": "2026-01-01T21:10:52.525353+00:00",
+    "metadata": {
+      "completed_at": "2026-01-02T09:57:47.677857+00:00",
+      "updated_at": "2026-01-02T09:57:47.677863+00:00"
+    },
+    "modified_at": "2026-01-02T09:57:47.686443+00:00",
     "priority": "critical",
     "properties": {
       "category": "devex"
     },
-    "status": "pending",
+    "status": "completed",
     "title": "Block new features until test health restored",
-    "version": 2
+    "version": 3
   }
 }

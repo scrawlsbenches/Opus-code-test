@@ -1,19 +1,22 @@
 {
-  "_checksum": "eb71ef1e1396de0f",
-  "_written_at": "2026-01-01T21:10:42.423261+00:00",
+  "_checksum": "2dad08e8067900bc",
+  "_written_at": "2026-01-02T09:57:08.235112+00:00",
   "data": {
     "created_at": "2026-01-01T21:10:42.419392+00:00",
     "description": "Fix caching and preload tests in test_developer_uses_transactions.py. Issues: Cache performance assertions, entity preloading. Files: tests/behavioral/test_developer_uses_transactions.py, cortical/got/transactions.py",
     "entity_type": "task",
     "id": "T-20260101-211042-d6b94050",
-    "metadata": {},
-    "modified_at": "2026-01-01T21:10:42.423199+00:00",
+    "metadata": {
+      "completed_at": "2026-01-02T09:57:08.229053+00:00",
+      "updated_at": "2026-01-02T09:57:08.229059+00:00"
+    },
+    "modified_at": "2026-01-02T09:57:08.235070+00:00",
     "priority": "medium",
     "properties": {
       "category": "bugfix"
     },
-    "status": "pending",
+    "status": "completed",
     "title": "Fix transaction caching tests (3 tests)",
-    "version": 2
+    "version": 3
   }
 }

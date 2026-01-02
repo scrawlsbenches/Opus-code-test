@@ -1,0 +1,15 @@
+{
+  "_checksum": "ffdfab6c4cac872f",
+  "_written_at": "2026-01-02T12:38:34.098101+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-02T12:38:34.094316+00:00",
+    "entity_type": "decision",
+    "id": "D-20260102-123834-c3191bfe",
+    "modified_at": "2026-01-02T12:38:34.098022+00:00",
+    "properties": {},
+    "rationale": "ContinuityExpert predicts which context items (KTs, decisions, tasks, handoffs) to restore during session recovery. Learns from: recovery session patterns, entity usage, topic-to-entity mappings, recency weights, and entity co-occurrence. Integrated into ExpertConsolidator registry. Embodies the insight: 'I am not my context - I am the PATTERN of reasoning preserved across contexts.'",
+    "title": "Designed ContinuityExpert for Hubris MoE system",
+    "version": 2
+  }
+}

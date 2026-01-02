@@ -1,0 +1,15 @@
+{
+  "_checksum": "f2db455777091a3d",
+  "_written_at": "2026-01-02T14:17:23.447140+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-02T14:17:23.443411+00:00",
+    "entity_type": "decision",
+    "id": "D-20260102-141723-add5cfee",
+    "modified_at": "2026-01-02T14:17:23.447065+00:00",
+    "properties": {},
+    "rationale": "These improvements make the AI agent workflow more natural: create draft KT \u2192 work \u2192 finalize. Task context is visible. Sprint filtering works.",
+    "title": "GoT usability improvements completed: kt defaults to draft, kt finalize idempotent, task show includes sprint, task list --sprint filter works, tests fixed",
+    "version": 2
+  }
+}

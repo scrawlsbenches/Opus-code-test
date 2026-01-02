@@ -1,0 +1,15 @@
+{
+  "_checksum": "13dfdf5a2424d966",
+  "_written_at": "2026-01-02T10:36:34.519671+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-02T10:36:34.515763+00:00",
+    "entity_type": "decision",
+    "id": "D-20260102-103634-cbf923a7",
+    "modified_at": "2026-01-02T10:36:34.519590+00:00",
+    "properties": {},
+    "rationale": "REVELATION: Hubris already implements 'capturing learnings in pure form':\n\n1. PREDICTIONS: Experts predict files, tests, errors, actions\n2. OUTCOMES: Actual results tracked (commit files, test pass/fail)\n3. CREDIT ATTRIBUTION: Accuracy \u2192 credits (ValueSignal, ValueAttributor)\n4. CALIBRATION: Confidence vs accuracy curves\n5. ROUTING ADAPTATION: Credit-weighted routing adjusts over time\n\nKey insight from the chapter:\n'Use the development process to train models that improve the development process.'\n\nThis CLOSES THE LOOP: predictions \u2192 outcomes \u2192 credit updates \u2192 better predictions\n\nThe gap I identified (cognitive state, error patterns, learning events) could become NEW HUBRIS EXPERTS:\n- CognitiveStateExpert: Predict when confusion/breakthrough will happen\n- LearningEventExpert: Extract transferable patterns from sessions\n- ReasoningChainExpert: Predict successful reasoning paths\n\nHubris + ML data collection + decisions + KT = complete learning capture.\n\nThe 'pure form' exists across:\n- .git-ml/: Raw data (chats, commits, sessions)\n- Hubris: Structured predictions with outcomes\n- GoT decisions: Explicit reasoning chains\n- KT: Curated wisdom",
+    "title": "Hubris IS the learning capture system we discussed",
+    "version": 2
+  }
+}
