@@ -1,0 +1,19 @@
+{
+  "_checksum": "9e128a7a7bae9bae",
+  "_written_at": "2026-01-02T17:08:27.882924+00:00",
+  "data": {
+    "created_at": "2026-01-02T17:08:27.877898+00:00",
+    "description": "api.py:338-345. list.pop(0) is O(n). Cache size 1000 means ~500 ops per eviction. Fix: Use collections.deque for O(1) popleft.",
+    "entity_type": "task",
+    "id": "T-20260102-170827-ec668f7f",
+    "metadata": {},
+    "modified_at": "2026-01-02T17:08:27.882852+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "performance"
+    },
+    "status": "pending",
+    "title": "HIGH: GoT cache LRU eviction is O(n) per insert",
+    "version": 2
+  }
+}
