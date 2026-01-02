@@ -1,0 +1,19 @@
+{
+  "_checksum": "7c54849b97127036",
+  "_written_at": "2026-01-02T23:21:11.446206+00:00",
+  "data": {
+    "created_at": "2026-01-02T23:21:11.441752+00:00",
+    "description": "After WAL is fixed, make it default-on. Consider renaming to consistency_level=STRICT for clarity.",
+    "entity_type": "task",
+    "id": "T-20260102-232111-c7614bf0",
+    "metadata": {},
+    "modified_at": "2026-01-02T23:21:11.446145+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Change default: enable_wal=True, transactions_enabled=True",
+    "version": 2
+  }
+}
