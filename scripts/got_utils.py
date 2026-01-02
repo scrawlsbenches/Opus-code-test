@@ -1128,6 +1128,32 @@ class TransactionalGoTAdapter:
             logger.error(f"Failed to get edges for {task_id}: {e}")
             return [], []
 
+    def get_task_sprint(self, task_id: str) -> Optional[Dict[str, str]]:
+        """Get the sprint that contains this task.
+
+        Args:
+            task_id: Task ID to find sprint for
+
+        Returns:
+            Dict with 'id' and 'name' keys, or None if not in a sprint
+        """
+        try:
+            _, incoming = self.get_edges_for_task(task_id)
+            for edge in incoming:
+                # CONTAINS edges from sprints to tasks
+                if edge.edge_type == "CONTAINS" and edge.source_id.startswith("S-"):
+                    sprint = self.get_sprint(edge.source_id)
+                    if sprint:
+                        # sprint is a ThoughtNode, access attributes directly
+                        return {
+                            'id': sprint.id,
+                            'name': sprint.content or 'Unknown'
+                        }
+            return None
+        except Exception as e:
+            logger.debug(f"Could not find sprint for {task_id}: {e}")
+            return None
+
     def get_blockers(self, task_id: str) -> List[ThoughtNode]:
         """Get tasks that block this task."""
         clean_id = self._strip_prefix(task_id)
@@ -2768,7 +2794,7 @@ class TransactionalGoTAdapter:
         sections: Optional[Dict[str, str]] = None,
         code_refs: Optional[List[str]] = None,
         tags: Optional[List[str]] = None,
-        status: str = "published",
+        status: str = "draft",  # Draft by default - finalize to publish
         source_file: Optional[str] = None,
     ) -> str:
         """

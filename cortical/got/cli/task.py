@@ -121,6 +121,12 @@ def cmd_task_show(args, manager: "TransactionalGoTAdapter") -> int:
     # Display task details
     print(format_task_details(task))
 
+    # Show sprint membership
+    sprint_info = manager.get_task_sprint(task.id)
+    if sprint_info:
+        print(f"\nSprint: {sprint_info['name']}")
+        print(f"        {sprint_info['id']}")
+
     # Show dependencies
     deps = manager.get_task_dependencies(task.id)
     if deps:
