@@ -284,6 +284,132 @@ class TestHistoryPersistsAcrossRestart:
         assert loaded.name == "modified"
 
 
+class TestHistoryCrashRecovery:
+    """
+    Epic: Crash Recovery for History Integrity
+
+    As a system administrator responsible for data integrity,
+    I need history to survive crashes during write operations,
+    So that audit trails are never lost due to unexpected failures.
+    """
+
+    def test_scenario_pending_history_recovered_after_crash(self, tmp_path):
+        """
+        Scenario: Crash after entity write but before history finalization
+
+        Given an entity that was updated
+        And the system crashed after entity write but before history finalization
+        When the system restarts
+        Then the history entry should be recovered from pending
+        Because history must never be lost.
+        """
+        # Given an existing entity
+        config = CDGConfig()
+        config.enable_wal = False
+        store = CDGStore(tmp_path, config=config, entity_factory=simple_entity_factory)
+
+        entity = SimpleEntity(id="E-crash-001", name="original")
+        store.write(entity)
+
+        # Simulate: Update entity and create pending history, but "crash" before finalization
+        # We manually create the pending state that would exist after crash
+
+        # Read current state
+        current = store.read("E-crash-001")
+        expected_version = current.version + 1
+
+        # Create pending history file manually (simulating state after entity write but before finalize)
+        pending_dir = tmp_path / "_history" / "_pending"
+        pending_dir.mkdir(parents=True, exist_ok=True)
+        pending_file = pending_dir / "E-crash-001.pending"
+
+        pending_entry = {
+            "global_version": store.current_version(),
+            "timestamp": "2025-01-01T00:00:00+00:00",
+            "data": {"id": "E-crash-001", "name": "original", "entity_type": "simple",
+                     "version": current.version, "created_at": "2025-01-01T00:00:00+00:00",
+                     "modified_at": "2025-01-01T00:00:00+00:00"},
+            "expected_entity_version": expected_version
+        }
+
+        with open(pending_file, 'w') as f:
+            json.dump(pending_entry, f)
+            f.write('\n')
+
+        # Also update the entity file to simulate the entity write completed
+        entity.name = "modified"
+        entity._version = expected_version
+        store._write_with_checksum(store._entity_path("E-crash-001"), entity.to_dict())
+
+        assert pending_file.exists(), "Pending file should exist (simulating crash state)"
+
+        # When: System restarts (new store instance triggers recovery)
+        store2 = CDGStore(tmp_path, config=config, entity_factory=simple_entity_factory)
+
+        # Then: Pending file should be gone (finalized)
+        assert not pending_file.exists(), "Pending file should be finalized during recovery"
+
+        # And: History should contain the recovered entry
+        history_path = tmp_path / "_history" / "E-crash-001.jsonl"
+        with open(history_path) as f:
+            entries = [json.loads(line) for line in f if line.strip()]
+
+        assert len(entries) == 1, f"Should have 1 history entry (recovered from pending), got {len(entries)}"
+        assert entries[0]["data"]["name"] == "original"
+
+    def test_scenario_pending_history_discarded_if_write_incomplete(self, tmp_path):
+        """
+        Scenario: Crash before entity write completes
+
+        Given a pending history file exists
+        But the entity write did not complete (version mismatch)
+        When the system restarts
+        Then the pending history should be discarded
+        Because the entity change never happened.
+        """
+        # Given an existing entity
+        config = CDGConfig()
+        config.enable_wal = False
+        store = CDGStore(tmp_path, config=config, entity_factory=simple_entity_factory)
+
+        entity = SimpleEntity(id="E-crash-002", name="original")
+        store.write(entity)
+
+        # Read current state
+        current = store.read("E-crash-002")
+
+        # Create pending history with WRONG expected version (simulating crash before entity write)
+        pending_dir = tmp_path / "_history" / "_pending"
+        pending_dir.mkdir(parents=True, exist_ok=True)
+        pending_file = pending_dir / "E-crash-002.pending"
+
+        pending_entry = {
+            "global_version": store.current_version(),
+            "timestamp": "2025-01-01T00:00:00+00:00",
+            "data": {"id": "E-crash-002", "name": "original", "entity_type": "simple"},
+            "expected_entity_version": current.version + 999  # Wrong version - entity was never updated
+        }
+
+        with open(pending_file, 'w') as f:
+            json.dump(pending_entry, f)
+            f.write('\n')
+
+        assert pending_file.exists()
+
+        # When: System restarts
+        store2 = CDGStore(tmp_path, config=config, entity_factory=simple_entity_factory)
+
+        # Then: Pending file should be discarded (entity write never completed)
+        assert not pending_file.exists(), "Pending should be discarded (version mismatch)"
+
+        # And: History should be empty (no phantom entries)
+        history_path = tmp_path / "_history" / "E-crash-002.jsonl"
+        if history_path.exists():
+            with open(history_path) as f:
+                entries = [json.loads(line) for line in f if line.strip()]
+            assert len(entries) == 0, "Should have no history entries"
+
+
 @pytest.fixture
 def tmp_path(tmp_path_factory):
     """Provide temporary directory for test isolation."""
