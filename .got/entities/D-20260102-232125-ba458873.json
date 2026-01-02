@@ -1,0 +1,15 @@
+{
+  "_checksum": "e4dc064ad3e4a8ae",
+  "_written_at": "2026-01-02T23:21:25.535873+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-02T23:21:25.530282+00:00",
+    "entity_type": "decision",
+    "id": "D-20260102-232125-ba458873",
+    "modified_at": "2026-01-02T23:21:25.535796+00:00",
+    "properties": {},
+    "rationale": "History entries written to pending file before entity write, finalized after. On crash: if entity.version matches expected, finalize; else discard. Prevents both phantom history (old bug) and lost history (intermediate bug).",
+    "title": "Crash-safe history via pending file pattern",
+    "version": 2
+  }
+}
