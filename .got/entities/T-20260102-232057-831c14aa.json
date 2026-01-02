@@ -1,0 +1,19 @@
+{
+  "_checksum": "9f409fe8204c16c2",
+  "_written_at": "2026-01-02T23:20:57.109944+00:00",
+  "data": {
+    "created_at": "2026-01-02T23:20:57.105709+00:00",
+    "description": "Test crash at each phase: before WAL commit, after WAL commit but before apply, after apply. Verify recovery produces correct state.",
+    "entity_type": "task",
+    "id": "T-20260102-232057-831c14aa",
+    "metadata": {},
+    "modified_at": "2026-01-02T23:20:57.109866+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "test"
+    },
+    "status": "pending",
+    "title": "Add crash recovery behavioral tests",
+    "version": 2
+  }
+}
