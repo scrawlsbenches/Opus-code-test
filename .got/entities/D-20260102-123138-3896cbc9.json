@@ -1,0 +1,15 @@
+{
+  "_checksum": "67ebac6be131350f",
+  "_written_at": "2026-01-02T12:31:38.254806+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-02T12:31:38.250762+00:00",
+    "entity_type": "decision",
+    "id": "D-20260102-123138-3896cbc9",
+    "modified_at": "2026-01-02T12:31:38.254731+00:00",
+    "properties": {},
+    "rationale": "FileExpert training not implemented in current CLI - uses v1 ML model instead. Focus on experts that have working training paths.",
+    "title": "Hubris training approach: Use CLI train command with 2000+ commits. TestExpert and RefactorExpert train successfully from commit data. FileExpert requires separate v1 ML model approach.",
+    "version": 2
+  }
+}
