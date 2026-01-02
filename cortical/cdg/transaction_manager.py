@@ -222,6 +222,39 @@ class CDGTransactionManager:
         # Add to write set
         tx.add_write(entity)
 
+    def delete(self, tx: Transaction, entity_id: str) -> None:
+        """
+        Mark an entity for deletion within transaction.
+
+        Logs to WAL (if enabled) and adds to tx.delete_set.
+        Does NOT apply to store until commit.
+
+        Args:
+            tx: Transaction context
+            entity_id: Entity ID to delete
+
+        Raises:
+            TransactionError: If transaction is not active
+        """
+        if not tx.is_active():
+            raise TransactionError(
+                f"Transaction {tx.id} is not active (state: {tx.state.value})"
+            )
+
+        # Get entity version for conflict detection
+        entity = self.read(tx, entity_id)
+        if entity:
+            # Track read for conflict detection
+            tx.add_read(entity_id, entity.version)
+
+        # Log to WAL before buffering (if enabled)
+        if self.wal:
+            version = entity.version if entity else 0
+            self.wal.log_write(tx.id, entity_id, version, -1)  # -1 indicates deletion
+
+        # Add to delete set
+        tx.add_delete(entity_id)
+
     def commit(self, tx: Transaction) -> CommitResult:
         """
         Commit transaction.
@@ -270,9 +303,12 @@ class CDGTransactionManager:
                     reason="version_conflict"
                 )
 
-            # Apply writes atomically
+            # Apply writes and deletes atomically
             try:
                 new_version = self.store.apply_writes(tx.write_set)
+                # Apply deletes after writes (both within same lock)
+                if tx.delete_set:
+                    new_version = self.store.apply_deletes(tx.delete_set)
             except Exception as e:
                 # Abort on any error
                 tx.state = TransactionState.ABORTED

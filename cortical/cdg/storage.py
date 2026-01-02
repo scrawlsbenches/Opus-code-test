@@ -393,6 +393,61 @@ class CDGStore:
 
                 return True
 
+    def apply_deletes(self, delete_set: set) -> int:
+        """
+        Delete multiple entities atomically.
+
+        Thread-safe and process-safe via write locks.
+        Either all deletes succeed or none do (rollback on failure).
+
+        Args:
+            delete_set: Set of entity IDs to delete
+
+        Returns:
+            New global version after deletes
+
+        Raises:
+            Exception: If any delete fails (with rollback attempted)
+        """
+        if not delete_set:
+            return self._version
+
+        # Acquire both thread and process locks for full safety
+        with self._write_lock:
+            with self._write_process_lock:
+                deleted_files = []  # Track for rollback: (entity_id, entity_data)
+
+                try:
+                    # Step 1: Save all entities to history and capture data for rollback
+                    for entity_id in delete_set:
+                        path = self._entity_path(entity_id)
+                        if path.exists():
+                            # Read entity data for potential rollback
+                            entity_data = path.read_text()
+
+                            # Save to history before deleting
+                            self._save_to_history(entity_id, self._version)
+
+                            # Delete file
+                            path.unlink()
+                            deleted_files.append((entity_id, entity_data, path))
+
+                    # Step 2: Update global version (only if we deleted something)
+                    if deleted_files:
+                        self._version += 1
+                        self._save_version()
+
+                    return self._version
+
+                except Exception:
+                    # Rollback: Restore deleted files
+                    for entity_id, entity_data, path in deleted_files:
+                        try:
+                            path.write_text(entity_data)
+                        except Exception:
+                            pass  # Best effort rollback
+                    raise
+
     def _entity_path(self, entity_id: str) -> Path:
         """Get path for entity JSON file."""
         return self.store_dir / f"{entity_id}.json"
