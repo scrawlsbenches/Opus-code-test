@@ -1,0 +1,19 @@
+{
+  "_checksum": "7fd39a59ac96b752",
+  "_written_at": "2026-01-02T11:02:58.600176+00:00",
+  "data": {
+    "created_at": "2026-01-02T11:02:58.596387+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260102-110258-99c0e016",
+    "metadata": {},
+    "modified_at": "2026-01-02T11:02:58.600112+00:00",
+    "priority": "low",
+    "properties": {
+      "category": "docs"
+    },
+    "status": "pending",
+    "title": "Generate book chapter from this onboarding session",
+    "version": 2
+  }
+}
