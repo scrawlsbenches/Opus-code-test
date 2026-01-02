@@ -1,0 +1,15 @@
+{
+  "_checksum": "c2cc9ef7fb57c516",
+  "_written_at": "2026-01-02T23:21:40.030088+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-02T23:21:40.026549+00:00",
+    "entity_type": "decision",
+    "id": "D-20260102-232140-491c3cbf",
+    "modified_at": "2026-01-02T23:21:40.030023+00:00",
+    "properties": {},
+    "rationale": "History is derived data (Tier 2). Core entity data is primary (Tier 1). If core is corrupt, history doesn't help. Priority order: 1) WAL-based atomic transactions, 2) Referential integrity, 3) Crash recovery, 4) History (byproduct of WAL).",
+    "title": "Core data consistency over history integrity",
+    "version": 2
+  }
+}
