@@ -296,6 +296,136 @@ class TestDeveloperDeletesTasksWithSafetyChecks:
         assert len(incoming_c) == 0  # Edge from B to C removed
 
 
+class TestDeveloperCapturesRelationshipContext:
+    """
+    As a developer creating task relationships,
+    I want to capture WHY relationships exist,
+    So that future developers understand the reasoning.
+    """
+
+    def test_scenario_create_edge_with_reason(self, tmp_path):
+        """
+        Scenario: Creating an edge with explanatory reason
+
+        Given two tasks
+        When I create an edge with a reason
+        Then the reason is stored with the edge
+        And I can retrieve it later
+        """
+        # Given two tasks
+        manager = GoTManager(tmp_path / ".got")
+        task_api = manager.create_task(
+            title="Implement custom REST API",
+            priority="high"
+        )
+        task_auth = manager.create_task(
+            title="Build authentication system",
+            priority="critical"
+        )
+
+        # When I create an edge with a reason
+        edge = manager.add_edge(
+            task_api.id,
+            task_auth.id,
+            "DEPENDS_ON",
+            reason="API requires authentication before exposing endpoints"
+        )
+
+        # Then the reason is stored with the edge
+        assert edge.reason == "API requires authentication before exposing endpoints"
+
+        # And I can retrieve it later
+        outgoing, _ = manager.get_edges_for_task(task_api.id)
+        assert len(outgoing) == 1
+        assert outgoing[0].reason == "API requires authentication before exposing endpoints"
+
+    def test_scenario_edge_reason_persists_across_save_load(self, tmp_path):
+        """
+        Scenario: Edge reasons survive persistence
+
+        Given an edge with a detailed reason
+        When I reload the manager from the same path
+        Then the reason is preserved
+        """
+        # Given an edge with a detailed reason
+        got_path = tmp_path / ".got"
+        manager = GoTManager(got_path)
+        task1 = manager.create_task(title="Task 1")
+        task2 = manager.create_task(title="Task 2")
+        edge = manager.add_edge(
+            task1.id,
+            task2.id,
+            "BLOCKS",
+            reason="Task 1 must complete first - shared resource constraint"
+        )
+        task1_id = task1.id
+
+        # When I reload the manager from the same path
+        # (transaction commits are auto-persisted)
+        manager2 = GoTManager(got_path)
+
+        # Then the reason is preserved
+        outgoing, _ = manager2.get_edges_for_task(task1_id)
+        assert len(outgoing) == 1
+        assert outgoing[0].reason == "Task 1 must complete first - shared resource constraint"
+
+    def test_scenario_edge_without_reason_has_empty_string(self, tmp_path):
+        """
+        Scenario: Edges created without reason have empty reason
+
+        Given two tasks
+        When I create an edge without providing a reason
+        Then the reason field is an empty string (not None)
+        """
+        # Given two tasks
+        manager = GoTManager(tmp_path / ".got")
+        task1 = manager.create_task(title="Task 1")
+        task2 = manager.create_task(title="Task 2")
+
+        # When I create an edge without providing a reason
+        edge = manager.add_edge(task1.id, task2.id, "DEPENDS_ON")
+
+        # Then the reason field is an empty string (not None)
+        assert edge.reason is not None
+        assert edge.reason == ""
+        assert isinstance(edge.reason, str)
+
+    def test_scenario_multiple_edges_with_different_reasons(self, tmp_path):
+        """
+        Scenario: Different edges can have different reasons
+
+        Given multiple tasks with various relationships
+        When I create edges with distinct reasons
+        Then each edge preserves its own reason
+        """
+        # Given multiple tasks with various relationships
+        manager = GoTManager(tmp_path / ".got")
+        core = manager.create_task(title="Core module")
+        feature_a = manager.create_task(title="Feature A")
+        feature_b = manager.create_task(title="Feature B")
+
+        # When I create edges with distinct reasons
+        edge_a = manager.add_edge(
+            feature_a.id,
+            core.id,
+            "DEPENDS_ON",
+            reason="Feature A uses core utilities"
+        )
+        edge_b = manager.add_edge(
+            feature_b.id,
+            core.id,
+            "DEPENDS_ON",
+            reason="Feature B extends core interfaces"
+        )
+
+        # Then each edge preserves its own reason
+        out_a, _ = manager.get_edges_for_task(feature_a.id)
+        out_b, _ = manager.get_edges_for_task(feature_b.id)
+
+        assert out_a[0].reason == "Feature A uses core utilities"
+        assert out_b[0].reason == "Feature B extends core interfaces"
+
+
 @pytest.fixture
 def tmp_path(tmp_path_factory):
     """Provide temporary directory for test isolation."""
