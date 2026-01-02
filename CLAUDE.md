@@ -1,6 +1,63 @@
 # Metus Development Philosophy
 
-*Last updated: 2025-12-30*
+*Last updated: 2026-01-01*
+
+---
+
+## ⚠️ Trust But Verify — Documentation Can Drift
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│                      TRUST BUT VERIFY                                    │
+│                                                                          │
+│   This documentation describes INTENT. The codebase is TRUTH.           │
+│                                                                          │
+│   Before following any instruction in this file:                        │
+│                                                                          │
+│   1. VERIFY commands work by running them                               │
+│      Documentation can become outdated. Test before trusting.           │
+│                                                                          │
+│   2. CHECK the actual source files                                      │
+│      - pyproject.toml for test config and markers                       │
+│      - .github/workflows/ci.yml for what CI actually runs               │
+│      - tests/conftest.py for available fixtures                         │
+│                                                                          │
+│   3. CROSS-REFERENCE multiple sources                                   │
+│      If CLAUDE.md says one thing and the code says another,             │
+│      the code is correct. Update this file.                             │
+│                                                                          │
+│   4. WHEN IN DOUBT, read the implementation                             │
+│      Comments lie. Tests lie less. Code doesn't lie.                    │
+│                                                                          │
+│   Known areas where docs may drift:                                     │
+│   - CLI command syntax (scripts evolve)                                 │
+│   - Coverage thresholds (may be adjusted)                               │
+│   - Test markers and default behavior                                   │
+│   - Directory structure as project grows                                │
+│                                                                          │
+│   If you find an inaccuracy, FIX IT. Don't just work around it.        │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Verification Commands
+
+When starting a session, verify key assumptions:
+
+```bash
+# Check if pytest is available (if not, run: pip install -e ".[dev]")
+python -m pytest --version
+
+# Check actual test markers and defaults
+grep -A 5 "addopts" pyproject.toml
+
+# Check actual coverage threshold in CI
+grep "fail-under" .github/workflows/ci.yml
+
+# Check GoT CLI is working
+python scripts/got_utils.py --help
+```
 
 ---
 
@@ -8,9 +65,10 @@
 
 ### First Steps (Do Once)
 
-1. Read this file — Understand the Metus philosophy
-2. Read `MANIFEST.md` — Know where things are
-3. Run `python -m pytest tests/smoke/ -v` — Verify your environment
+1. **Install dependencies** — `pip install -e ".[dev]"` (required for pytest)
+2. Read this file — Understand the Metus philosophy
+3. Read `MANIFEST.md` — Know where things are (but verify against code)
+4. Run `python -m pytest tests/smoke/ -v` — Verify your environment
 
 ### Before Every Task
 
@@ -30,7 +88,8 @@ When you receive work, ask yourself:
 │                                                         │
 │  4. ARE THERE PERFORMANCE CONTRACTS?                    │
 │     Check tests/performance/contracts/                  │
-│     If touching search/indexing, contracts apply.       │
+│     Contracts exist for: search, algorithms, WAL,       │
+│     transactions, cognitive loops, event sourcing.      │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -61,6 +120,344 @@ When thinking about what to do next:
 **Never write implementation code until you have a failing scenario.**
 
 If you can't write the scenario, you don't understand the requirement. Go back to step 1.
+
+---
+
+## Session Start: New Agent Orientation
+
+When starting a new session or continuing from a handoff, orient yourself quickly:
+
+### Immediate Health Check
+
+```bash
+# 1. Smoke test (~7 seconds) - Does the system breathe?
+python -m pytest tests/smoke/ -v
+
+# 2. Check git status - Are there uncommitted changes?
+git status
+
+# 3. Check current branch
+git branch --show-current
+```
+
+### Before You Fix Anything: Reasoning Checklist
+
+**STOP. Before writing any code, complete this checklist:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│              CRITICAL REASONING CHECKLIST                    │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  □ 1. CHECK GIT HISTORY                                     │
+│       git log --oneline -10 -- <file>                       │
+│       git show <commit>  # Read WHY changes were made       │
+│       git blame <file>   # Who changed what, when           │
+│                                                              │
+│  □ 2. UNDERSTAND THE ORIGINAL INTENT                        │
+│       - Why is the code structured this way?                │
+│       - What problem was it solving?                        │
+│       - Is there a comment, commit message, or PR?          │
+│                                                              │
+│  □ 3. CONFIRM THE TESTS FAIL (RED)                          │
+│       - Run the failing tests FIRST                         │
+│       - Understand exactly WHY they fail                    │
+│       - Don't guess - read the error messages               │
+│                                                              │
+│  □ 4. CONSIDER MULTIPLE APPROACHES                          │
+│       - What are at least 2 ways to fix this?               │
+│       - What are the trade-offs of each?                    │
+│       - Which preserves the original architectural intent?  │
+│                                                              │
+│  □ 5. CHOOSE THE SIMPLEST FIX                               │
+│       - Fewer lines of code is usually better               │
+│       - Avoid adding layers/indirection if possible         │
+│       - Ask: "Am I undoing someone's deliberate decision?"  │
+│                                                              │
+│  □ 6. VERIFY GREEN                                          │
+│       - Run the specific failing tests                      │
+│       - Run related tests (same module/feature)             │
+│       - Run smoke tests for regressions                     │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Common Reasoning Failures to Avoid:**
+
+| Failure Mode | Symptom | Correction |
+|--------------|---------|------------|
+| **Jumping to code** | Writing fix before understanding problem | Complete steps 1-4 first |
+| **Ignoring history** | Breaking intentional design decisions | Always `git log` before changing |
+| **Single solution bias** | Only considering one approach | Force yourself to list 2+ options |
+| **Fixing symptoms** | Patching without understanding root cause | Ask "why?" 5 times |
+| **Over-engineering** | Adding complexity to "future-proof" | Solve today's problem only |
+
+**Example of Good Reasoning:**
+
+```
+Problem: CorruptionError tests failing after CDG/GoT unification
+
+Step 1 - Git History:
+  $ git log --oneline -5 -- cortical/got/errors.py
+  → Found commit 7b6e6f24: "Unified CorruptionError: GoT's
+    CorruptionError now aliases CDG's..."
+
+Step 2 - Original Intent:
+  → The aliasing was INTENTIONAL to catch CDG exceptions in GoT code
+
+Step 3 - Why Tests Fail:
+  → CDGCorruptionError lacks to_dict() and has different __str__
+  → CDGCorruptionError doesn't inherit from GoTError
+
+Step 4 - Multiple Approaches:
+  A) Add to_dict() to CDGError, fix __str__ → Still breaks inheritance test
+  B) Make CDGError inherit from GoTError → Circular import
+  C) Keep separate classes + boundary translation → Works, slightly complex
+  D) Shared base exception module → Requires refactoring both layers
+
+Step 5 - Chosen Fix:
+  → Option C: Boundary translation in versioned_store.py
+  → Preserves GoTError inheritance (tests pass)
+  → Translates exceptions at layer boundary (clean separation)
+  → Minimal code changes
+
+Step 6 - Verify:
+  → Run test_errors.py: 18 passed
+  → Run test_recovery.py: All passed
+  → Run smoke tests: All passed
+```
+
+### Test Commands with Timing
+
+| Command | Duration | Timeout | Use When |
+|---------|----------|---------|----------|
+| `pytest tests/smoke/ -v` | ~7 sec | 60s | Quick sanity check |
+| `pytest tests/unit/ -v` | ~2 min | 180s | After code changes |
+| `pytest tests/behavioral/ -v` | ~5 min | 360s | Before commit |
+| `pytest tests/ -v` | ~8 min | 600s | Full verification |
+| `pytest tests/ --cov=cortical --cov-report=term` | ~8 min | 600s | Coverage check |
+
+**Coverage threshold: 86% minimum** (enforced in CI at `.github/workflows/ci.yml:468`)
+
+### Test Markers and Default Behavior
+
+**IMPORTANT**: Default pytest runs EXCLUDE optional and slow tests.
+
+From `pyproject.toml`:
+```toml
+addopts = "-m 'not optional and not slow'"
+```
+
+| Marker | Default | CI | Purpose |
+|--------|---------|-----|---------|
+| `optional` | ❌ Skipped | ✅ Included | Tests needing hypothesis, mcp, etc. |
+| `slow` | ❌ Skipped | ✅ Included | Tests taking >5 seconds |
+| `contract` | ✅ Included | ✅ Included | Sacred performance promises |
+
+To run ALL tests (like CI does):
+```bash
+python -m pytest tests/ -m ""   # Empty marker = include all
+```
+
+### Available Test Fixtures
+
+From `tests/conftest.py` — use these instead of creating processors manually:
+
+| Fixture | Scope | Use Case |
+|---------|-------|----------|
+| `small_processor` | Session | Pre-built with synthetic corpus (~1s) |
+| `shared_processor` | Session | Full sample corpus (~10-20s, use sparingly) |
+| `fresh_processor` | Function | Empty processor for tests that modify state |
+| `fresh_got_manager` | Function | Isolated GoT manager per test |
+| `got_manager_with_sample_tasks` | Class | Pre-populated with 20 tasks for read tests |
+| `got_manager_large` | Class | 100 tasks for performance testing |
+
+### Makefile Shortcuts
+
+The Makefile provides convenient test commands (verify with `make help`):
+
+```bash
+make test-smoke      # ~1s  - Quick sanity check
+make test-fast       # ~5s  - Fast tests, no slow markers
+make test-quick      # ~30s - Smoke + unit (default)
+make test-precommit  # ~2m  - Full pre-commit suite
+make test-coverage   # With coverage report
+make test-parallel   # Unit tests with 4 workers
+make install         # pip install -e ".[dev]"
+```
+
+### Slash Commands (Claude Code)
+
+Available in `.claude/commands/` (use with `/command-name`):
+
+| Command | Purpose |
+|---------|---------|
+| `/director` | Orchestrate complex tasks across parallel sub-agents |
+| `/delegate` | Delegate a task to a sub-agent with structured output |
+| `/sanity-check <branch>` | Pre-merge verification with tests |
+| `/context-recovery` | Restore cognitive state after context loss |
+| `/knowledge-transfer` | Generate knowledge transfer document |
+| `/ml-log` | Log chat exchanges for ML training data |
+| `/ml-stats` | Show ML data collection statistics |
+
+**Verify commands**: Read `.claude/commands/<command>.md` to understand what each does before using.
+
+### Available Skills
+
+Invoke with the Skill tool (e.g., `skill: "codebase-search"`):
+
+| Skill | Purpose | Prerequisites |
+|-------|---------|---------------|
+| `codebase-search` | Semantic search using project's IR algorithms | Requires `corpus_dev.pkl` (run `python scripts/index_codebase.py` first) |
+| `ai-metadata` | View AI-friendly metadata for code modules | None |
+| `cognitive-state` | Manage cognitive state across sessions | None |
+| `corpus-indexer` | Index/re-index codebase for semantic search | None (creates the index) |
+
+**Verify skills work**: Read `.claude/skills/<skill-name>/SKILL.md` for full documentation.
+
+### ML Data Collection Hooks
+
+This project collects ML training data via hooks in `.claude/settings.local.json`:
+
+- **SessionStart**: Logs session start for ML training
+- **PostToolUse**: Captures tool usage patterns
+- **Stop**: Captures session summary for training data
+
+Data is stored in `.git-ml/`. This is automatic and requires no action.
+
+### Tool Reliability Policy
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                 WHEN A TOOL FAILS OR IS MISSING                      │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│  1. STOP - Do NOT attempt workarounds (sed, manual edits, etc.)      │
+│  2. ASSESS - Is the tool missing or buggy?                           │
+│  3. FIX - Add the missing command or fix the bug                     │
+│  4. USE - Now use the fixed tool                                     │
+│  5. DOCUMENT - Update CLAUDE.md if needed                            │
+│                                                                       │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Why:** Workarounds accumulate as tech debt. Each agent fixing tools = progressively better system.
+
+### GoT File Safety
+
+```
+⚠️ NEVER edit .got/ files directly!
+
+GoT data is transactional with checksum integrity. Direct edits:
+- Break checksums → files auto-deleted as "corrupted"
+- Break event log → orphaned references
+- Corrupt dependency tracking
+
+Always use: python scripts/got_utils.py <command>
+```
+
+### Cognitive Breakdown Detection
+
+Recognize these patterns and STOP:
+
+| Signal | Meaning | Response |
+|--------|---------|----------|
+| Repeating same failed approach | Loop detected | Stop, analyze, replan |
+| Contradicting earlier statements | State confusion | Re-read context, reconcile |
+| Making changes without reading | Premature action | Read first, then act |
+| Generating placeholder content | Uncertainty masked | Admit uncertainty, ask |
+
+### Sub-Agent Verification
+
+Sub-agent changes may not persist. **Always verify after completion:**
+
+```bash
+git status                    # Check if files actually changed
+git diff path/to/file.py     # Verify the actual changes
+```
+
+If changes didn't persist, apply them manually in main context.
+
+### Background Task Pattern
+
+For long-running tasks, use background execution to continue working:
+
+```bash
+# Start coverage check in background
+python -m pytest tests/ --cov=cortical --cov-report=term -q 2>&1 &
+
+# Check if still running
+jobs
+
+# Or use the run_in_background parameter with Bash tool
+# Then check with BashOutput tool using the returned shell ID
+```
+
+**While waiting, you can:**
+- Read documentation
+- Plan next steps
+- Research the codebase
+- Update CLAUDE.md or task tracking
+
+### Edge Cases and Recovery
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                 COMMON ISSUES & RECOVERY                     │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  TEST HANGS (no output for 2+ minutes):                     │
+│  → Kill with Ctrl+C or KillShell tool                       │
+│  → Run smaller test subset to isolate issue                 │
+│  → Check for infinite loops in recent changes               │
+│                                                              │
+│  COVERAGE DROPS BELOW 86%:                                  │
+│  → Run: pytest --cov=cortical --cov-report=term-missing     │
+│  → Look for "Miss" column to find uncovered lines           │
+│  → Add tests for critical uncovered paths                   │
+│                                                              │
+│  GIT CONFLICTS ON PUSH:                                     │
+│  → git fetch origin <branch>                                │
+│  → git rebase origin/<branch>                               │
+│  → Resolve conflicts, then push                             │
+│                                                              │
+│  FLAKY TESTS:                                               │
+│  → Run the specific test 3x: pytest <test> -v --count=3     │
+│  → If intermittent, check for timing/race conditions        │
+│  → Performance contract failures may be environment-related │
+│                                                              │
+│  MODULE AT 0% COVERAGE:                                     │
+│  → Check if it's intentionally untested (stub/placeholder)  │
+│  → cortical/cdg/ and cortical/cel/ are newer modules        │
+│  → Add tests if the module has real implementation          │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Context Recovery
+
+If you're continuing from a previous session:
+
+1. **Check for handoffs**: `python scripts/got_utils.py kt list --status published | head -5`
+2. **Check active tasks**: `python scripts/got_utils.py task list --status active`
+3. **Read recent commits**: `git log --oneline -10`
+4. **Look for draft KTs**: `python scripts/got_utils.py kt list --status draft`
+
+If confused about current state, create a recovery KT:
+```bash
+python scripts/got_utils.py kt create "Recovery: [topic]" --summary "Recovering context from..."
+```
+
+### What to Do First
+
+```
+NEW SESSION CHECKLIST:
+□ Run smoke tests (7 seconds)
+□ Check git status (uncommitted work?)
+□ Read any handoff or KT from previous session
+□ Understand the current task before coding
+□ If unclear, ask for clarification
+```
 
 ---
 
@@ -319,6 +716,38 @@ class ResearcherSearchesForKnowledge:
 **Location**: `tests/behavioral/`
 **Naming**: `{user_role}_{action}_stories.py`
 **Format**: Classes are epics, methods are scenarios
+
+**CRITICAL — Test Class Naming for Pytest Collection:**
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│   ⚠️  ALL TEST CLASSES MUST START WITH 'Test' PREFIX                    │
+│                                                                          │
+│   Pytest only collects classes that start with 'Test'.                  │
+│   Story-driven names are great, but MUST be prefixed.                   │
+│                                                                          │
+│   ❌ WRONG (not collected - tests are HIDDEN):                          │
+│      class DeveloperSearchesCorpus:                                     │
+│      class ResearcherBuildsKnowledge:                                   │
+│      class SystemArchitectOrchestratesWorkflows:                        │
+│                                                                          │
+│   ✅ RIGHT (collected and run):                                         │
+│      class TestDeveloperSearchesCorpus:                                 │
+│      class TestResearcherBuildsKnowledge:                               │
+│      class TestSystemArchitectOrchestratesWorkflows:                    │
+│                                                                          │
+│   The 'Test' prefix is NON-NEGOTIABLE. Without it:                      │
+│   - Tests silently don't run                                            │
+│   - Bugs hide undetected                                                │
+│   - CI passes when it shouldn't                                         │
+│   - Coverage numbers lie                                                │
+│                                                                          │
+│   AUDIT (2026-01-01): Found 169 hidden tests due to missing prefix.     │
+│   All fixed. Don't let it happen again.                                 │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
 **IMPORTANT — Test Content Must Embody Sovereignty:**
 
@@ -631,7 +1060,7 @@ jobs:
         run: |
           python -m pytest tests/unit/ -v \
             --cov=cortical --cov-report=xml \
-            --cov-fail-under=95
+            --cov-fail-under=86  # Actual threshold from CI
       - name: Upload coverage
         uses: codecov/codecov-action@v3
         with:
@@ -765,6 +1194,61 @@ Each layer builds upon the last, creating assurance:
 
 ---
 
+## Test Coverage Reality
+
+As of 2025-12-31, the Metus test suite contains:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        BEHAVIORAL SCENARIOS                             │
+│                                                                          │
+│   ~900 scenarios across 68 test files                                   │
+│                                                                          │
+│   Coverage by module:                                                   │
+│   • cortical/processor/  — Document processing, queries, persistence   │
+│   • cortical/query/      — Search, passages, expansion, ranking        │
+│   • cortical/reasoning/  — Cognitive loops, woven mind, workflows      │
+│   • cortical/got/        — Graph of Thought operations                 │
+│   • cortical/spark/      — Code intelligence, predictions              │
+│   • cortical/cel/        — Event sourcing workflows                    │
+│   • examples/            — Demo conversions to behavioral tests        │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                       PERFORMANCE CONTRACTS                             │
+│                                                                          │
+│   ~300 contracts across 27 test files                                   │
+│                                                                          │
+│   Coverage by category:                                                 │
+│   • Search/Ranking       — Latency p50/p99, memory bounds              │
+│   • Core Algorithms      — PageRank, TF-IDF, clustering, connections   │
+│   • Cognitive Systems    — Goal stacks, loops, routing, homeostasis    │
+│   • Persistence          — WAL, transactions, recovery, indexing       │
+│   • Event Sourcing       — DAG operations, materialization, health     │
+│   • Language Models      — N-gram prediction, training, accuracy       │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Finding Relevant Tests
+
+When modifying a module, find related tests:
+
+```bash
+# Find behavioral tests for a module
+ls tests/behavioral/*processor* tests/behavioral/*query*
+
+# Find contract tests for an algorithm
+ls tests/performance/contracts/*pagerank* tests/performance/contracts/*tfidf*
+
+# Search for tests mentioning a concept
+grep -r "scenario.*search" tests/behavioral/
+grep -r "CONTRACT.*latency" tests/performance/contracts/
+```
+
+---
+
 ## The Metus Checklists
 
 ### Pre-Implementation Checklist
@@ -831,6 +1315,67 @@ Before changing a performance contract:
 
 - [ ] **Announcement Made**
       Users/stakeholders are informed of the change
+```
+
+---
+
+## Contract Categories
+
+Performance contracts are organized by what they guarantee:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        CONTRACT CATEGORIES                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  LATENCY CONTRACTS                                                      │
+│  "Operations complete within X milliseconds"                            │
+│                                                                          │
+│    • Search p50 < 50ms, p99 < 200ms                                     │
+│    • PageRank convergence < 500ms for 1,000 nodes                       │
+│    • WAL write p50 < 8ms (with fsync)                                   │
+│    • Goal stack push/pop < 10ms                                         │
+│    • Event append < 5ms                                                 │
+│                                                                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  MEMORY CONTRACTS                                                       │
+│  "Resource usage stays bounded"                                         │
+│                                                                          │
+│    • Search memory < 100MB per 10,000 documents                         │
+│    • N-gram memory < 50MB per 10,000 unique n-grams                     │
+│    • Cache size respects configured bounds                              │
+│                                                                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  CORRECTNESS CONTRACTS                                                  │
+│  "Algorithms maintain mathematical properties"                          │
+│                                                                          │
+│    • PageRank scores sum to 1.0 (probability distribution)             │
+│    • TF-IDF: rare terms score higher than common terms                  │
+│    • Modularity Q ∈ [-0.5, 1.0]                                         │
+│    • Goal progress is monotonic (never regresses)                       │
+│    • Parallel = Sequential (deterministic parallelism)                  │
+│                                                                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  CONVERGENCE CONTRACTS                                                  │
+│  "Iterative algorithms terminate"                                       │
+│                                                                          │
+│    • PageRank converges in ≤ 20 iterations                              │
+│    • Louvain clustering converges in ≤ 10 iterations                    │
+│    • Spreading activation completes in ≤ 5 iterations                   │
+│                                                                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ACCURACY CONTRACTS                                                     │
+│  "Predictions meet quality thresholds"                                  │
+│                                                                          │
+│    • N-gram prediction accuracy ≥ 10% top-1, ≥ 25% top-5               │
+│    • Intent parsing accuracy > 90% for conventional commits             │
+│    • Cache hit rate > 80% for repeated access                           │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -924,30 +1469,540 @@ tests/
 │   └── specifications/             # Gate 2: Atomic truths
 │       ├── tokenizer_spec.py
 │       ├── pagerank_spec.py
-│       ├── tfidf_spec.py
 │       └── ...
 │
 ├── integration/                    # Gate 5: Components together
 │   ├── test_search_pipeline.py
-│   ├── test_indexing_workflow.py
 │   └── ...
 │
-├── behavioral/                     # Gate 3: User stories
-│   ├── researcher_searches_corpus.py
-│   ├── developer_indexes_codebase.py
-│   ├── analyst_discovers_patterns.py
-│   └── system_handles_failures.py
+├── behavioral/                     # Gate 3: User stories (~900 scenarios)
+│   │
+│   │  # Processor & Query APIs
+│   ├── test_developer_processes_documents_incrementally.py
+│   ├── test_researcher_searches_corpus_stories.py
+│   ├── test_rag_system_retrieves_passages.py
+│   │
+│   │  # Cognitive Systems
+│   ├── test_cognitive_loop_stories.py
+│   ├── test_woven_mind_stories.py
+│   ├── developer_uses_woven_mind_stories.py
+│   │
+│   │  # Graph of Thought
+│   ├── test_developer_manages_tasks_in_graph.py
+│   ├── test_got_transactional_behavioral.py
+│   │
+│   │  # Code Intelligence
+│   ├── test_developer_uses_spark_language_model.py
+│   ├── developer_gets_code_intelligence_stories.py
+│   │
+│   │  # Event Sourcing
+│   ├── test_cel_event_sourcing_workflows.py
+│   └── ...
 │
 ├── performance/
-│   └── contracts/                  # Gate 4: Sacred promises
-│       ├── search_contract.py
-│       ├── indexing_contract.py
-│       └── memory_contract.py
+│   └── contracts/                  # Gate 4: Sacred promises (~300 contracts)
+│       │
+│       │  # Core Algorithms
+│       ├── test_pagerank_contract.py
+│       ├── test_tfidf_contract.py
+│       ├── test_clustering_contract.py
+│       │
+│       │  # Persistence
+│       ├── test_wal_contract.py
+│       ├── test_transaction_contract.py
+│       ├── test_recovery_contract.py
+│       │
+│       │  # Cognitive Systems
+│       ├── test_goal_loop_contract.py
+│       ├── test_neural_processing_contract.py
+│       │
+│       │  # Event Sourcing
+│       ├── test_cel_event_contract.py
+│       ├── test_cel_dag_contract.py
+│       └── ...
 │
 └── security/                       # Gate 6: Safety
     ├── test_injection.py
     └── test_fuzzing.py
 ```
+
+---
+
+## GoT Standard Operating Procedures (SOPs)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                              │
+│              GRAPH OF THOUGHT: STANDARD OPERATING PROCEDURES                │
+│                                                                              │
+│   These SOPs ensure consistent data collection for causal analysis.         │
+│   Following them enables: root cause analysis, impact prediction,           │
+│   sprint retrospectives, and counterfactual reasoning.                      │
+│                                                                              │
+│   Without consistent data, causal analysis produces unreliable results.     │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### SOP 1: Session Start Protocol
+
+**When**: At the beginning of every new session/thread.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  SESSION START CHECKLIST                                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  □ 1. CHECK FOR EXISTING CONTEXT                                            │
+│       python scripts/got_utils.py kt list --status draft                    │
+│       python scripts/got_utils.py task list --status in_progress            │
+│       python scripts/got_utils.py handoff list --status initiated           │
+│                                                                              │
+│  □ 2. CREATE OR CONTINUE KNOWLEDGE TRANSFER                                 │
+│       If continuing work:                                                   │
+│         → Find the relevant KT and review it                                │
+│       If new work:                                                          │
+│         → python scripts/got_utils.py kt create "Session: [topic]" \        │
+│             --summary "Working on [brief description]"                      │
+│                                                                              │
+│  □ 3. IDENTIFY ACTIVE SPRINT                                                │
+│       python scripts/got_utils.py sprint list --status in_progress          │
+│       → All tasks created should link to active sprint                      │
+│                                                                              │
+│  □ 4. REVIEW BLOCKING CHAINS                                                │
+│       python scripts/got_utils.py task list --status blocked                │
+│       → Understand what's blocked before creating new work                  │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### SOP 2: Task Creation Protocol
+
+**When**: Every time you create a new task.
+
+**Required Fields** (for causal analysis):
+
+| Field | Required | Why |
+|-------|----------|-----|
+| `title` | ✅ Always | Clear identification |
+| `priority` | ✅ Always | Impact analysis |
+| `category` | ✅ Always | Confounder control |
+| `description` | ✅ Always | Context for retrospectives |
+| Sprint link | ✅ Always | Temporal grouping |
+| DEPENDS_ON edges | ⚠️ If applicable | Causal chains |
+| CAUSED_BY edge | ⚠️ If applicable | Root cause tracing |
+
+**Commands**:
+
+```bash
+# Create task with all required fields
+python scripts/got_utils.py task create "Task title" \
+    --priority high \
+    --category feature \
+    --description "Detailed description of what and why"
+
+# Link to sprint (REQUIRED)
+python scripts/got_utils.py edge add S-XXX T-XXX CONTAINS
+
+# Add dependencies (if task depends on another)
+python scripts/got_utils.py edge add T-NEW T-DEPENDENCY DEPENDS_ON
+
+# Add causation (if task was caused by another - e.g., bug fix caused by bug)
+python scripts/got_utils.py edge add T-NEW T-CAUSE CAUSED_BY
+```
+
+**Decision Tree for CAUSED_BY vs DEPENDS_ON**:
+
+```
+Is this task a RESPONSE to something that happened?
+├─ YES: Bug fix, incident response, requirement change
+│       → Add CAUSED_BY edge to the originating task/event
+│
+└─ NO: Planned work that needs something else done first
+        → Add DEPENDS_ON edge to the prerequisite
+```
+
+### SOP 3: Task Start Protocol
+
+**When**: Before beginning work on a task.
+
+```bash
+# Mark task as started (records started_at timestamp)
+python scripts/got_utils.py task start T-XXX
+```
+
+**Why This Matters**: The `started_at` timestamp enables:
+- Duration calculation (how long tasks actually take)
+- Temporal ordering verification (cause must precede effect)
+- Velocity measurements
+
+**Current Gap**: Only 24% of tasks have `started_at` recorded!
+
+### SOP 4: Task Blocking Protocol
+
+**When**: A task becomes blocked.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  BLOCKING PROTOCOL                                                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  1. MARK AS BLOCKED with reason:                                            │
+│     python scripts/got_utils.py task block T-XXX \                          │
+│         --reason "Waiting for [specific blocker]"                           │
+│                                                                              │
+│  2. CREATE BLOCKS EDGE (if blocker is another task):                        │
+│     python scripts/got_utils.py edge add T-BLOCKER T-BLOCKED BLOCKS         │
+│                                                                              │
+│  3. ASSESS IMPACT:                                                          │
+│     → What else depends on this blocked task?                               │
+│     → Should we escalate?                                                   │
+│                                                                              │
+│  4. DOCUMENT in KT:                                                         │
+│     → Add to session KT so blockers are visible                            │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Why This Matters**: Blocking data enables:
+- Blocking chain analysis
+- Common blocker detection across sprints
+- Proactive risk identification
+
+### SOP 5: Task Completion Protocol
+
+**When**: A task is finished.
+
+```bash
+# Complete with retrospective (REQUIRED for causal learning)
+python scripts/got_utils.py task complete T-XXX \
+    --retrospective "What worked: [X]. What didn't: [Y]. Root cause of delays: [Z]"
+```
+
+**Retrospective Template**:
+
+```markdown
+## What worked
+- [Positive factors that helped completion]
+
+## What didn't work
+- [Challenges, delays, issues encountered]
+
+## Root cause of delays (if any)
+- [The underlying cause, not just symptoms]
+
+## Would have helped
+- [What would have made this easier/faster]
+```
+
+**Current Gap**: Only 27% of completed tasks have retrospectives!
+
+### SOP 6: Decision Documentation Protocol
+
+**When**: Making a significant decision.
+
+```bash
+# Log decision with rationale
+python scripts/got_utils.py decision log "Chose [option] over [alternatives]" \
+    --rationale "Because [reasoning]"
+
+# Link decision to affected tasks
+python scripts/got_utils.py edge add D-XXX T-AFFECTED JUSTIFIES
+python scripts/got_utils.py edge add D-XXX T-CREATED MOTIVATES
+```
+
+**Decision Types to Document**:
+- Architecture choices
+- Library/tool selections
+- Approach changes mid-task
+- Trade-off resolutions
+- Scope decisions
+
+### SOP 7: Session End Protocol
+
+**When**: Ending a session (context limit, break, handoff).
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  SESSION END CHECKLIST                                                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  □ 1. UPDATE ALL TASK STATUSES                                              │
+│       → Complete tasks that are done                                        │
+│       → Block tasks that are stuck (with reason!)                          │
+│       → Leave pending tasks as pending                                      │
+│                                                                              │
+│  □ 2. ADD RETROSPECTIVE TO COMPLETED TASKS                                  │
+│       python scripts/got_utils.py task update T-XXX \                       │
+│           --retrospective "..."                                             │
+│                                                                              │
+│  □ 3. FINALIZE KNOWLEDGE TRANSFER                                           │
+│       → Add final learnings to KT                                          │
+│       → python scripts/got_utils.py kt finalize KT-XXX                      │
+│                                                                              │
+│  □ 4. CREATE HANDOFF (if work continues)                                    │
+│       python scripts/got_utils.py handoff initiate \                        │
+│           --task T-XXX \                                                    │
+│           --instructions "Continue with [specific next steps]"              │
+│                                                                              │
+│  □ 5. COMMIT ALL CHANGES                                                    │
+│       → Code changes                                                        │
+│       → .got/ data (auto-persisted)                                        │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### SOP 8: Sprint Retrospective Protocol
+
+**When**: At sprint completion.
+
+```bash
+# Get sprint analysis
+python scripts/got_utils.py sprint status S-XXX
+
+# Review blocking chains
+python scripts/got_utils.py analyze dependencies --sprint S-XXX
+```
+
+**Retrospective Questions for Causal Analysis**:
+
+1. **What blocked us?**
+   - Common root causes across blocked tasks
+   - Could we have predicted these?
+
+2. **What caused delays?**
+   - Tasks that took longer than expected
+   - What was the root cause (not symptoms)?
+
+3. **What would have changed the outcome?**
+   - Counterfactual: "If we had done X, would Y have happened?"
+
+4. **What causal patterns do we see?**
+   - Are certain task types always blocked?
+   - Are certain dependencies always problematic?
+
+### Data Quality Checklist
+
+Before relying on causal analysis, verify data quality:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  CAUSAL DATA QUALITY CHECKLIST                                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Minimum for ROOT CAUSE ANALYSIS:                                           │
+│  □ DEPENDS_ON edges exist between related tasks                             │
+│  □ CAUSED_BY edges exist for reactive tasks (bugs, incidents)               │
+│                                                                              │
+│  Minimum for IMPACT ANALYSIS:                                               │
+│  □ All tasks linked to sprints (CONTAINS edges)                             │
+│  □ Priority set on all tasks                                                │
+│                                                                              │
+│  Minimum for BLOCKING ANALYSIS:                                             │
+│  □ Blocked tasks have blocked_reason set                                    │
+│  □ BLOCKS edges link blockers to blocked tasks                              │
+│                                                                              │
+│  Minimum for DURATION ANALYSIS:                                             │
+│  □ started_at timestamp on tasks                                            │
+│  □ completed_at timestamp on tasks                                          │
+│                                                                              │
+│  Minimum for RETROSPECTIVES:                                                │
+│  □ retrospective field populated on completed tasks                         │
+│  □ Decisions documented with rationale                                      │
+│                                                                              │
+│  Minimum for CONFOUNDER CONTROL:                                            │
+│  □ category set on all tasks                                                │
+│  □ complexity/effort estimates (future enhancement)                         │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Current Data Gaps (As of Assessment)
+
+| Metric | Current | Target | Gap |
+|--------|---------|--------|-----|
+| `started_at` | 24% | 90%+ | 🔴 Critical |
+| `retrospective` | 27% | 80%+ | 🔴 Critical |
+| `blocked_reason` | ~0% | 100% | 🔴 Critical |
+| CAUSED_BY edges | 0 | As needed | 🟡 Missing |
+| BLOCKS edges | 0 | As needed | 🟡 Missing |
+| Sprint links | ~95% | 100% | 🟢 Good |
+| Priority | ~100% | 100% | 🟢 Good |
+| Category | ~96% | 100% | 🟢 Good |
+
+**Action Required**: Start following SOPs consistently to build reliable causal data.
+
+---
+
+## Quick Reference: GoT CLI Commands
+
+**IMPORTANT**: The GoT CLI is invoked via `python scripts/got_utils.py`, not a standalone `got` command.
+
+```bash
+# Alias for convenience (optional, add to your shell profile)
+alias got='python scripts/got_utils.py'
+
+# --- ACTUAL COMMANDS (use python scripts/got_utils.py) ---
+
+# Task Management
+python scripts/got_utils.py task create "Title" --priority high
+python scripts/got_utils.py task start <task_id>
+python scripts/got_utils.py task complete <task_id>
+python scripts/got_utils.py task list --status active
+
+# Sprint Management
+python scripts/got_utils.py sprint create "Sprint Name"
+python scripts/got_utils.py sprint list
+python scripts/got_utils.py sprint status
+
+# Knowledge Transfer (Session Learning Capture)
+python scripts/got_utils.py kt create "Session Title" --summary "..."
+python scripts/got_utils.py kt list --status draft
+python scripts/got_utils.py kt show <kt_id>
+
+# Decisions with Rationale
+python scripts/got_utils.py decision create "Use BM25" --rationale "Better for short queries"
+
+# Query the Graph
+python scripts/got_utils.py query "status=pending AND priority=high"
+
+# Graph Health & Analysis
+python scripts/got_utils.py validate
+python scripts/got_utils.py stats
+python scripts/got_utils.py analyze
+
+# Handoff (Agent-to-Agent Work Transfer)
+python scripts/got_utils.py handoff initiate --source agent1 --target agent2 --task T1
+python scripts/got_utils.py handoff accept <handoff_id>
+python scripts/got_utils.py handoff complete <handoff_id>
+
+# Batch Operations (Atomic Multi-Entity Creation)
+python scripts/got_utils.py batch <<'EOF'
+epic create "Project X" as e1
+sprint create "Sprint 1" --epic $e1 as s1
+task create "Feature A" --sprint $s1 --priority high as t1
+task create "Tests" --sprint $s1 as t2
+edge add $t2 $t1 DEPENDS_ON
+EOF
+
+# View all available commands
+python scripts/got_utils.py --help
+python scripts/got_utils.py task --help
+python scripts/got_utils.py kt --help
+```
+
+---
+
+## Knowledge Transfer Lifecycle
+
+Knowledge transfers capture session learnings and enable continuity across agent handoffs.
+
+### Lifecycle Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     KNOWLEDGE TRANSFER LIFECYCLE                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  1. CREATE (start of session)                                           │
+│     python scripts/got_utils.py kt create "Session Title" --summary "..." │
+│                        │                                                 │
+│                        ▼                                                 │
+│                 [KT: draft] ◄─── Active, editable                       │
+│                        │                                                 │
+│  2. BUILD (during session)                                              │
+│     python scripts/got_utils.py kt show <kt_id>                         │
+│     (Add learnings via kt commands or manual updates)                   │
+│                                                                          │
+│                        │                                                 │
+│  3. FINALIZE (end of session)                                           │
+│     python scripts/got_utils.py kt finalize <kt_id>                     │
+│                        │                                                 │
+│                        ▼                                                 │
+│                 [KT: published] ◄─── Immutable, searchable              │
+│                        │                                                 │
+│  4. HANDOFF (if continuation needed)                                    │
+│     python scripts/got_utils.py handoff initiate --target <agent>       │
+│                        │                                                 │
+│                        ├──CONTINUES──► [Handoff]                        │
+│                        │                    │                            │
+│                        │                    ▼                            │
+│                        │              [New KT: draft]                   │
+│                        │                                                 │
+│  5. HISTORY (trace evolution)                                           │
+│     python scripts/got_utils.py kt list                                 │
+│     python scripts/got_utils.py kt show <kt_id>                         │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Rules
+
+1. **One draft KT at a time** - Only maintain one active knowledge transfer per work context
+2. **Finalize before handoff** - Must publish KT before creating continuation
+3. **Published is immutable** - Once finalized, a KT cannot be modified
+4. **History is traceable** - CONTINUES edges form queryable chain
+
+### Error Handling
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     IF SOMETHING GOES WRONG                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ERROR: "KT not found"                                                  │
+│  ───────────────────────                                                │
+│  → Run: python scripts/got_utils.py kt list                             │
+│  → Check the KT ID is correct (format: KT-YYYYMMDD-HHMMSS)              │
+│  → If imported, check: .got/entities/KT-*.json exists                   │
+│                                                                          │
+│  ERROR: "Cannot finalize - not in draft status"                         │
+│  ──────────────────────────────────────────────                         │
+│  → KT is already published or archived                                  │
+│  → Run: python scripts/got_utils.py kt show <kt_id> to check status     │
+│  → Create a new KT if you need to add more content                      │
+│                                                                          │
+│  ERROR: "Import failed - 'KnowledgeTransfer' object is not iterable"    │
+│  ────────────────────────────────────────────────────────────────────   │
+│  → This is a serialization bug (should be fixed)                        │
+│  → Verify scripts/got_utils.py uses asdict(kt) not dict(kt)             │
+│                                                                          │
+│  ERROR: "Cannot link - entity not found"                                │
+│  ────────────────────────────────────────                               │
+│  → The target entity (task, handoff, decision) doesn't exist            │
+│  → Run: python scripts/got_utils.py task list to find valid IDs         │
+│                                                                          │
+│  ERROR: Session context lost                                            │
+│  ───────────────────────────                                            │
+│  → Check: python scripts/got_utils.py kt list --status draft            │
+│  → Run: python scripts/got_utils.py kt show <kt_id>                     │
+│  → If no draft exists, create new KT and link to previous               │
+│                                                                          │
+│  RECOVERY: Orphaned work (no KT created)                                │
+│  ────────────────────────────────────────                               │
+│  → Create KT from session learnings:                                    │
+│    python scripts/got_utils.py kt create "Recovery" --summary "..."     │
+│  → Link to any related work that exists                                 │
+│  → Finalize immediately to preserve                                     │
+│                                                                          │
+│  RECOVERY: Need to continue but forgot to handoff                       │
+│  ─────────────────────────────────────────────                          │
+│  → Check if previous KT is still draft:                                 │
+│    python scripts/got_utils.py kt list --status draft                   │
+│  → If published: Create new KT:                                         │
+│    python scripts/got_utils.py kt create "Continuation" --summary "..." │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Best Practices
+
+1. **Create KT early** - Start capturing learnings at session start
+2. **Append frequently** - Don't wait until end to document
+3. **Use meaningful sections** - "Technical Insights", "Decisions", "Blockers", "Next Steps"
+4. **Always finalize** - Never leave a session with an orphaned draft
+5. **Link related work** - Connect KTs to tasks, decisions, handoffs for graph traversal
+6. **Import historical docs** - Check `python scripts/got_utils.py kt --help` for import options
 
 ---
 
@@ -960,20 +2015,23 @@ python -m pytest tests/smoke/ -v
 # Gate 2: Specifications (run frequently, ~2 minutes)
 python -m pytest tests/unit/ -v --cov=cortical --cov-fail-under=86
 
-# Gate 3: Behaviors (run before merge, ~5 minutes)
+# Gate 3: Behaviors (~900 scenarios, run before merge)
 python -m pytest tests/behavioral/ -v
 
-# Gate 4: Contracts (run before merge, ~10 minutes)
+# Gate 4: Contracts (~300 contracts, run before merge)
 python -m pytest tests/performance/contracts/ -v -m contract
 
-# Gate 5: Integration (run before merge, ~10 minutes)
+# Gate 5: Integration (run before merge)
 python -m pytest tests/integration/ -v
 
 # Gate 6: Security (run before release)
 python -m pytest tests/security/ -v
 
-# Full Metus Pipeline (what CI runs)
+# Full Metus Pipeline (~1,200 tests)
 python -m pytest tests/ -v --cov=cortical --cov-fail-under=86
+
+# Quick: Just behavioral + contracts (~1,200 tests, ~3 minutes)
+python -m pytest tests/behavioral/ tests/performance/contracts/ -v
 ```
 
 ---

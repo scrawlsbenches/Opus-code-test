@@ -22,7 +22,6 @@ from typing import Dict, List, Optional
 class TestCausalIntervention:
     """Tests for do-calculus and intervention reasoning."""
 
-    @pytest.mark.skip(reason="Aspirational - PRISM-Causal not yet implemented")
     def test_intervention_differs_from_observation(self):
         """
         P(Y|do(X)) differs from P(Y|X) when there are confounders.
@@ -35,9 +34,11 @@ class TestCausalIntervention:
 
         # The causal structure:
         # Curiosity -> Drink -> Shrink
+        # Curiosity -> Shrink (direct confounder path!)
         # Curiosity -> Explore -> Find_Garden
         causal.add_cause("curiosity", "drink_bottle")
-        causal.add_cause("drink_bottle", "shrink")
+        causal.add_cause("drink_bottle", "shrink", strength=0.9)
+        causal.add_cause("curiosity", "shrink", strength=0.3)  # Confounding path
         causal.add_cause("curiosity", "explore")
         causal.add_cause("explore", "find_garden")
 
@@ -51,7 +52,6 @@ class TestCausalIntervention:
         # (Curious people both drink AND shrink for other reasons)
         assert p_shrink_given_drink != p_shrink_do_drink
 
-    @pytest.mark.skip(reason="Aspirational - PRISM-Causal not yet implemented")
     def test_causal_chain_reasoning(self):
         """
         Trace effects through causal chains.
@@ -73,7 +73,6 @@ class TestCausalIntervention:
         # Should be product of chain: 0.95 * 0.99 * 0.90 ≈ 0.85
         assert 0.80 < effect < 0.90
 
-    @pytest.mark.skip(reason="Aspirational - PRISM-Causal not yet implemented")
     def test_multiple_causal_paths(self):
         """
         Handle multiple causal paths between variables.
@@ -103,7 +102,6 @@ class TestCausalIntervention:
 class TestCounterfactualReasoning:
     """Tests for 'what if' counterfactual reasoning."""
 
-    @pytest.mark.skip(reason="Aspirational - PRISM-Causal not yet implemented")
     def test_basic_counterfactual(self):
         """
         What would have happened if Alice had NOT drunk from the bottle?
@@ -133,7 +131,6 @@ class TestCounterfactualReasoning:
         assert counterfactual.probability < 0.2
         assert "shrink" in counterfactual.blocked_path
 
-    @pytest.mark.skip(reason="Aspirational - PRISM-Causal not yet implemented")
     def test_counterfactual_with_alternative_cause(self):
         """
         What if Alice had eaten the cake instead of drinking?
@@ -167,7 +164,6 @@ class TestCounterfactualReasoning:
         assert cf.probability > 0.6
         assert "reach_key" in cf.active_path
 
-    @pytest.mark.skip(reason="Aspirational - PRISM-Causal not yet implemented")
     def test_necessary_vs_sufficient_cause(self):
         """
         Distinguish necessary causes from sufficient causes.
@@ -204,7 +200,6 @@ class TestCounterfactualReasoning:
 class TestCausalDiscovery:
     """Tests for learning causal structure from data."""
 
-    @pytest.mark.skip(reason="Aspirational - PRISM-Causal not yet implemented")
     def test_discover_causal_direction(self):
         """
         Infer causal direction from observational data.
@@ -235,7 +230,6 @@ class TestCausalDiscovery:
         assert structure.has_edge("grin", "disappear")
         assert not structure.has_edge("disappear", "grin")
 
-    @pytest.mark.skip(reason="Aspirational - PRISM-Causal not yet implemented")
     def test_discover_hidden_confounder(self):
         """
         Detect when a hidden common cause explains correlation.
@@ -271,7 +265,6 @@ class TestCausalDiscovery:
 class TestCausalPLNIntegration:
     """Tests for integrating causal reasoning with PLN."""
 
-    @pytest.mark.skip(reason="Aspirational - integration not yet implemented")
     def test_causal_strengthens_pln_inference(self):
         """
         Causal knowledge should boost PLN confidence.
@@ -302,7 +295,6 @@ class TestCausalPLNIntegration:
         assert result.strength > 0.8
         assert result.has_causal_support
 
-    @pytest.mark.skip(reason="Aspirational - integration not yet implemented")
     def test_causal_enables_intervention_queries(self):
         """
         PLN extended with causal queries: P(Y | do(X)).
@@ -331,7 +323,6 @@ class TestCausalPLNIntegration:
 class TestCausalExplanation:
     """Tests for generating causal explanations."""
 
-    @pytest.mark.skip(reason="Aspirational - explanation not yet implemented")
     def test_generate_causal_explanation(self):
         """
         Explain WHY something happened, causally.
@@ -356,8 +347,11 @@ class TestCausalExplanation:
 
         # Should trace back through the causal chain
         assert "curiosity" in explanation.root_causes
-        assert "shrink" in explanation.proximate_causes
+        # Proximate cause is the direct parent (fit_door -> enter_garden)
+        assert "fit_door" in explanation.proximate_causes
         assert len(explanation.causal_chain) >= 4
+        # Shrink should be in the causal chain
+        assert "shrink" in explanation.causal_chain
 
         # Human-readable narrative
         narrative = explanation.to_narrative()

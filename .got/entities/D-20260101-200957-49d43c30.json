@@ -1,0 +1,15 @@
+{
+  "_checksum": "3f524be339d86a3d",
+  "_written_at": "2026-01-01T20:09:57.517250+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-01T20:09:57.513846+00:00",
+    "entity_type": "decision",
+    "id": "D-20260101-200957-49d43c30",
+    "modified_at": "2026-01-01T20:09:57.517194+00:00",
+    "properties": {},
+    "rationale": "## Decision\nUse the existing PRISM-Causal module (cortical/reasoning/prism_causal.py) as the\nfoundation for GoT causal analysis rather than building a separate system.\n\n## Alternatives Considered\n1. Build separate causal analysis from scratch\n2. Use external library (e.g., DoWhy, CausalNex)\n3. Integrate PRISM-Causal (CHOSEN)\n\n## Rationale\n- PRISM-Causal already implements do-calculus, counterfactuals, necessity/sufficiency\n- Follows Sovereignty Principle - we own the code\n- Enables future integration with PLN probabilistic reasoning\n- Behavioral tests already validate the causal semantics\n\n## Trade-offs\n- Requires mapping GoT edge types to causal semantics\n- Data quality in GoT affects analysis reliability\n- Need SOPs to ensure consistent data collection\n\n## Files Affected\n- cortical/got/causal_analysis.py (new)\n- cortical/got/cli/causal.py (new)\n- CLAUDE.md (SOPs added)\n- tests/behavioral/test_got_causal_integration.py (created)",
+    "title": "Integrate PRISM-Causal with GoT for causal analysis",
+    "version": 2
+  }
+}

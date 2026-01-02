@@ -1,0 +1,19 @@
+{
+  "_checksum": "193bf8fb6a5b19ba",
+  "_written_at": "2026-01-01T22:41:03.549392+00:00",
+  "data": {
+    "created_at": "2026-01-01T22:41:03.544573+00:00",
+    "description": "The rebuild_indexes() method in cortical/got/recovery.py looks for entity_type at the wrong nesting level. Current code checks data.get('entity_type') but the actual structure has entity_type nested under data['data']['entity_type']. Fix: Change to data.get('data', {}).get('entity_type'). Also fix field access for id, title, status, etc. This will enable 2 contract tests: test_index_rebuild_time_bounded and test_index_rebuild_correctness in test_recovery_contract.py. After fixing, remove the @pytest.mark.skip decorators and verify tests pass.",
+    "entity_type": "task",
+    "id": "T-20260101-224103-683012e7",
+    "metadata": {},
+    "modified_at": "2026-01-01T22:41:03.549296+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Fix rebuild_indexes entity_type nesting bug",
+    "version": 2
+  }
+}

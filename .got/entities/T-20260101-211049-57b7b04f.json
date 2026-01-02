@@ -1,0 +1,19 @@
+{
+  "_checksum": "f8d3161475a2845f",
+  "_written_at": "2026-01-01T21:10:49.779565+00:00",
+  "data": {
+    "created_at": "2026-01-01T21:10:49.775353+00:00",
+    "description": "Add test naming requirements to contributor documentation. Reference CLAUDE.md section on Test prefix.",
+    "entity_type": "task",
+    "id": "T-20260101-211049-57b7b04f",
+    "metadata": {},
+    "modified_at": "2026-01-01T21:10:49.779469+00:00",
+    "priority": "low",
+    "properties": {
+      "category": "docs"
+    },
+    "status": "pending",
+    "title": "Document test naming convention in contributor guide",
+    "version": 2
+  }
+}

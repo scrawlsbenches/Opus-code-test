@@ -5,8 +5,7 @@ All exceptions are designed to be text-friendly for JSON error messages
 and CLI output.
 """
 
-from typing import Optional, Dict, Any
-
+from typing import Dict, Any
 
 class GoTError(Exception):
     """Base exception for all GoT errors."""
@@ -43,7 +42,7 @@ class ConflictError(GoTError):
 
 
 class CorruptionError(GoTError):
-    """Data corruption detected (checksum mismatch, invalid event log, etc.)."""
+    """Data corruption errors (checksum mismatch, invalid event log, etc.)."""
     pass
 
 

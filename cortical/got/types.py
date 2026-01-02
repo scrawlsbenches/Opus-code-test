@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Dict, Any, List, TypedDict
+from typing import Dict, Any, List, TypedDict, Optional
 
 from cortical.utils.checksums import compute_checksum
 from .errors import ValidationError
@@ -182,6 +182,24 @@ class DocumentMetadata(TypedDict, total=False):
     version: str            # Document version string
 
 
+class KnowledgeTransferSection(TypedDict, total=False):
+    """
+    Structure for individual sections in KnowledgeTransfer documents.
+
+    Sections capture structured knowledge with optional code references.
+
+    Example:
+        section = KnowledgeTransferSection(
+            heading="Architecture Decisions",
+            content="We chose a transactional store...",
+            code_refs=["cortical/got/store.py:45", "cortical/got/txn.py:120"]
+        )
+    """
+    heading: str            # Section heading
+    content: str            # Section content (markdown)
+    code_refs: List[str]    # file:line references
+
+
 # Type aliases for common nested list types
 SprintGoals = List[SprintGoal]
 EpicPhases = List[EpicPhase]
@@ -213,6 +231,9 @@ VALID_EDGE_TYPES = frozenset({
     'TRANSFERS',     # Task transfers to Handoff
     'PRODUCES',      # Task produces Document/Artifact
     'DOCUMENTED_BY', # Task/Decision is documented by Document (inverse of PRODUCES)
+    # Knowledge transfer relationships
+    'DOCUMENTS',     # KnowledgeTransfer documents Task/Decision
+    'CONTINUES',     # KnowledgeTransfer continues from Handoff
 })
 
 
@@ -224,6 +245,7 @@ VALID_ENTITY_TYPES = frozenset({
     'sprint',
     'epic',
     'handoff',
+    'knowledge_transfer',
     'claudemd_layer',
     'claudemd_version',
     'persona_profile',
@@ -687,6 +709,114 @@ class Handoff(Entity):
             completed_at=data.get("completed_at", ""),
             rejected_at=data.get("rejected_at", ""),
             reject_reason=data.get("reject_reason", ""),
+            properties=data.get("properties", {}),
+        )
+
+
+@dataclass
+class KnowledgeTransfer(Entity):
+    """
+    Knowledge captured from a session for future reference.
+
+    KnowledgeTransfer entities document insights, patterns, and learnings
+    from development sessions, linking to related handoffs, tasks, and decisions
+    for long-term knowledge retention.
+
+    Status lifecycle: draft → published → archived
+
+    Example:
+        kt = KnowledgeTransfer(
+            id="KT-2025-01-01-cdg-unification",
+            title="CDG and GoT Unification",
+            session_id="session-abc123",
+            session_date="2025-01-01",
+            summary="Unified CDG and GoT with configurable layers...",
+            sections={
+                "Architecture": "The system now uses...",
+                "Key Decisions": "We chose to...",
+            },
+            code_refs=["cortical/got/store.py:45", "cortical/cdg/store.py:120"],
+            related_handoffs=["H-001"],
+            tags=["architecture", "unification"]
+        )
+    """
+
+    # Identity
+    title: str = ""
+    session_id: str = ""
+    session_date: str = ""
+
+    # Content
+    summary: str = ""                                       # Executive summary
+    sections: Dict[str, str] = field(default_factory=dict)  # heading -> content
+    code_refs: List[str] = field(default_factory=list)      # file:line refs
+
+    # Relationships
+    related_handoffs: List[str] = field(default_factory=list)
+    related_tasks: List[str] = field(default_factory=list)
+    related_decisions: List[str] = field(default_factory=list)
+
+    # Source (for imports)
+    source_file: Optional[str] = None
+
+    # Classification
+    tags: List[str] = field(default_factory=list)
+    status: str = "published"  # draft, published, archived
+
+    # Extension
+    properties: Dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        """Validate knowledge transfer fields after initialization."""
+        self.entity_type = "knowledge_transfer"
+        valid_statuses = {"draft", "published", "archived"}
+        if self.status not in valid_statuses:
+            raise ValidationError(
+                f"Invalid status '{self.status}'",
+                valid_statuses=list(valid_statuses)
+            )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize knowledge transfer to dictionary."""
+        result = super().to_dict()
+        result.update({
+            "title": self.title,
+            "session_id": self.session_id,
+            "session_date": self.session_date,
+            "summary": self.summary,
+            "sections": self.sections,
+            "code_refs": self.code_refs,
+            "related_handoffs": self.related_handoffs,
+            "related_tasks": self.related_tasks,
+            "related_decisions": self.related_decisions,
+            "source_file": self.source_file,
+            "tags": self.tags,
+            "status": self.status,
+            "properties": self.properties,
+        })
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "KnowledgeTransfer":
+        """Deserialize knowledge transfer from dictionary."""
+        return cls(
+            id=data["id"],
+            entity_type=data.get("entity_type", "knowledge_transfer"),
+            version=data.get("version", 1),
+            created_at=data.get("created_at", datetime.now(timezone.utc).isoformat()),
+            modified_at=data.get("modified_at", datetime.now(timezone.utc).isoformat()),
+            title=data.get("title", ""),
+            session_id=data.get("session_id", ""),
+            session_date=data.get("session_date", ""),
+            summary=data.get("summary", ""),
+            sections=data.get("sections", {}),
+            code_refs=data.get("code_refs", []),
+            related_handoffs=data.get("related_handoffs", []),
+            related_tasks=data.get("related_tasks", []),
+            related_decisions=data.get("related_decisions", []),
+            source_file=data.get("source_file"),
+            tags=data.get("tags", []),
+            status=data.get("status", "published"),
             properties=data.get("properties", {}),
         )
 

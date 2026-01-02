@@ -3,28 +3,113 @@ File-based storage with versioning and checksums for GoT transactional system.
 
 Provides ACID-compliant storage using atomic file operations, checksums for
 integrity verification, and append-only history for snapshot isolation.
+
+This module now delegates to CDGStore (Cortical Distributed Graph) for
+core storage operations, providing GoT-specific entity type handling
+on top of the generic CDG infrastructure.
+
+Migration Note (2025-12-31):
+    VersionedStore now wraps CDGStore. All storage operations are delegated
+    to CDG, with GoT providing:
+    - Entity type factory (Task, Decision, Sprint, etc.)
+    - Schema validation via GoT's registry
+
+    This enables GoT to benefit from CDG improvements while maintaining
+    backward compatibility with existing code and data.
 """
 
 from __future__ import annotations
 
-import os
-import json
-import time
-import threading
 from pathlib import Path
-from datetime import datetime, timezone
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 
 from .types import (
-    Entity, Task, Decision, Edge, Sprint, Epic, Handoff,
+    Entity, Task, Decision, Edge, Sprint, Epic, Handoff, KnowledgeTransfer,
     ClaudeMdLayer, ClaudeMdVersion, PersonaProfile, Team, Document,
     VALID_ENTITY_TYPES,
 )
-from .errors import CorruptionError, ValidationError
-from cortical.utils.checksums import compute_checksum
-from cortical.utils.locking import ProcessLock
+from .errors import ValidationError, CorruptionError
 from .config import DurabilityMode
-from .schema import get_registry, ValidationResult
+from .schema import get_registry
+
+# Import CDGStore for core storage operations
+from cortical.cdg.storage import CDGStore
+from cortical.cdg.config import DurabilityMode as CDGDurabilityMode
+from cortical.cdg.errors import CorruptionError as CDGCorruptionError
+
+
+def _got_entity_factory(data: Dict[str, Any]) -> Entity:
+    """
+    GoT entity factory - creates correct entity subclass based on entity_type.
+
+    This is the GoT-specific dispatch logic that maps entity_type strings
+    to Task, Decision, Sprint, etc. classes.
+
+    Args:
+        data: Entity data dictionary
+
+    Returns:
+        Appropriate Entity subclass instance
+
+    Raises:
+        ValueError: If entity_type is missing or invalid
+    """
+    entity_type = data.get("entity_type")
+
+    # Validate entity_type is present
+    if not entity_type:
+        entity_id = data.get("id", "<unknown>")
+        raise ValueError(
+            f"Missing entity_type in entity data for {entity_id}. "
+            f"Valid types: {sorted(VALID_ENTITY_TYPES)}"
+        )
+
+    # Validate entity_type is known
+    if entity_type not in VALID_ENTITY_TYPES:
+        entity_id = data.get("id", "<unknown>")
+        raise ValueError(
+            f"Unknown entity_type '{entity_type}' for entity {entity_id}. "
+            f"Valid types: {sorted(VALID_ENTITY_TYPES)}"
+        )
+
+    # Dispatch to appropriate factory
+    if entity_type == "task":
+        return Task.from_dict(data)
+    elif entity_type == "decision":
+        return Decision.from_dict(data)
+    elif entity_type == "edge":
+        return Edge.from_dict(data)
+    elif entity_type == "sprint":
+        return Sprint.from_dict(data)
+    elif entity_type == "epic":
+        return Epic.from_dict(data)
+    elif entity_type == "handoff":
+        return Handoff.from_dict(data)
+    elif entity_type == "knowledge_transfer":
+        return KnowledgeTransfer.from_dict(data)
+    elif entity_type == "claudemd_layer":
+        return ClaudeMdLayer.from_dict(data)
+    elif entity_type == "claudemd_version":
+        return ClaudeMdVersion.from_dict(data)
+    elif entity_type == "persona_profile":
+        return PersonaProfile.from_dict(data)
+    elif entity_type == "team":
+        return Team.from_dict(data)
+    elif entity_type == "document":
+        return Document.from_dict(data)
+    else:
+        # Fallback to base Entity
+        return Entity.from_dict(data)
+
+
+def _convert_durability(durability: DurabilityMode) -> CDGDurabilityMode:
+    """Convert GoT DurabilityMode to CDG DurabilityMode."""
+    mapping = {
+        DurabilityMode.RELAXED: CDGDurabilityMode.FAST,
+        DurabilityMode.BALANCED: CDGDurabilityMode.BALANCED,
+        DurabilityMode.PARANOID: CDGDurabilityMode.PARANOID,
+    }
+    return mapping.get(durability, CDGDurabilityMode.BALANCED)
 
 
 class VersionedStore:
@@ -39,6 +124,11 @@ class VersionedStore:
     The store maintains a global version counter that increments
     on every successful commit. History is maintained in append-only
     JSONL files for snapshot isolation support.
+
+    Implementation Note:
+        This class now wraps CDGStore, delegating storage operations
+        while providing GoT-specific entity type handling and schema
+        validation.
 
     Storage layout:
         {store_dir}/
@@ -64,24 +154,19 @@ class VersionedStore:
                              (default: True for data integrity)
         """
         self.store_dir = Path(store_dir)
-        self.store_dir.mkdir(parents=True, exist_ok=True)
         self.durability = durability
         self.validate_on_save = validate_on_save
-        self.history_dir = self.store_dir / "_history"
-        self.history_dir.mkdir(exist_ok=True)
 
-        # Process lock for concurrent history file access protection
-        self._history_lock = ProcessLock(self.history_dir / ".history.lock")
+        # Create CDGStore with GoT entity factory
+        self._cdg_store = CDGStore(
+            store_dir=self.store_dir,
+            durability=_convert_durability(durability),
+            validate_on_save=validate_on_save,
+            entity_factory=_got_entity_factory,
+        )
 
-        # Thread lock for concurrent version file access protection (within same process)
-        # ProcessLock only provides process-level locking via fcntl.flock, which doesn't
-        # provide mutual exclusion between threads in the same process.
-        self._version_thread_lock = threading.Lock()
-
-        # Process lock for cross-process version file protection
-        self._version_lock = ProcessLock(self.store_dir / ".version.lock", reentrant=False)
-
-        self._version = self._load_version()
+        # Expose history_dir for backward compatibility
+        self.history_dir = self._cdg_store.history_dir
 
     def current_version(self) -> int:
         """
@@ -90,7 +175,7 @@ class VersionedStore:
         Returns:
             Current global version number
         """
-        return self._version
+        return self._cdg_store.current_version()
 
     def read(self, entity_id: str) -> Optional[Entity]:
         """
@@ -105,12 +190,10 @@ class VersionedStore:
         Raises:
             CorruptionError: If checksum verification fails
         """
-        path = self._entity_path(entity_id)
-        if not path.exists():
-            return None
-
-        wrapper = self._read_and_verify(path)
-        return self._entity_from_dict(wrapper["data"])
+        try:
+            return self._cdg_store.read(entity_id)
+        except CDGCorruptionError as e:
+            raise CorruptionError(e.message, **e.context) from e
 
     def read_at_version(self, entity_id: str, version: int) -> Optional[Entity]:
         """
@@ -125,44 +208,86 @@ class VersionedStore:
 
         Note:
             For entities that were never modified (no history file),
-            we assume they existed since version 1. This is a known
-            limitation for the MVP implementation.
+            we assume they existed since version 1.
         """
-        # If reading at or after current version, return current entity
-        if version >= self._version:
-            return self.read(entity_id)
+        try:
+            return self._cdg_store.read_at_version(entity_id, version)
+        except CDGCorruptionError as e:
+            raise CorruptionError(e.message, **e.context) from e
 
-        # Check history for earlier versions
-        history_path = self._history_path(entity_id)
+    def write(self, entity: Entity) -> None:
+        """
+        Write an entity (used for single writes, increments entity.version).
 
-        if history_path.exists():
-            # Find entry with highest global_version <= version
-            matching_entry = None
-            with open(history_path, 'r', encoding='utf-8') as f:
-                for line in f:
-                    entry = json.loads(line)
-                    gv = entry.get("global_version", 0)
-                    if gv <= version:
-                        matching_entry = entry
-                    else:
-                        break  # History is sorted, can stop early
+        Args:
+            entity: Entity to write
 
-            if matching_entry:
-                return self._entity_from_dict(matching_entry["data"])
+        Raises:
+            CorruptionError: If checksum operations fail
+            ValidationError: If entity fails schema validation (when validate_on_save=True)
+        """
+        # GoT-specific schema validation
+        self._validate_entity(entity)
 
-            # No matching entry - entity didn't exist at that version
-            return None
-        else:
-            # No history file - entity never modified since creation
-            # Assume entity existed since version 1
-            if version >= 1:
-                return self.read(entity_id)
-            else:
-                return None
+        # Delegate to CDGStore
+        self._cdg_store.write(entity)
+
+    def apply_writes(self, write_set: Dict[str, Entity]) -> int:
+        """
+        Atomically apply a set of writes.
+
+        Args:
+            write_set: Dictionary mapping entity_id to Entity
+
+        Returns:
+            New global version after writes
+
+        Raises:
+            CorruptionError: If checksum operations fail
+            ValidationError: If any entity fails schema validation
+        """
+        # GoT-specific schema validation for all entities
+        for entity in write_set.values():
+            self._validate_entity(entity)
+
+        # Delegate to CDGStore
+        return self._cdg_store.apply_writes(write_set)
+
+    def exists(self, entity_id: str) -> bool:
+        """
+        Check if entity exists.
+
+        Args:
+            entity_id: Entity identifier
+
+        Returns:
+            True if entity file exists, False otherwise
+        """
+        return self._cdg_store.exists(entity_id)
+
+    def delete(self, entity_id: str) -> bool:
+        """
+        Delete an entity.
+
+        Args:
+            entity_id: Entity identifier
+
+        Returns:
+            True if deleted, False if not found
+        """
+        return self._cdg_store.delete(entity_id)
+
+    def fsync_all(self) -> None:
+        """
+        Force fsync of all entity files and version file.
+
+        Used by BALANCED mode to sync on transaction commit.
+        """
+        self._cdg_store.fsync_all()
 
     def _validate_entity(self, entity: Entity) -> None:
         """
-        Validate entity against its schema.
+        Validate entity against its schema using GoT's schema registry.
 
         Args:
             entity: Entity to validate
@@ -178,7 +303,7 @@ class VersionedStore:
         if not entity_type:
             return  # Skip validation for unknown types
 
-        # Validate against schema
+        # Validate against schema using GoT's registry
         registry = get_registry()
         if not registry.has_schema(entity_type):
             return  # Skip validation for types without schemas
@@ -191,460 +316,31 @@ class VersionedStore:
                 errors=result.errors
             )
 
-    def write(self, entity: Entity) -> None:
+    # Backward compatibility: expose internal version
+    @property
+    def _version(self) -> int:
+        """Internal version for backward compatibility."""
+        return self._cdg_store._version
+
+    # Backward compatibility: expose _entity_path for tests that use it
+    def _entity_path(self, entity_id: str):
+        """Get path for entity JSON file (for backward compatibility)."""
+        return self._cdg_store._entity_path(entity_id)
+
+    # Backward compatibility: expose _history_path for tests that use it
+    def _history_path(self, entity_id: str):
+        """Get path for entity history file (for backward compatibility)."""
+        return self._cdg_store._history_path(entity_id)
+
+    # Backward compatibility: expose _read_and_verify for advanced usage
+    def _read_and_verify(self, path):
+        """Read JSON and verify checksum (for backward compatibility).
+
+        Translates CDG CorruptionError to GoT CorruptionError for consistent
+        exception handling in GoT code.
         """
-        Write an entity (used for single writes, increments entity.version).
-
-        Args:
-            entity: Entity to write
-
-        Raises:
-            CorruptionError: If checksum operations fail
-            ValidationError: If entity fails schema validation (when validate_on_save=True)
-        """
-        # Validate entity before writing
-        self._validate_entity(entity)
-
-        # Save current state to history before overwriting
-        if self.exists(entity.id):
-            self._save_to_history(entity.id, self._version)
-
-        # Increment entity version
-        entity.bump_version()
-
-        # Write entity to file
-        path = self._entity_path(entity.id)
-        self._write_with_checksum(path, entity.to_dict())
-
-        # Increment global version
-        self._version += 1
-        self._save_version()
-
-    def apply_writes(self, write_set: Dict[str, Entity]) -> int:
-        """
-        Atomically apply a set of writes.
-
-        Uses atomic file operations:
-        1. Validate all entities (if validate_on_save=True)
-        2. Write to temp files
-        3. Fsync all temp files
-        4. Rename temp files to final (atomic on POSIX)
-        5. Update version counter
-        6. Fsync version file
-
-        If any operation fails, all successfully renamed files are rolled back
-        to ensure no partial state persists.
-
-        Args:
-            write_set: Dictionary mapping entity_id to Entity
-
-        Returns:
-            New global version after writes
-
-        Raises:
-            CorruptionError: If checksum operations fail
-            ValidationError: If any entity fails schema validation
-            Exception: Any error during write (all changes rolled back)
-        """
-        # Step 0: Validate all entities before any writes
-        for entity in write_set.values():
-            self._validate_entity(entity)
-
-        temp_files = []
-        renamed_files = []  # Track successful renames for rollback
-
         try:
-            # Step 1: Save old states to history and write new states to temp files
-            for entity_id, entity in write_set.items():
-                # Save current state to history if entity exists
-                if self.exists(entity_id):
-                    self._save_to_history(entity_id, self._version)
-
-                # Increment entity version
-                entity.bump_version()
-
-                # Write to temp file
-                temp_path = self._entity_path(entity_id).with_suffix('.tmp')
-                self._write_with_checksum(temp_path, entity.to_dict())
-                temp_files.append((temp_path, self._entity_path(entity_id)))
-
-            # Step 2: Fsync all temp files (respects durability mode)
-            for temp_path, _ in temp_files:
-                self._fsync_file(temp_path)
-
-            # Step 3: Rename all temp files to final (atomic on POSIX)
-            for temp_path, final_path in temp_files:
-                temp_path.rename(final_path)
-                renamed_files.append(final_path)  # Track for rollback
-
-            # Step 4: Update global version
-            self._version += 1
-            self._save_version()
-
-            return self._version
-
-        except Exception:
-            # Rollback: Delete successfully renamed files to avoid partial state
-            for final_path in renamed_files:
-                if final_path.exists():
-                    final_path.unlink()
-
-            # Clean up remaining temp files
-            for temp_path, _ in temp_files:
-                if temp_path.exists():
-                    temp_path.unlink()
-            raise
-
-    def exists(self, entity_id: str) -> bool:
-        """
-        Check if entity exists.
-
-        Args:
-            entity_id: Entity identifier
-
-        Returns:
-            True if entity file exists, False otherwise
-        """
-        return self._entity_path(entity_id).exists()
-
-    def delete(self, entity_id: str) -> bool:
-        """
-        Delete an entity.
-
-        Args:
-            entity_id: Entity identifier
-
-        Returns:
-            True if deleted, False if not found
-        """
-        path = self._entity_path(entity_id)
-        if not path.exists():
-            return False
-
-        # Save to history before deleting
-        self._save_to_history(entity_id, self._version)
-
-        # Delete file
-        path.unlink()
-
-        # Increment global version
-        self._version += 1
-        self._save_version()
-
-        return True
-
-    def _entity_path(self, entity_id: str) -> Path:
-        """Get path for entity JSON file."""
-        return self.store_dir / f"{entity_id}.json"
-
-    def _history_path(self, entity_id: str) -> Path:
-        """Get path for entity history file (JSONL format)."""
-        return self.history_dir / f"{entity_id}.jsonl"
-
-    def _write_with_checksum(
-        self, path: Path, data: dict, max_retries: int = 3
-    ) -> None:
-        """
-        Write JSON with embedded checksum wrapper and verify after write.
-
-        Uses write-then-verify pattern to detect corruption from concurrent
-        writes (e.g., in CI environments where fcntl.flock may not fully
-        synchronize across container layers).
-
-        Args:
-            path: File path to write to
-            data: Entity data dictionary
-            max_retries: Maximum retry attempts on verification failure
-        """
-        checksum = compute_checksum(data)
-        wrapper = {
-            "_checksum": checksum,
-            "_written_at": datetime.now(timezone.utc).isoformat(),
-            "data": data
-        }
-
-        last_error: Optional[Exception] = None
-        for attempt in range(max_retries):
-            try:
-                # Write the file
-                with open(path, 'w', encoding='utf-8') as f:
-                    json.dump(wrapper, f, indent=2, sort_keys=True)
-                    f.flush()
-                    # Only fsync if durability mode requires it
-                    if self.durability != DurabilityMode.RELAXED:
-                        os.fsync(f.fileno())
-
-                # Verify by reading back and checking checksum
-                with open(path, 'r', encoding='utf-8') as f:
-                    read_back = json.load(f)
-
-                if read_back.get("_checksum") != checksum:
-                    raise CorruptionError(
-                        f"Write verification failed for {path.name}: "
-                        f"checksum mismatch after write",
-                        expected=checksum,
-                        actual=read_back.get("_checksum"),
-                        path=str(path)
-                    )
-
-                # Verify the data portion
-                actual_checksum = compute_checksum(read_back.get("data", {}))
-                if actual_checksum != checksum:
-                    raise CorruptionError(
-                        f"Write verification failed for {path.name}: "
-                        f"data checksum mismatch",
-                        expected=checksum,
-                        actual=actual_checksum,
-                        path=str(path)
-                    )
-
-                # Success - write verified
-                return
-
-            except (json.JSONDecodeError, CorruptionError) as e:
-                last_error = e
-                if attempt < max_retries - 1:
-                    # Exponential backoff: 0.01s, 0.02s, 0.04s
-                    time.sleep(0.01 * (2 ** attempt))
-                    continue
-                raise
-
-        # Should not reach here, but just in case
-        if last_error:
-            raise last_error
-
-    def _read_and_verify(self, path: Path) -> dict:
-        """
-        Read JSON and verify checksum.
-
-        Args:
-            path: File path to read from
-
-        Returns:
-            Wrapper dictionary with verified data
-
-        Raises:
-            CorruptionError: If checksum verification fails
-        """
-        with open(path, 'r', encoding='utf-8') as f:
-            wrapper = json.load(f)
-
-        expected_checksum = wrapper.get("_checksum")
-        data = wrapper.get("data", {})
-
-        actual_checksum = compute_checksum(data)
-        if actual_checksum != expected_checksum:
-            raise CorruptionError(
-                f"Checksum mismatch for {path.name}",
-                expected=expected_checksum,
-                actual=actual_checksum,
-                path=str(path)
-            )
-
-        return wrapper
-
-    def _fsync_file(self, path: Path) -> None:
-        """
-        Ensure file is durably written to disk using os.fsync.
-
-        Args:
-            path: File path to sync
-        """
-        # Skip fsync if RELAXED mode
-        if self.durability == DurabilityMode.RELAXED:
-            return
-
-        with open(path, 'r+', encoding='utf-8') as f:
-            os.fsync(f.fileno())
-
-    def fsync_all(self) -> None:
-        """
-        Force fsync of all entity files and version file.
-
-        Used by BALANCED mode to sync on transaction commit.
-        """
-        # Fsync all entity files
-        for entity_file in self.store_dir.glob("*.json"):
-            if entity_file.name != "_version.json":
-                self._fsync_file(entity_file)
-
-        # Fsync version file
-        version_path = self.store_dir / "_version.json"
-        if version_path.exists():
-            self._fsync_file(version_path)
-
-    def _save_to_history(self, entity_id: str, global_version: int) -> None:
-        """
-        Append current entity version to history file before overwriting.
-
-        Args:
-            entity_id: Entity identifier
-            global_version: Global version to associate with this snapshot
-        """
-        # Read current entity file
-        path = self._entity_path(entity_id)
-        if not path.exists():
-            return
-
-        wrapper = self._read_and_verify(path)
-        data = wrapper["data"]
-
-        # Append to history file (JSONL format)
-        # Use lock to prevent concurrent writes from interleaving
-        history_path = self._history_path(entity_id)
-        history_entry = {
-            "global_version": global_version,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "data": data
-        }
-
-        with self._history_lock:
-            with open(history_path, 'a', encoding='utf-8') as f:
-                json.dump(history_entry, f, sort_keys=True)
-                f.write('\n')
-
-    def _load_version(self) -> int:
-        """
-        Compute global version from entities and history.
-
-        The version is computed as the maximum of:
-        1. Stored value in _version.json (if exists) - for backward compatibility
-        2. Count of entity files (minimum valid version)
-        3. Max global_version from all history entries
-
-        This makes the version self-healing and merge-conflict-free:
-        - If _version.json is missing or stale, we compute correctly
-        - If two branches had different versions, we take the highest
-        - The file is gitignored to prevent merge conflicts
-
-        Returns:
-            Current version (always >= entity count and max history version)
-        """
-        # Start with stored value (if exists) for backward compatibility
-        stored_version = 0
-        version_path = self.store_dir / "_version.json"
-        if version_path.exists():
-            try:
-                with open(version_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                stored_version = data.get("version", 0)
-            except (json.JSONDecodeError, OSError):
-                # Corrupted or unreadable file, compute from scratch
-                pass
-
-        # Count entity files (excluding _version.json and _history dir)
-        entity_count = 0
-        for entity_file in self.store_dir.glob("*.json"):
-            if entity_file.name != "_version.json":
-                entity_count += 1
-
-        # Find max global_version from history files
-        max_history_version = 0
-        if self.history_dir.exists():
-            for history_file in self.history_dir.glob("*.jsonl"):
-                try:
-                    with open(history_file, 'r', encoding='utf-8') as f:
-                        for line in f:
-                            if line.strip():
-                                entry = json.loads(line)
-                                gv = entry.get("global_version", 0)
-                                if gv > max_history_version:
-                                    max_history_version = gv
-                except (json.JSONDecodeError, OSError):
-                    # Skip corrupted history files
-                    continue
-
-        # Use max of all sources
-        computed_version = max(stored_version, entity_count, max_history_version)
-
-        # If computed is higher than stored, update the file (local cache)
-        if computed_version > stored_version:
-            self._version = computed_version
-            self._save_version()
-
-        return computed_version
-
-    def _save_version(self) -> None:
-        """
-        Save global version to _version.json.
-
-        Uses both threading.Lock (for thread safety within a process) and
-        ProcessLock (for safety across processes) to prevent race conditions
-        when multiple threads/processes try to update _version.tmp simultaneously.
-        """
-        version_path = self.store_dir / "_version.json"
-        data = {"version": self._version}
-
-        # Thread lock for intra-process safety (fcntl.flock doesn't work between threads)
-        with self._version_thread_lock:
-            # Process lock for inter-process safety
-            with self._version_lock:
-                # Write to temp first
-                temp_path = version_path.with_suffix('.tmp')
-                with open(temp_path, 'w', encoding='utf-8') as f:
-                    json.dump(data, f, indent=2, sort_keys=True)
-
-                # Fsync (respects durability mode)
-                self._fsync_file(temp_path)
-
-                # Rename (atomic on POSIX)
-                temp_path.rename(version_path)
-
-    def _entity_from_dict(self, data: dict) -> Entity:
-        """
-        Factory method to create correct entity subclass based on entity_type.
-
-        Args:
-            data: Entity data dictionary
-
-        Returns:
-            Appropriate Entity subclass instance
-
-        Raises:
-            ValueError: If entity_type is missing or invalid
-        """
-        entity_type = data.get("entity_type")
-
-        # Validate entity_type is present
-        if not entity_type:
-            entity_id = data.get("id", "<unknown>")
-            raise ValueError(
-                f"Missing entity_type in entity data for {entity_id}. "
-                f"Valid types: {sorted(VALID_ENTITY_TYPES)}"
-            )
-
-        # Validate entity_type is known
-        if entity_type not in VALID_ENTITY_TYPES:
-            entity_id = data.get("id", "<unknown>")
-            raise ValueError(
-                f"Unknown entity_type '{entity_type}' for entity {entity_id}. "
-                f"Valid types: {sorted(VALID_ENTITY_TYPES)}"
-            )
-
-        # Dispatch to appropriate factory
-        if entity_type == "task":
-            return Task.from_dict(data)
-        elif entity_type == "decision":
-            return Decision.from_dict(data)
-        elif entity_type == "edge":
-            return Edge.from_dict(data)
-        elif entity_type == "sprint":
-            return Sprint.from_dict(data)
-        elif entity_type == "epic":
-            return Epic.from_dict(data)
-        elif entity_type == "handoff":
-            return Handoff.from_dict(data)
-        elif entity_type == "claudemd_layer":
-            return ClaudeMdLayer.from_dict(data)
-        elif entity_type == "claudemd_version":
-            return ClaudeMdVersion.from_dict(data)
-        elif entity_type == "persona_profile":
-            return PersonaProfile.from_dict(data)
-        elif entity_type == "team":
-            return Team.from_dict(data)
-        elif entity_type == "document":
-            return Document.from_dict(data)
-        else:
-            # This should never be reached due to validation above
-            # but kept as defensive fallback
-            return Entity.from_dict(data)
+            return self._cdg_store._read_and_verify(path)
+        except CDGCorruptionError as e:
+            # Translate CDG exception to GoT exception
+            raise CorruptionError(e.message, **e.context) from e

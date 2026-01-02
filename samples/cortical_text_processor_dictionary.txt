@@ -1,0 +1,278 @@
+Cortical Text Processor Dictionary
+A Comprehensive Lexicon of Terms and Definitions
+
+This dictionary provides definitions for terminology used throughout the Cortical Text Processor codebase, organized alphabetically for reference.
+
+ACID Transactions: The guarantee of Atomicity, Consistency, Isolation, and Durability in database operations. The Graph of Thought system provides ACID transactions for task and decision tracking, ensuring that complex multi-step operations either complete fully or roll back entirely without corrupting state.
+
+Activation: The process of stimulating nodes in a knowledge graph based on query terms. Initial activation originates at directly matched nodes, then propagates through connections to related concepts, simulating how neural networks activate in response to stimuli.
+
+AlignmentIndex: A component that stores user-defined terms and patterns for personalized predictions. The alignment index customizes Spark model behavior to match individual coding styles and project-specific vocabulary.
+
+Anomaly Detection: The identification of unusual inputs that deviate from expected patterns. The AnomalyDetector in SparkSLM identifies suspicious inputs including potential prompt injection attacks by comparing input characteristics against learned baselines.
+
+Antonym: A semantic relation type indicating opposition or contrast between concepts. Dog Antonym cat represents conceptual opposition. Antonym relations receive a weight of 0.3, penalizing them in similarity computations since antonyms are semantically distant despite being related.
+
+Attention Router: A component that routes queries to appropriate processing modes based on content analysis. The attention router examines query complexity, domain, and urgency to determine whether fast or slow processing is warranted.
+
+Behavioral Scenario: An executable specification of user behavior written in Given-When-Then format. Not merely a test but living documentation that proves understanding. Scenarios describe what the system should do from the user's perspective, serving as the single source of truth for system behavior.
+
+Bigram: A pair of consecutive tokens extracted from text during processing. Stored with space separators such as neural networks rather than underscores. Bigrams capture phrase-level patterns that single tokens miss, residing in Layer 1 of the hierarchical architecture.
+
+BM25: Best Matching 25, a probabilistic ranking function for document retrieval. An extension of TF-IDF that incorporates document length normalization and term saturation. Documents are scored based on query term frequency adjusted for document length relative to average corpus length.
+
+Brier Score: Mean squared error of probabilistic predictions combining calibration and discrimination quality. Calculated as the average of squared differences between predicted confidence and actual outcome. Lower Brier scores indicate better prediction quality.
+
+Calibration: Analysis of prediction confidence versus actual accuracy. Well-calibrated experts have confidence scores that match their empirical hit rate. A 70% confidence prediction should be correct roughly 70% of the time.
+
+Causes: A semantic relation type indicating causal relationships between concepts. Rain Causes floods represents a cause-effect relationship. Receives a weight of 1.1 in semantic computations.
+
+CEL: Cognitive Event Lattice, a self-referential, self-maintaining cognitive substrate for machine reasoning. Built on two intertwined strands: the Wisdom Strand for knowledge and the Sanity Strand for validation. Events are immutable, content-addressed, and causally linked.
+
+CI Guardian: The continuous integration pipeline that protects code quality. When CI fails, work stops. The Guardian represents the principle that the build server is the arbiter of truth, and disagreement with CI means CI is correct.
+
+Chunk: A segment of document text created for passage retrieval. Chunks have configurable size and overlap, enabling fine-grained search within documents rather than returning entire documents as search results.
+
+Co-Change Patterns: Learned patterns of which files change together extracted from git history. SparkSLM analyzes commit history to identify files that frequently change in the same commits, enabling predictions about related modifications.
+
+Code-Aware Tokenization: Tokenization that intelligently splits programming identifiers. getUserName becomes the tokens getusername, get, user, and name. This enables searching for concepts within camelCase and snake_case identifiers.
+
+CoOccurs: A semantic relation type indicating statistical co-occurrence in text. Represents weaker associations than explicit semantic relations, with lower confidence. Receives a weight of 0.8 reflecting its implicit nature.
+
+Cognitive Loop: See QAPV Cycle.
+
+CognitiveEvent: The fundamental unit in the Cognitive Event Lattice. Events are immutable records of something happening, content-addressed by their hash, and causally linked to parent events. Types include Observation, Intention, Fulfillment, Invalidation, Compaction, and MetaCognition.
+
+Cold-Start Mode: The initial state when experts have not yet learned from experience. All experts begin with default credits and predictions show low confidence. The system offers fallback to machine learning approaches during cold start.
+
+Compaction: The process of reducing storage while preserving semantic meaning. Unlike bit-level compression, semantic compaction merges conceptually similar events or archives old data. Strategies include time-window, semantic, causal, and archival compaction.
+
+Concept Cluster: A group of semantically related tokens discovered through label propagation clustering. Clusters become minicolumns in Layer 2 of the hierarchical architecture, representing topic-level abstractions.
+
+Confidence Ladder: The test hierarchy building assurance from foundational checks to comprehensive validation. Layers include Smoke tests, Unit Specifications, Integration tests, Performance Contracts, and Behavioral Scenarios. Each layer builds upon the previous.
+
+Consolidation: A sleep-like process that transfers learned patterns from working memory to long-term knowledge. Consolidation moves successful fast-processing patterns from the Hive to the Cortex for deeper integration.
+
+CoOccurrence: Statistical analysis of which terms appear together in text. Co-occurrence matrices capture contextual similarity, forming the basis for distributional semantics and lateral connection weights.
+
+Corpus: The complete collection of documents processed by the system. The corpus provides the statistical foundation for TF-IDF computation, co-occurrence analysis, and semantic pattern discovery.
+
+Cortex: The System 2 connector for slow, deliberate, analytical processing. Named after the cerebral cortex, this component handles complex reasoning requiring step-by-step analysis. Characterized by higher accuracy but slower response times measured in seconds to minutes.
+
+CorticalLayer: An enumeration defining the four processing layers in the hierarchical architecture. TOKENS at layer 0 for individual words, BIGRAMS at layer 1 for word pairs, CONCEPTS at layer 2 for semantic clusters, and DOCUMENTS at layer 3 for full texts.
+
+Cortical Metaphor: The naming convention drawing from neuroscience, specifically the V1 to V2 to V4 to IT visual cortex pathway. Implementations use standard information retrieval algorithms rather than neural models, but the hierarchical structure mirrors cortical processing stages.
+
+Credit Account: An individual expert's credit balance and transaction history in the Hubris system. Each expert starts with 100 credits, earning or losing credits based on prediction accuracy.
+
+Credit System: The value-based economy in Hubris where experts earn or lose credits based on prediction accuracy. Higher credits grant more influence in ensemble voting, creating a marketplace of ideas where accuracy is rewarded.
+
+CreditLedger: The central registry of all expert credit accounts in Hubris. Manages balances, transactions, and inter-expert transfers. Provides methods for retrieving top experts by balance.
+
+CreditRouter: The component that aggregates expert predictions weighted by their credit balances. Uses softmax temperature to control weight distribution, balancing expert specialization against ensemble diversity.
+
+Crisis Manager: The component responsible for failure detection, analysis, and recovery. Handles reasoning failures gracefully, implementing fallback strategies and escalation procedures when normal processing fails.
+
+Damping Factor: The PageRank parameter controlling the probability of following a link versus jumping randomly. Default value of 0.85 means the random surfer follows links 85% of the time. Lower damping increases randomness in importance distribution.
+
+Decision: A recorded choice with rationale in the Graph of Thought. Decisions link to the tasks that implement them, providing traceability from strategic choices to tactical execution.
+
+DerivedFrom: A semantic relation type indicating morphological or etymological derivation. Runner DerivedFrom run represents word formation from a root. Receives a weight of 1.2.
+
+Disagreement Score: A measure of how much experts disagree on predictions in the Hubris system. High disagreement reduces ensemble confidence, signaling uncertainty that warrants caution.
+
+Distributional Hypothesis: The linguistic principle that words appearing in similar contexts tend to have similar meanings. This hypothesis underlies co-occurrence analysis, word embeddings, and many semantic similarity measures.
+
+Document Frequency: The count of documents containing a specific term. Used in TF-IDF calculation where rare terms appearing in few documents receive higher weights than common terms appearing everywhere.
+
+Dual-Process Cognition: The reasoning architecture implementing dual-process theory from cognitive psychology. Combines fast, automatic System 1 thinking with slow, deliberate System 2 analysis. The Loom decides which system handles each query.
+
+ECE: Expected Calibration Error, the average gap between predicted confidence and actual accuracy across confidence bins. Lower ECE indicates better calibration. Values below 0.05 are excellent, below 0.10 are good, below 0.15 are acceptable.
+
+Edge: A typed connection with metadata used for ConceptNet-style semantic edges. Fields include target identifier, weight, relation type, confidence score, and source information indicating whether the edge came from corpus analysis, semantic knowledge, or inference.
+
+Event Horizon: The boundary of known events in the Cognitive Event Lattice. Used for synchronization and consistency checks, the horizon represents the frontier of recorded knowledge.
+
+Event Sourcing: An architectural pattern where state changes are captured as a sequence of events. The CEL implements event sourcing, storing all cognitive events immutably and deriving current state from event replay.
+
+Expert: See MicroExpert.
+
+ExpertPrediction: The standardized output format from any expert in the Hubris system. Contains expert identifier, expert type category, ranked items with confidence scores, and metadata about prediction context.
+
+Feedback Connections: Cross-layer connections pointing upward from lower to higher layers. Connect components to their containers, such as tokens to containing bigrams or containing documents.
+
+Feedforward Connections: Cross-layer connections pointing downward from higher to lower layers. Connect containers to their components, such as bigrams to component tokens or documents to contained words.
+
+Fingerprint: A vector representation of text's semantic content for similarity comparison. Semantic fingerprints enable fast approximate matching between documents without computing full similarity.
+
+Fulfillment: A cognitive event type indicating that an intention has been completed. Fulfillment events close the loop on tasks, providing closure for the QAPV cycle's verification phase.
+
+GitHistoryTrainer: A component that trains Spark models from git commit history. Weights training examples by recency and commit type, learning patterns from actual development history.
+
+Given-When-Then: The format for behavioral scenarios specifying context, action, and expected outcome. Given describes preconditions, When describes the action taken, Then describes observable outcomes.
+
+Goal Stack: Hierarchical management of reasoning goals supporting goal decomposition and prioritization. Goals can spawn subgoals, creating structured pursuit of complex objectives.
+
+GoT: Graph of Thought, the transactional task and decision tracking system. Provides ACID guarantees for managing work items, decisions, and sprints with relationship tracking.
+
+Graph Walker: A visitor pattern implementation for traversing the GoT graph. Enables structured exploration of tasks, decisions, and their relationships.
+
+HasA: A semantic relation type indicating property or component ownership. Dog HasA tail represents possession. Also called HasProperty for abstract qualities like Dog HasProperty loyal. Receives a weight of 1.2.
+
+Hierarchical Layer: A container holding all minicolumns at a specific layer level. Provides efficient lookup by content and by identifier, managing the collection of concepts at each abstraction level.
+
+Hive: The System 1 connector for fast, automatic, pattern-based processing. Named for its collective pattern recognition, the Hive uses cached patterns and statistical predictions for rapid responses under 100 milliseconds.
+
+Homeostasis: System health monitoring and self-regulation maintaining cognitive equilibrium. Homeostatic processes ensure the reasoning system operates within healthy parameters, triggering corrective actions when metrics drift.
+
+Hubris: A Mixture of Experts system where specialized predictors collaborate on coding tasks. Experts focus on specific domains like file prediction, test selection, error diagnosis, or workflow patterns.
+
+Information Content: A measure of the specificity or rarity of a concept. Rare concepts convey more information than common ones. Used in Resnik and Lin similarity measures.
+
+Intent Parsing: Extraction of user intent from natural language queries. Maps question patterns to intent types, such as where questions to location intents or how questions to implementation intents.
+
+Intention: A cognitive event type indicating something that should happen. Intentions represent tasks or goals, creating forward-looking commitments in the CEL.
+
+Invalidation: A cognitive event type indicating something is no longer true. Invalidation events mark knowledge as outdated without deleting history, preserving the temporal record.
+
+Inverse Document Frequency: The logarithm of the ratio of total documents to documents containing a term. Rare terms have high IDF, common terms have low IDF. Combined with term frequency in TF-IDF scoring.
+
+Inverted Index: A precomputed mapping from terms to containing documents. Enables fast candidate filtering during search by quickly identifying which documents might match a query.
+
+IsA: A semantic relation type indicating hypernym-hyponym relationships. Dog IsA animal means dog is a type of animal. Receives the highest weight of 1.5 reflecting its strong semantic signal.
+
+Label Propagation: A community detection algorithm for clustering. Tokens adopt the most common label among their neighbors, causing related tokens to converge to the same cluster. Used for concept discovery in Layer 2.
+
+Lateral Connections: Within-layer connections between minicolumns at the same level. Built from co-occurrence patterns, lateral connections support query expansion, PageRank computation, and spreading activation.
+
+Layer: See CorticalLayer.
+
+Loom: The decision point that routes queries to fast or slow processing based on surprise detection and complexity analysis. The Loom weighs factors like query complexity, surprise level, time budget, and historical accuracy.
+
+MCE: Maximum Calibration Error, the worst calibration gap in any single confidence bin. Identifies where predictions are most unreliable, even if average calibration is acceptable.
+
+Merkle DAG: Directed Acyclic Graph where events are identified by their content hash. Provides append-only, verifiable storage where content addressing ensures integrity through hash chain verification.
+
+MetaCognition: A cognitive event type representing the system observing itself. MetaCognition events enable self-reflection and self-improvement within the CEL architecture.
+
+Metus: Mindful Execution Through Unwavering Specification, the project's development philosophy. Metus embodies reverence for the user, behavior, performance, and build system through five tenets emphasizing specification before implementation.
+
+MicroExpert: Base class for specialized prediction experts in the Hubris system. Each expert focuses on a specific aspect like file prediction, test selection, error diagnosis, or workflow patterns.
+
+Minicolumn: The fundamental unit of representation at each layer. Named after cortical minicolumns in neuroscience, implemented as a data structure holding content, connections, statistics, and metadata. Minicolumns exist at all four layers.
+
+Multi-hop Expansion: Query expansion through chains of semantic relations. Finds terms multiple hops away through valid relation paths, enabling discovery of indirectly related concepts.
+
+Nested Loop: QAPV loops containing sub-loops for hierarchical reasoning. Parent loops wait for child loops to complete, enabling complex multi-level reasoning structures.
+
+NGramModel: N-gram based statistical model for word prediction in SparkSLM. Learns patterns of token sequences from training data, providing fast statistical predictions.
+
+Observation: A cognitive event type indicating something happened passively. Observations record facts without implying action, forming the historical record of the CEL.
+
+O(1) ID Lookup: Constant-time lookup of minicolumns by identifier rather than iterating through collections. Critical for algorithm performance, enabled by maintaining identifier indices.
+
+PageRank: Graph algorithm measuring importance based on connection structure. Terms connected to other important terms receive higher scores. The formula redistributes probability through the graph, converging to stationary importance distribution.
+
+PartOf: A semantic relation type indicating meronym-holonym relationships. Wheel PartOf car means wheel is a component of car. Receives a weight of 1.3.
+
+Passage: A relevant excerpt from a document returned by passage retrieval. Passages provide focused answers rather than entire documents, improving search result usability.
+
+Performance Contract: An explicit performance guarantee with defined thresholds. Contracts are defended continuously through CI and renegotiated deliberately when requirements change. Contract violations block builds.
+
+Personalized PageRank: A variant that biases the random surfer toward specific nodes, enabling recommendations tailored to individual preferences or query contexts.
+
+PRISM: Probabilistic Reasoning In Semantic Models, an advanced reasoning framework incorporating uncertainty. PRISM components include attention mechanisms, graph-of-thought integration, and language model connections.
+
+PRISM Attention: A probabilistic attention mechanism for focusing reasoning resources. Allocates processing capacity based on relevance and uncertainty.
+
+PRISM GoT: PRISM-enhanced Graph of Thought with probabilistic node weights. Combines structured reasoning with uncertainty quantification.
+
+PRISM PLN: Programming Language Notation for PRISM, a structured representation of reasoning patterns. Enables formal specification of probabilistic reasoning workflows.
+
+PRISM SLM: PRISM Statistical Language Model integration. Connects probabilistic reasoning with language model capabilities.
+
+QAPV Cycle: Question Answer Produce Verify, the core cognitive loop for complex reasoning. The Question phase identifies what needs determining. Answer generates candidates. Produce creates artifacts. Verify validates outputs.
+
+Query Builder: A fluent API for building GoT queries with SQL-like method chaining. Enables expressive, readable query construction.
+
+Query Cache: LRU cache storing query expansion results to avoid recomputation for repeated queries. Improves performance for common query patterns.
+
+Query Expansion: The process of adding related terms to a search query. Uses lateral connections, concept membership, or semantic relations to broaden search beyond exact keyword matches.
+
+Random Surfer Model: The theoretical foundation of PageRank. Models a user randomly following links with some probability and jumping to any page otherwise. The stationary distribution of this random walk equals PageRank scores.
+
+RelatedTo: A semantic relation type indicating general association from co-occurrence. The default relation type when specific semantic relationships are unknown. Receives a weight of 1.0.
+
+Retrofitting: Post-processing that adjusts lateral connection weights to align with semantic relations. Blends co-occurrence patterns with semantic knowledge, improving representation quality.
+
+Sanity Strand: The validation and health component of CEL. Keeps the system coherent through health monitoring, schema migration, and semantic compaction.
+
+Semantic Fingerprint: See Fingerprint.
+
+Semantic PageRank: A PageRank variant that weights edges by semantic relation type. Different relation types contribute differently to importance propagation.
+
+Semantic Relation: A typed connection between concepts indicating their relationship. Types include IsA, PartOf, HasA, SimilarTo, RelatedTo, CoOccurs, Causes, UsedFor, Antonym, and DerivedFrom.
+
+SimilarTo: A semantic relation type indicating similarity without hierarchy. Dog SimilarTo cat represents conceptual similarity. Receives a weight of 1.4.
+
+Snapshot Isolation: A transaction isolation level where each transaction sees a consistent snapshot of data. Used in GoT for concurrent access without read-write conflicts.
+
+Sovereignty Principle: The development principle that the project does not depend on what it cannot own. External dependencies are avoided in favor of implementing capabilities from first principles.
+
+Spark: The statistical language model system for fast predictions. Combines n-gram models with code intelligence for prediction, completion, and anomaly detection.
+
+SparkCodeIntelligence: A hybrid engine combining AST analysis with n-gram statistics for code understanding. Leverages both structural and statistical patterns.
+
+SparkPredictor: The main facade for Spark predictions. Combines multiple prediction strategies into a unified interface.
+
+SparkSLM: Spark Statistical Language Model, the fast prediction system. Provides predictions based on learned statistical patterns from training data.
+
+Sprint: A time-boxed collection of tasks in the Graph of Thought. Supports agile planning practices within the task management system.
+
+Spreading Activation: Information propagation through network connections. Activation starts at query terms and spreads to connected nodes following connection weights, simulating neural activation patterns.
+
+Staking: A mechanism for experts to bet credits on high-confidence predictions in Hubris. Higher multipliers mean higher risk and reward. Strategies range from Conservative to YOLO.
+
+Staleness Tracking: A system for knowing which computations need rerunning after corpus changes. Prevents unnecessary recomputation by tracking what has changed since last analysis.
+
+Stemming: The process of reducing words to their root form. Running becomes run, faster becomes fast. Enables matching morphological variants of the same concept.
+
+Stop Words: Common words filtered during tokenization. Articles, prepositions, and other high-frequency words that carry little semantic meaning are removed to focus on content words.
+
+Surprise Detection: The mechanism for identifying when fast processing is insufficient. High surprise in predictions triggers escalation to slow processing in the Loom.
+
+Task: A unit of work to be completed in the Graph of Thought. Tasks have status, priority, and relationships to other entities including decisions and sprints.
+
+Temperature: In credit routing, the softmax temperature controlling weight distribution. Lower temperature creates sharper distinctions between expert weights. Higher temperature produces more democratic voting.
+
+Term Frequency: The count of how often a term appears in a document. Combined with inverse document frequency in TF-IDF scoring.
+
+TF-IDF: Term Frequency Inverse Document Frequency, a scoring method measuring how distinctive a term is to documents. Combines local term frequency with global rarity to identify important terms.
+
+Thought Graph: A graph-based representation of reasoning steps. Nodes are individual thoughts, edges are logical connections between them.
+
+ThoughtNode: A single unit of reasoning in the thought graph. Contains type, content, and confidence representing one step in the reasoning process.
+
+Tokenization: The process of breaking text into individual word tokens. Includes lowercasing, stop word removal, and optional stemming to normalize text for analysis.
+
+Typed Connections: Within-layer connections with semantic metadata. Store relation type, confidence, and source information beyond simple edge weights.
+
+Unit Specification: A precise fact about atomic behavior in unit tests. Safety nets enabling fearless refactoring by documenting expected behavior at the finest granularity.
+
+UsedFor: A semantic relation type indicating functional purpose. Hammer UsedFor nailing represents tool-task relationships. Receives a weight of 1.0.
+
+User Story: The narrative justifying a feature in Metus philosophy. Formatted as who wants what and why, user stories anchor development in user value.
+
+ValueSignal: Feedback from real-world outcomes triggering credit updates in Hubris. Generated when predictions resolve with types positive, negative, or neutral.
+
+Verification: The final phase of the QAPV cycle validating outputs against requirements. Verification levels include unit, integration, end-to-end, and acceptance testing.
+
+Versioned Store: File-based storage with checksums and version tracking in GoT. Provides durable persistence with integrity verification.
+
+WAL: Write-Ahead Log, the durability mechanism that logs operations before applying them. Enables crash recovery by replaying the log to reconstruct state.
+
+Wisdom Strand: The knowledge and memory component of CEL. Stores what the system knows through Merkle-linked DAG structure, lazy materialization, and semantic indexing.
+
+Woven Mind: The facade integrating fast and slow thinking in the dual-process architecture. The main entry point for cognitive operations, routing between System 1 and System 2.
+
+Wu-Palmer Measure: A path-based semantic similarity measure considering the depth of the lowest common ancestor. Deeper shared ancestors indicate more specific shared properties.

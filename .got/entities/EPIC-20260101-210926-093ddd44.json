@@ -1,0 +1,19 @@
+{
+  "_checksum": "28c167533cbff37a",
+  "_written_at": "2026-01-01T21:09:26.446649+00:00",
+  "data": {
+    "created_at": "2026-01-01T21:09:26.443372+00:00",
+    "entity_type": "epic",
+    "id": "EPIC-20260101-210926-093ddd44",
+    "metadata": {},
+    "modified_at": "2026-01-01T21:09:26.446594+00:00",
+    "phase": 1,
+    "phases": [],
+    "properties": {
+      "description": "Comprehensive test suite audit to fix hidden tests, resolve pre-existing failures, and establish preventive measures. Blocks new feature work until test health is restored."
+    },
+    "status": "active",
+    "title": "Test Audit and Clean Up",
+    "version": 2
+  }
+}

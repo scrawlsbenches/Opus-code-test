@@ -358,3 +358,29 @@ class TestSyncManager:
             manager._run_git(["invalid-command"])
 
         assert "Git command failed" in str(exc_info.value)
+
+    def test_can_sync_with_transaction_manager_no_active_tx(self, temp_git_repo):
+        """Test can_sync returns True when tx_manager has no active transactions."""
+        repo_dir, got_dir = temp_git_repo
+
+        # Create mock transaction manager with no active transactions
+        mock_tx_manager = Mock()
+        mock_tx_manager.has_active_transactions.return_value = False
+
+        manager = SyncManager(got_dir, tx_manager=mock_tx_manager)
+
+        assert manager.can_sync() is True
+        mock_tx_manager.has_active_transactions.assert_called_once()
+
+    def test_can_sync_with_transaction_manager_with_active_tx(self, temp_git_repo):
+        """Test can_sync returns False when tx_manager has active transactions."""
+        repo_dir, got_dir = temp_git_repo
+
+        # Create mock transaction manager with active transactions
+        mock_tx_manager = Mock()
+        mock_tx_manager.has_active_transactions.return_value = True
+
+        manager = SyncManager(got_dir, tx_manager=mock_tx_manager)
+
+        assert manager.can_sync() is False
+        mock_tx_manager.has_active_transactions.assert_called_once()

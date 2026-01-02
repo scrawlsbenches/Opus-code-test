@@ -373,13 +373,28 @@ class QueryIndexManager:
         # Rebuild sprint index from edges
         if edges:
             for edge in edges:
-                edge_type = getattr(edge, "edge_type", None) or edge.get("edge_type")
+                # Handle both object and dict formats
+                if hasattr(edge, "edge_type"):
+                    edge_type = edge.edge_type
+                elif isinstance(edge, dict):
+                    edge_type = edge.get("edge_type")
+                else:
+                    continue
+
                 if edge_type == "CONTAINS":
-                    from_id = getattr(edge, "from_id", None) or edge.get("from_id")
-                    to_id = getattr(edge, "to_id", None) or edge.get("to_id")
+                    # Edge uses source_id/target_id, legacy used from_id/to_id
+                    if hasattr(edge, "source_id"):
+                        source = edge.source_id
+                        target = edge.target_id
+                    elif isinstance(edge, dict):
+                        source = edge.get("source_id") or edge.get("from_id")
+                        target = edge.get("target_id") or edge.get("to_id")
+                    else:
+                        continue
+
                     # Sprint CONTAINS Task
-                    if from_id and to_id and from_id.startswith("S-"):
-                        self._sprint_index[from_id].add(to_id)
+                    if source and target and source.startswith("S-"):
+                        self._sprint_index[source].add(target)
 
         self._dirty = True
         self._stats.rebuilds += 1

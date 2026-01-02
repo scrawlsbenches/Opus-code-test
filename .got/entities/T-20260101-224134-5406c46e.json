@@ -1,0 +1,19 @@
+{
+  "_checksum": "2e1c5a5709858cd5",
+  "_written_at": "2026-01-01T22:41:34.860871+00:00",
+  "data": {
+    "created_at": "2026-01-01T22:41:34.855728+00:00",
+    "description": "5 test classes in test_cdg_contract.py are skipped because CDG (Conceptual Dependency Graph) is not yet implemented: TestCDGPointQueryContract, TestCDGPatternMatchContract, TestCDGPathQueryContract, TestCDGWriteContract, TestCDGThroughputContract. These are placeholder contracts for future functionality. When CDG is implemented, remove skips and calibrate thresholds to measured performance using 20% headroom methodology. This task should be linked to the CDG implementation epic when it exists.",
+    "entity_type": "task",
+    "id": "T-20260101-224134-5406c46e",
+    "metadata": {},
+    "modified_at": "2026-01-01T22:41:34.860791+00:00",
+    "priority": "low",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Track CDG implementation for contract tests",
+    "version": 2
+  }
+}

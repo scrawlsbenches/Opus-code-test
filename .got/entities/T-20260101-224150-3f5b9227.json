@@ -1,0 +1,19 @@
+{
+  "_checksum": "0a9e435277a7c8d2",
+  "_written_at": "2026-01-01T22:41:50.931335+00:00",
+  "data": {
+    "created_at": "2026-01-01T22:41:50.927733+00:00",
+    "description": "After the contract calibration session, run the full contract test suite to verify all 13 fixed tests pass consistently. Command: python -m pytest tests/performance/contracts/ -v -m contract. Expected: ~300 passed, 12 skipped (2 impl bugs + 5 CDG classes with multiple tests). If any fixed tests fail intermittently, may need to increase threshold headroom further. Document final pass/skip counts in KT. This should be done before merging the branch.",
+    "entity_type": "task",
+    "id": "T-20260101-224150-3f5b9227",
+    "metadata": {},
+    "modified_at": "2026-01-01T22:41:50.931268+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Run full contract test suite verification",
+    "version": 2
+  }
+}

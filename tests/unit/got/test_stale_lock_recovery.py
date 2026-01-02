@@ -345,8 +345,8 @@ class TestStaleLockRecovery:
             json.dump(holder_info, f)
 
         try:
-            # Mock os.kill in the tx_manager module
-            with patch('cortical.got.tx_manager.os.kill') as mock_kill:
+            # Mock os.kill in the locking module where ProcessLock calls it
+            with patch('cortical.utils.locking.os.kill') as mock_kill:
                 # Make os.kill raise OSError (process doesn't exist)
                 mock_kill.side_effect = OSError("No such process")
 

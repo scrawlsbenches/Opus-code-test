@@ -6,62 +6,76 @@ Orchestrates begin/commit/rollback with:
 - Consistency: Checksums verify data integrity
 - Isolation: Snapshot isolation via versioning
 - Durability: WAL + fsync before commit
+
+This module now delegates to CDGTransactionManager (Cortical Distributed Graph)
+for core transaction operations, while maintaining GoT's API for backward
+compatibility.
+
+Migration Note (2025-12-31):
+    TransactionManager now wraps CDGTransactionManager. All transaction operations
+    are delegated to CDG, with GoT providing the entity factory for proper type
+    dispatch (Task, Decision, Sprint, etc.).
 """
 
 from __future__ import annotations
 
-import json
 import logging
-import os
-import sys
-import threading
-import time
+import secrets
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import List, Optional, Dict, Any
 
-from cortical.utils.locking import ProcessLock
-from .types import Entity
-from .errors import TransactionError, ConflictError
-from .versioned_store import VersionedStore
-from .wal import WALManager
-from .transaction import Transaction, TransactionState, generate_transaction_id
+from .types import Entity, KnowledgeTransfer, Edge
+from .transaction import Transaction
 from .config import DurabilityMode
+from .versioned_store import _got_entity_factory
+from .errors import TransactionError as GoTTransactionError
+
+# Import CDG transaction infrastructure
+from cortical.cdg.transaction_manager import CDGTransactionManager
+from cortical.cdg.config import CDGConfig, DurabilityMode as CDGDurabilityMode
+from cortical.cdg.errors import TransactionError as CDGTransactionError
+
+# Import ProcessLock for backward compatibility (re-exported by __init__.py)
+from cortical.utils.locking import ProcessLock
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class Conflict:
-    """Represents a version conflict during commit."""
+# Re-export CDG types for API compatibility
+from cortical.cdg.transaction_manager import Conflict, CommitResult
 
-    entity_id: str
-    expected_version: int
-    actual_version: int
-    conflict_type: str  # "version_mismatch", "create_exists"
-    message: str
+# Also import RecoveryResult for recover() method
+from cortical.cdg.recovery import RecoveryResult
 
 
-@dataclass
-class CommitResult:
-    """Result of transaction commit operation."""
-
-    success: bool
-    version: Optional[int] = None  # New version if success
-    conflicts: List[Conflict] = field(default_factory=list)  # Conflicts if failure
-    reason: Optional[str] = None  # Failure reason
+def _convert_durability(durability: DurabilityMode) -> CDGDurabilityMode:
+    """Convert GoT DurabilityMode to CDG DurabilityMode."""
+    mapping = {
+        DurabilityMode.RELAXED: CDGDurabilityMode.FAST,
+        DurabilityMode.BALANCED: CDGDurabilityMode.BALANCED,
+        DurabilityMode.PARANOID: CDGDurabilityMode.PARANOID,
+    }
+    return mapping.get(durability, CDGDurabilityMode.BALANCED)
 
 
 
 
 class TransactionManager:
     """
-    Manages transactions with ACID guarantees.
+    Manages transactions with ACID guarantees for GoT.
 
     - Atomicity: All writes in a TX succeed or all fail
     - Consistency: Checksums verify data integrity
     - Isolation: Snapshot isolation via versioning
     - Durability: WAL + fsync before commit
+
+    Implementation Note:
+        This class now wraps CDGTransactionManager, delegating transaction
+        operations while maintaining GoT's API for backward compatibility.
+        The entity factory (_got_entity_factory) ensures proper type dispatch
+        so that reads return Task, Decision, Sprint, etc., not base Entity.
     """
 
     def __init__(self, got_dir: Path, durability: DurabilityMode = DurabilityMode.BALANCED):
@@ -82,18 +96,54 @@ class TransactionManager:
         self.got_dir.mkdir(parents=True, exist_ok=True)
         self.durability = durability
 
-        # Initialize storage and WAL with durability mode
-        self.store = VersionedStore(self.got_dir / "entities", durability=durability)
-        self.wal = WALManager(self.got_dir / "wal", durability=durability)
+        # Create CDG configuration for GoT workloads
+        cdg_config = CDGConfig.for_got()
 
-        # Process lock for mutual exclusion
+        # Override durability mode from GoT config
+        cdg_config.durability = _convert_durability(durability)
+
+        # Manually set up CDG components to match GoT's directory structure:
+        #   {got_dir}/entities/       # Entity storage
+        #   {got_dir}/wal/            # Write-ahead log
+        # We can't use CDGTransactionManager.__init__ directly because it hardcodes
+        # wal_dir as store_dir/wal, which would create got_dir/entities/wal.
+        # Instead, we manually create the components.
+
+        from cortical.cdg.storage import CDGStore
+        from cortical.cdg.wal import CDGWALManager
+
+        # Create store in entities/ subdirectory
+        self.store = CDGStore(
+            self.got_dir / "entities",
+            config=cdg_config,
+            entity_factory=_got_entity_factory
+        )
+
+        # Create WAL at same level as entities/ (not inside it)
+        self.wal = None
+        if cdg_config.enable_wal:
+            self.wal = CDGWALManager(self.got_dir / "wal", cdg_config)
+
+        # Create lock
         self.lock = ProcessLock(self.got_dir / ".got.lock", reentrant=True)
 
         # Active transactions (in-memory only)
-        self._active_tx: Dict[str, Transaction] = {}
+        self._active_tx = {}
+
+        # Create a minimal CDG transaction manager wrapper
+        # We create a CDGTransactionManager but override its store, wal, and lock
+        # with our manually configured ones
+        self._cdg_tx = CDGTransactionManager.__new__(CDGTransactionManager)
+        self._cdg_tx.store_dir = self.got_dir
+        self._cdg_tx.config = cdg_config
+        self._cdg_tx.store = self.store
+        self._cdg_tx.wal = self.wal
+        self._cdg_tx.lock = self.lock
+        self._cdg_tx._active_tx = self._active_tx
 
         # Run recovery on startup
-        self.recover()
+        if cdg_config.auto_recover_on_startup:
+            self._cdg_tx.recover()
 
     def begin(self) -> Transaction:
         """
@@ -102,25 +152,7 @@ class TransactionManager:
         Returns:
             New Transaction object in ACTIVE state
         """
-        tx_id = generate_transaction_id()
-        snapshot_version = self.store.current_version()
-
-        tx = Transaction(
-            id=tx_id,
-            state=TransactionState.ACTIVE,
-            started_at="",  # Will be set by transaction
-            snapshot_version=snapshot_version,
-            write_set={},
-            read_set={}
-        )
-
-        # Log to WAL (survives crash)
-        self.wal.log_tx_begin(tx_id, snapshot_version)
-
-        # Track in-memory
-        self._active_tx[tx_id] = tx
-
-        return tx
+        return self._cdg_tx.begin()
 
     def read(self, tx: Transaction, entity_id: str) -> Optional[Entity]:
         """
@@ -136,20 +168,9 @@ class TransactionManager:
             entity_id: Entity identifier
 
         Returns:
-            Entity instance or None if not found
+            Entity instance (Task, Decision, etc.) or None if not found
         """
-        # Check write set first (read own writes)
-        if entity_id in tx.write_set:
-            return tx.write_set[entity_id]
-
-        # Read from snapshot version
-        entity = self.store.read_at_version(entity_id, tx.snapshot_version)
-
-        # Track read for conflict detection
-        if entity:
-            tx.add_read(entity_id, entity.version)
-
-        return entity
+        return self._cdg_tx.read(tx, entity_id)
 
     def write(self, tx: Transaction, entity: Entity) -> None:
         """
@@ -165,20 +186,11 @@ class TransactionManager:
         Raises:
             TransactionError: If transaction is not active
         """
-        if not tx.is_active():
-            raise TransactionError(
-                f"Transaction {tx.id} is not active (state: {tx.state.value})"
-            )
-
-        # Get old version for WAL
-        old_entity = self.read(tx, entity.id)
-        old_version = old_entity.version if old_entity else 0
-
-        # Log to WAL before buffering
-        self.wal.log_write(tx.id, entity.id, old_version, entity.version)
-
-        # Add to write set
-        tx.add_write(entity)
+        try:
+            self._cdg_tx.write(tx, entity)
+        except CDGTransactionError as e:
+            # Re-raise as GoT TransactionError for API compatibility
+            raise GoTTransactionError(str(e)) from e
 
     def commit(self, tx: Transaction) -> CommitResult:
         """
@@ -201,58 +213,7 @@ class TransactionManager:
         Returns:
             CommitResult with success, version, conflicts
         """
-        if not tx.can_commit():
-            return CommitResult(
-                success=False,
-                reason=f"Transaction {tx.id} cannot commit (state: {tx.state.value})"
-            )
-
-        with self.lock:
-            # Set state to PREPARING
-            tx.state = TransactionState.PREPARING
-            self.wal.log_tx_prepare(tx.id)
-
-            # Detect conflicts
-            conflicts = self._detect_conflicts(tx)
-            if conflicts:
-                # Abort transaction
-                tx.state = TransactionState.ABORTED
-                self.wal.log_tx_abort(tx.id, "version_conflict")
-                self._active_tx.pop(tx.id, None)
-
-                return CommitResult(
-                    success=False,
-                    conflicts=conflicts,
-                    reason="version_conflict"
-                )
-
-            # Apply writes atomically
-            try:
-                new_version = self.store.apply_writes(tx.write_set)
-            except Exception as e:
-                # Abort on any error
-                tx.state = TransactionState.ABORTED
-                self.wal.log_tx_abort(tx.id, f"write_failed: {e}")
-                self._active_tx.pop(tx.id, None)
-
-                return CommitResult(
-                    success=False,
-                    reason=f"write_failed: {e}"
-                )
-
-            # Mark committed
-            tx.state = TransactionState.COMMITTED
-            self.wal.log_tx_commit(tx.id, new_version)
-
-            # For BALANCED mode, fsync WAL and store now
-            if self.durability == DurabilityMode.BALANCED:
-                self.wal.fsync_now()
-                self.store.fsync_all()
-
-            # Remove from active transactions
-            self._active_tx.pop(tx.id, None)
-
-            return CommitResult(success=True, version=new_version)
+        return self._cdg_tx.commit(tx)
 
     def rollback(self, tx: Transaction, reason: str = "explicit") -> None:
         """
@@ -263,65 +224,276 @@ class TransactionManager:
         Args:
             tx: Transaction to rollback
             reason: Reason for rollback
+
+        Raises:
+            TransactionError: If transaction cannot be rolled back
         """
-        if not tx.can_rollback():
-            raise TransactionError(
-                f"Transaction {tx.id} cannot rollback (state: {tx.state.value})"
-            )
+        try:
+            self._cdg_tx.rollback(tx, reason)
+        except CDGTransactionError as e:
+            # Re-raise as GoT TransactionError for API compatibility
+            raise GoTTransactionError(str(e)) from e
 
-        # Discard writes
-        tx.write_set.clear()
-
-        # Update state
-        tx.state = TransactionState.ROLLED_BACK
-        self.wal.log_tx_rollback(tx.id, reason)
-
-        # Remove from active
-        self._active_tx.pop(tx.id, None)
-
-    def recover(self):
+    def recover(self) -> RecoveryResult:
         """
         Recover from crash.
 
         Finds incomplete transactions from WAL and rolls them back.
-        Uses RecoveryManager for comprehensive recovery.
+        Uses CDGRecoveryManager for comprehensive recovery.
 
         Returns:
             RecoveryResult with detailed recovery information
         """
-        from .recovery import RecoveryManager
+        return self._cdg_tx.recover()
 
-        recovery_mgr = RecoveryManager(self.got_dir)
-        return recovery_mgr.recover()
+    # ==================== KnowledgeTransfer Methods ====================
 
-    def _detect_conflicts(self, tx: Transaction) -> List[Conflict]:
+    def create_knowledge_transfer(
+        self,
+        title: str,
+        summary: str = "",
+        session_id: str = "",
+        session_date: str = "",
+        sections: Optional[Dict[str, str]] = None,
+        code_refs: Optional[List[str]] = None,
+        related_handoffs: Optional[List[str]] = None,
+        related_tasks: Optional[List[str]] = None,
+        tags: Optional[List[str]] = None,
+        properties: Optional[Dict[str, Any]] = None,
+        kt_id: Optional[str] = None,
+    ) -> KnowledgeTransfer:
         """
-        Detect version conflicts between transaction and current store.
+        Create a new knowledge transfer entity.
 
         Args:
-            tx: Transaction to check
+            title: Knowledge transfer title
+            summary: Executive summary
+            session_id: Session identifier
+            session_date: Session date (ISO format)
+            sections: Dictionary mapping section headings to content
+            code_refs: List of code references (file:line format)
+            related_handoffs: List of related handoff IDs
+            related_tasks: List of related task IDs
+            tags: Classification tags
+            properties: Additional properties
+            kt_id: Optional custom ID (auto-generated if not provided)
 
         Returns:
-            List of conflicts (empty if none)
+            Created KnowledgeTransfer entity
+
+        Raises:
+            TransactionError: If transaction fails
         """
-        conflicts = []
+        # Generate ID if not provided
+        if kt_id is None:
+            now = datetime.now(timezone.utc)
+            timestamp = now.strftime("%Y%m%d-%H%M%S")
+            suffix = secrets.token_hex(4)  # 8 hex chars
+            kt_id = f"KT-{timestamp}-{suffix}"
 
-        for entity_id in tx.write_set:
-            # Check if entity was read (optimistic locking)
-            if entity_id in tx.read_set:
-                expected_version = tx.read_set[entity_id]
+        # Create KnowledgeTransfer instance
+        kt = KnowledgeTransfer(
+            id=kt_id,
+            title=title,
+            summary=summary,
+            session_id=session_id,
+            session_date=session_date,
+            sections=sections or {},
+            code_refs=code_refs or [],
+            related_handoffs=related_handoffs or [],
+            related_tasks=related_tasks or [],
+            tags=tags or [],
+            properties=properties or {},
+        )
 
-                # Get current version from store
-                current_entity = self.store.read(entity_id)
-                actual_version = current_entity.version if current_entity else 0
+        # Store via transaction
+        tx = self.begin()
+        try:
+            self.write(tx, kt)
+            result = self.commit(tx)
+            if not result.success:
+                raise GoTTransactionError(f"Failed to create knowledge transfer: {result.reason}")
+        except Exception as e:
+            self.rollback(tx, reason="create_knowledge_transfer_failed")
+            raise GoTTransactionError(f"Failed to create knowledge transfer: {e}") from e
 
-                if expected_version != actual_version:
-                    conflicts.append(Conflict(
-                        entity_id=entity_id,
-                        expected_version=expected_version,
-                        actual_version=actual_version,
-                        conflict_type="version_mismatch",
-                        message=f"Expected version {expected_version}, got {actual_version}"
-                    ))
+        return kt
 
-        return conflicts
+    def get_knowledge_transfer(self, kt_id: str) -> Optional[KnowledgeTransfer]:
+        """
+        Get a knowledge transfer by ID.
+
+        Args:
+            kt_id: Knowledge transfer identifier
+
+        Returns:
+            KnowledgeTransfer entity or None if not found
+        """
+        tx = self.begin()
+        try:
+            entity = self.read(tx, kt_id)
+            self.rollback(tx, reason="read_only")
+
+            if entity is None:
+                return None
+            if not isinstance(entity, KnowledgeTransfer):
+                return None
+            return entity
+        except Exception:
+            self.rollback(tx, reason="get_knowledge_transfer_failed")
+            return None
+
+    def list_knowledge_transfers(
+        self,
+        status: Optional[str] = None,
+        tags: Optional[List[str]] = None,
+    ) -> List[KnowledgeTransfer]:
+        """
+        List knowledge transfers with optional filtering.
+
+        Args:
+            status: Filter by status (draft, published, archived)
+            tags: Filter by tags (must have all specified tags)
+
+        Returns:
+            List of matching KnowledgeTransfer entities
+        """
+        entities_dir = self.got_dir / "entities"
+        if not entities_dir.exists():
+            return []
+
+        transfers = []
+        for entity_file in entities_dir.glob("KT-*.json"):
+            try:
+                tx = self.begin()
+                entity = self.read(tx, entity_file.stem)
+                self.rollback(tx, reason="read_only")
+
+                if entity is None or not isinstance(entity, KnowledgeTransfer):
+                    continue
+
+                # Apply filters
+                if status is not None and entity.status != status:
+                    continue
+                if tags is not None:
+                    if not all(tag in entity.tags for tag in tags):
+                        continue
+
+                transfers.append(entity)
+            except Exception as e:
+                logger.warning(f"Skipping corrupted KT file {entity_file}: {e}")
+                continue
+
+        return transfers
+
+    def append_to_knowledge_transfer(
+        self,
+        kt_id: str,
+        section_name: str,
+        content: str,
+    ) -> KnowledgeTransfer:
+        """
+        Append content to a section of a knowledge transfer.
+
+        If the section doesn't exist, it will be created.
+        If it exists, content will be appended with double newline separator.
+
+        Args:
+            kt_id: Knowledge transfer identifier
+            section_name: Section heading/name
+            content: Content to append
+
+        Returns:
+            Updated KnowledgeTransfer entity
+
+        Raises:
+            TransactionError: If knowledge transfer not found or transaction fails
+        """
+        tx = self.begin()
+        try:
+            # Read existing entity
+            entity = self.read(tx, kt_id)
+            if entity is None or not isinstance(entity, KnowledgeTransfer):
+                self.rollback(tx, reason="kt_not_found")
+                raise GoTTransactionError(f"Knowledge transfer not found: {kt_id}")
+
+            # Append to section
+            if section_name in entity.sections:
+                entity.sections[section_name] += f"\n\n{content}"
+            else:
+                entity.sections[section_name] = content
+
+            # Update entity
+            entity.bump_version()
+            self.write(tx, entity)
+
+            result = self.commit(tx)
+            if not result.success:
+                raise GoTTransactionError(f"Failed to update knowledge transfer: {result.reason}")
+
+            return entity
+        except GoTTransactionError:
+            raise
+        except Exception as e:
+            self.rollback(tx, reason="append_failed")
+            raise GoTTransactionError(f"Failed to append to knowledge transfer: {e}") from e
+
+    def link_knowledge_transfer(
+        self,
+        kt_id: str,
+        target_id: str,
+        link_type: str = "DOCUMENTS",
+    ) -> bool:
+        """
+        Link a knowledge transfer to another entity.
+
+        Creates an edge from the knowledge transfer to the target entity.
+
+        Args:
+            kt_id: Knowledge transfer identifier
+            target_id: Target entity identifier
+            link_type: Edge type (DOCUMENTS, CONTINUES, REFERENCES, etc.)
+
+        Returns:
+            True if link created successfully
+
+        Raises:
+            TransactionError: If transaction fails
+        """
+        tx = self.begin()
+        try:
+            # Verify KT exists
+            kt_entity = self.read(tx, kt_id)
+            if kt_entity is None or not isinstance(kt_entity, KnowledgeTransfer):
+                self.rollback(tx, reason="kt_not_found")
+                raise GoTTransactionError(f"Knowledge transfer not found: {kt_id}")
+
+            # Verify target exists
+            target_entity = self.read(tx, target_id)
+            if target_entity is None:
+                self.rollback(tx, reason="target_not_found")
+                raise GoTTransactionError(f"Target entity not found: {target_id}")
+
+            # Create edge
+            edge = Edge(
+                id="",  # Auto-generated in __post_init__
+                source_id=kt_id,
+                target_id=target_id,
+                edge_type=link_type,
+                weight=1.0,
+                confidence=1.0,
+            )
+
+            self.write(tx, edge)
+            result = self.commit(tx)
+
+            if not result.success:
+                raise GoTTransactionError(f"Failed to create link: {result.reason}")
+
+            return True
+        except GoTTransactionError:
+            raise
+        except Exception as e:
+            self.rollback(tx, reason="link_failed")
+            raise GoTTransactionError(f"Failed to link knowledge transfer: {e}") from e
+

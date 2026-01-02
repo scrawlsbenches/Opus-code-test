@@ -1,0 +1,17 @@
+{
+  "_checksum": "3202ad89af4b1479",
+  "_written_at": "2025-12-31T23:06:15.374921+00:00",
+  "data": {
+    "created_at": "2025-12-31T23:06:15.364652+00:00",
+    "description": "Create tests/unit/specifications/cdg/ with Entity, Edge, Transaction specs",
+    "entity_type": "task",
+    "id": "T-20251231-230615-233390ea",
+    "metadata": {},
+    "modified_at": "2025-12-31T23:06:15.374885+00:00",
+    "priority": "high",
+    "properties": {},
+    "status": "pending",
+    "title": "Write CDG unit specifications",
+    "version": 2
+  }
+}

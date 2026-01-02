@@ -266,6 +266,8 @@ class TestEdgeTypeValidation:
             'TRANSFERS',
             'PRODUCES',
             'DOCUMENTED_BY',
+            'DOCUMENTS',   # KnowledgeTransfer documents Task/Decision
+            'CONTINUES',   # KnowledgeTransfer continues from Handoff
         }
 
         assert VALID_EDGE_TYPES == expected_types

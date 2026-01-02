@@ -1,0 +1,45 @@
+Deductive and Inductive Reasoning
+
+Deductive and inductive reasoning represent two fundamental modes of logical inference that underlie human thought. Deductive reasoning derives specific conclusions from general premises with logical necessity, while inductive reasoning infers general patterns from specific observations with probability but not certainty. Together, these reasoning forms enable both rigorous proof and flexible learning from experience.
+
+Deductive reasoning preserves truth: if the premises are true and the reasoning is valid, the conclusion must be true. The classic syllogism illustrates this structure: "All mammals are warm-blooded; all dogs are mammals; therefore, all dogs are warm-blooded." The conclusion follows necessarily from the premises regardless of what mammals or dogs are actually like in the world.
+
+Validity in deductive reasoning concerns the logical structure of arguments, not the truth of premises. An argument can be valid yet unsound if premises are false, or invalid despite having true premises and conclusion. Understanding this distinction between validity and soundness represents an important developmental and educational achievement.
+
+Conditional reasoning involves statements of the form "if P then Q" and constitutes a core deductive competency. Modus ponens, inferring Q from "if P then Q" and P, is reliably performed by adults. However, modus tollens, inferring not-P from "if P then Q" and not-Q, proves more difficult, with substantial error rates even among educated adults.
+
+The Wason selection task revealed systematic difficulties in conditional reasoning. Participants must determine which cards to flip to test a conditional rule, yet typically select cards that could confirm but not falsify the rule. Performance improves dramatically when abstract conditionals are replaced with familiar social contracts or realistic scenarios.
+
+Mental model theory, developed by Philip Johnson-Laird, explains deductive reasoning through construction and manipulation of mental representations of possibilities. Reasoners construct models of premises and draw conclusions by inspecting these models. Difficulty arises when conclusions require considering multiple models or models of possibilities not explicitly represented.
+
+The development of deductive reasoning shows gradual improvement through childhood and adolescence. Young children show competence with simple valid inferences but struggle with more complex logical forms. The ability to reason about abstract hypotheticals, characteristic of formal operational thought in Piaget's theory, develops substantially during adolescence.
+
+Belief bias in deductive reasoning occurs when prior beliefs about conclusions influence judgments of logical validity. People more readily accept valid conclusions they believe true and reject valid conclusions they believe false. This interaction between logic and belief demonstrates that deductive reasoning is not purely formal but influenced by content.
+
+Inductive reasoning extends from observed instances to general conclusions. Unlike deduction, induction cannot guarantee truth preservation; the conclusion might be false even when all observed instances support it. However, induction enables learning from limited experience and generates the general knowledge that serves as premises for deduction.
+
+Category-based induction involves inferring properties of categories from observed instances. If all observed ravens are black, one might induce that all ravens are black. The strength of such inferences depends on sample size, diversity, and the nature of the property being projected.
+
+The problem of induction, famously articulated by David Hume, questions the logical justification for inductive inference. Past regularities do not logically guarantee future regularities, yet humans and other animals rely fundamentally on inductive learning. This philosophical puzzle has stimulated extensive research on the psychological and computational bases of induction.
+
+Bayesian approaches to induction formalize how rational learners update beliefs given evidence. Prior probabilities combine with likelihood of evidence to produce posterior probabilities through Bayes' theorem. Human inductive inference often approximates Bayesian predictions, suggesting sensitivity to both prior expectations and evidential strength.
+
+The development of inductive reasoning involves increasing sophistication in evidence evaluation. Young children can perform basic inductive generalizations but show limited sensitivity to sample size, sampling procedures, and the relationship between evidence and conclusions. Appreciation of these factors develops through childhood and adolescence.
+
+Argument strength in induction depends on multiple factors. Premise diversity strengthens inductive conclusions by sampling more of the relevant space. Coverage of the lowest common taxonomic category containing premises and conclusion affects plausibility. Typicality of premises relative to the conclusion category influences inductive confidence.
+
+Scientific reasoning integrates deduction and induction in systematic inquiry. Scientists induce hypotheses from observations, deduce predictions from hypotheses, and test predictions through experiment. This hypothetico-deductive method combines inductive generation with deductive testing in iterative cycles of conjecture and refutation.
+
+Analogical reasoning spans deductive and inductive inference. While structural mapping proceeds through quasi-deductive alignment processes, extending conclusions from source to target involves inductive projection. The reliability of analogical inference depends on the depth and systematicity of the underlying structural correspondence.
+
+Domain-specific reasoning patterns may deviate from general logical principles while remaining pragmatically effective. Social contract reasoning, involving detection of cheaters who take benefits without meeting obligations, shows enhanced performance relative to abstract conditionals with identical logical structure. This suggests specialized reasoning mechanisms for evolutionarily significant domains.
+
+Individual differences in deductive and inductive reasoning are substantial. Cognitive ability measures correlate with logical reasoning performance, though the relationship varies across task types. Working memory capacity particularly predicts performance on complex deductive tasks requiring maintenance of multiple premises or models.
+
+Training can improve logical reasoning performance. Instruction in formal logic enhances deductive reasoning, while statistical training improves inductive judgment. However, transfer of training to novel content and contexts remains limited, suggesting that logical competence is not fully domain-general.
+
+The relationship between reasoning and rationality has generated extensive debate. Are systematic errors in logical reasoning evidence of irrationality, or do they reflect adaptive heuristics that work well in natural environments? Understanding the ecological rationality of human inference requires considering the information processing constraints and environmental structures that shaped reasoning capacities.
+
+Neural substrates of deductive and inductive reasoning involve overlapping yet distinguishable brain networks. Prefrontal and parietal regions support both reasoning types, with some specialization for relational complexity in deduction and probability estimation in induction. Individual differences in reasoning correlate with structural and functional properties of these regions.
+
+Reasoning development continues through the lifespan, with education and experience refining both deductive and inductive capabilities. Understanding the principles underlying valid inference supports better reasoning in academic, professional, and everyday contexts, though the application of these principles requires effort and remains susceptible to biases even in trained reasoners.
