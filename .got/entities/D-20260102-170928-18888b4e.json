@@ -1,0 +1,15 @@
+{
+  "_checksum": "17774639991a0bfb",
+  "_written_at": "2026-01-02T17:09:28.736759+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-02T17:09:28.732807+00:00",
+    "entity_type": "decision",
+    "id": "D-20260102-170928-18888b4e",
+    "modified_at": "2026-01-02T17:09:28.736697+00:00",
+    "properties": {},
+    "rationale": "Comprehensive code audit found: GoT - 4 critical (cache race, orphan WAL corruption, rollback failure, index inconsistency), 5 high (WAL threading, index perf, LRU perf, edge validation, partial writes). CDG - 4 critical (mutation persistence, history fsync, history ordering, WAL gaps), 4 high (write-set race, incomplete rollback, cleanup masking, TOCTOU). Created sprint S-20260102-170553-db7b9114 with 19 tasks including 2 previously tracked critical bugs.",
+    "title": "Deep dive audit of GoT/CDG identified 17 NEW critical/high bugs not previously tracked",
+    "version": 2
+  }
+}
