@@ -6,13 +6,14 @@
     "entity_type": "knowledge_transfer",
     "version": 1,
     "created_at": "2026-01-02T16:28:01.361859",
-    "modified_at": "2026-01-02T16:29:12.829520",
+    "modified_at": "2026-01-02T16:29:18.889674",
     "title": "Deep Dive Analysis: 2026-01-02",
     "session_id": "",
     "session_date": "",
     "summary": "Comprehensive codebase analysis identifying critical issues, coverage gaps, and recommended next steps",
     "sections": {
-      "System Health Status": "Smoke Tests: 34/34 PASSING (1.76s). Unit+Smoke Coverage: 84%. Git: Clean working tree. All core systems operational: CorticalTextProcessor, GoT, CDG, CEL, Spark SLM, Hubris micro-experts."
+      "System Health Status": "Smoke Tests: 34/34 PASSING (1.76s). Unit+Smoke Coverage: 84%. Git: Clean working tree. All core systems operational: CorticalTextProcessor, GoT, CDG, CEL, Spark SLM, Hubris micro-experts.",
+      "Critical Issues": "2 CRITICAL bugs in GoT: (1) Transaction-unsafe delete operations bypass WAL - crash during delete creates orphaned edges (api.py:661-711, 808-862). (2) Potential deadlock in versioned_store.py:51-84 - two ProcessLocks with no defined acquisition order. Coverage gaps: prism_causal.py at 0%, prism_attention.py at 15%."
     },
     "code_refs": [],
     "related_handoffs": [],
