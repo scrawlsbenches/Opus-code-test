@@ -1,19 +1,23 @@
 {
-  "_checksum": "25a1eb3c19400fbb",
-  "_written_at": "2026-01-02T11:02:11.785188+00:00",
+  "_checksum": "1d699322993f379f",
+  "_written_at": "2026-01-02T11:02:32.189547+00:00",
   "data": {
     "created_at": "2026-01-02T11:02:11.781103+00:00",
     "description": "",
     "entity_type": "task",
     "id": "T-20260102-110211-a21156fc",
-    "metadata": {},
-    "modified_at": "2026-01-02T11:02:11.785108+00:00",
+    "metadata": {
+      "completed_at": "2026-01-02T11:02:32.182258+00:00",
+      "updated_at": "2026-01-02T11:02:32.182268+00:00"
+    },
+    "modified_at": "2026-01-02T11:02:32.189501+00:00",
     "priority": "medium",
     "properties": {
-      "category": "research"
+      "category": "research",
+      "retrospective": "The Cortical Chronicles is computational autobiography. Today's session could become a chapter. Infrastructure exists."
     },
-    "status": "pending",
+    "status": "completed",
     "title": "Review the living book infrastructure",
-    "version": 2
+    "version": 3
   }
 }
