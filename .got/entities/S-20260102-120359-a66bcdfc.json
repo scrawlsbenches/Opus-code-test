@@ -1,0 +1,23 @@
+{
+  "_checksum": "36f7ec7c9de97e49",
+  "_written_at": "2026-01-02T12:03:59.900467+00:00",
+  "data": {
+    "created_at": "2026-01-02T12:03:59.895850+00:00",
+    "entity_type": "sprint",
+    "epic_id": "",
+    "goals": [],
+    "id": "S-20260102-120359-a66bcdfc",
+    "isolation": [],
+    "metadata": {},
+    "modified_at": "2026-01-02T12:03:59.900380+00:00",
+    "notes": [
+      "Testing the new description feature for context capture"
+    ],
+    "number": null,
+    "properties": {},
+    "session_id": "",
+    "status": "available",
+    "title": "Test Sprint",
+    "version": 2
+  }
+}
