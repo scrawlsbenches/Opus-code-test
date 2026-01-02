@@ -1,0 +1,15 @@
+{
+  "_checksum": "353a87ad355f6959",
+  "_written_at": "2026-01-02T23:59:16.814255+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-02T23:59:16.802829+00:00",
+    "entity_type": "decision",
+    "id": "D-20260102-235916-dd339178",
+    "modified_at": "2026-01-02T23:59:16.814194+00:00",
+    "properties": {},
+    "rationale": "The 5 critical ACID bugs are now fixed. Entity rollback (redoing writes from WAL on recovery) is a separate feature that needs careful design - it requires storing full entity state in WAL WRITE entries, not just entity_id and version. Current WAL-first model means recovery already knows which transactions committed; entity rollback would add the ability to reconstruct entities from WAL alone.",
+    "title": "Entity rollback deferred to future sprint",
+    "version": 2
+  }
+}
