@@ -557,7 +557,8 @@ class Edge(Entity):
     Edge entity representing a relationship between two entities.
 
     Edges connect entities with typed relationships (DEPENDS_ON, BLOCKS, etc.)
-    and optional weight/confidence scores.
+    and optional weight/confidence scores. The optional reason field captures
+    WHY this relationship exists.
     """
 
     source_id: str = ""
@@ -565,6 +566,7 @@ class Edge(Entity):
     edge_type: str = ""
     weight: float = 1.0
     confidence: float = 1.0
+    reason: str = ""  # Why this relationship exists (context capture)
 
     def __post_init__(self):
         """Validate edge fields and auto-generate ID if needed."""
@@ -606,6 +608,7 @@ class Edge(Entity):
             "edge_type": self.edge_type,
             "weight": self.weight,
             "confidence": self.confidence,
+            "reason": self.reason,
         })
         return result
 
@@ -623,6 +626,7 @@ class Edge(Entity):
             edge_type=data.get("edge_type", ""),
             weight=data.get("weight", 1.0),
             confidence=data.get("confidence", 1.0),
+            reason=data.get("reason", ""),
         )
 
 

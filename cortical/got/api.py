@@ -732,6 +732,7 @@ class GoTManager:
         target_id: str,
         edge_type: str,
         weight: float = 1.0,
+        reason: str = "",
         validate_refs: bool = True,
         validate_relationship: bool = True
     ) -> Edge:
@@ -743,6 +744,7 @@ class GoTManager:
             target_id: Target entity ID
             edge_type: Edge type (DEPENDS_ON, BLOCKS, etc.)
             weight: Edge weight (0.0-1.0)
+            reason: Why this relationship exists (context capture)
             validate_refs: If True, verify source and target entities exist
                           (default: True for referential integrity)
             validate_relationship: If True, validate entity types can be connected
@@ -787,7 +789,7 @@ class GoTManager:
                 )
 
         with self.transaction() as tx:
-            edge = tx.add_edge(source_id, target_id, edge_type, weight=weight)
+            edge = tx.add_edge(source_id, target_id, edge_type, weight=weight, reason=reason)
         return edge
 
     def add_dependency(self, task_id: str, depends_on_id: str) -> Edge:
@@ -2359,6 +2361,7 @@ class TransactionContext:
             edge_type=edge_type,
             weight=kwargs.get("weight", 1.0),
             confidence=kwargs.get("confidence", 1.0),
+            reason=kwargs.get("reason", ""),
         )
         self.tx_manager.write(self.tx, edge)
         return edge

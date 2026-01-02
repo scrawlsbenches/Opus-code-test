@@ -1060,7 +1060,14 @@ class TransactionalGoTAdapter:
             logger.error(f"Failed to add blocks edge from {clean_task} to {clean_blocked}: {e}")
             return False
 
-    def add_edge(self, source_id: str, target_id: str, edge_type: str, weight: float = 1.0):
+    def add_edge(
+        self,
+        source_id: str,
+        target_id: str,
+        edge_type: str,
+        weight: float = 1.0,
+        reason: str = "",
+    ):
         """Add a generic edge between two entities.
 
         Args:
@@ -1068,6 +1075,7 @@ class TransactionalGoTAdapter:
             target_id: Target entity ID
             edge_type: Type of edge (e.g., DEPENDS_ON, BLOCKS, CAUSED_BY)
             weight: Edge weight (default: 1.0)
+            reason: Why this relationship exists (context capture)
 
         Returns:
             Edge object if successful, None otherwise
@@ -1075,7 +1083,9 @@ class TransactionalGoTAdapter:
         clean_source = self._strip_prefix(source_id)
         clean_target = self._strip_prefix(target_id)
         try:
-            edge = self._manager.add_edge(clean_source, clean_target, edge_type, weight=weight)
+            edge = self._manager.add_edge(
+                clean_source, clean_target, edge_type, weight=weight, reason=reason
+            )
             return edge
         except AttributeError as e:
             logger.error(f"Method not implemented: {e}")
