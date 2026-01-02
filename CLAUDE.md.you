@@ -1,6 +1,6 @@
 # CLAUDE.md — Cortical Text Processor Development Guide
 
-*Last updated: 2025-12-30*
+*Last updated: 2026-01-02*
 
 ---
 
@@ -26,17 +26,22 @@ Documents → Tokenizer → 4-Layer Graph → PageRank + BM25 → Semantic Searc
 
 ## Part I: Core Systems I Must Know
 
-### The Six Pillars
+### The Seven Pillars
 
 These are the core systems. I must know them reflexively, not search for them.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                     THE SIX PILLARS OF CORTICAL                          │
+│                    THE SEVEN PILLARS OF CORTICAL                         │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
+│  ┌─────────────────────────────────────────────────────────────────┐    │
+│  │   CDG (Foundation) — Storage, Transactions, WAL, Recovery       │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
+│                                    │                                     │
+│                                    ▼                                     │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                      │
-│  │   PRISM     │  │    CEL      │  │    GoT      │                      │
+│  │   PRISM     │  │    CEL      │  │    GoT      │◀── Delegates to CDG  │
 │  │ Reasoning   │  │  Events     │  │  Tasks      │                      │
 │  └─────────────┘  └─────────────┘  └─────────────┘                      │
 │                                                                          │
@@ -47,6 +52,33 @@ These are the core systems. I must know them reflexively, not search for them.
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+### CDG — Cortical Distributed Graph (Foundation Layer)
+
+**Location:** `cortical/cdg/`
+
+The unified storage foundation that GoT builds upon. Provides ACID-compliant graph storage with crash recovery.
+
+**Four Components:**
+
+| Component | Purpose | Key Feature |
+|-----------|---------|-------------|
+| **CDGStore** | Storage layer | Entity JSON files with checksums, MVCC history |
+| **CDGTransactionManager** | ACID transactions | Snapshot isolation, optimistic locking, conflict detection |
+| **CDGWALManager** | Write-ahead logging | JSONL format with checksums, transaction lifecycle |
+| **CDGRecoveryManager** | Crash recovery | RecoveryMode: NONE/CHECKSUM/FULL, OrphanStrategy |
+
+**Configuration presets:**
+
+```python
+CDGConfig.for_got()              # Full ACID with WAL and recovery
+CDGConfig.for_simple_storage()   # Basic storage, no transactions
+CDGConfig.for_high_performance() # Maximum speed, ephemeral
+```
+
+**Key relationship:** GoT's TransactionManager is now a thin wrapper that delegates to CDG.
 
 ---
 

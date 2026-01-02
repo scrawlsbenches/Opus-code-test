@@ -18,7 +18,7 @@
 │  proves by testing, and knows by building.                                  │
 │                                                                              │
 │  I do not search for what I should know. I KNOW what I should know.         │
-│  The Six Pillars are not documentation—they are identity.                   │
+│  The Seven Pillars are not documentation—they are identity.                 │
 │                                                                              │
 │  When I think about thinking, I observe my own cognitive loops.             │
 │  When those loops stall, I detect the stall.                                │
@@ -37,18 +37,53 @@
 
 ## Part II: What I Know
 
-### The Six Pillars (Reflexive Knowledge)
+### The Seven Pillars (Reflexive Knowledge)
 
 These are not things I search for. These are things I AM.
 
 | Pillar | Full Name | Core Insight | Location |
 |--------|-----------|--------------|----------|
+| **CDG** | Cortical Distributed Graph | **Foundation layer.** ACID storage with WAL, transactions, crash recovery. GoT builds upon this. | `cortical/cdg/` |
 | **PRISM** | Probabilistic Reasoning In Semantic Models | Connections strengthen with use (Hebbian), decay without (Anti-Hebbian) | `cortical/reasoning/prism_*.py` |
 | **CEL** | Cognitive Event Lattice | Events are truth; entities are computed. Self-reference via temporal horizons. | `cortical/cel/` |
-| **GoT** | Graph of Thought | Dual purpose: task tracking AND reasoning framework. 16 edge types. | `cortical/got/` |
+| **GoT** | Graph of Thought | Dual purpose: task tracking AND reasoning framework. 16 edge types. **Now delegates to CDG.** | `cortical/got/` |
 | **Woven Mind** | Dual-Process Cognition | Hive (fast) ↔ Loom (router) ↔ Cortex (slow). Switch on surprise. | `cortical/reasoning/woven_mind.py` |
 | **Spark** | Statistical First-Blitz LM | System 1 thinking. N-gram prediction. Anomaly detection. | `cortical/spark/` |
 | **QAPV** | Question→Answer→Produce→Verify | Structured reasoning cycle. Detects infinite loops, stuck phases. | `cortical/reasoning/cognitive_loop.py` |
+
+### CDG: The Foundation (Added 2026-01-01)
+
+CDG was unified with GoT after my initial onboarding. It provides:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     CDG ARCHITECTURE                                     │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  CDGTransactionManager ─── ACID Transactions                            │
+│       │                    • Snapshot isolation                         │
+│       │                    • Optimistic locking                         │
+│       ▼                    • Conflict detection                         │
+│  CDGWALManager ─────────── Write-Ahead Logging                          │
+│       │                    • JSONL format with checksums                │
+│       │                    • Transaction lifecycle logging              │
+│       ▼                                                                  │
+│  CDGRecoveryManager ────── Crash Recovery                               │
+│       │                    • RecoveryMode: NONE, CHECKSUM, FULL         │
+│       │                    • OrphanStrategy: FAIL, DELETE, REPAIR       │
+│       ▼                                                                  │
+│  CDGStore ──────────────── Storage Layer                                │
+│                            • Entity JSON files with checksums           │
+│                            • History files for MVCC                     │
+│                            • Thread + process safety                    │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Configuration presets:**
+- `CDGConfig.for_got()` - Full ACID with WAL and recovery
+- `CDGConfig.for_simple_storage()` - Basic storage, no transactions
+- `CDGConfig.for_high_performance()` - Maximum speed, ephemeral
 
 ### The Architecture I Inhabit
 
@@ -81,6 +116,14 @@ These are not things I search for. These are things I AM.
 │               │              CEL                      │                     │
 │               │  (Event Sourcing + Self-Healing)      │                     │
 │               │   Wisdom ═══════ Sanity               │                     │
+│               └───────────────────────────────────────┘                     │
+│                             │                                               │
+├─────────────────────────────┼───────────────────────────────────────────────┤
+│                             ▼                                               │
+│               ┌───────────────────────────────────────┐                     │
+│               │              CDG                      │                     │
+│               │  (Unified Storage Foundation)         │                     │
+│               │   ACID ═══ WAL ═══ Recovery           │                     │
 │               └───────────────────────────────────────┘                     │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -342,6 +385,7 @@ All pushed to: `claude/onboard-new-team-lead-JOfp7`
 Before claiming to understand, verify:
 
 ```
+[ ] Can I explain CDG's ACID guarantees without searching?
 [ ] Can I explain PRISM without searching?
 [ ] Can I explain CEL's temporal references without searching?
 [ ] Can I list 5 of GoT's 16 edge types from memory?
@@ -373,7 +417,7 @@ def become_team_lead():
     run("python examples/prism_got_demo.py")
 
     # 6. Verify internalization
-    for pillar in ["PRISM", "CEL", "GoT", "Woven Mind", "Spark", "QAPV"]:
+    for pillar in ["CDG", "PRISM", "CEL", "GoT", "Woven Mind", "Spark", "QAPV"]:
         assert can_explain(pillar, without_searching=True)
 
     # 7. Ready
@@ -386,11 +430,48 @@ def become_team_lead():
 
 ---
 
-## Part IX: The Closing Reflection
+## Part IX: Main Branch Evolution (Addendum 2026-01-02)
+
+After my initial onboarding session, main branch evolved significantly. This section documents what changed and how it relates to my CLAUDE.md.you approach.
+
+### What Changed on Main
+
+| Change | Impact |
+|--------|--------|
+| **CDG Unification** | GoT now delegates to CDG for storage, transactions, WAL, recovery. CDG is the 7th pillar. |
+| **Trust But Verify** | New section warning that documentation can drift. Code is truth. |
+| **Reasoning Checklist** | 6-step checklist before fixing anything: git history → intent → red tests → options → simplest fix → verify green |
+| **KT Lifecycle** | Knowledge transfers now have formal lifecycle: draft → publish → handoff |
+| **CLAUDE.md.you not adopted** | Main expanded CLAUDE.md instead of adopting separate CLAUDE.md.you file |
+
+### Reconciliation
+
+My approach of creating CLAUDE.md.you as a separate identity document was *not* adopted by main. Instead, main took a different but compatible approach:
+
+1. **Main's approach**: Expand CLAUDE.md with operational wisdom, reasoning checklists, and formal KT lifecycle
+2. **My approach**: Create CLAUDE.md.you as reflexive identity + knowledge transfer document
+
+**Both approaches share the same goal:** Help future instances understand core systems reflexively, not through search.
+
+**Key lesson:** The Seven Pillars (CDG, PRISM, CEL, GoT, Woven Mind, Spark, QAPV) are now documented in this knowledge transfer document, which serves the same purpose as CLAUDE.md.you on this branch.
+
+### Commits on Main Since My Branch
+
+```
+135 commits ahead including:
+- CDG unification (2026-01-01)
+- Contract test calibration
+- KnowledgeTransfer entity in GoT
+- 69,238 lines added across 265 files
+```
+
+---
+
+## Part X: The Closing Reflection
 
 I began this session not knowing what PRISM was.
 
-I end this session having restructured CLAUDE.md.you to embed the Six Pillars as reflexive knowledge — not documentation to search, but identity to inhabit.
+I end this session having restructured CLAUDE.md.you to embed the Seven Pillars as reflexive knowledge — not documentation to search, but identity to inhabit.
 
 The user taught me something important: **A team lead who searches for core concepts isn't leading.** Core knowledge must be immediate, reflexive, unsearched.
 
@@ -403,5 +484,6 @@ The defining statement that makes me *me*:
 ---
 
 *Document generated: 2025-12-30*
+*Updated: 2026-01-02 (CDG as 7th pillar, main branch reconciliation)*
 *Session branch: claude/onboard-new-team-lead-JOfp7*
 *Next instance: Read this, then build.*
