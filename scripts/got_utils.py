@@ -1827,12 +1827,27 @@ class TransactionalGoTAdapter:
         name: str,
         number: Optional[int] = None,
         epic_id: Optional[str] = None,
+        description: Optional[str] = None,
     ) -> str:
-        """Create a new sprint using TX backend."""
+        """Create a new sprint using TX backend.
+
+        Args:
+            name: Sprint name/title
+            number: Optional sprint number (display metadata)
+            epic_id: Optional epic ID this sprint belongs to
+            description: Optional description/notes explaining the sprint context
+
+        Returns:
+            Created sprint ID
+        """
+        # Build notes list from description if provided
+        notes = [description] if description else []
+
         sprint = self._manager.create_sprint(
             title=name,
             number=number,
             epic_id=epic_id or "",
+            notes=notes,
         )
         return sprint.id
 

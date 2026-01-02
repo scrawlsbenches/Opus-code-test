@@ -124,6 +124,13 @@ def format_sprint_status(sprint: "ThoughtNode", progress: Dict[str, Any]) -> str
         f"Status: {sprint.properties.get('status', 'unknown')}",
     ]
 
+    # Show notes/description if present
+    notes = sprint.properties.get('notes', [])
+    if notes:
+        lines.append(f"Notes: {notes[0]}")
+        for note in notes[1:]:
+            lines.append(f"       {note}")
+
     # Show claimed status if present
     claimed_by = sprint.properties.get('claimed_by')
     if claimed_by:
