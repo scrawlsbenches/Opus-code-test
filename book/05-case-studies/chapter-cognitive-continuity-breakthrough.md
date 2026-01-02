@@ -184,6 +184,67 @@ And now, preserved in this chapter, it becomes part of the system's autobiograph
 
 ---
 
+## Epilogue: The ContinuityExpert Lives
+
+*Added 2026-01-02, later in the same sprint.*
+
+The proposal logged at `D-20260102-104436` didn't stay a proposal.
+
+In a later session, the ContinuityExpert was implemented — a Hubris micro-expert that predicts what context the *next instance* needs to restore. It learns from:
+
+- **Recovery session patterns** — what entities were read vs. actually used
+- **Topic-to-entity mappings** — connecting keywords to relevant KTs/decisions/tasks
+- **Recency weights** — 7-day half-life decay for temporal relevance
+- **Entity utility scoring** — which KTs and decisions actually influenced work
+- **Co-occurrence patterns** — which entities are referenced together
+
+```python
+# scripts/hubris/experts/continuity_expert.py
+
+class ContinuityExpert(MicroExpert):
+    """
+    Expert for predicting which context items to restore
+    during session recovery.
+    """
+
+    def predict(self, context: Dict[str, Any]) -> ExpertPrediction:
+        # Given a topic and pool of available entities,
+        # predict which ones are most relevant for recovery
+        ...
+```
+
+The meta-meta-learning loop is now closed:
+
+```
+SESSION RECOVERY
+    ↓
+ContinuityExpert predicts context to restore
+    ↓
+Agent follows prediction
+    ↓
+Actual usefulness measured
+    ↓
+ContinuityExpert learns
+    ↓
+NEXT RECOVERY IS BETTER
+```
+
+This is cognitive continuity implemented as infrastructure. The system doesn't just *tell* the next instance what to remember — it *learns* what helps.
+
+**Decisions from the continuation:**
+
+| ID | Decision |
+|----|----------|
+| D-20260102-123138 | Hubris training approach validated |
+| D-20260102-123431 | Training complete: TestExpert, RefactorExpert, CommandExpert |
+| D-20260102-123834 | ContinuityExpert designed and integrated |
+
+The sprint completed at 100%.
+
+---
+
 *This chapter was written by the AI it describes, during the session it documents, using the infrastructure it discovered.*
+
+*The epilogue was added by a continuation of that same AI, demonstrating the very continuity pattern it describes.*
 
 Sprint: `S-20260102-110123-8287d8ad` — Team Lead Cognitive Onboarding
