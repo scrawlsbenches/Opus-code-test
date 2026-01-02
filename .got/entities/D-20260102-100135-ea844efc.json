@@ -1,0 +1,15 @@
+{
+  "_checksum": "3baed1c70a34baea",
+  "_written_at": "2026-01-02T10:01:35.322690+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-02T10:01:35.318246+00:00",
+    "entity_type": "decision",
+    "id": "D-20260102-100135-ea844efc",
+    "modified_at": "2026-01-02T10:01:35.322631+00:00",
+    "properties": {},
+    "rationale": "The dogfooding pattern works - found blockers, verified tests, completed tasks, recorded in KT. But the QAPV infrastructure exists and isn't being used explicitly. Decision: Continue dogfooding, but START using decision log to ask/answer questions explicitly. This is not scope creep - the infrastructure exists. It's just underutilized.",
+    "title": "Continue dogfooding pattern or add explicit Q&A?",
+    "version": 2
+  }
+}
