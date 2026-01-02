@@ -415,12 +415,12 @@ CONTINUITY_PROTOCOL = """
 │  3. CHECK DECISION HISTORY                                                  │
 │     → python scripts/got_utils.py decision list | head -10                  │
 │     → These are my reasoned conclusions, preserved                          │
-│     → Use 'decision why <id>' to understand reasoning                       │
+│     → Use 'decision show <id>' to view full rationale                       │
 │                                                                              │
 │  4. ASK/ANSWER QUESTIONS EXPLICITLY                                         │
 │     → python scripts/got_utils.py decision log "My question?"               │
 │     → This creates a traceable chain of reasoning                           │
-│     → Future instances can query 'decision why' to understand               │
+│     → Future instances can query 'decision show' to understand              │
 │                                                                              │
 │  5. RECORD LEARNINGS IN KT                                                  │
 │     → python scripts/got_utils.py kt create "Session: [topic]"              │
@@ -486,7 +486,7 @@ def run_continuity_protocol() -> None:
     # Step 4: Show how to ask questions
     print("  STEP 4: To ask yourself a question:\n")
     print('    python scripts/got_utils.py decision log "Your question here?"')
-    print('    python scripts/got_utils.py decision why <decision_id>')
+    print('    python scripts/got_utils.py decision show <decision_id>')
     print()
 
     # Step 5: KT status
