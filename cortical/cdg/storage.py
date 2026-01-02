@@ -257,16 +257,22 @@ class CDGStore:
                 # Validate entity before writing
                 self._validate_entity(entity)
 
-                # Save current state to history before overwriting
+                # Capture history data BEFORE write (but don't persist yet)
+                # This ensures we don't create phantom history if write fails
+                history_entry = None
                 if self.exists(entity.id):
-                    self._save_to_history(entity.id, self._version)
+                    history_entry = self._capture_history_entry(entity.id, self._version)
 
                 # Increment entity version
                 entity.bump_version()
 
-                # Write entity to file
+                # Write entity to file - this must succeed before history is saved
                 path = self._entity_path(entity.id)
                 self._write_with_checksum(path, entity.to_dict())
+
+                # Only AFTER successful write, persist history entry
+                if history_entry is not None:
+                    self._persist_history_entry(entity.id, history_entry)
 
                 # Increment global version
                 self._version += 1
@@ -307,14 +313,19 @@ class CDGStore:
 
                 temp_files = []
                 renamed_files = []  # Track successful renames for rollback
+                history_entries = []  # Captured history entries (entity_id, entry)
 
                 try:
-                    # Step 1: Save old states to history and write new states to temp files
+                    # Step 1: Capture history entries BEFORE writes (but don't persist yet)
+                    # This ensures we don't create phantom history if writes fail
                     for entity_id, entity in write_set.items():
-                        # Save current state to history if entity exists
                         if self.exists(entity_id):
-                            self._save_to_history(entity_id, self._version)
+                            entry = self._capture_history_entry(entity_id, self._version)
+                            if entry is not None:
+                                history_entries.append((entity_id, entry))
 
+                    # Step 2: Write new states to temp files
+                    for entity_id, entity in write_set.items():
                         # Increment entity version
                         entity.bump_version()
 
@@ -323,16 +334,20 @@ class CDGStore:
                         self._write_with_checksum(temp_path, entity.to_dict())
                         temp_files.append((temp_path, self._entity_path(entity_id)))
 
-                    # Step 2: Fsync all temp files (respects durability mode)
+                    # Step 3: Fsync all temp files (respects durability mode)
                     for temp_path, _ in temp_files:
                         self._fsync_file(temp_path)
 
-                    # Step 3: Rename all temp files to final (atomic on POSIX)
+                    # Step 4: Rename all temp files to final (atomic on POSIX)
                     for temp_path, final_path in temp_files:
                         temp_path.rename(final_path)
                         renamed_files.append(final_path)
 
-                    # Step 4: Update global version
+                    # Step 5: Only AFTER successful writes, persist history entries
+                    for entity_id, entry in history_entries:
+                        self._persist_history_entry(entity_id, entry)
+
+                    # Step 6: Update global version
                     self._version += 1
                     self._save_version()
 
@@ -632,6 +647,53 @@ class CDGStore:
             with open(history_path, 'a', encoding='utf-8') as f:
                 json.dump(history_entry, f, sort_keys=True)
                 f.write('\n')
+
+    def _capture_history_entry(self, entity_id: str, global_version: int) -> Optional[dict]:
+        """
+        Capture current entity state for history WITHOUT persisting.
+
+        This allows us to capture the "before" state but only persist
+        the history entry AFTER a successful write, avoiding phantom
+        history entries on write failure.
+
+        Args:
+            entity_id: Entity identifier
+            global_version: Global version to associate with this snapshot
+
+        Returns:
+            History entry dict, or None if entity doesn't exist
+        """
+        path = self._entity_path(entity_id)
+        if not path.exists():
+            return None
+
+        wrapper = self._read_and_verify(path)
+        data = wrapper["data"]
+
+        return {
+            "global_version": global_version,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "data": data
+        }
+
+    def _persist_history_entry(self, entity_id: str, history_entry: dict) -> None:
+        """
+        Persist a previously captured history entry.
+
+        Args:
+            entity_id: Entity identifier
+            history_entry: History entry dict from _capture_history_entry
+        """
+        history_path = self._history_path(entity_id)
+
+        with self._history_lock:
+            with open(history_path, 'a', encoding='utf-8') as f:
+                json.dump(history_entry, f, sort_keys=True)
+                f.write('\n')
+                # fsync history file for durability
+                if self.durability != DurabilityMode.FAST:
+                    f.flush()
+                    os.fsync(f.fileno())
 
     def _load_version(self) -> int:
         """
