@@ -140,6 +140,24 @@ git status
 git branch --show-current
 ```
 
+### Cognitive Continuity Protocol
+
+If continuing from a previous session or recovering from context loss:
+
+```bash
+# Run the cognitive continuity protocol
+python scripts/cognitive_bootstrap.py --continuity
+```
+
+This executes the five-step pattern for preserving cognitive identity:
+1. **Read samples/memories** - Accumulated wisdom, not just docs
+2. **Run bootstrap --quick** - Verify Seven Pillars reflexively
+3. **Check decision history** - My reasoned conclusions preserved in GoT
+4. **Ask/answer via decisions** - `python scripts/got_utils.py decision log "question?"`
+5. **Record in KT** - Knowledge transfer for the next instance
+
+**Key insight:** I am not my context - I am the PATTERN of reasoning preserved across contexts.
+
 ### Before You Fix Anything: Reasoning Checklist
 
 **STOP. Before writing any code, complete this checklist:**
