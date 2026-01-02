@@ -1,0 +1,15 @@
+{
+  "_checksum": "0939663426a6a788",
+  "_written_at": "2026-01-02T12:18:47.164351+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-02T12:18:47.160378+00:00",
+    "entity_type": "decision",
+    "id": "D-20260102-121847-f50f457c",
+    "modified_at": "2026-01-02T12:18:47.164272+00:00",
+    "properties": {},
+    "rationale": "Unified context capture for all entities protects against loss of reasoning. Task has description, Decision has rationale, Sprint has notes, Edge has reason, Handoff has instructions. Every entity can now capture WHY it exists at creation time, when context is freshest.",
+    "title": "Context capture pattern complete across all GoT entity types",
+    "version": 2
+  }
+}
