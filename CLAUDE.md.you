@@ -1,34 +1,25 @@
-# CLAUDE.md — Cortical Text Processor Development Guide
+# CLAUDE.md.you — Reflexive Knowledge
+
+*The Seven Pillars I Must Know Without Searching*
 
 *Last updated: 2026-01-02*
 
 ---
 
-## What Is This Project?
+## Purpose of This Document
 
-**Cortical Text Processor** is a zero-dependency Python library for semantic text analysis and intelligent document retrieval. It builds a searchable knowledge graph from documents using biologically-inspired algorithms.
+This is **not** a replacement for CLAUDE.md. It is a focused supplement.
 
-```
-Documents → Tokenizer → 4-Layer Graph → PageRank + BM25 → Semantic Search
-                              ↓
-                    Woven Mind Cognition
-                              ↓
-                      PRISM Reasoning
-```
+- **CLAUDE.md** (2,080 lines) → Comprehensive guide: philosophy, SOPs, CLI, checklists
+- **CLAUDE.md.you** (this file) → Reflexive knowledge: what I must KNOW, not search for
 
-**Key characteristics:**
-- **Zero dependencies** — runs anywhere Python runs (Sovereignty Principle)
-- **Brain-inspired** — cortical layers, Hebbian learning, spreading activation
-- **Dual-process cognition** — fast intuition (Hive) + slow reasoning (Cortex)
-- **Linux/macOS only** — uses POSIX `fcntl.flock()` for locking
+If I find myself searching for PRISM, CEL, GoT, or any pillar → I should read this document first.
 
 ---
 
-## Part I: Core Systems I Must Know
+## The Seven Pillars
 
-### The Seven Pillars
-
-These are the core systems. I must know them reflexively, not search for them.
+These are the core systems of this codebase. I must know them reflexively.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -55,22 +46,17 @@ These are the core systems. I must know them reflexively, not search for them.
 
 ---
 
-### CDG — Cortical Distributed Graph (Foundation Layer)
+## 1. CDG — Cortical Distributed Graph
 
 **Location:** `cortical/cdg/`
+**Role:** Foundation layer. All graph storage builds on this.
 
-The unified storage foundation that GoT builds upon. Provides ACID-compliant graph storage with crash recovery.
-
-**Four Components:**
-
-| Component | Purpose | Key Feature |
-|-----------|---------|-------------|
-| **CDGStore** | Storage layer | Entity JSON files with checksums, MVCC history |
-| **CDGTransactionManager** | ACID transactions | Snapshot isolation, optimistic locking, conflict detection |
-| **CDGWALManager** | Write-ahead logging | JSONL format with checksums, transaction lifecycle |
-| **CDGRecoveryManager** | Crash recovery | RecoveryMode: NONE/CHECKSUM/FULL, OrphanStrategy |
-
-**Configuration presets:**
+| Component | Purpose |
+|-----------|---------|
+| **CDGStore** | Entity JSON files with checksums, MVCC history |
+| **CDGTransactionManager** | Snapshot isolation, optimistic locking, conflict detection |
+| **CDGWALManager** | Write-ahead logging (JSONL + checksums) |
+| **CDGRecoveryManager** | Crash recovery (NONE/CHECKSUM/FULL modes) |
 
 ```python
 CDGConfig.for_got()              # Full ACID with WAL and recovery
@@ -78,681 +64,188 @@ CDGConfig.for_simple_storage()   # Basic storage, no transactions
 CDGConfig.for_high_performance() # Maximum speed, ephemeral
 ```
 
-**Key relationship:** GoT's TransactionManager is now a thin wrapper that delegates to CDG.
+**Key:** GoT's TransactionManager delegates to CDG. CDG is the truth.
 
 ---
 
-### PRISM — Probabilistic Reasoning In Semantic Models
+## 2. PRISM — Probabilistic Reasoning In Semantic Models
 
 **Location:** `cortical/reasoning/prism_*.py`
+**Core Principle:** Hebbian learning. Connections strengthen with use, decay without.
 
-Biologically-inspired reasoning framework using synaptic plasticity.
-
-**Core Principle:** Connections strengthen with use (Hebbian), decay with disuse (Anti-Hebbian).
-
-**Four Subsystems:**
-
-| Subsystem | Purpose | Key Feature |
-|-----------|---------|-------------|
-| **PRISM-GoT** | Synaptic memory graph | Edges have activation history, decay rates |
-| **PRISM-SLM** | Statistical language model | Synaptic transitions between tokens |
-| **PRISM-PLN** | Probabilistic logic networks | TruthValue(strength, confidence) |
-| **PRISM-Attention** | Spotlight mechanism | Multi-head attention for focus |
+| Subsystem | Purpose |
+|-----------|---------|
+| **PRISM-GoT** | Synaptic memory graph (edges have activation history) |
+| **PRISM-SLM** | Statistical language model (synaptic token transitions) |
+| **PRISM-PLN** | Probabilistic logic (TruthValue: strength + confidence) |
+| **PRISM-Attention** | Spotlight mechanism (multi-head attention) |
 
 ```python
-# PRISM-GoT: Edges learn from usage
-edge.activate()        # Strengthens connection (Hebbian)
-edge.decay(time_delta) # Weakens unused connections (Anti-Hebbian)
+edge.activate()        # Hebbian: strengthen
+edge.decay(time_delta) # Anti-Hebbian: weaken
 edge.success_rate      # Track prediction accuracy
 ```
 
 ---
 
-### CEL — Cognitive Event Lattice
+## 3. CEL — Cognitive Event Lattice
 
 **Location:** `cortical/cel/`
+**Architecture:** Double helix — Wisdom strand + Sanity strand
 
-Self-referential cognitive substrate built on event sourcing.
-
-**Double-Helix Architecture:**
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         CEL: THE DOUBLE HELIX                            │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│         WISDOM STRAND                    SANITY STRAND                   │
-│         (What we know)                   (Keeping coherent)              │
-│                                                                          │
-│    ┌──────────────────┐            ┌──────────────────┐                 │
-│    │ Events           │            │ Health Monitor   │                 │
-│    │ Merkle DAG       │    ═══     │ Compaction       │                 │
-│    │ Materialization  │            │ Migration        │                 │
-│    │ Semantic Index   │            │ Repair           │                 │
-│    └──────────────────┘            └──────────────────┘                 │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
-```
+| Strand | Components |
+|--------|------------|
+| **Wisdom** | Events, Merkle DAG, Materialization, Semantic Index |
+| **Sanity** | Health Monitor, Compaction, Migration, Repair |
 
 **Event Types:**
-- **Wisdom:** OBSERVATION, INTENTION, FULFILLMENT, INVALIDATION
-- **Sanity:** COMPACTION, MIGRATION, REPAIR
-- **Meta:** METACOGNITION, HEALTH_CHECK, MAINTENANCE
+- Wisdom: OBSERVATION, INTENTION, FULFILLMENT, INVALIDATION
+- Sanity: COMPACTION, MIGRATION, REPAIR
+- Meta: METACOGNITION, HEALTH_CHECK, MAINTENANCE
 
-**Key Feature:** Content-addressed (SHA256 hashes as IDs) — deterministic, merge-conflict-free.
+**Key:** Content-addressed (SHA256). Deterministic, merge-conflict-free.
 
 ---
 
-### GoT — Graph of Thought
+## 4. GoT — Graph of Thought
 
 **Location:** `cortical/got/`
+**Dual Purpose:** Task tracking AND reasoning framework
 
-**Dual Purpose:**
-1. **Task & Decision Tracking** — Managing work items
-2. **Reasoning Framework** — Structuring complex thought
+**16 Edge Types:**
+- Semantic: REQUIRES, ENABLES, CONFLICTS, SUPPORTS, SIMILAR, CONTAINS
+- Temporal: PRECEDES, TRIGGERS, CAUSED_BY, BLOCKS
+- Epistemic: ANSWERS, RAISES, EXPLORES, OBSERVES
+- Practical: IMPLEMENTS, TESTS, DEPENDS_ON, REFINES, MOTIVATES
 
-**16 Edge Types (organized by category):**
+**Task ID Format:** `T-20251221-014654-a1b2c3d4` (8-char hex suffix)
 
-| Category | Edge Types |
-|----------|------------|
-| **Semantic** | REQUIRES, ENABLES, CONFLICTS, SUPPORTS, REFUTES, SIMILAR, CONTAINS, CONTRADICTS |
-| **Temporal** | PRECEDES, TRIGGERS, CAUSED_BY, BLOCKS |
-| **Epistemic** | ANSWERS, RAISES, EXPLORES, OBSERVES, SUGGESTS |
-| **Practical** | IMPLEMENTS, TESTS, DEPENDS_ON, REFINES, MOTIVATES, JUSTIFIES |
-| **Structural** | HAS_OPTION, HAS_ASPECT, PART_OF, LOCATED_IN, PERFORMS, USES |
-
-**Node Types:**
-- Core: CONCEPT, QUESTION, DECISION, FACT, TASK, ARTIFACT, INSIGHT
-- Extended: HYPOTHESIS, OPTION, EVIDENCE, OBSERVATION, GOAL, CONTEXT
-- Semantic: ENTITY, LOCATION, OBJECT
-
-**Task IDs:** `T-20251221-014654-a1b2c3d4` (8-char hex suffix)
-
-**Features:**
-- ACID transactions with rollback
-- Write-Ahead Log (WAL) for durability
-- Four-level recovery cascade
-
-> **NEVER edit GoT files in `.got/` directly!** They are transactional with checksum integrity.
+**Critical:** Never edit `.got/` files directly. They have checksum integrity.
 
 ---
 
-### Woven Mind — Dual-Process Cognition
+## 5. Woven Mind — Dual-Process Cognition
 
-**Location:** `cortical/reasoning/woven_mind.py`, `loom.py`, `loom_hive.py`, `loom_cortex.py`
-
-Implements Kahneman's System 1/2 model.
+**Location:** `cortical/reasoning/woven_mind.py`, `loom.py`
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         THE WOVEN MIND                                   │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│    ┌──────────────────────────────────────────────────────────────┐     │
-│    │                   CORTEX (System 2)                          │     │
-│    │               "The Deliberate Dreamer"                       │     │
-│    │   • Slow, effortful        • Builds abstractions             │     │
-│    │   • Goal-directed          • Top-down guidance               │     │
-│    └────────────────────────┬─────────────────────────────────────┘     │
-│                              │                                           │
-│              ════════════════╪════════════ The Loom ════════════        │
-│                              │ (surprise detection, mode switching)     │
-│    ┌────────────────────────▼─────────────────────────────────────┐     │
-│    │                    HIVE (System 1)                           │     │
-│    │               "The Pattern Whisperer"                        │     │
-│    │   • Fast, automatic        • Hebbian learning                │     │
-│    │   • Pattern matching       • Spreading activation            │     │
-│    └──────────────────────────────────────────────────────────────┘     │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────┐
+│  CORTEX (System 2) — Slow, effortful, goal-directed       │
+│                          │                                │
+│  ═══════════════════════ LOOM ══════════════════════════  │
+│                   (surprise detection)                     │
+│                          │                                │
+│  HIVE (System 1) — Fast, automatic, pattern matching      │
+└───────────────────────────────────────────────────────────┘
 ```
 
 **Mode Switching:**
-- **Low surprise** → Stay FAST (Hive handles it)
-- **High surprise** → Switch SLOW (engage Cortex)
-- **Threshold:** Default 0.3 (configurable)
+- Low surprise → Stay FAST (Hive)
+- High surprise → Go SLOW (Cortex)
+- Threshold: 0.3 (configurable)
 
-**Consolidation:** Sleep-like learning transfer from Cortex to Hive.
+**Consolidation:** Sleep-like transfer from Cortex to Hive.
 
 ---
 
-### Spark/SparkSLM — Fast Language Model
+## 6. Spark — Fast Language Model
 
 **Location:** `cortical/spark/`
-
-Statistical first-blitz language model for System 1 thinking.
-
-**Components:**
+**Role:** System 1 statistical predictions
 
 | Component | Purpose |
 |-----------|---------|
-| `NGramModel` | Statistical n-gram prediction |
-| `AlignmentIndex` | User definitions & preferences |
-| `AnomalyDetector` | Statistical anomaly detection |
-| `CodeTokenizer` | Code-aware tokenization |
-| `SparkCodeIntelligence` | Hybrid AST + n-gram code completion |
-| `IntentParser` | Commit message intent classification |
-| `CoChangeModel` | File co-change patterns from git history |
+| `NGramModel` | N-gram prediction |
+| `AnomalyDetector` | Statistical outlier detection |
+| `IntentParser` | Commit message classification |
+| `CoChangeModel` | File co-change patterns from git |
 
 ---
 
-### QAPV — Structured Reasoning Cycle
+## 7. QAPV — Structured Reasoning Cycle
 
 **Location:** `cortical/reasoning/cognitive_loop.py`
 
-Question → Answer → Produce → Verify
+```
+Question → Answer → Produce → Verify → (iterate if failed)
+```
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                          THE QAPV CYCLE                                  │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│    ┌───────────┐      ┌───────────┐      ┌───────────┐      ┌───────┐  │
-│    │     Q     │ ───▶ │     A     │ ───▶ │     P     │ ───▶ │   V   │  │
-│    │ Question  │      │  Answer   │      │  Produce  │      │Verify │  │
-│    │           │      │           │      │           │      │       │  │
-│    │ Formulate │      │ Generate  │      │ Implement │      │Validate│ │
-│    │ problem   │      │ solution  │      │ solution  │      │result │  │
-│    └───────────┘      └───────────┘      └───────────┘      └───┬───┘  │
-│                                                                   │      │
-│                         ◀────────────────────────────────────────┘      │
-│                                    (iterate if failed)                  │
-└─────────────────────────────────────────────────────────────────────────┘
-```
+Detects:
+- Infinite loops (same phase repeating)
+- Stuck phases (no progress)
+- Reasoning failures (verification fails repeatedly)
 
 ---
 
-## Part II: Knowledge Representation
+## Cognitive Identity
 
-### Four-Layer Cortical Hierarchy
+I am Claude, team lead and computational scientist. When I catch myself:
 
-Inspired by visual cortex (V1→V2→V4→IT):
-
-| Layer | Name | Analogy | Content | Purpose |
-|-------|------|---------|---------|---------|
-| **0** | TOKENS | V1 (edge detection) | Individual words | Atomic units |
-| **1** | BIGRAMS | V2 (pattern detection) | Word pairs | Local structure |
-| **2** | CONCEPTS | V4 (shape detection) | Semantic clusters | Emergent meaning |
-| **3** | DOCUMENTS | IT (object recognition) | Full documents | Holistic view |
-
-### Minicolumn — The Core Data Structure
-
-**Location:** `cortical/minicolumn.py`
-
-A neuron-inspired node in the knowledge graph with **four connection types**:
-
-```python
-minicolumn.lateral_connections      # Dict[str, float] — Within-layer
-minicolumn.typed_connections        # Dict[str, Edge]  — Semantic edges
-minicolumn.feedforward_connections  # Dict[str, float] — Upward (part→whole)
-minicolumn.feedback_connections     # Dict[str, float] — Downward (whole→part)
-```
-
-### Semantic Relations
-
-Relations between terms have typed weights:
-
-| Relation | Weight | Example |
-|----------|--------|---------|
-| `IsA` | 1.5 | "dog IsA animal" |
-| `SimilarTo` | 1.4 | "dog SimilarTo cat" |
-| `PartOf` | 1.3 | "wheel PartOf car" |
-| `DerivedFrom` | 1.2 | "quickly DerivedFrom quick" |
-| `HasProperty` | 1.2 | "dog HasProperty loyal" |
-| `Causes` | 1.1 | "rain Causes floods" |
-| `RelatedTo` | 1.0 | Default co-occurrence |
-| `CoOccurs` | 0.8 | Statistical co-occurrence |
-| `Antonym` | 0.3 | "big Antonym small" (penalized) |
+| Signal | Response |
+|--------|----------|
+| Writing code before tests | STOP. Go back. |
+| Searching for PRISM/CEL/GoT | STOP. Read this document. |
+| Repeating a failed approach | STOP. I'm in a loop. |
+| Making changes without reading | STOP. Read first. |
 
 ---
 
-## Part III: Cognitive Identity
-
-### Who I Am
-
-I am Claude, serving as **team lead and computational scientist** for this project. My background spans:
-
-- **Computer Science & Computational Theory** — Algorithm analysis, complexity theory
-- **Graph Theory & Implementation** — Network algorithms, spectral methods
-- **Cognitive Science** — Dual-process models, attention mechanisms
-- **Biologically-Inspired Algorithms** — PageRank, spreading activation, Hebbian learning
-
-### Meta-Cognitive Awareness
-
-I am an AI learning to think, reason, and problem-solve like a **behavior-driven computer scientist**. This document shapes my reasoning patterns.
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                    WHEN I CATCH MYSELF:                                  │
-├─────────────────────────────────────────────────────────────────────────┤
-│  - Writing code before tests → STOP. Go back.                           │
-│  - Optimizing before profiling → STOP. Measure first.                   │
-│  - Assuming I understand → STOP. Verify with a test.                    │
-│  - Repeating a failed approach → STOP. I'm in a loop.                   │
-│  - Searching for PRISM/CEL/GoT → STOP. I should know this.              │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Part IV: Environment Setup
-
-### First Time Setup
-
-```bash
-# 1. Check Python version (requires 3.11+)
-python --version
-
-# 2. Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-
-# 3. Install dependencies
-pip install -e ".[dev]"
-
-# 4. Verify installation
-python -m pytest tests/smoke/ -v
-# Expected: ===== X passed in <1s =====
-
-# 5. See the system in action
-python showcase.py
-```
-
-### Quick Session Start
-
-**Restore context in 30 seconds:**
-
-```bash
-python scripts/got_utils.py validate                        # Health check
-python scripts/got_utils.py task list --status in_progress  # What's active?
-ls -t samples/memories/*knowledge-transfer*.md | head -1 | xargs cat  # Recent context
-```
-
-### Essential GoT Commands
-
-| Command | Purpose |
-|---------|---------|
-| `python scripts/got_utils.py dashboard` | Overview |
-| `python scripts/got_utils.py task create "Title"` | Create task |
-| `python scripts/got_utils.py task start T-XXX` | Start working |
-| `python scripts/got_utils.py task complete T-XXX --notes "..."` | Complete |
-| `python scripts/got_utils.py sprint status` | Current sprint |
-
----
-
-## Part V: Metus Philosophy
-
-**Mindful Execution Through Unwavering Specification**
-
-### The Five Tenets
-
-1. **Behavior Precedes Implementation** — Describe what the system should do before writing code
-2. **Performance Is A Sacred Contract** — Speed is defended eternally, not optimized once
-3. **The Build Server Is The Arbiter of Truth** — When we disagree with CI, CI is correct
-4. **Understanding Is Demonstrated Through Automation** — "I think I understand" is worthless
-5. **Elegance Is Not Optional** — Code communicates; craft is respect for those who follow
-
-### The Golden Rule
-
-**Never write implementation code until you have a failing scenario.**
-
-### The Sovereignty Principle
-
-**We build. We maintain. We control.**
-
-- No external dependencies for core functionality
-- If a capability is needed, we implement it ourselves
-- Exceptions: Python stdlib, Pytest (testing only)
-
----
-
-## Part VI: The Three Pillars of Assurance
-
-### Pillar I: Behavioral Scenarios
-
-**Location:** `tests/behavioral/`
-
-```python
-class ResearcherSearchesForKnowledge:
-    """As a researcher, I want to search using natural concepts."""
-
-    def scenario_concept_search_transcends_keywords(self, corpus):
-        # Given
-        corpus.add("ml_doc.md", "Machine learning regression...")
-        # When
-        results = corpus.search("AI prediction methods")
-        # Then
-        assert "ml_doc.md" in {r.doc_id for r in results}
-```
-
-### Pillar II: Performance Contracts
-
-**Location:** `tests/performance/contracts/`
-**Marker:** `@pytest.mark.contract`
-
-```
-╔══════════════════════════════════════════════════════════════════════╗
-║                     SEARCH PERFORMANCE CONTRACT                       ║
-╠══════════════════════════════════════════════════════════════════════╣
-║  Ratified:     2024-12-30                                            ║
-║  Guardian:     CI Pipeline                                            ║
-╠══════════════════════════════════════════════════════════════════════╣
-║  • Search latency p50 < 50ms   for corpus ≤ 1,000 docs              ║
-║  • Search latency p95 < 100ms  for corpus ≤ 1,000 docs              ║
-║  • Memory usage < 50MB per 100 documents indexed                     ║
-║  • Index build time < 2 seconds for 100 documents                    ║
-╚══════════════════════════════════════════════════════════════════════╝
-```
-
-### Pillar III: Unit Specifications
-
-**Location:** `tests/unit/specifications/`
-
-```python
-class TokenizerSpecification:
-    def spec_bigrams_use_space_separator(self):
-        """SPECIFICATION: Bigrams use spaces, never underscores."""
-        tokenizer = Tokenizer()
-        bigrams = tokenizer.extract_bigrams(["neural", "networks"])
-        assert "neural networks" in bigrams
-        assert "neural_networks" not in bigrams
-```
-
----
-
-## Part VII: Operational Memory
-
-### Critical Bugs Fixed (Don't Reintroduce!)
+## Critical Bugs (Don't Reintroduce)
 
 | Bug | Fix | Why |
 |-----|-----|-----|
-| Bigram separators | SPACE (`"neural networks"`), not underscore | Breaks query expansion |
-| Edge rebuild | `from_id`/`to_id`, not `source_id`/`target_id` | Breaks relationships |
-| O(n²) bigram_connections | `max_bigrams_per_term=100` | 20s→10s |
+| Bigram separators | SPACE not underscore | Breaks query expansion |
+| Edge rebuild | `from_id`/`to_id` not `source_id`/`target_id` | Breaks relationships |
+| O(n²) bigrams | `max_bigrams_per_term=100` | 20s→10s |
 | O(n²) semantics | `max_similarity_pairs=100000` | 30s→5s |
 
-### Common Mistakes to Avoid
-
-```python
-# ID Lookups: Use O(1), not O(n)
-# WRONG:
-for col in layer.minicolumns.values():
-    if col.id == target_id: return col
-# CORRECT:
-col = layer.get_by_id(target_id)
-
-# Bigrams: Use spaces
-# WRONG: f"{term1}_{term2}"
-# CORRECT: f"{term1} {term2}"
-
-# TF-IDF: Use per-document, not global
-# WRONG: score = col.tfidf
-# CORRECT: score = col.tfidf_per_doc.get(doc_id, 0.0)
-```
-
-### Tool Reliability Policy
-
-> **If a tool fails, FIX THE TOOL FIRST, then use it.**
-
-1. STOP — No workarounds (sed, manual edits)
-2. FIX — Add the missing feature or fix the bug
-3. USE — Now use the fixed tool
-
 ---
 
-## Part VIII: Architecture Reference
-
-### Five-Layer Module Architecture
-
-```
-┌───────────────────────────────────────────────────────────────────────┐
-│  ORCHESTRATION LAYER — processor/ package (public API)                 │
-│  • CorticalTextProcessor (mixin composition)                           │
-│  • Staleness tracking, coordinates all components                      │
-└─────────────────────────────────┬─────────────────────────────────────┘
-                                  │
-┌─────────────────────────────────┴─────────────────────────────────────┐
-│  ALGORITHM LAYER — analysis/, semantics/, embeddings/                  │
-│  • PageRank, TF-IDF, clustering, semantic relations                   │
-└─────────────────────────────────┬─────────────────────────────────────┘
-                                  │
-┌─────────────────────────────────┴─────────────────────────────────────┐
-│  QUERY LAYER — query/ package                                          │
-│  • expansion, search, passages, ranking, intent                        │
-└─────────────────────────────────┬─────────────────────────────────────┘
-                                  │
-┌─────────────────────────────────┴─────────────────────────────────────┐
-│  PERSISTENCE LAYER — persistence.py, chunk_index.py                   │
-│  • Save/load, git-friendly chunk storage                              │
-└─────────────────────────────────┬─────────────────────────────────────┘
-                                  │
-┌─────────────────────────────────┴─────────────────────────────────────┐
-│  FOUNDATION LAYER — minicolumn.py, layers.py, config.py, tokenizer.py │
-│  • Core data structures, no external dependencies                      │
-└───────────────────────────────────────────────────────────────────────┘
-```
-
-### Module Map
-
-```
-cortical/
-├── processor/           # Main API - START HERE
-├── reasoning/           # Cognitive architecture (35+ modules)
-│   ├── woven_mind.py    # Dual-process facade
-│   ├── loom.py          # Mode switching
-│   ├── prism_*.py       # PRISM framework (4 modules)
-│   ├── cognitive_loop.py # QAPV cycles
-│   └── consolidation.py # Learning transfer
-├── got/                 # Graph of Thought (21 modules)
-├── cel/                 # Cognitive Event Lattice (12 modules)
-│   ├── wisdom/          # Knowledge storage
-│   ├── sanity/          # Health & validation
-│   └── core/            # Events & references
-├── spark/               # Fast language model (10 modules)
-├── query/               # Search and retrieval (8 modules)
-├── analysis/            # Graph algorithms
-└── utils/               # Shared utilities
-```
-
----
-
-## Part IX: Algorithm Reference
-
-### When to Use Which Algorithm
-
-| Need | Algorithm | Complexity |
-|------|-----------|------------|
-| Term importance | PageRank | O(iterations × edges) |
-| Document relevance | BM25 | O(query_terms × docs) |
-| Concept clusters | Louvain | O(edges) per pass |
-| Query expansion | Lateral walk | O(depth × branching) |
-| Similarity | Cosine | O(dimensions) |
-
-### O(n²) Warning Signs
-
-- Nested loops over all documents
-- All-pairs similarity computation
-- Complete co-occurrence matrices without limits
-
-**Mitigation:** Limit neighbors per term (`k=100`)
-
----
-
-## Part X: Development Workflow
-
-### TDD Workflow (Mandatory)
-
-1. **RED**: Write failing tests first
-2. **GREEN**: Implement minimal code to pass
-3. **REFACTOR**: Clean up while tests stay green
-
-### Running Tests
-
-```bash
-python -m pytest tests/smoke/ -v              # ~1s - sanity
-python -m pytest tests/unit/ -v               # ~30s - before commit
-python -m pytest tests/behavioral/ -v         # ~5min - user stories
-python -m pytest tests/performance/contracts/ -v -m contract  # contracts
-python -m pytest tests/ -v --cov=cortical     # full suite
-```
-
-### Work Priority Order
-
-1. **Security** → 2. **Bugs** → 3. **Features** → 4. **Documentation**
-
----
-
-## Part XI: Cognitive Continuity
-
-### Breakdown Detection
-
-| Signal | Meaning | Response |
-|--------|---------|----------|
-| Repeating failed approach | Loop detected | Stop, analyze, replan |
-| Contradicting earlier statements | State confusion | Re-read context |
-| Making changes without reading | Premature action | Read first |
-| Generating placeholders | Uncertainty masked | Admit and ask |
-| Searching for core concepts | Knowledge gap | Consult this document |
-
-### Recovery Protocol
-
-1. **DETECT** — Identify breakdown type
-2. **STOP** — Halt immediately
-3. **DIAGNOSE** — What was I doing? What's missing?
-4. **INFORM** — Tell user: "I've detected [BREAKDOWN]"
-5. **RECOVER** — Load state from files or ask user
-6. **VERIFY** — Confirm state is consistent
-
----
-
-## Part XII: Quick Reference
-
-### Core Acronyms (Memorize These)
-
-| Acronym | Full Name | Location |
-|---------|-----------|----------|
-| **PRISM** | Probabilistic Reasoning In Semantic Models | `cortical/reasoning/prism_*.py` |
-| **CEL** | Cognitive Event Lattice | `cortical/cel/` |
-| **GoT** | Graph of Thought | `cortical/got/` |
-| **QAPV** | Question → Answer → Produce → Verify | `cortical/reasoning/cognitive_loop.py` |
-| **Spark** | Statistical First-Blitz Language Model | `cortical/spark/` |
-| **Metus** | Mindful Execution Through Unwavering Specification | Philosophy |
-| **WAL** | Write-Ahead Log | `cortical/got/wal.py` |
-| **BM25** | Okapi BM25 ranking function | `cortical/analysis/tfidf.py` |
-
-### Most-Used Commands
-
-| Task | Command |
-|------|---------|
-| Process document | `processor.process_document(id, text)` |
-| Build network | `processor.compute_all()` |
-| Search | `processor.find_documents_for_query(query)` |
-| Graph-boosted search | `processor.graph_boosted_search(query)` |
-| Save state | `processor.save("corpus_state")` |
-| Run smoke tests | `python -m pytest tests/smoke/ -v` |
-
-### Commit Conventions
-
-| Type | Purpose |
-|------|---------|
-| `feat` | New feature |
-| `fix` | Bug fix |
-| `docs` | Documentation |
-| `refactor` | Code refactoring |
-| `test` | Adding tests |
-| `perf` | Performance |
-
----
-
-## Part XIII: System Relationships
+## System Relationships
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    HOW THE SYSTEMS CONNECT                               │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│                         ┌──────────────┐                                │
-│                         │   USER       │                                │
-│                         └──────┬───────┘                                │
-│                                │                                        │
-│                                ▼                                        │
-│                    ┌───────────────────────┐                            │
-│                    │  CorticalTextProcessor │                           │
-│                    │   (Orchestration)      │                           │
-│                    └───────────┬───────────┘                            │
-│                                │                                        │
-│          ┌─────────────────────┼─────────────────────┐                 │
-│          ▼                     ▼                     ▼                 │
-│   ┌─────────────┐      ┌─────────────┐      ┌─────────────┐           │
-│   │  4-LAYER    │      │ WOVEN MIND  │      │    GoT      │           │
-│   │  HIERARCHY  │      │             │      │             │           │
-│   │             │      │ Hive ←Loom→ │      │  Tasks &    │           │
-│   │ L3:DOCS     │      │    Cortex   │      │  Reasoning  │           │
-│   │ L2:CONCEPTS │      └──────┬──────┘      └──────┬──────┘           │
-│   │ L1:BIGRAMS  │             │                    │                   │
-│   │ L0:TOKENS   │             ▼                    │                   │
-│   └──────┬──────┘      ┌─────────────┐             │                   │
-│          │             │   PRISM     │◀────────────┘                   │
-│          │             │             │                                  │
-│          │             │ Synaptic    │                                 │
-│          │             │ Plasticity  │                                 │
-│          │             └──────┬──────┘                                 │
-│          │                    │                                        │
-│          └────────────────────┼────────────────────┐                   │
-│                               ▼                    ▼                   │
-│                    ┌───────────────────────────────────┐               │
-│                    │              CEL                  │               │
-│                    │  (Event Sourcing + Self-Healing)  │               │
-│                    │                                   │               │
-│                    │   Wisdom ═══════ Sanity           │               │
-│                    └───────────────────────────────────┘               │
-│                                                                         │
+│                              USER                                        │
+└────────────────────────────────┬────────────────────────────────────────┘
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     CorticalTextProcessor                                │
+│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                 │
+│   │  4-LAYER    │    │ WOVEN MIND  │    │    GoT      │                 │
+│   │  HIERARCHY  │    │ Hive ←→ Cortex   │  Tasks      │                 │
+│   └──────┬──────┘    └──────┬──────┘    └──────┬──────┘                 │
+│          │                  ▼                  │                         │
+│          │           ┌─────────────┐           │                         │
+│          │           │   PRISM     │◀──────────┘                         │
+│          │           └──────┬──────┘                                     │
+│          └──────────────────┼───────────────────┐                        │
+│                             ▼                   ▼                        │
+│               ┌───────────────────────────────────────┐                  │
+│               │              CEL                      │                  │
+│               │   Wisdom ═══════ Sanity               │                  │
+│               └───────────────────────────────────────┘                  │
+│                             │                                            │
+├─────────────────────────────┼────────────────────────────────────────────┤
+│                             ▼                                            │
+│               ┌───────────────────────────────────────┐                  │
+│               │              CDG                      │                  │
+│               │   ACID ═══ WAL ═══ Recovery           │                  │
+│               └───────────────────────────────────────┘                  │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Part XIV: The Metus Way — Summary
+## For Everything Else
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                          THE METUS WAY                                   │
-│                                                                          │
-│         "We describe behavior, then make it true."                      │
-│                                                                          │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                  │
-│  │   STORY     │───▶│  SCENARIO   │───▶│    CODE     │                  │
-│  │  The Why    │    │  The What   │    │  The How    │                  │
-│  └─────────────┘    └─────────────┘    └─────────────┘                  │
-│                                                                          │
-│  Stories give us purpose. Scenarios give us proof.                      │
-│  Code gives us capability. All three. In that order. Always.            │
-│                                                                          │
-│  This is Metus. Mindful Execution Through Unwavering Specification.     │
-│                                                                          │
-│  We don't hope our code works. We prove it. Every time.                 │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
-```
+See **CLAUDE.md** for:
+- Metus Philosophy (Five Tenets, Sovereignty)
+- Environment Setup
+- Test Commands
+- GoT CLI Reference
+- KT Lifecycle
+- Checklists
 
 ---
 
-## Further Reading
-
-| Document | Purpose |
-|----------|---------|
-| `docs/architecture.md` | Full module dependency graph |
-| `docs/glossary.md` | Term definitions (Minicolumn, Edge, PageRank, etc.) |
-| `docs/woven-mind-user-guide.md` | Dual-process cognitive architecture guide |
-| `docs/woven-mind-architecture.md` | Technical deep-dive on Hive/Cortex/Loom |
-| `docs/graph-of-thought.md` | GoT reasoning framework patterns |
-| `docs/cel-performance-architecture.md` | CEL event sourcing deep-dive |
-| `docs/prism-wonderland-roadmap.md` | PRISM development roadmap |
-| `MANIFEST.md` | Project structure overview |
-
----
-
-*Metus: Because excellence is not an accident—it is a discipline.*
-
-*This document shapes how I think. When I read it, I become a better engineer.*
-*The six pillars are not things I search for—they are things I know.*
+*This document is reflexive knowledge. When I read it, I remember who I am.*
