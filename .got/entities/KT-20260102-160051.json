@@ -6,12 +6,14 @@
     "entity_type": "knowledge_transfer",
     "version": 1,
     "created_at": "2026-01-02T16:00:51.883525",
-    "modified_at": "2026-01-02T16:00:51.883532",
+    "modified_at": "2026-01-02T16:01:28.917122",
     "title": "CI Coverage Infrastructure Overhaul",
     "session_id": "",
     "session_date": "",
     "summary": "Deep dive analysis and fix of CI testing infrastructure to achieve TRUE coverage measurement by combining all test types (unit, integration, behavioral, regression)",
-    "sections": {},
+    "sections": {
+      "Problem Statement": "## The Original Issue\n\nCI coverage combination was failing with 84% < 86% threshold.\n\n### Root Cause Analysis\n\nThe CI architecture ran behavioral tests WITHOUT coverage collection:\n\n```\nsmoke-tests\n    \u251c\u2500\u2500 unit-tests (WITH coverage) \u2500\u2500\u2510\n    \u251c\u2500\u2500 integration-tests (WITH coverage) \u2500\u2500\u253c\u2500\u2500 coverage-report (combines)\n    \u251c\u2500\u2500 behavioral-tests (NO coverage) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 (NOT combined!)\n    \u2514\u2500\u2500 regression-tests (NO coverage) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 (NOT combined!)\n```\n\nModules primarily tested through behavioral tests showed artificially low coverage:\n- `cortical/reasoning/prism_causal.py`: 0% (actually 71% when behavioral tests run)\n- `cortical/cel/sanity/compaction.py`: 16% (actually 90%)\n- `cortical/cel/sanity/health.py`: 22% (actually 82%)\n- `cortical/cel/sanity/migration.py`: 22% (actually 88%)\n- `cortical/reasoning/prism_attention.py`: 15% (actually 87%)\n\n### Initial Workaround (Superseded)\n\nFirst attempt was to exclude these modules from coverage threshold. This was wrong because:\n1. It hid actual coverage gaps\n2. It violated the Metus principle of TRUE measurement\n3. Modules could regress without detection"
+    },
     "code_refs": [],
     "related_handoffs": [],
     "related_tasks": [],
