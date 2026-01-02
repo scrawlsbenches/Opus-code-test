@@ -3035,9 +3035,12 @@ class TransactionalGoTAdapter:
             logger.error(f"Knowledge transfer not found: {kt_id}")
             return False
 
-        # Verify it's in draft status
+        # Verify it's in draft status (or already published = idempotent success)
         if kt.get('status') != 'draft':
-            logger.error(f"Knowledge transfer {kt_id} is not in draft status (current: {kt.get('status')})")
+            if kt.get('status') == 'published':
+                logger.info(f"Knowledge transfer {kt_id} is already published")
+                return True  # Idempotent - already in desired state
+            logger.error(f"Knowledge transfer {kt_id} cannot be finalized (current status: {kt.get('status')})")
             return False
 
         # Change status to published
