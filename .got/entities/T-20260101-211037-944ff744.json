@@ -1,19 +1,22 @@
 {
-  "_checksum": "02a6bfc89ea62803",
-  "_written_at": "2026-01-01T21:10:37.177526+00:00",
+  "_checksum": "65bd2eab60db2f9f",
+  "_written_at": "2026-01-02T09:56:19.148185+00:00",
   "data": {
     "created_at": "2026-01-01T21:10:37.172828+00:00",
     "description": "Fix test_scenario_consolidation_transfers_learned_patterns in test_woven_mind_stories.py. Issue: Pattern transfer during consolidation. Files: tests/behavioral/test_woven_mind_stories.py, cortical/reasoning/woven_mind.py",
     "entity_type": "task",
     "id": "T-20260101-211037-944ff744",
-    "metadata": {},
-    "modified_at": "2026-01-01T21:10:37.177455+00:00",
+    "metadata": {
+      "completed_at": "2026-01-02T09:56:19.141273+00:00",
+      "updated_at": "2026-01-02T09:56:19.141282+00:00"
+    },
+    "modified_at": "2026-01-02T09:56:19.148134+00:00",
     "priority": "high",
     "properties": {
       "category": "bugfix"
     },
-    "status": "pending",
+    "status": "completed",
     "title": "Fix woven mind consolidation test (1 test)",
-    "version": 2
+    "version": 3
   }
 }

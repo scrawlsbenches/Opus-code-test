@@ -1,0 +1,15 @@
+{
+  "_checksum": "74bf0f6c1ea86ab5",
+  "_written_at": "2026-01-02T13:11:35.311681+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-02T13:11:35.300279+00:00",
+    "entity_type": "decision",
+    "id": "D-20260102-131135-fbe3e9a9",
+    "modified_at": "2026-01-02T13:11:35.311602+00:00",
+    "properties": {},
+    "rationale": "Running --continuity shows manageable output (43 decisions, 7 KTs). ContinuityExpert has no training data. No topic parameter exists for filtering. Over-engineering risk. Wait until: (1) expert has training data, (2) content volume requires filtering, (3) topic parameter added.",
+    "title": "Don't integrate ContinuityExpert into cognitive_bootstrap.py yet",
+    "version": 2
+  }
+}

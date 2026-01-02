@@ -1,0 +1,15 @@
+{
+  "_checksum": "b2ee0cc745573466",
+  "_written_at": "2026-01-02T10:20:03.347374+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-02T10:20:03.342751+00:00",
+    "entity_type": "decision",
+    "id": "D-20260102-102003-bcfe6de1",
+    "modified_at": "2026-01-02T10:20:03.347316+00:00",
+    "properties": {},
+    "rationale": "Spawned a fresh agent with NO prior context to test the --continuity protocol. Result: Successfully recovered cognitive state in ~5 minutes. Agent correctly identified: Seven Pillars, breakthrough decision, identity, and next work. Issues found: 'decision why' was documented incorrectly (should be 'decision show'). Fixed the documentation. The protocol works - a fresh agent can bootstrap identity without reading CLAUDE.md.",
+    "title": "Sub-agent validated cognitive continuity protocol",
+    "version": 2
+  }
+}

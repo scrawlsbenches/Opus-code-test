@@ -335,6 +335,7 @@ class TestCmdTaskShow(unittest.TestCase):
         mock_manager.get_task.side_effect = [None, task]
         mock_manager.get_task_dependencies.return_value = []
         mock_manager.what_depends_on.return_value = []
+        mock_manager.get_task_sprint.return_value = None
 
         args = Namespace(task_id="task:T-001")
 
@@ -361,6 +362,7 @@ class TestCmdTaskShow(unittest.TestCase):
         mock_manager.get_task.return_value = task
         mock_manager.get_task_dependencies.return_value = []
         mock_manager.what_depends_on.return_value = []
+        mock_manager.get_task_sprint.return_value = None
 
         args = Namespace(task_id="T-001")
 
@@ -395,6 +397,7 @@ class TestCmdTaskShow(unittest.TestCase):
         mock_manager.get_task.return_value = task
         mock_manager.get_task_dependencies.return_value = [dep1, dep2]
         mock_manager.what_depends_on.return_value = []
+        mock_manager.get_task_sprint.return_value = None
 
         args = Namespace(task_id="T-001")
 
@@ -424,6 +427,7 @@ class TestCmdTaskShow(unittest.TestCase):
         mock_manager.get_task.return_value = task
         mock_manager.get_task_dependencies.return_value = []
         mock_manager.what_depends_on.return_value = [dependent]
+        mock_manager.get_task_sprint.return_value = None
 
         args = Namespace(task_id="T-001")
 

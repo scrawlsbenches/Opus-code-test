@@ -1,0 +1,15 @@
+{
+  "_checksum": "21a245e99ccfacd8",
+  "_written_at": "2026-01-02T14:06:15.097955+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-02T14:06:15.094044+00:00",
+    "entity_type": "decision",
+    "id": "D-20260102-140615-30b8d41d",
+    "modified_at": "2026-01-02T14:06:15.097817+00:00",
+    "properties": {},
+    "rationale": "Fixed two high-priority issues from actual usage: (1) KT now defaults to draft status, matching documented lifecycle. (2) Task show now displays sprint membership for context. Skipped 'session resume' command as cognitive_bootstrap.py handles that use case. Low-effort, high-impact changes.",
+    "title": "GoT usability improvements for AI agents",
+    "version": 2
+  }
+}

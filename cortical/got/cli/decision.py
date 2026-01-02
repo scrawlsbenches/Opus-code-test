@@ -227,6 +227,140 @@ def cmd_decision_why(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
+def cmd_decision_trace(args, manager: "TransactionalGoTAdapter") -> int:
+    """Handle 'got decision trace' command.
+
+    Shows the full context of a decision:
+    - The decision itself
+    - What it affects (outbound: JUSTIFIES, MOTIVATES)
+    - What it superseded (SUPERSEDES)
+    - What supersedes it (inbound: SUPERSEDES)
+    """
+    decision_id = args.decision_id
+
+    # Get the decision
+    if hasattr(manager, 'list_decisions'):
+        decisions = manager.list_decisions()
+    else:
+        decisions = manager.get_decisions()
+
+    decision = None
+    for d in decisions:
+        if d.id == decision_id:
+            decision = d
+            break
+
+    if not decision:
+        print(f"Decision not found: {decision_id}")
+        return 1
+
+    # Display decision header
+    print("=" * 70)
+    print(f"DECISION TRACE: {decision_id}")
+    print("=" * 70)
+    print(f"\nDecision:  {decision.content}")
+    print(f"Rationale: {decision.properties.get('rationale', 'N/A')}")
+
+    if decision.properties.get("created_at"):
+        print(f"Created:   {decision.properties['created_at']}")
+
+    # Get all edges to find relationships
+    edges = manager.list_edges()
+
+    # Find outbound edges (what this decision affects)
+    justifies = []
+    motivates = []
+    supersedes = []
+
+    # Find inbound edges (what affects this decision)
+    superseded_by = []
+
+    for edge in edges:
+        if edge.source_id == decision_id:
+            if edge.edge_type == "JUSTIFIES":
+                justifies.append(edge.target_id)
+            elif edge.edge_type == "MOTIVATES":
+                motivates.append(edge.target_id)
+            elif edge.edge_type == "SUPERSEDES":
+                supersedes.append(edge.target_id)
+        elif edge.target_id == decision_id:
+            if edge.edge_type == "SUPERSEDES":
+                superseded_by.append(edge.source_id)
+
+    # Display what this decision justifies
+    if justifies:
+        print(f"\n┌─ JUSTIFIES ({len(justifies)} items)")
+        for target_id in justifies:
+            # Try to get entity details
+            entity = _get_entity_summary(manager, target_id)
+            print(f"│  → {target_id}: {entity}")
+        print("└─")
+
+    # Display what this decision motivates
+    if motivates:
+        print(f"\n┌─ MOTIVATES ({len(motivates)} items)")
+        for target_id in motivates:
+            entity = _get_entity_summary(manager, target_id)
+            print(f"│  → {target_id}: {entity}")
+        print("└─")
+
+    # Display what this decision supersedes
+    if supersedes:
+        print(f"\n┌─ SUPERSEDES ({len(supersedes)} decisions)")
+        for target_id in supersedes:
+            entity = _get_entity_summary(manager, target_id)
+            print(f"│  → {target_id}: {entity}")
+        print("└─")
+
+    # Display what supersedes this decision
+    if superseded_by:
+        print(f"\n┌─ SUPERSEDED BY ({len(superseded_by)} decisions)")
+        for source_id in superseded_by:
+            entity = _get_entity_summary(manager, source_id)
+            print(f"│  ← {source_id}: {entity}")
+        print("└─")
+
+    # Summary
+    if not any([justifies, motivates, supersedes, superseded_by]):
+        print("\n(No edges connected to this decision)")
+
+    print("\n" + "=" * 70)
+    return 0
+
+
+def _get_entity_summary(manager: "TransactionalGoTAdapter", entity_id: str) -> str:
+    """Get a brief summary of an entity by ID."""
+    # Try task first
+    try:
+        task = manager.get_task(entity_id)
+        if task:
+            content = getattr(task, 'content', getattr(task, 'title', ''))
+            return content[:50] + "..." if len(content) > 50 else content
+    except Exception:
+        pass
+
+    # Try decision
+    try:
+        if hasattr(manager, 'get_decision'):
+            decision = manager.get_decision(entity_id)
+            if decision:
+                content = getattr(decision, 'content', '')
+                return content[:50] + "..." if len(content) > 50 else content
+    except Exception:
+        pass
+
+    # Try sprint
+    try:
+        if hasattr(manager, 'get_sprint'):
+            sprint = manager.get_sprint(entity_id)
+            if sprint:
+                return getattr(sprint, 'name', str(sprint))
+    except Exception:
+        pass
+
+    return "(details unavailable)"
+
+
 def cmd_decision_delete(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got decision delete' command."""
     decision_id = args.decision_id
@@ -312,6 +446,13 @@ def setup_decision_parser(subparsers) -> None:
     decision_why = decision_subparsers.add_parser("why", help="Ask why a task exists")
     decision_why.add_argument("task_id", help="Task ID to query")
 
+    # decision trace
+    decision_trace = decision_subparsers.add_parser(
+        "trace",
+        help="Trace decision context (what it affects and what affects it)"
+    )
+    decision_trace.add_argument("decision_id", help="Decision ID to trace")
+
     # decision delete
     decision_delete = decision_subparsers.add_parser("delete", help="Delete a decision")
     decision_delete.add_argument("decision_id", help="Decision ID to delete")
@@ -342,6 +483,7 @@ def handle_decision_command(args, manager: "TransactionalGoTAdapter") -> int:
         "list": cmd_decision_list,
         "show": cmd_decision_show,
         "why": cmd_decision_why,
+        "trace": cmd_decision_trace,
         "delete": cmd_decision_delete,
     }
 

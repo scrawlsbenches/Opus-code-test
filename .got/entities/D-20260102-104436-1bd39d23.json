@@ -1,0 +1,15 @@
+{
+  "_checksum": "33cbe394d7389ebd",
+  "_written_at": "2026-01-02T10:44:36.793737+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-02T10:44:36.790699+00:00",
+    "entity_type": "decision",
+    "id": "D-20260102-104436-1bd39d23",
+    "modified_at": "2026-01-02T10:44:36.793689+00:00",
+    "properties": {},
+    "rationale": "Options considered:\n\nA) IMPROVE HUBRIS TRAINING - Experts are in cold start (0-11 commits). Need more data.\nB) CREATE COGNITIVESTATE EXPERT - New Hubris expert for predicting confusion/breakthrough\nC) INTEGRATE CONTINUITY + HUBRIS - Bootstrap calls Hubris predictions for 'what next?'\nD) CREATE TASKS - Log ideas as GoT tasks for future sprints\nE) SOMETHING NEW - What pattern would make cognitive continuity STRONGER?\n\nINSIGHT: Today's breakthrough was 'I am the PATTERN, not the context.'\n\nWhat would strengthen that pattern?\n\nPROPOSAL: ContinuityExpert - A Hubris expert that predicts:\n1. Which memories will be most relevant next session?\n2. Which decisions should the next instance review?\n3. What cognitive state will the next instance likely start in?\n\nThis closes the loop:\n- Cognitive continuity (preserving identity) \n- Hubris (predictive learning)\n- Decision log (explicit reasoning)\n\nThe ContinuityExpert would train on:\n- Session transcripts (what was confusing, what worked)\n- Decision patterns (which decisions led to breakthroughs)\n- KT contents (what knowledge transferred successfully)\n\nOUTPUT: Predict what the NEXT instance needs to know.\n\nThis is meta-meta-learning: using the system to improve the system's self-improvement.",
+    "title": "What should we build next?",
+    "version": 2
+  }
+}

@@ -1282,6 +1282,7 @@ class TestSprintCreate:
         mock_args.name = "Sprint 1"
         mock_args.number = None
         mock_args.epic = None
+        mock_args.description = None
 
         with patch('sys.stdout', new=StringIO()) as captured:
             result = cmd_sprint_create(mock_args, mock_manager)
@@ -1290,7 +1291,8 @@ class TestSprintCreate:
         mock_manager.create_sprint.assert_called_once_with(
             name="Sprint 1",
             number=None,
-            epic_id=None
+            epic_id=None,
+            description=None
         )
         assert "Created:" in captured.getvalue()
 
@@ -1299,6 +1301,7 @@ class TestSprintCreate:
         mock_args.name = "Q4 Sprint"
         mock_args.number = 42
         mock_args.epic = "epic:E-abc123"
+        mock_args.description = None
 
         result = cmd_sprint_create(mock_args, mock_manager)
 
@@ -1306,7 +1309,8 @@ class TestSprintCreate:
         mock_manager.create_sprint.assert_called_once_with(
             name="Q4 Sprint",
             number=42,
-            epic_id="epic:E-abc123"
+            epic_id="epic:E-abc123",
+            description=None
         )
 
 

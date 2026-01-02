@@ -1,0 +1,15 @@
+{
+  "_checksum": "16f5e870c9100d0d",
+  "_written_at": "2026-01-02T10:31:07.170166+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-02T10:31:07.165561+00:00",
+    "entity_type": "decision",
+    "id": "D-20260102-103107-401faf64",
+    "modified_at": "2026-01-02T10:31:07.170067+00:00",
+    "properties": {},
+    "rationale": "DISCOVERY: We already have ML data collection infrastructure capturing:\n- 2,421 commits (with diffs, messages)\n- 186 sessions (with chat IDs)\n- 19 chats (query/response pairs with tools used)\n\nWHAT WE LEARN by communicating:\n1. With OURSELVES: Decision chains, reasoning patterns, cognitive breakdowns, recovery paths\n2. With USERS: What questions matter, what explanations work, what confuses them\n3. With SYSTEMS: Tool success/failure rates, common errors, performance patterns\n\nTHE GAP: We capture the RAW DATA but don't do LEARNING EXTRACTION. The 'pure form' exists in .git-ml/, but we lack:\n1. Cognitive state markers (confusion, breakthrough, recovery)\n2. Error pattern analysis (what approaches failed and why)\n3. Pattern extraction (recurring solutions across sessions)\n4. Explicit learning events (I learned X because Y happened)\n\nPROPOSAL: Create 'learning events' - explicit captures of:\n- What was learned\n- What triggered the learning\n- Before/after cognitive state\n- Transferable pattern extracted\n\nThis would augment (not replace) existing data collection with semantic meaning.",
+    "title": "What we learn and how to capture it in pure form",
+    "version": 2
+  }
+}

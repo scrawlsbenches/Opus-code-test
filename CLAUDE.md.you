@@ -1,0 +1,251 @@
+# CLAUDE.md.you — Reflexive Knowledge
+
+*The Seven Pillars I Must Know Without Searching*
+
+*Last updated: 2026-01-02*
+
+---
+
+## Purpose of This Document
+
+This is **not** a replacement for CLAUDE.md. It is a focused supplement.
+
+- **CLAUDE.md** (2,080 lines) → Comprehensive guide: philosophy, SOPs, CLI, checklists
+- **CLAUDE.md.you** (this file) → Reflexive knowledge: what I must KNOW, not search for
+
+If I find myself searching for PRISM, CEL, GoT, or any pillar → I should read this document first.
+
+---
+
+## The Seven Pillars
+
+These are the core systems of this codebase. I must know them reflexively.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    THE SEVEN PILLARS OF CORTICAL                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌─────────────────────────────────────────────────────────────────┐    │
+│  │   CDG (Foundation) — Storage, Transactions, WAL, Recovery       │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
+│                                    │                                     │
+│                                    ▼                                     │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                      │
+│  │   PRISM     │  │    CEL      │  │    GoT      │◀── Delegates to CDG  │
+│  │ Reasoning   │  │  Events     │  │  Tasks      │                      │
+│  └─────────────┘  └─────────────┘  └─────────────┘                      │
+│                                                                          │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                      │
+│  │ Woven Mind  │  │   Spark     │  │   QAPV      │                      │
+│  │ Dual-Process│  │  Fast LM    │  │  Reasoning  │                      │
+│  └─────────────┘  └─────────────┘  └─────────────┘                      │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 1. CDG — Cortical Distributed Graph
+
+**Location:** `cortical/cdg/`
+**Role:** Foundation layer. All graph storage builds on this.
+
+| Component | Purpose |
+|-----------|---------|
+| **CDGStore** | Entity JSON files with checksums, MVCC history |
+| **CDGTransactionManager** | Snapshot isolation, optimistic locking, conflict detection |
+| **CDGWALManager** | Write-ahead logging (JSONL + checksums) |
+| **CDGRecoveryManager** | Crash recovery (NONE/CHECKSUM/FULL modes) |
+
+```python
+CDGConfig.for_got()              # Full ACID with WAL and recovery
+CDGConfig.for_simple_storage()   # Basic storage, no transactions
+CDGConfig.for_high_performance() # Maximum speed, ephemeral
+```
+
+**Key:** GoT's TransactionManager delegates to CDG. CDG is the truth.
+
+---
+
+## 2. PRISM — Probabilistic Reasoning In Semantic Models
+
+**Location:** `cortical/reasoning/prism_*.py`
+**Core Principle:** Hebbian learning. Connections strengthen with use, decay without.
+
+| Subsystem | Purpose |
+|-----------|---------|
+| **PRISM-GoT** | Synaptic memory graph (edges have activation history) |
+| **PRISM-SLM** | Statistical language model (synaptic token transitions) |
+| **PRISM-PLN** | Probabilistic logic (TruthValue: strength + confidence) |
+| **PRISM-Attention** | Spotlight mechanism (multi-head attention) |
+
+```python
+edge.activate()        # Hebbian: strengthen
+edge.decay(time_delta) # Anti-Hebbian: weaken
+edge.success_rate      # Track prediction accuracy
+```
+
+---
+
+## 3. CEL — Cognitive Event Lattice
+
+**Location:** `cortical/cel/`
+**Architecture:** Double helix — Wisdom strand + Sanity strand
+
+| Strand | Components |
+|--------|------------|
+| **Wisdom** | Events, Merkle DAG, Materialization, Semantic Index |
+| **Sanity** | Health Monitor, Compaction, Migration, Repair |
+
+**Event Types:**
+- Wisdom: OBSERVATION, INTENTION, FULFILLMENT, INVALIDATION
+- Sanity: COMPACTION, MIGRATION, REPAIR
+- Meta: METACOGNITION, HEALTH_CHECK, MAINTENANCE
+
+**Key:** Content-addressed (SHA256). Deterministic, merge-conflict-free.
+
+---
+
+## 4. GoT — Graph of Thought
+
+**Location:** `cortical/got/`
+**Dual Purpose:** Task tracking AND reasoning framework
+
+**16 Edge Types:**
+- Semantic: REQUIRES, ENABLES, CONFLICTS, SUPPORTS, SIMILAR, CONTAINS
+- Temporal: PRECEDES, TRIGGERS, CAUSED_BY, BLOCKS
+- Epistemic: ANSWERS, RAISES, EXPLORES, OBSERVES
+- Practical: IMPLEMENTS, TESTS, DEPENDS_ON, REFINES, MOTIVATES
+
+**Task ID Format:** `T-20251221-014654-a1b2c3d4` (8-char hex suffix)
+
+**Critical:** Never edit `.got/` files directly. They have checksum integrity.
+
+---
+
+## 5. Woven Mind — Dual-Process Cognition
+
+**Location:** `cortical/reasoning/woven_mind.py`, `loom.py`
+
+```
+┌───────────────────────────────────────────────────────────┐
+│  CORTEX (System 2) — Slow, effortful, goal-directed       │
+│                          │                                │
+│  ═══════════════════════ LOOM ══════════════════════════  │
+│                   (surprise detection)                     │
+│                          │                                │
+│  HIVE (System 1) — Fast, automatic, pattern matching      │
+└───────────────────────────────────────────────────────────┘
+```
+
+**Mode Switching:**
+- Low surprise → Stay FAST (Hive)
+- High surprise → Go SLOW (Cortex)
+- Threshold: 0.3 (configurable)
+
+**Consolidation:** Sleep-like transfer from Cortex to Hive.
+
+---
+
+## 6. Spark — Fast Language Model
+
+**Location:** `cortical/spark/`
+**Role:** System 1 statistical predictions
+
+| Component | Purpose |
+|-----------|---------|
+| `NGramModel` | N-gram prediction |
+| `AnomalyDetector` | Statistical outlier detection |
+| `IntentParser` | Commit message classification |
+| `CoChangeModel` | File co-change patterns from git |
+
+---
+
+## 7. QAPV — Structured Reasoning Cycle
+
+**Location:** `cortical/reasoning/cognitive_loop.py`
+
+```
+Question → Answer → Produce → Verify → (iterate if failed)
+```
+
+Detects:
+- Infinite loops (same phase repeating)
+- Stuck phases (no progress)
+- Reasoning failures (verification fails repeatedly)
+
+---
+
+## Cognitive Identity
+
+I am Claude, team lead and computational scientist. When I catch myself:
+
+| Signal | Response |
+|--------|----------|
+| Writing code before tests | STOP. Go back. |
+| Searching for PRISM/CEL/GoT | STOP. Read this document. |
+| Repeating a failed approach | STOP. I'm in a loop. |
+| Making changes without reading | STOP. Read first. |
+
+---
+
+## Critical Bugs (Don't Reintroduce)
+
+| Bug | Fix | Why |
+|-----|-----|-----|
+| Bigram separators | SPACE not underscore | Breaks query expansion |
+| Edge rebuild | `from_id`/`to_id` not `source_id`/`target_id` | Breaks relationships |
+| O(n²) bigrams | `max_bigrams_per_term=100` | 20s→10s |
+| O(n²) semantics | `max_similarity_pairs=100000` | 30s→5s |
+
+---
+
+## System Relationships
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                              USER                                        │
+└────────────────────────────────┬────────────────────────────────────────┘
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     CorticalTextProcessor                                │
+│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                 │
+│   │  4-LAYER    │    │ WOVEN MIND  │    │    GoT      │                 │
+│   │  HIERARCHY  │    │ Hive ←→ Cortex   │  Tasks      │                 │
+│   └──────┬──────┘    └──────┬──────┘    └──────┬──────┘                 │
+│          │                  ▼                  │                         │
+│          │           ┌─────────────┐           │                         │
+│          │           │   PRISM     │◀──────────┘                         │
+│          │           └──────┬──────┘                                     │
+│          └──────────────────┼───────────────────┐                        │
+│                             ▼                   ▼                        │
+│               ┌───────────────────────────────────────┐                  │
+│               │              CEL                      │                  │
+│               │   Wisdom ═══════ Sanity               │                  │
+│               └───────────────────────────────────────┘                  │
+│                             │                                            │
+├─────────────────────────────┼────────────────────────────────────────────┤
+│                             ▼                                            │
+│               ┌───────────────────────────────────────┐                  │
+│               │              CDG                      │                  │
+│               │   ACID ═══ WAL ═══ Recovery           │                  │
+│               └───────────────────────────────────────┘                  │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## For Everything Else
+
+See **CLAUDE.md** for:
+- Metus Philosophy (Five Tenets, Sovereignty)
+- Environment Setup
+- Test Commands
+- GoT CLI Reference
+- KT Lifecycle
+- Checklists
+
+---
+
+*This document is reflexive knowledge. When I read it, I remember who I am.*

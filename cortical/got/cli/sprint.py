@@ -25,14 +25,18 @@ if TYPE_CHECKING:
 
 def cmd_sprint_create(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got sprint create' command."""
+    description = getattr(args, 'description', None)
     sprint_id = manager.create_sprint(
         name=args.name,
         number=getattr(args, 'number', None),
         epic_id=getattr(args, 'epic', None),
+        description=description,
     )
 
     manager.save()
     print(f"Created: {sprint_id}")
+    if description:
+        print(f"  Notes: {description}")
     return 0
 
 
@@ -382,6 +386,10 @@ def setup_sprint_parser(subparsers) -> None:
     sprint_create.add_argument("name", help="Sprint name")
     sprint_create.add_argument("--number", "-n", type=int, help="Sprint number")
     sprint_create.add_argument("--epic", "-e", help="Epic ID")
+    sprint_create.add_argument(
+        "--description", "--notes", "-d",
+        help="Sprint description/notes (context for what this sprint is about)"
+    )
 
     # sprint list
     sprint_list = sprint_subparsers.add_parser("list", help="List sprints")

@@ -926,7 +926,28 @@ class TransactionalGoTAdapter:
         blocked_only: bool = False,
     ) -> List[ThoughtNode]:
         """List tasks with optional filters."""
-        tasks = self._manager.find_tasks(status=status, priority=priority)
+        # If sprint_id specified, get tasks from that sprint first
+        if sprint_id:
+            sprint_task_ids = set()
+            try:
+                # Get all edges and filter to CONTAINS from this sprint
+                all_edges = self._manager.list_edges()
+                for edge in all_edges:
+                    if (edge.source_id == sprint_id and
+                        edge.edge_type == "CONTAINS" and
+                        edge.target_id.startswith("T-")):
+                        sprint_task_ids.add(edge.target_id)
+            except Exception as e:
+                logger.debug(f"Could not get sprint tasks: {e}")
+
+            if not sprint_task_ids:
+                return []
+
+            # Get all tasks and filter to sprint members
+            all_tasks = self._manager.find_tasks(status=status, priority=priority)
+            tasks = [t for t in all_tasks if t.id in sprint_task_ids]
+        else:
+            tasks = self._manager.find_tasks(status=status, priority=priority)
 
         # Apply additional filters
         result = []
@@ -1060,7 +1081,14 @@ class TransactionalGoTAdapter:
             logger.error(f"Failed to add blocks edge from {clean_task} to {clean_blocked}: {e}")
             return False
 
-    def add_edge(self, source_id: str, target_id: str, edge_type: str, weight: float = 1.0):
+    def add_edge(
+        self,
+        source_id: str,
+        target_id: str,
+        edge_type: str,
+        weight: float = 1.0,
+        reason: str = "",
+    ):
         """Add a generic edge between two entities.
 
         Args:
@@ -1068,6 +1096,7 @@ class TransactionalGoTAdapter:
             target_id: Target entity ID
             edge_type: Type of edge (e.g., DEPENDS_ON, BLOCKS, CAUSED_BY)
             weight: Edge weight (default: 1.0)
+            reason: Why this relationship exists (context capture)
 
         Returns:
             Edge object if successful, None otherwise
@@ -1075,7 +1104,9 @@ class TransactionalGoTAdapter:
         clean_source = self._strip_prefix(source_id)
         clean_target = self._strip_prefix(target_id)
         try:
-            edge = self._manager.add_edge(clean_source, clean_target, edge_type, weight=weight)
+            edge = self._manager.add_edge(
+                clean_source, clean_target, edge_type, weight=weight, reason=reason
+            )
             return edge
         except AttributeError as e:
             logger.error(f"Method not implemented: {e}")
@@ -1117,6 +1148,32 @@ class TransactionalGoTAdapter:
         except Exception as e:
             logger.error(f"Failed to get edges for {task_id}: {e}")
             return [], []
+
+    def get_task_sprint(self, task_id: str) -> Optional[Dict[str, str]]:
+        """Get the sprint that contains this task.
+
+        Args:
+            task_id: Task ID to find sprint for
+
+        Returns:
+            Dict with 'id' and 'name' keys, or None if not in a sprint
+        """
+        try:
+            _, incoming = self.get_edges_for_task(task_id)
+            for edge in incoming:
+                # CONTAINS edges from sprints to tasks
+                if edge.edge_type == "CONTAINS" and edge.source_id.startswith("S-"):
+                    sprint = self.get_sprint(edge.source_id)
+                    if sprint:
+                        # sprint is a ThoughtNode, access attributes directly
+                        return {
+                            'id': sprint.id,
+                            'name': sprint.content or 'Unknown'
+                        }
+            return None
+        except Exception as e:
+            logger.debug(f"Could not find sprint for {task_id}: {e}")
+            return None
 
     def get_blockers(self, task_id: str) -> List[ThoughtNode]:
         """Get tasks that block this task."""
@@ -1827,12 +1884,27 @@ class TransactionalGoTAdapter:
         name: str,
         number: Optional[int] = None,
         epic_id: Optional[str] = None,
+        description: Optional[str] = None,
     ) -> str:
-        """Create a new sprint using TX backend."""
+        """Create a new sprint using TX backend.
+
+        Args:
+            name: Sprint name/title
+            number: Optional sprint number (display metadata)
+            epic_id: Optional epic ID this sprint belongs to
+            description: Optional description/notes explaining the sprint context
+
+        Returns:
+            Created sprint ID
+        """
+        # Build notes list from description if provided
+        notes = [description] if description else []
+
         sprint = self._manager.create_sprint(
             title=name,
             number=number,
             epic_id=epic_id or "",
+            notes=notes,
         )
         return sprint.id
 
@@ -2743,7 +2815,7 @@ class TransactionalGoTAdapter:
         sections: Optional[Dict[str, str]] = None,
         code_refs: Optional[List[str]] = None,
         tags: Optional[List[str]] = None,
-        status: str = "published",
+        status: str = "draft",  # Draft by default - finalize to publish
         source_file: Optional[str] = None,
     ) -> str:
         """
@@ -3010,9 +3082,12 @@ class TransactionalGoTAdapter:
             logger.error(f"Knowledge transfer not found: {kt_id}")
             return False
 
-        # Verify it's in draft status
+        # Verify it's in draft status (or already published = idempotent success)
         if kt.get('status') != 'draft':
-            logger.error(f"Knowledge transfer {kt_id} is not in draft status (current: {kt.get('status')})")
+            if kt.get('status') == 'published':
+                logger.info(f"Knowledge transfer {kt_id} is already published")
+                return True  # Idempotent - already in desired state
+            logger.error(f"Knowledge transfer {kt_id} cannot be finalized (current status: {kt.get('status')})")
             return False
 
         # Change status to published

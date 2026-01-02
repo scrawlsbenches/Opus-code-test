@@ -1,0 +1,23 @@
+{
+  "_checksum": "d883ec9d308b6313",
+  "_written_at": "2026-01-02T11:02:29.756491+00:00",
+  "data": {
+    "created_at": "2026-01-02T11:02:09.086108+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260102-110209-ae191446",
+    "metadata": {
+      "completed_at": "2026-01-02T11:02:29.749545+00:00",
+      "updated_at": "2026-01-02T11:02:29.749559+00:00"
+    },
+    "modified_at": "2026-01-02T11:02:29.756429+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "research",
+      "retrospective": "Hubris IS the learning capture system. Predictions\u2192outcomes\u2192credits closes the feedback loop. Gap: cognitive learning (not just development learning)."
+    },
+    "status": "completed",
+    "title": "Discover and document Hubris connection to learning capture",
+    "version": 3
+  }
+}

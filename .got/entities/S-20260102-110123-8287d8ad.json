@@ -1,0 +1,21 @@
+{
+  "_checksum": "47c5f9431531745f",
+  "_written_at": "2026-01-02T11:01:23.895085+00:00",
+  "data": {
+    "created_at": "2026-01-02T11:01:23.891846+00:00",
+    "entity_type": "sprint",
+    "epic_id": "",
+    "goals": [],
+    "id": "S-20260102-110123-8287d8ad",
+    "isolation": [],
+    "metadata": {},
+    "modified_at": "2026-01-02T11:01:23.895039+00:00",
+    "notes": [],
+    "number": null,
+    "properties": {},
+    "session_id": "",
+    "status": "available",
+    "title": "Team Lead Cognitive Onboarding",
+    "version": 2
+  }
+}

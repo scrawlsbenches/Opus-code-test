@@ -484,6 +484,10 @@ def cmd_kt_finalize(args, manager: "TransactionalGoTAdapter") -> int:
     # Get handoff-to agent if specified
     handoff_to = getattr(args, 'handoff_to', None)
 
+    # Check current status before finalize (for accurate messaging)
+    kt_before = manager.get_knowledge_transfer(kt_id)
+    was_already_published = kt_before and kt_before.get('status') == 'published'
+
     # Finalize the KT
     success = manager.finalize_knowledge_transfer(
         kt_id=kt_id,
@@ -495,8 +499,11 @@ def cmd_kt_finalize(args, manager: "TransactionalGoTAdapter") -> int:
         print(f"Failed to finalize knowledge transfer: {kt_id}")
         return 1
 
-    print(f"✅ Finalized: {kt_id}")
-    print(f"   Status: draft → published")
+    if was_already_published:
+        print(f"✅ {kt_id} is already published")
+    else:
+        print(f"✅ Finalized: {kt_id}")
+        print(f"   Status: draft → published")
 
     if handoff_to:
         print(f"   Created handoff to: {handoff_to}")

@@ -1,0 +1,15 @@
+{
+  "_checksum": "71c4d63380157d0e",
+  "_written_at": "2026-01-02T12:34:31.988758+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-02T12:34:31.984812+00:00",
+    "entity_type": "decision",
+    "id": "D-20260102-123431-f8b86111",
+    "modified_at": "2026-01-02T12:34:31.988695+00:00",
+    "properties": {},
+    "rationale": "Trained experts: TestExpert (2000 commits, 7762 source-to-test mappings), RefactorExpert (119 refactor commits), CommandExpert (17 actions). Cold-start credit mode exits automatically when predictions are verified against actual commits via git hooks. FileExpert requires v1 ML model approach. EpisodeExpert awaits session data.",
+    "title": "Hubris expert training complete",
+    "version": 2
+  }
+}

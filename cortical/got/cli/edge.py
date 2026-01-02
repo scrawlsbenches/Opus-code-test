@@ -47,17 +47,22 @@ def cmd_edge_add(args, manager: "TransactionalGoTAdapter") -> int:
         print(f"Valid types: {', '.join(sorted(VALID_EDGE_TYPES))}")
         return 1
 
+    reason = getattr(args, 'reason', None) or ""
+
     try:
         edge = manager.add_edge(
             source_id=args.source_id,
             target_id=args.target_id,
             edge_type=edge_type,
             weight=getattr(args, 'weight', 1.0),
+            reason=reason,
         )
 
         if edge:
             manager.save()
             print(f"Created edge: {args.source_id} --[{edge_type}]--> {args.target_id}")
+            if reason:
+                print(f"  Reason: {reason}")
             return 0
         else:
             print("Failed to create edge - check that both entity IDs exist")
@@ -258,6 +263,10 @@ def setup_edge_parser(subparsers) -> None:
         type=float,
         default=1.0,
         help="Edge weight (default: 1.0)"
+    )
+    add_parser.add_argument(
+        "--reason", "-r",
+        help="Why this relationship exists (context capture)"
     )
 
     # edge list

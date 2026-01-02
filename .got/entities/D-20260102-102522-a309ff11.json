@@ -1,0 +1,15 @@
+{
+  "_checksum": "ab47828fa5339301",
+  "_written_at": "2026-01-02T10:25:22.389360+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-02T10:25:22.385390+00:00",
+    "entity_type": "decision",
+    "id": "D-20260102-102522-a309ff11",
+    "modified_at": "2026-01-02T10:25:22.389296+00:00",
+    "properties": {},
+    "rationale": "Added 'decision trace <id>' command to show full decision context: what it affects (JUSTIFIES, MOTIVATES), what it supersedes (SUPERSEDES), and what supersedes it (SUPERSEDED_BY). This fills the gap identified during sub-agent testing - the protocol referenced 'decision why' for viewing decisions, but that command traces why a TASK exists. Now 'decision trace' provides the full graph context around a decision.",
+    "title": "Add decision trace command",
+    "version": 2
+  }
+}

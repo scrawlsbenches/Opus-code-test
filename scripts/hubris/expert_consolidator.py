@@ -31,6 +31,7 @@ from experts.test_expert import TestExpert
 from experts.error_expert import ErrorDiagnosisExpert
 from experts.episode_expert import EpisodeExpert
 from experts.refactor_expert import RefactorExpert
+from experts.continuity_expert import ContinuityExpert
 
 
 class ExpertConsolidator:
@@ -56,6 +57,7 @@ class ExpertConsolidator:
         'error': ErrorDiagnosisExpert,
         'episode': EpisodeExpert,
         'refactor': RefactorExpert,
+        'continuity': ContinuityExpert,
     }
 
     def __init__(self, model_dir: Optional[Path] = None):

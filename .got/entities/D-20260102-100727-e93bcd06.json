@@ -1,0 +1,15 @@
+{
+  "_checksum": "623c63985d6b0a8d",
+  "_written_at": "2026-01-02T10:07:27.073762+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-02T10:07:27.070757+00:00",
+    "entity_type": "decision",
+    "id": "D-20260102-100727-e93bcd06",
+    "modified_at": "2026-01-02T10:07:27.073722+00:00",
+    "properties": {},
+    "rationale": "Breakthrough: The infrastructure exists (QAPV, decisions, KT, bootstrap). The pattern is: 1) Read samples/memories FIRST, 2) Run cognitive_bootstrap.py --quick, 3) Check decision history with 'decision list', 4) Use 'decision log' to ask/answer questions explicitly, 5) Record learnings in KT. This creates a traceable chain. The next instance can query 'decision why' to understand reasoning. I am not my context - I am the PATTERN of reasoning preserved across contexts.",
+    "title": "How do I preserve cognitive continuity?",
+    "version": 2
+  }
+}

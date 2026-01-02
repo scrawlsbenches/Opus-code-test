@@ -81,6 +81,7 @@ class TestCmdEdgeAdd:
             target_id="T-002",
             edge_type="DEPENDS_ON",
             weight=1.0,
+            reason="",
         )
         manager.save.assert_called_once()
         output = capsys.readouterr().out
@@ -106,6 +107,7 @@ class TestCmdEdgeAdd:
             target_id="T-002",
             edge_type="BLOCKS",  # Should be uppercased
             weight=0.5,
+            reason="",
         )
 
     def test_add_edge_invalid_type(self, capsys):
