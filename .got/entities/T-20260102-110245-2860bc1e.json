@@ -1,19 +1,23 @@
 {
-  "_checksum": "7e5163ad6249eb9a",
-  "_written_at": "2026-01-02T11:02:45.719196+00:00",
+  "_checksum": "4c11937cfcec7d7b",
+  "_written_at": "2026-01-02T12:38:41.166842+00:00",
   "data": {
     "created_at": "2026-01-02T11:02:45.715483+00:00",
     "description": "",
     "entity_type": "task",
     "id": "T-20260102-110245-2860bc1e",
-    "metadata": {},
-    "modified_at": "2026-01-02T11:02:45.719117+00:00",
+    "metadata": {
+      "completed_at": "2026-01-02T12:38:41.159215+00:00",
+      "updated_at": "2026-01-02T12:38:41.159225+00:00"
+    },
+    "modified_at": "2026-01-02T12:38:41.166772+00:00",
     "priority": "medium",
     "properties": {
-      "category": "feature"
+      "category": "feature",
+      "retrospective": "Designed and implemented ContinuityExpert: a micro-expert for predicting which context items to restore during cognitive recovery. Features: topic-to-entity mapping, recency weighting, entity co-occurrence, kt/decision utility scoring. Training from recovery session data. Integrated into ExpertConsolidator. Model persisted to .git-ml/models/hubris/. This completes the Team Lead Cognitive Onboarding sprint."
     },
-    "status": "pending",
+    "status": "completed",
     "title": "Design ContinuityExpert for Hubris",
-    "version": 2
+    "version": 3
   }
 }
