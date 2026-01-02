@@ -9,6 +9,24 @@ If smoke tests fail, there's likely a critical issue that will affect everything
 Fix smoke test failures before investigating other test failures.
 
 Run with: pytest tests/smoke/ -v
+
+SMOKE TEST MANIFEST
+-------------------
+This manifest tracks which systems should have smoke test coverage.
+When adding a major new system, add it here and create corresponding tests.
+
+Systems with smoke tests:
+    ✅ Cortical Core (CorticalTextProcessor, layers, search)
+    ✅ GoT (Graph of Thought - task management, transactions)
+    ✅ CDG (Core Data Graph - entity storage)
+    ⚡ Hubris (MoE system - import check only, still evolving)
+    ⚡ CEL (Event sourcing - import check only, still developing)
+
+Systems intentionally without smoke tests:
+    ⏸️ Cognitive (WovenMind, cognitive_bootstrap) - orchestration layer, let it stabilize
+    ⏸️ Spark (language models) - experimental, tested via behavioral
+
+Last manifest review: 2026-01-02
 """
 
 import pytest
@@ -177,3 +195,176 @@ class TestLayerAccess:
 
         layer3 = small_processor.get_layer(CorticalLayer.DOCUMENTS)
         assert layer3.column_count() == len(small_processor.documents)
+
+
+# =============================================================================
+# GoT (Graph of Thought) Smoke Tests
+# =============================================================================
+
+class TestGoTImports:
+    """Verify GoT modules can be imported."""
+
+    def test_import_got_package(self):
+        """GoT package imports successfully."""
+        from cortical import got
+        assert hasattr(got, 'GoTManager')
+        assert hasattr(got, 'Task')
+        assert hasattr(got, 'Decision')
+        assert hasattr(got, 'Edge')
+
+    def test_import_got_manager(self):
+        """GoTManager imports directly."""
+        from cortical.got import GoTManager
+        assert GoTManager is not None
+
+    def test_import_transaction_types(self):
+        """Transaction types import."""
+        from cortical.got import Transaction, TransactionManager
+        assert Transaction is not None
+        assert TransactionManager is not None
+
+
+class TestGoTBasicOperations:
+    """Verify GoT can create and query tasks."""
+
+    def test_create_manager(self, tmp_path):
+        """GoTManager can be instantiated."""
+        from cortical.got import GoTManager
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+        assert manager is not None
+
+    def test_create_task(self, tmp_path):
+        """Task can be created."""
+        from cortical.got import GoTManager
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+
+        task = manager.create_task("Smoke test task", priority="medium")
+        assert task is not None
+        assert task.id.startswith("T-")
+        assert task.title == "Smoke test task"
+
+    def test_query_tasks(self, tmp_path):
+        """Tasks can be queried."""
+        from cortical.got import GoTManager
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+
+        manager.create_task("Task 1", priority="high")
+        manager.create_task("Task 2", priority="low")
+
+        tasks = manager.find_tasks()
+        assert len(tasks) == 2
+
+    def test_create_edge(self, tmp_path):
+        """Edges can be created between tasks."""
+        from cortical.got import GoTManager
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+
+        t1 = manager.create_task("Task A")
+        t2 = manager.create_task("Task B")
+
+        edge = manager.add_edge(t1.id, t2.id, "DEPENDS_ON")
+        assert edge is not None
+
+
+# =============================================================================
+# CDG (Core Data Graph) Smoke Tests
+# =============================================================================
+
+class TestCDGImports:
+    """Verify CDG modules can be imported."""
+
+    def test_import_cdg_package(self):
+        """CDG package imports successfully."""
+        from cortical import cdg
+        assert hasattr(cdg, 'CDGStore')
+        assert hasattr(cdg, 'Entity')
+        assert hasattr(cdg, 'Edge')
+
+    def test_import_cdg_store(self):
+        """CDGStore imports directly."""
+        from cortical.cdg import CDGStore
+        assert CDGStore is not None
+
+    def test_import_cdg_types(self):
+        """CDG types import."""
+        from cortical.cdg import Entity, Edge, Transaction
+        assert Entity is not None
+        assert Edge is not None
+        assert Transaction is not None
+
+
+class TestCDGBasicOperations:
+    """Verify CDG can store and retrieve entities."""
+
+    def test_create_store(self, tmp_path):
+        """CDGStore can be instantiated."""
+        from cortical.cdg import CDGStore
+        store = CDGStore(tmp_path / "cdg")
+        assert store is not None
+
+    def test_write_and_read_entity(self, tmp_path):
+        """Entity can be written and read back."""
+        from cortical.cdg import CDGStore, Entity
+
+        store = CDGStore(tmp_path / "cdg")
+
+        entity = Entity(id="smoke-test-001", entity_type="test")
+        store.write(entity)
+
+        loaded = store.read("smoke-test-001")
+        assert loaded is not None
+        assert loaded.id == "smoke-test-001"
+
+
+# =============================================================================
+# Hubris (MoE System) Smoke Tests - Import checks only
+# =============================================================================
+
+class TestHubrisImports:
+    """Verify Hubris modules can be imported (light check - system evolving)."""
+
+    def test_import_micro_expert_base(self):
+        """MicroExpert base class imports."""
+        import sys
+        import os
+        # Add scripts to path for hubris imports
+        scripts_path = os.path.join(os.path.dirname(__file__), '..', '..', 'scripts')
+        if scripts_path not in sys.path:
+            sys.path.insert(0, os.path.abspath(scripts_path))
+
+        from hubris.micro_expert import MicroExpert
+        assert MicroExpert is not None
+
+    def test_import_expert_consolidator(self):
+        """ExpertConsolidator imports."""
+        import sys
+        import os
+        scripts_path = os.path.join(os.path.dirname(__file__), '..', '..', 'scripts')
+        if scripts_path not in sys.path:
+            sys.path.insert(0, os.path.abspath(scripts_path))
+
+        from hubris.expert_consolidator import ExpertConsolidator
+        assert ExpertConsolidator is not None
+
+
+# =============================================================================
+# CEL (Event Sourcing) Smoke Tests - Import checks only
+# =============================================================================
+
+class TestCELImports:
+    """Verify CEL modules can be imported (light check - system developing)."""
+
+    def test_import_cel_package(self):
+        """CEL package imports successfully."""
+        from cortical import cel
+        assert cel is not None
+
+    def test_import_cel_core_types(self):
+        """CEL core types import."""
+        from cortical.cel import CognitiveEvent, EventStore
+        assert CognitiveEvent is not None
+        assert EventStore is not None
