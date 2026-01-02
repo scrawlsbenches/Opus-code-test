@@ -131,3 +131,9 @@ markers = [
 # Default: skip optional and slow tests during development
 # CI overrides with: pytest -m "" (run all) or explicitly includes markers
 addopts = "-m 'not optional and not slow'"
+
+# Include specification files in test collection
+# Specs use *_spec.py naming convention per CLAUDE.md Metus philosophy
+python_files = ["test_*.py", "*_spec.py", "*_stories.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*", "spec_*", "scenario_*"]

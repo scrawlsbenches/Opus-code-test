@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "entity_type": "knowledge_transfer",
+  "data": {
+    "id": "KT-20260101-172157",
+    "entity_type": "knowledge_transfer",
+    "version": 1,
+    "created_at": "2026-01-01T17:21:57.038363",
+    "modified_at": "2026-01-01T17:21:57.038370",
+    "title": "Behavioral and Contract Test Baseline Cleanup",
+    "session_id": "",
+    "session_date": "",
+    "summary": "Established clean test baseline by fixing API mismatches and skipping tests that need calibration",
+    "sections": {},
+    "code_refs": [],
+    "related_handoffs": [],
+    "related_tasks": [],
+    "related_decisions": [],
+    "source_file": null,
+    "tags": [],
+    "status": "published",
+    "properties": {}
+  }
+}

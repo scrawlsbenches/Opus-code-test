@@ -1,0 +1,19 @@
+{
+  "_checksum": "b5b14e184f36103f",
+  "_written_at": "2026-01-01T22:41:19.849806+00:00",
+  "data": {
+    "created_at": "2026-01-01T22:41:19.845567+00:00",
+    "description": "Per previous KT, 66 behavioral tests are skipped. Common patterns include: 1) API mismatches (add_decision, add_hypothesis, add_artifact methods don't exist - use add_note instead), 2) Timing thresholds too tight, 3) Implementation bugs. Start by running: grep -rn '@pytest.mark.skip' tests/behavioral/ to find all skipped tests. Focus on test files with most skips first: test_developer_maintains_state_across_sessions.py (11 tests), test_researcher_expands_queries_stories.py (8 tests). For each test: remove skip, run to see error, determine if API mismatch (fix test) or impl bug (fix code).",
+    "entity_type": "task",
+    "id": "T-20260101-224119-80544ff4",
+    "metadata": {},
+    "modified_at": "2026-01-01T22:41:19.849735+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Investigate and fix 66 skipped behavioral tests",
+    "version": 2
+  }
+}

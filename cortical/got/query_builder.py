@@ -1377,8 +1377,8 @@ class Query(Generic[T]):
         if not self._order_by:
             return results
 
-        # Priority order for sorting
-        priority_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+        # Priority order for sorting (higher value = higher priority for descending sort)
+        priority_order = {"critical": 3, "high": 2, "medium": 1, "low": 0}
 
         def sort_key(entity):
             keys = []

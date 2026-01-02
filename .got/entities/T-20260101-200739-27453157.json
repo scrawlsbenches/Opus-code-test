@@ -1,0 +1,19 @@
+{
+  "_checksum": "fb102d4242160201",
+  "_written_at": "2026-01-01T20:07:39.477133+00:00",
+  "data": {
+    "created_at": "2026-01-01T20:07:39.472144+00:00",
+    "description": "## Overview\nCreate a utility script to help backfill missing metadata in existing GoT tasks.\n\n## File References\n- Script location: scripts/backfill_causal_data.py (NEW)\n- GoT store: .got/entities/\n- Entity format example: .got/entities/T-*.json\n\n## Backfill Operations\n1. **Infer started_at from modified_at**\n   - For completed tasks without started_at\n   - Estimate: started_at = created_at + small delta\n\n2. **Suggest CAUSED_BY edges**\n   - Scan task titles/descriptions for patterns like \"fix\", \"bug\", \"caused by\"\n   - Suggest edges for user approval (not auto-create)\n\n3. **Suggest DEPENDS_ON edges**\n   - Analyze temporal patterns (tasks created close together)\n   - Analyze title similarity\n   - User confirmation required\n\n4. **Generate retrospective prompts**\n   - For completed tasks without retrospectives\n   - Output list for manual review\n\n## Safety Requirements\n- NEVER modify .got/ files directly\n- Use got_utils.py CLI for all changes\n- Dry-run mode by default\n- Require --apply flag for actual changes\n\n## Acceptance Criteria\n- Script identifies gaps accurately\n- Suggestions are reasonable\n- No data corruption possible",
+    "entity_type": "task",
+    "id": "T-20260101-200739-27453157",
+    "metadata": {},
+    "modified_at": "2026-01-01T20:07:39.477056+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "devex"
+    },
+    "status": "pending",
+    "title": "Create script to backfill missing causal metadata",
+    "version": 2
+  }
+}
