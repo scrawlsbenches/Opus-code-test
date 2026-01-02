@@ -27,22 +27,23 @@ name: CI - Test Suite
 #   validate-tasks       smoke-tests      showcase
 #        (< 5s)           (< 30s)         (parallel)
 #          │                 │                │
-#          │                 ├────────────────┼─────────────────┐
-#          │                 │                │                 │
-#          ▼                 ▼                ▼                 ▼
-#    (continues)  ┌────────────────────────┐      ┌──────────────────┐
-#                 │ unit-tests ────┐       │      │ regression-tests │
-#                 │ integration    │ (cov) │      │ behavioral-tests │
-#                 └───────┬────────┴───────┘      │ performance-tests│
-#                         │                       │ contract-tests   │ ← Sacred promises
-#                         │                       │ project-tests    │   (can fail)
-#                         ├───────────────┐       └──────────────────┘
-#                         │               │           (no coverage)
-#                         ▼               ▼
-#                  coverage-report  ml-test-calibration
-#                (combines coverage   (processes test results
-#                 from unit + integration  for ML calibration,
-#                 WITHOUT re-running tests) non-blocking)
+#          │                 ├────────────────┼─────────────────────┐
+#          │                 │                │                     │
+#          ▼                 ▼                ▼                     ▼
+#    (continues)  ┌─────────────────────────────────────┐    ┌──────────────────┐
+#                 │ unit-tests ────────────┐            │    │ performance-tests│
+#                 │ integration-tests ─────┼── (cov) ───│    │ contract-tests   │ ← Sacred
+#                 │ behavioral-tests ──────┤            │    │ project-tests    │   promises
+#                 │ regression-tests ──────┘            │    └──────────────────┘
+#                 └───────────────┬─────────────────────┘        (no coverage -
+#                                 │                               timing sensitive)
+#                                 ├───────────────┐
+#                                 │               │
+#                                 ▼               ▼
+#                          coverage-report  ml-test-calibration
+#                        (combines coverage   (processes test results
+#                         from ALL 4 jobs      for ML calibration,
+#                         = TRUE coverage)     non-blocking)
 #
 # PROJECT TESTS (cortical/projects/):
 # - Run independently of core tests
@@ -152,8 +153,15 @@ jobs:
         # Note: Legacy tests removed 2025-12-13 - now covered by tests/unit/
         # -m "" overrides pyproject.toml addopts to include optional tests in CI
         # --junit-xml generates machine-readable results for TestExpert calibration
+        #
+        # Includes:
+        # - tests/unit/: Core unit tests
+        # - tests/benchmarks/: SLM model regression tests (prevent training regressions)
+        # - tests/hubris/: Hubris expert tests (RefactorExpert, etc.)
         coverage run --source=cortical -m pytest \
           tests/unit/ \
+          tests/benchmarks/ \
+          tests/hubris/ \
           -m "" \
           -v --tb=short \
           --junit-xml=pytest-unit-results.xml
@@ -244,6 +252,7 @@ jobs:
   # Stage 4: Regression Tests (< 1 min)
   # Tests for specific bugs that were fixed
   # Runs in PARALLEL with unit/integration after smoke-tests pass
+  # NOW WITH COVERAGE: Contributes to combined coverage report
   # ==========================================================================
   regression-tests:
     name: "🔒 Regression Tests"
@@ -262,17 +271,27 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
 
-    - name: Run regression tests
+    - name: Run regression tests with coverage
       run: |
         echo "=== Running Regression Tests ==="
         # -m "" overrides pyproject.toml addopts to include optional tests in CI
-        python -m pytest tests/regression/ -m "" -v --tb=short
+        coverage run --source=cortical -m pytest tests/regression/ -m "" -v --tb=short
         echo "✅ All regressions still fixed"
+
+    - name: Upload regression test coverage data
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-regression
+        path: .coverage
+        include-hidden-files: true
 
   # ==========================================================================
   # Stage 5: Behavioral Tests (< 2 min)
   # Tests for user-facing quality and relevance
   # Runs in PARALLEL with unit/integration after smoke-tests pass
+  # NOW WITH COVERAGE: Contributes to combined coverage report
+  # These tests are living documentation (Metus philosophy) and test modules
+  # like prism_causal, cel/sanity/*, etc. that are primarily behavioral.
   # ==========================================================================
   behavioral-tests:
     name: "🎯 Behavioral Tests"
@@ -291,13 +310,24 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
 
-    - name: Run behavioral tests
+    - name: Run behavioral tests with coverage
       run: |
         echo "=== Running Behavioral Tests ==="
         # Note: tests/test_behavioral.py removed 2025-12-13 - superseded by tests/behavioral/
         # -m "" overrides pyproject.toml addopts to include optional tests in CI
-        python -m pytest tests/behavioral/ -m "" -v --tb=short
+        # Coverage collected here includes modules primarily tested via behavioral tests:
+        # - cortical/reasoning/prism_causal.py (~71% coverage)
+        # - cortical/cel/sanity/* (compaction, health, migration)
+        # - cortical/reasoning/prism_attention.py
+        coverage run --source=cortical -m pytest tests/behavioral/ -m "" -v --tb=short
         echo "✅ Behavioral quality verified"
+
+    - name: Upload behavioral test coverage data
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-behavioral
+        path: .coverage
+        include-hidden-files: true
 
   # ==========================================================================
   # Stage 6: Performance Tests (< 1 min, no coverage)
@@ -407,12 +437,14 @@ jobs:
 
   # ==========================================================================
   # Stage 8: Full Coverage Report
-  # Combines coverage from unit + integration tests WITHOUT re-running tests
+  # Combines coverage from ALL test jobs that collect coverage:
+  # - unit-tests, integration-tests, behavioral-tests, regression-tests
+  # This gives us TRUE coverage measurement across all test types.
   # ==========================================================================
   coverage-report:
     name: "📊 Coverage Report"
     runs-on: ubuntu-latest
-    needs: [unit-tests, integration-tests]
+    needs: [unit-tests, integration-tests, behavioral-tests, regression-tests]
     steps:
     - uses: actions/checkout@v4
 
@@ -438,23 +470,42 @@ jobs:
         name: coverage-integration
         path: coverage-integration
 
+    - name: Download behavioral coverage
+      uses: actions/download-artifact@v4
+      with:
+        name: coverage-behavioral
+        path: coverage-behavioral
+
+    - name: Download regression coverage
+      uses: actions/download-artifact@v4
+      with:
+        name: coverage-regression
+        path: coverage-regression
+
     - name: Combine coverage data and generate report
       run: |
         echo "=== Combining Coverage Data ==="
         # ⚠️  IMPORTANT: This job ONLY combines coverage - NO test runs!
         #
-        # Tests were already run in unit-tests and integration-tests stages.
+        # Tests were already run in parallel test jobs.
         # Running tests again here would double CI time.
         #
-        # We use 'coverage combine' to merge the .coverage files from
-        # the parallel test jobs.
+        # We use 'coverage combine' to merge the .coverage files from:
+        # - unit-tests: Core unit tests
+        # - integration-tests: Component integration + legacy tests
+        # - behavioral-tests: User story tests (Metus living documentation)
+        # - regression-tests: Bug-specific regression tests
+        #
+        # This gives TRUE coverage - no modules hidden or excluded artificially.
 
         # Move coverage files to current directory with unique names
         mv coverage-unit/.coverage .coverage.unit
         mv coverage-integration/.coverage .coverage.integration
+        mv coverage-behavioral/.coverage .coverage.behavioral
+        mv coverage-regression/.coverage .coverage.regression
 
-        # Combine coverage data from both jobs
-        coverage combine .coverage.unit .coverage.integration
+        # Combine coverage data from ALL jobs
+        coverage combine .coverage.unit .coverage.integration .coverage.behavioral .coverage.regression
 
         # Generate reports
         echo "=== Coverage Report ==="
@@ -465,18 +516,13 @@ jobs:
         # Temporarily lowered from 88% to verify CI infrastructure changes
         # TODO: Restore to 88% after confirming contracts/gates work
         #
-        # EXCLUSIONS FROM COVERAGE THRESHOLD:
-        # - cortical/projects/*: Optional projects, tested separately
+        # MINIMAL EXCLUSIONS (only truly optional/separate modules):
+        # - cortical/projects/*: Optional projects, tested separately in project-tests
         # - cortical/mcp_server.py: MCP shim, tested in project-tests
-        # - cortical/reasoning/prism_causal.py: Tested via behavioral tests (not in coverage combine)
-        # - cortical/reasoning/prism_attention.py: Tested via behavioral tests (not in coverage combine)
-        # - cortical/cel/sanity/*: Tested via behavioral tests (not in coverage combine)
-        # - cortical/cdg/adapters/*: Adapter stubs
         #
-        # Note: Behavioral tests run in separate job without coverage. These modules show
-        # 0% in unit+integration coverage but have ~70%+ coverage in behavioral tests.
-        # See: tests/behavioral/test_prism_causal.py, tests/behavioral/test_cel_sanity_*.py
-        coverage report --fail-under=86 --include="cortical/*" --omit="cortical/projects/*,cortical/mcp_server.py,cortical/reasoning/prism_causal.py,cortical/reasoning/prism_attention.py,cortical/cel/sanity/*,cortical/cdg/adapters/*"
+        # Note: With behavioral coverage now combined, we no longer need to exclude
+        # prism_causal, prism_attention, cel/sanity/*, etc. - they have real coverage!
+        coverage report --fail-under=86 --include="cortical/*" --omit="cortical/projects/*,cortical/mcp_server.py"
         echo "✅ Coverage threshold met"
 
     - name: Upload final coverage report
