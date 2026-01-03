@@ -1,0 +1,19 @@
+{
+  "_checksum": "40a1e331dcb5a55d",
+  "_written_at": "2026-01-03T17:08:02.180906+00:00",
+  "data": {
+    "created_at": "2026-01-03T17:08:02.168669+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260103-170802-d33d1973",
+    "metadata": {},
+    "modified_at": "2026-01-03T17:08:02.180846+00:00",
+    "priority": "critical",
+    "properties": {
+      "category": "bugfix"
+    },
+    "status": "pending",
+    "title": "Fix 32 security vulnerabilities from code review",
+    "version": 2
+  }
+}
