@@ -1,0 +1,47 @@
+{
+  "id": "exp_20260103_164047_1520",
+  "experience_type": "TASK_EXECUTION",
+  "timestamp": "2026-01-03T16:40:47.436596",
+  "context": {
+    "goal_type": "debugging",
+    "goal_complexity": "complex",
+    "domain": "general",
+    "available_tools": [],
+    "available_agents": 1,
+    "prior_failures": 0,
+    "time_pressure": "none",
+    "constraints": [],
+    "notes": "Task: T-20260102-170833-e14e6873 - HIGH: GoT recovery doesn't handle partial writes"
+  },
+  "intent": "HIGH: GoT recovery doesn't handle partial writes",
+  "strategy_used": null,
+  "actions": [],
+  "outcome": {
+    "outcome_type": "SUCCESS",
+    "description": "Task T-20260102-170833-e14e6873 completed successfully",
+    "achieved": [
+      "HIGH: GoT recovery doesn't handle partial writes"
+    ],
+    "not_achieved": [],
+    "unexpected": [],
+    "quality_score": 1.0,
+    "efficiency_score": 0.6,
+    "error_type": null,
+    "error_message": null
+  },
+  "what_worked": [
+    "Added MIN_ENTITY_FILE_SIZE check (20 bytes) in verify_store_integrity(). Files smaller than this are flagged as partial/truncated writes. Combined with existing JSONDecodeError and KeyError handling, this catches all forms of incomplete writes."
+  ],
+  "what_didnt_work": [],
+  "would_do_differently": [],
+  "related_experiences": [],
+  "supersedes": null,
+  "tags": [
+    "success",
+    "general",
+    "task:T-20260102-170833-e14e6873",
+    "debugging",
+    "priority:high",
+    "category:bugfix"
+  ]
+}

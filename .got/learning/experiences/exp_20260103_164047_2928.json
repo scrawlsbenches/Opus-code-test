@@ -1,0 +1,46 @@
+{
+  "id": "exp_20260103_164047_2928",
+  "experience_type": "TASK_EXECUTION",
+  "timestamp": "2026-01-03T16:40:47.428085",
+  "context": {
+    "goal_type": "general",
+    "goal_complexity": "complex",
+    "domain": "general",
+    "available_tools": [],
+    "available_agents": 1,
+    "prior_failures": 0,
+    "time_pressure": "none",
+    "constraints": [],
+    "notes": "Task: T-20260103-083020-b5853c69 - Investigate and fix ML metrics collection"
+  },
+  "intent": "Investigate and fix ML metrics collection",
+  "strategy_used": null,
+  "actions": [],
+  "outcome": {
+    "outcome_type": "SUCCESS",
+    "description": "Task T-20260103-083020-b5853c69 completed successfully",
+    "achieved": [
+      "Investigate and fix ML metrics collection"
+    ],
+    "not_achieved": [],
+    "unexpected": [],
+    "quality_score": 1.0,
+    "efficiency_score": 1.0,
+    "error_type": null,
+    "error_message": null
+  },
+  "what_worked": [
+    "Completed investigation of ML metrics collection:\n1. Fixed test isolation bug in temp_experiments_dir fixture (was polluting metrics.jsonl)\n2. Cleaned 25 polluted entries from metrics.jsonl\n3. Identified root cause of 99.6% data loss: hooks in project settings.local.json weren't running because global settings.json was overriding\n4. Fixed by adding project-specific hooks to global ~/.claude/settings.json with cwd:Opus-code-test matcher\n5. Updated CLAUDE.md with comprehensive ML documentation\n\nKey learnings:\n- Claude Code hooks need to be in global settings.json for reliability\n- Project-level settings.local.json may be ignored when global hooks exist\n- Test fixtures must patch ALL relevant module constants, not just the direct ones"
+  ],
+  "what_didnt_work": [],
+  "would_do_differently": [],
+  "related_experiences": [],
+  "supersedes": null,
+  "tags": [
+    "success",
+    "task:T-20260103-083020-b5853c69",
+    "general",
+    "category:research",
+    "priority:high"
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "id": "exp_20260103_164047_9664",
+  "experience_type": "TASK_EXECUTION",
+  "timestamp": "2026-01-03T16:40:47.435284",
+  "context": {
+    "goal_type": "testing",
+    "goal_complexity": "complex",
+    "domain": "general",
+    "available_tools": [],
+    "available_agents": 1,
+    "prior_failures": 0,
+    "time_pressure": "none",
+    "constraints": [],
+    "notes": "Task: T-20260102-232057-831c14aa - Add crash recovery behavioral tests"
+  },
+  "intent": "Add crash recovery behavioral tests",
+  "strategy_used": null,
+  "actions": [],
+  "outcome": {
+    "outcome_type": "SUCCESS",
+    "description": "Task T-20260102-232057-831c14aa completed successfully",
+    "achieved": [
+      "Add crash recovery behavioral tests"
+    ],
+    "not_achieved": [],
+    "unexpected": [],
+    "quality_score": 1.0,
+    "efficiency_score": 1.0,
+    "error_type": null,
+    "error_message": null
+  },
+  "what_worked": [
+    "Added 9 crash recovery behavioral tests covering: WAL-first durability, partial/truncated write detection, incomplete transaction rollback, and delete history recovery from pending files."
+  ],
+  "what_didnt_work": [],
+  "would_do_differently": [],
+  "related_experiences": [],
+  "supersedes": null,
+  "tags": [
+    "success",
+    "testing",
+    "general",
+    "task:T-20260102-232057-831c14aa",
+    "priority:high",
+    "category:test"
+  ]
+}

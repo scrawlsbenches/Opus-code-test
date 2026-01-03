@@ -1,0 +1,47 @@
+{
+  "id": "exp_20260103_164047_0896",
+  "experience_type": "TASK_EXECUTION",
+  "timestamp": "2026-01-03T16:40:47.422290",
+  "context": {
+    "goal_type": "testing",
+    "goal_complexity": "moderate",
+    "domain": "general",
+    "available_tools": [],
+    "available_agents": 1,
+    "prior_failures": 0,
+    "time_pressure": "none",
+    "constraints": [],
+    "notes": "Task: T-20260103-163634-0ad34646 - Another test task"
+  },
+  "intent": "Another test task",
+  "strategy_used": null,
+  "actions": [],
+  "outcome": {
+    "outcome_type": "SUCCESS",
+    "description": "Task T-20260103-163634-0ad34646 completed successfully",
+    "achieved": [
+      "Another test task"
+    ],
+    "not_achieved": [],
+    "unexpected": [],
+    "quality_score": 1.0,
+    "efficiency_score": 1.0,
+    "error_type": null,
+    "error_message": null
+  },
+  "what_worked": [
+    "Testing skip learning flag"
+  ],
+  "what_didnt_work": [],
+  "would_do_differently": [],
+  "related_experiences": [],
+  "supersedes": null,
+  "tags": [
+    "priority:medium",
+    "success",
+    "testing",
+    "general",
+    "task:T-20260103-163634-0ad34646",
+    "category:test"
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "id": "exp_20260103_164047_8832",
+  "experience_type": "TASK_EXECUTION",
+  "timestamp": "2026-01-03T16:40:47.430573",
+  "context": {
+    "goal_type": "debugging",
+    "goal_complexity": "complex",
+    "domain": "general",
+    "available_tools": [],
+    "available_agents": 1,
+    "prior_failures": 0,
+    "time_pressure": "none",
+    "constraints": [],
+    "notes": "Task: T-20260102-170750-936c478c - CRITICAL: CDG history saved before write succeeds"
+  },
+  "intent": "CRITICAL: CDG history saved before write succeeds",
+  "strategy_used": null,
+  "actions": [],
+  "outcome": {
+    "outcome_type": "SUCCESS",
+    "description": "Task T-20260102-170750-936c478c completed successfully",
+    "achieved": [
+      "CRITICAL: CDG history saved before write succeeds"
+    ],
+    "not_achieved": [],
+    "unexpected": [],
+    "quality_score": 1.0,
+    "efficiency_score": 0.4,
+    "error_type": null,
+    "error_message": null
+  },
+  "what_worked": [
+    "py now uses crash-safe pending history pattern: history is written to pending file first, only finalized AFTER successful entity write"
+  ],
+  "what_didnt_work": [],
+  "would_do_differently": [],
+  "related_experiences": [],
+  "supersedes": null,
+  "tags": [
+    "success",
+    "priority:critical",
+    "task:T-20260102-170750-936c478c",
+    "general",
+    "debugging",
+    "category:bugfix"
+  ]
+}

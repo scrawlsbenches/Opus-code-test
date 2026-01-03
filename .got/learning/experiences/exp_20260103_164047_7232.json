@@ -1,0 +1,48 @@
+{
+  "id": "exp_20260103_164047_7232",
+  "experience_type": "TASK_EXECUTION",
+  "timestamp": "2026-01-03T16:40:47.426602",
+  "context": {
+    "goal_type": "testing",
+    "goal_complexity": "complex",
+    "domain": "general",
+    "available_tools": [],
+    "available_agents": 1,
+    "prior_failures": 0,
+    "time_pressure": "none",
+    "constraints": [],
+    "notes": "Task: T-20260103-084232-6c64eef4 - Verify ML metrics collection fix works end-to-end"
+  },
+  "intent": "Verify ML metrics collection fix works end-to-end",
+  "strategy_used": null,
+  "actions": [],
+  "outcome": {
+    "outcome_type": "SUCCESS",
+    "description": "Task T-20260103-084232-6c64eef4 completed successfully",
+    "achieved": [
+      "Verify ML metrics collection fix works end-to-end"
+    ],
+    "not_achieved": [],
+    "unexpected": [],
+    "quality_score": 1.0,
+    "efficiency_score": 1.0,
+    "error_type": null,
+    "error_message": null
+  },
+  "what_worked": [
+    "## Verification Results\n\n### \u2705 Merge Status\nBranch claude/investigate-metrics-collection-VQKg4 was successfully merged via PR #244 (commit 74a5adcf)",
+    "jsonl still has exactly 10 lines (no pollution)\n- Fixture patching for temp_experiments_dir is working correctly\n\n## What Worked\n- Test isolation fix is effective\n- Documentation is clear\n- Handoff instructions were comprehensive\n\n## What Needs Attention\n- Hook configuration still has global/local conflict\n- Sessions not being captured (last entry Dec 27)\n- May need manual hook configuration in global settings"
+  ],
+  "what_didnt_work": [],
+  "would_do_differently": [],
+  "related_experiences": [],
+  "supersedes": null,
+  "tags": [
+    "task:T-20260103-084232-6c64eef4",
+    "success",
+    "testing",
+    "general",
+    "priority:high",
+    "category:test"
+  ]
+}

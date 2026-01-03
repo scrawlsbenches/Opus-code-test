@@ -1,0 +1,47 @@
+{
+  "id": "exp_20260103_164047_8256",
+  "experience_type": "TASK_EXECUTION",
+  "timestamp": "2026-01-03T16:40:47.443762",
+  "context": {
+    "goal_type": "debugging",
+    "goal_complexity": "complex",
+    "domain": "general",
+    "available_tools": [],
+    "available_agents": 1,
+    "prior_failures": 0,
+    "time_pressure": "none",
+    "constraints": [],
+    "notes": "Task: T-20260102-232018-620564ef - Fix WAL commit order: log COMMIT before applying writes"
+  },
+  "intent": "Fix WAL commit order: log COMMIT before applying writes",
+  "strategy_used": null,
+  "actions": [],
+  "outcome": {
+    "outcome_type": "SUCCESS",
+    "description": "Task T-20260102-232018-620564ef completed successfully",
+    "achieved": [
+      "Fix WAL commit order: log COMMIT before applying writes"
+    ],
+    "not_achieved": [],
+    "unexpected": [],
+    "quality_score": 1.0,
+    "efficiency_score": 1.0,
+    "error_type": null,
+    "error_message": null
+  },
+  "what_worked": [
+    "Fixed WAL commit order - log TX_COMMIT before applying writes, fsync before modifying entities. This ensures WAL is source of truth and entities can be recovered."
+  ],
+  "what_didnt_work": [],
+  "would_do_differently": [],
+  "related_experiences": [],
+  "supersedes": null,
+  "tags": [
+    "success",
+    "task:T-20260102-232018-620564ef",
+    "priority:critical",
+    "general",
+    "debugging",
+    "category:bugfix"
+  ]
+}

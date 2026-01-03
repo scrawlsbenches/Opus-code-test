@@ -1,0 +1,51 @@
+{
+  "id": "exp_20260103_164047_4272",
+  "experience_type": "TASK_EXECUTION",
+  "timestamp": "2026-01-03T16:40:47.429242",
+  "context": {
+    "goal_type": "debugging",
+    "goal_complexity": "complex",
+    "domain": "general",
+    "available_tools": [],
+    "available_agents": 1,
+    "prior_failures": 0,
+    "time_pressure": "none",
+    "constraints": [],
+    "notes": "Task: T-20260102-170726-202ca449 - CRITICAL: Fix index-store inconsistency on index save failure"
+  },
+  "intent": "CRITICAL: Fix index-store inconsistency on index save failure",
+  "strategy_used": null,
+  "actions": [],
+  "outcome": {
+    "outcome_type": "SUCCESS",
+    "description": "Task T-20260102-170726-202ca449 completed successfully",
+    "achieved": [
+      "CRITICAL: Fix index-store inconsistency on index save failure"
+    ],
+    "not_achieved": [],
+    "unexpected": [],
+    "quality_score": 1.0,
+    "efficiency_score": 0.4,
+    "error_type": null,
+    "error_message": null
+  },
+  "what_worked": [
+    "## What worked\n- Clear analysis of the bug: _dirty flag cleared even on save failure\n- Minimal, focused fix: return bool from save methods, only clear dirty on success\n- Good test coverage with 9 new tests for save failure scenarios\n\n## What didn't work\n- Initial test for permission error failed in containerized environment (root user)\n- Had to switch to mock-based testing for IOError simulation\n\n## Root cause\n_atomic_write_json() silently swallowed IOError and _save_indexes() unconditionally\nset _dirty = False"
+  ],
+  "what_didnt_work": [
+    "This prevented retry of failed saves and left index stale"
+  ],
+  "would_do_differently": [
+    "## Would have helped\n- The existing self-healing mechanism (_rebuild_indexes on lazy init) already provides\n  eventual consistency on restart, but the fix enables in-session retry without restart"
+  ],
+  "related_experiences": [],
+  "supersedes": null,
+  "tags": [
+    "success",
+    "task:T-20260102-170726-202ca449",
+    "priority:critical",
+    "general",
+    "debugging",
+    "category:bugfix"
+  ]
+}
