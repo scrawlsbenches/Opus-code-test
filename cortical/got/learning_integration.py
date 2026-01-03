@@ -523,14 +523,76 @@ class GoTLearningBridge:
                 notes=f"Planning: {task_title}"
             )
 
-            # Get guidance from learning cycle
+            # Get guidance from learning cycle (context-based)
             guidance = self.cycle.get_guidance(context, include_experiences=True)
+
+            # ================================================================
+            # SEMANTIC INTENT MATCHING
+            # ================================================================
+            # Enhance results with intent-based semantic matching.
+            # This finds experiences that are semantically similar to the task,
+            # even if their Context categories differ.
+            #
+            # Example: "Fix JWT token bug" finds "Implement JWT authentication"
+            # even though one is bugfix and one is feature.
+
+            # Find experiences by semantic intent similarity
+            semantic_matches = self.cycle.find_by_intent(
+                intent=task_title,
+                min_similarity=0.15,  # Low threshold to catch related tasks
+                limit=5
+            )
+
+            # Separate into successes and failures
+            semantic_successes = [
+                exp for exp in semantic_matches
+                if exp.outcome and exp.outcome.was_successful()
+            ]
+            semantic_failures = [
+                exp for exp in semantic_matches
+                if exp.outcome and not exp.outcome.was_successful()
+            ]
+
+            # Merge semantic results with context-based results (avoid duplicates)
+            existing_success_ids = {exp.id for exp in guidance['relevant_successes']}
+            existing_failure_ids = {exp.id for exp in guidance['relevant_failures']}
+
+            for exp in semantic_successes:
+                if exp.id not in existing_success_ids:
+                    guidance['relevant_successes'].append(exp)
+                    existing_success_ids.add(exp.id)
+
+            for exp in semantic_failures:
+                if exp.id not in existing_failure_ids:
+                    guidance['relevant_failures'].append(exp)
+                    existing_failure_ids.add(exp.id)
+
+            # Add semantic recommendations from similar successful experiences
+            for exp in semantic_successes[:3]:  # Top 3 semantic matches
+                if exp.what_worked:
+                    for insight in exp.what_worked:
+                        recommendation = f"From similar task '{exp.intent}': {insight}"
+                        if recommendation not in guidance['recommendations']:
+                            guidance['recommendations'].append(recommendation)
+
+            # Add semantic warnings from similar failed experiences
+            for exp in semantic_failures[:2]:  # Top 2 failures
+                if exp.what_didnt_work:
+                    for insight in exp.what_didnt_work:
+                        warning = f"Caution (similar task failed): {insight}"
+                        if warning not in guidance['warnings']:
+                            guidance['warnings'].append(warning)
+                if exp.outcome and exp.outcome.error_message:
+                    warning = f"Similar task '{exp.intent}' failed with: {exp.outcome.error_message}"
+                    if warning not in guidance['warnings']:
+                        guidance['warnings'].append(warning)
 
             logger.info(
                 f"Retrieved guidance for '{task_title}': "
                 f"{len(guidance['lessons'])} lessons, "
                 f"{len(guidance['relevant_successes'])} successes, "
-                f"{len(guidance['relevant_failures'])} failures"
+                f"{len(guidance['relevant_failures'])} failures, "
+                f"{len(semantic_matches)} semantic matches"
             )
 
             return guidance
