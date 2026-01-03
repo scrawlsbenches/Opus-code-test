@@ -9,9 +9,8 @@ Usage:
     python scripts/got_utils.py task create "Fix bug" --priority high
     python scripts/got_utils.py task list --status pending
     python scripts/got_utils.py sprint status
-    python scripts/got_utils.py migrate --from-files
 
-See docs/got-cli-spec.md for complete command reference.
+See CLAUDE.md for complete command reference.
 """
 
 import argparse
@@ -213,9 +212,6 @@ MUTATING_COMMANDS = {
     "knowledge": {"create", "append", "link", "import", "finalize"},
     "kt": {"create", "append", "link", "import", "finalize"},
     "batch": True,  # Always mutating (creates multiple entities)
-    "compact": True,  # Always mutating
-    "migrate": True,
-    "migrate-events": True,
 }
 
 # Global auto-committer instance (initialized lazily)

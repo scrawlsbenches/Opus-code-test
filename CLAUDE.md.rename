@@ -517,7 +517,7 @@ jobs
 If you're continuing from a previous session:
 
 1. **Check for handoffs**: `python scripts/got_utils.py kt list --status published | head -5`
-2. **Check active tasks**: `python scripts/got_utils.py task list --status active`
+2. **Check active tasks**: `python scripts/got_utils.py task list --status in_progress`
 3. **Read recent commits**: `git log --oneline -10`
 4. **Look for draft KTs**: `python scripts/got_utils.py kt list --status draft`
 
@@ -1926,7 +1926,7 @@ alias got='python scripts/got_utils.py'
 python scripts/got_utils.py task create "Title" --priority high
 python scripts/got_utils.py task start <task_id>
 python scripts/got_utils.py task complete <task_id>
-python scripts/got_utils.py task list --status active
+python scripts/got_utils.py task list --status in_progress
 
 # Sprint Management
 python scripts/got_utils.py sprint create "Sprint Name"
@@ -1939,7 +1939,7 @@ python scripts/got_utils.py kt list --status draft
 python scripts/got_utils.py kt show <kt_id>
 
 # Decisions with Rationale
-python scripts/got_utils.py decision create "Use BM25" --rationale "Better for short queries"
+python scripts/got_utils.py decision log "Use BM25" --rationale "Better for short queries"
 
 # Query the Graph
 python scripts/got_utils.py query "status=pending AND priority=high"

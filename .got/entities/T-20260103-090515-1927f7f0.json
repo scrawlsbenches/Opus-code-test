@@ -1,0 +1,19 @@
+{
+  "_checksum": "6dfa911cc5a8dde6",
+  "_written_at": "2026-01-03T09:05:15.489645+00:00",
+  "data": {
+    "created_at": "2026-01-03T09:05:15.478101+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260103-090515-1927f7f0",
+    "metadata": {},
+    "modified_at": "2026-01-03T09:05:15.489566+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Test task",
+    "version": 2
+  }
+}
