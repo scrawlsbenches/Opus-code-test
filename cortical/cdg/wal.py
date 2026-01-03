@@ -215,24 +215,39 @@ class CDGWALManager:
         """
         return self.log(tx_id, 'TX_BEGIN', {'snapshot': snapshot_version})
 
-    def log_write(self, tx_id: str, entity_id: str, old_version: int, new_version: int) -> int:
+    def log_write(
+        self,
+        tx_id: str,
+        entity_id: str,
+        old_version: int,
+        new_version: int,
+        entity_data: Optional[Dict[str, Any]] = None
+    ) -> int:
         """
         Log a write operation (entity_id, old version → new version).
+
+        When entity_data is provided, the full entity state is stored in the WAL
+        entry. This enables recovery to reconstruct entities if a crash occurs
+        after TX_COMMIT but before entity files are written to disk.
 
         Args:
             tx_id: Transaction ID
             entity_id: Entity being written
             old_version: Version before write
             new_version: Version after write
+            entity_data: Optional full entity state for crash recovery reconstruction
 
         Returns:
             Sequence number of the entry
         """
-        return self.log(tx_id, 'WRITE', {
+        payload = {
             'entity_id': entity_id,
             'old_version': old_version,
             'new_version': new_version
-        })
+        }
+        if entity_data is not None:
+            payload['entity_data'] = entity_data
+        return self.log(tx_id, 'WRITE', payload)
 
     def log_tx_prepare(self, tx_id: str) -> int:
         """

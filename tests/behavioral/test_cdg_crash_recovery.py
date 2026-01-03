@@ -468,3 +468,343 @@ class TestHistoryCrashRecoveryWithDeletes:
         loaded = store2.read("E-nodelete-001")
         assert loaded is not None
         assert loaded.name == "still-here"
+
+
+class TestEntityReconstructionFromWAL:
+    """
+    As a system administrator,
+    I want entities to be reconstructed from WAL after committed transactions,
+    So that data is recovered even if crash occurred before entity files were written.
+
+    This tests the new WAL entity rollback feature where full entity state
+    is stored in WAL WRITE entries and can be used to reconstruct missing
+    or corrupted entities.
+    """
+
+    def test_scenario_missing_entity_reconstructed_from_wal(
+        self, crash_test_dir, crash_config
+    ):
+        """
+        Scenario: Missing entity is reconstructed from WAL data
+
+        Given a transaction committed in WAL with entity_data
+        But the entity file is missing (crash before write)
+        When recovery runs
+        Then the entity is reconstructed from WAL
+        Because WAL contains full entity state for recovery.
+        """
+        # Given a committed transaction in WAL with entity_data
+        wal_dir = crash_test_dir / "wal"
+        wal_dir.mkdir(parents=True, exist_ok=True)
+        wal_file = wal_dir / "current.wal"
+
+        # Entity data that will be stored in WAL
+        entity_data = {
+            "id": "E-reconstruct-001",
+            "entity_type": "simple",
+            "name": "reconstructed_entity",
+            "version": 1,
+            "created_at": "2025-01-01T00:00:00+00:00",
+            "modified_at": "2025-01-01T00:00:00+00:00",
+        }
+
+        entries = [
+            {"seq": 1, "ts": "2025-01-01T00:00:00Z", "tx": "TX-reconstruct-001",
+             "op": "TX_BEGIN", "data": {"snapshot": 0}},
+            {"seq": 2, "ts": "2025-01-01T00:00:01Z", "tx": "TX-reconstruct-001",
+             "op": "WRITE", "data": {
+                 "entity_id": "E-reconstruct-001",
+                 "old_version": 0,
+                 "new_version": 1,
+                 "entity_data": entity_data  # Full entity state in WAL
+             }},
+            {"seq": 3, "ts": "2025-01-01T00:00:02Z", "tx": "TX-reconstruct-001",
+             "op": "TX_COMMIT", "data": {"version": 1}},
+        ]
+
+        # Add checksums
+        for entry in entries:
+            entry_copy = dict(entry)
+            entry["checksum"] = compute_checksum(entry_copy)
+
+        with open(wal_file, 'w') as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + '\n')
+
+        # Create sequence file
+        seq_file = wal_dir / "_sequence.json"
+        with open(seq_file, 'w') as f:
+            json.dump({"seq": 3}, f)
+
+        # Entity file is MISSING (crash before write)
+        entity_file = crash_test_dir / "E-reconstruct-001.json"
+        assert not entity_file.exists()
+
+        # When recovery runs
+        recovery = CDGRecoveryManager(crash_test_dir, crash_config, simple_entity_factory)
+        result = recovery.recover()
+
+        # Then entity is reconstructed from WAL
+        assert result.success
+        assert "E-reconstruct-001" in result.reconstructed_entities
+        assert entity_file.exists()
+
+        # And the entity can be read correctly
+        store = CDGStore(crash_test_dir, crash_config, simple_entity_factory)
+        loaded = store.read("E-reconstruct-001")
+        assert loaded is not None
+        assert loaded.id == "E-reconstruct-001"
+
+    def test_scenario_corrupted_entity_reconstructed_from_wal(
+        self, crash_test_dir, crash_config
+    ):
+        """
+        Scenario: Corrupted entity is reconstructed from WAL data
+
+        Given a transaction committed in WAL with entity_data
+        And the entity file exists but is corrupted
+        When recovery runs
+        Then the entity is reconstructed from WAL
+        Because corrupted entity should be replaced with valid WAL data.
+        """
+        # Given a committed transaction in WAL with entity_data
+        wal_dir = crash_test_dir / "wal"
+        wal_dir.mkdir(parents=True, exist_ok=True)
+        wal_file = wal_dir / "current.wal"
+
+        entity_data = {
+            "id": "E-corrupted-wal-001",
+            "entity_type": "simple",
+            "name": "should_be_recovered",
+            "version": 1,
+            "created_at": "2025-01-01T00:00:00+00:00",
+            "modified_at": "2025-01-01T00:00:00+00:00",
+        }
+
+        entries = [
+            {"seq": 1, "ts": "2025-01-01T00:00:00Z", "tx": "TX-corrupt-001",
+             "op": "TX_BEGIN", "data": {"snapshot": 0}},
+            {"seq": 2, "ts": "2025-01-01T00:00:01Z", "tx": "TX-corrupt-001",
+             "op": "WRITE", "data": {
+                 "entity_id": "E-corrupted-wal-001",
+                 "old_version": 0,
+                 "new_version": 1,
+                 "entity_data": entity_data
+             }},
+            {"seq": 3, "ts": "2025-01-01T00:00:02Z", "tx": "TX-corrupt-001",
+             "op": "TX_COMMIT", "data": {"version": 1}},
+        ]
+
+        for entry in entries:
+            entry_copy = dict(entry)
+            entry["checksum"] = compute_checksum(entry_copy)
+
+        with open(wal_file, 'w') as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + '\n')
+
+        seq_file = wal_dir / "_sequence.json"
+        with open(seq_file, 'w') as f:
+            json.dump({"seq": 3}, f)
+
+        # Entity file exists but is corrupted (truncated)
+        crash_test_dir.mkdir(parents=True, exist_ok=True)
+        entity_file = crash_test_dir / "E-corrupted-wal-001.json"
+        entity_file.write_text('{"_checksum": "wrong", "data": {"trun')
+
+        # When recovery runs
+        recovery = CDGRecoveryManager(crash_test_dir, crash_config, simple_entity_factory)
+        result = recovery.recover()
+
+        # Then entity is reconstructed from WAL
+        assert result.success
+        assert "E-corrupted-wal-001" in result.reconstructed_entities
+
+        # And the entity can be read correctly
+        store = CDGStore(crash_test_dir, crash_config, simple_entity_factory)
+        loaded = store.read("E-corrupted-wal-001")
+        assert loaded is not None
+        assert loaded.id == "E-corrupted-wal-001"
+
+    def test_scenario_multiple_entities_reconstructed_from_wal(
+        self, crash_test_dir, crash_config
+    ):
+        """
+        Scenario: Multiple missing entities are reconstructed from WAL
+
+        Given a transaction with multiple writes committed in WAL
+        And multiple entity files are missing
+        When recovery runs
+        Then all missing entities are reconstructed
+        Because WAL recovery handles batch writes correctly.
+        """
+        # Given a committed transaction with multiple writes
+        wal_dir = crash_test_dir / "wal"
+        wal_dir.mkdir(parents=True, exist_ok=True)
+        wal_file = wal_dir / "current.wal"
+
+        entity1_data = {
+            "id": "E-multi-001",
+            "entity_type": "simple",
+            "name": "first_entity",
+            "version": 1,
+            "created_at": "2025-01-01T00:00:00+00:00",
+            "modified_at": "2025-01-01T00:00:00+00:00",
+        }
+
+        entity2_data = {
+            "id": "E-multi-002",
+            "entity_type": "simple",
+            "name": "second_entity",
+            "version": 1,
+            "created_at": "2025-01-01T00:00:00+00:00",
+            "modified_at": "2025-01-01T00:00:00+00:00",
+        }
+
+        entries = [
+            {"seq": 1, "ts": "2025-01-01T00:00:00Z", "tx": "TX-multi-001",
+             "op": "TX_BEGIN", "data": {"snapshot": 0}},
+            {"seq": 2, "ts": "2025-01-01T00:00:01Z", "tx": "TX-multi-001",
+             "op": "WRITE", "data": {
+                 "entity_id": "E-multi-001",
+                 "old_version": 0,
+                 "new_version": 1,
+                 "entity_data": entity1_data
+             }},
+            {"seq": 3, "ts": "2025-01-01T00:00:02Z", "tx": "TX-multi-001",
+             "op": "WRITE", "data": {
+                 "entity_id": "E-multi-002",
+                 "old_version": 0,
+                 "new_version": 1,
+                 "entity_data": entity2_data
+             }},
+            {"seq": 4, "ts": "2025-01-01T00:00:03Z", "tx": "TX-multi-001",
+             "op": "TX_COMMIT", "data": {"version": 1}},
+        ]
+
+        for entry in entries:
+            entry_copy = dict(entry)
+            entry["checksum"] = compute_checksum(entry_copy)
+
+        with open(wal_file, 'w') as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + '\n')
+
+        seq_file = wal_dir / "_sequence.json"
+        with open(seq_file, 'w') as f:
+            json.dump({"seq": 4}, f)
+
+        # Both entity files are missing
+        crash_test_dir.mkdir(parents=True, exist_ok=True)
+        assert not (crash_test_dir / "E-multi-001.json").exists()
+        assert not (crash_test_dir / "E-multi-002.json").exists()
+
+        # When recovery runs
+        recovery = CDGRecoveryManager(crash_test_dir, crash_config, simple_entity_factory)
+        result = recovery.recover()
+
+        # Then both entities are reconstructed
+        assert result.success
+        assert "E-multi-001" in result.reconstructed_entities
+        assert "E-multi-002" in result.reconstructed_entities
+
+        # And both entities can be read correctly
+        store = CDGStore(crash_test_dir, crash_config, simple_entity_factory)
+        loaded1 = store.read("E-multi-001")
+        loaded2 = store.read("E-multi-002")
+        assert loaded1 is not None and loaded1.id == "E-multi-001"
+        assert loaded2 is not None and loaded2.id == "E-multi-002"
+
+    def test_scenario_uncommitted_tx_entity_not_reconstructed(
+        self, crash_test_dir, crash_config
+    ):
+        """
+        Scenario: Entity from uncommitted transaction is not reconstructed
+
+        Given a transaction with entity_data in WAL
+        But the transaction was never committed
+        When recovery runs
+        Then the entity is NOT reconstructed
+        Because only committed transactions should have their entities restored.
+        """
+        # Given an uncommitted transaction in WAL with entity_data
+        wal_dir = crash_test_dir / "wal"
+        wal_dir.mkdir(parents=True, exist_ok=True)
+        wal_file = wal_dir / "current.wal"
+
+        entity_data = {
+            "id": "E-uncommitted-001",
+            "entity_type": "simple",
+            "name": "should_not_exist",
+            "version": 1,
+            "created_at": "2025-01-01T00:00:00+00:00",
+            "modified_at": "2025-01-01T00:00:00+00:00",
+        }
+
+        entries = [
+            {"seq": 1, "ts": "2025-01-01T00:00:00Z", "tx": "TX-nocommit-001",
+             "op": "TX_BEGIN", "data": {"snapshot": 0}},
+            {"seq": 2, "ts": "2025-01-01T00:00:01Z", "tx": "TX-nocommit-001",
+             "op": "WRITE", "data": {
+                 "entity_id": "E-uncommitted-001",
+                 "old_version": 0,
+                 "new_version": 1,
+                 "entity_data": entity_data
+             }},
+            # No TX_COMMIT - transaction never committed
+        ]
+
+        for entry in entries:
+            entry_copy = dict(entry)
+            entry["checksum"] = compute_checksum(entry_copy)
+
+        with open(wal_file, 'w') as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + '\n')
+
+        seq_file = wal_dir / "_sequence.json"
+        with open(seq_file, 'w') as f:
+            json.dump({"seq": 2}, f)
+
+        # When recovery runs
+        recovery = CDGRecoveryManager(crash_test_dir, crash_config, simple_entity_factory)
+        result = recovery.recover()
+
+        # Then entity is NOT reconstructed (tx was rolled back)
+        assert "E-uncommitted-001" not in result.reconstructed_entities
+        assert not (crash_test_dir / "E-uncommitted-001.json").exists()
+
+    def test_scenario_entity_reconstruction_via_transaction_manager(
+        self, crash_test_dir, crash_config
+    ):
+        """
+        Scenario: End-to-end test of entity data in WAL via transaction manager
+
+        Given a transaction committed through CDGTransactionManager
+        When I check the WAL
+        Then entity_data is present in WRITE entries
+        Because transaction_manager now stores full entity state in WAL.
+        """
+        # Given a transaction committed through transaction manager
+        tm = CDGTransactionManager(crash_test_dir, crash_config, simple_entity_factory)
+        tx = tm.begin()
+
+        entity = SimpleEntity(id="E-e2e-001", name="end_to_end_test")
+        tm.write(tx, entity)
+
+        result = tm.commit(tx)
+        assert result.success
+
+        # When I check the WAL
+        wal_file = crash_test_dir / "wal" / "current.wal"
+        with open(wal_file, 'r') as f:
+            entries = [json.loads(line) for line in f if line.strip()]
+
+        # Then entity_data is present in WRITE entries
+        write_entries = [e for e in entries if e.get('op') == 'WRITE']
+        assert len(write_entries) == 1
+
+        write_data = write_entries[0].get('data', {})
+        assert 'entity_data' in write_data
+        assert write_data['entity_data']['id'] == "E-e2e-001"
+        assert write_data['entity_data']['name'] == "end_to_end_test"
