@@ -1,0 +1,20 @@
+{
+  "_checksum": "37e039af9ec3e73c",
+  "_written_at": "2026-01-03T16:41:45.126168+00:00",
+  "data": {
+    "created_at": "2026-01-03T16:41:30.629336+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260103-164130-bcab1ae7",
+    "metadata": {},
+    "modified_at": "2026-01-03T16:41:45.126115+00:00",
+    "priority": "high",
+    "properties": {
+      "blocked_reason": "Missing dependencies",
+      "category": "bugfix"
+    },
+    "status": "blocked",
+    "title": "Test blocked task",
+    "version": 3
+  }
+}

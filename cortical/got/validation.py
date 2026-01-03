@@ -102,6 +102,9 @@ ID_PATTERNS: Dict[str, re.Pattern] = {
 
     # Execution: EX-YYYYMMDD-HHMMSS-{8hex}
     "execution": re.compile(rf"^EX-{_TIMESTAMP_PATTERN}$"),
+
+    # Failure: F-YYYYMMDD-HHMMSS-{8hex}
+    "failure": re.compile(rf"^F-{_TIMESTAMP_PATTERN}$"),
 }
 
 # Legacy patterns to detect and reject (with helpful messages)
@@ -581,6 +584,7 @@ def infer_entity_type_from_id(entity_id: str) -> Optional[str]:
         ("S-", "sprint"),
         ("H-", "handoff"),
         ("G-", "goal"),
+        ("F-", "failure"),
     ]
 
     for prefix, entity_type in prefix_map:

@@ -1,0 +1,47 @@
+{
+  "id": "exp_20260103_164047_5680",
+  "experience_type": "TASK_EXECUTION",
+  "timestamp": "2026-01-03T16:40:47.439771",
+  "context": {
+    "goal_type": "debugging",
+    "goal_complexity": "complex",
+    "domain": "general",
+    "available_tools": [],
+    "available_agents": 1,
+    "prior_failures": 0,
+    "time_pressure": "none",
+    "constraints": [],
+    "notes": "Task: T-20260102-170712-c18ff247 - CRITICAL: Fix orphan recovery WAL corruption risk"
+  },
+  "intent": "CRITICAL: Fix orphan recovery WAL corruption risk",
+  "strategy_used": null,
+  "actions": [],
+  "outcome": {
+    "outcome_type": "SUCCESS",
+    "description": "Task T-20260102-170712-c18ff247 completed successfully",
+    "achieved": [
+      "CRITICAL: Fix orphan recovery WAL corruption risk"
+    ],
+    "not_achieved": [],
+    "unexpected": [],
+    "quality_score": 1.0,
+    "efficiency_score": 0.6,
+    "error_type": null,
+    "error_message": null
+  },
+  "what_worked": [
+    "Fixed orphan recovery - now uses proper WAL log() method with fsync and sequence numbers instead of raw file writes."
+  ],
+  "what_didnt_work": [],
+  "would_do_differently": [],
+  "related_experiences": [],
+  "supersedes": null,
+  "tags": [
+    "success",
+    "task:T-20260102-170712-c18ff247",
+    "priority:critical",
+    "general",
+    "debugging",
+    "category:bugfix"
+  ]
+}

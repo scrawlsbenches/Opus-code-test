@@ -1,0 +1,23 @@
+{
+  "_checksum": "3eacb0e55e6ce882",
+  "_written_at": "2026-01-03T16:41:17.031842+00:00",
+  "data": {
+    "created_at": "2026-01-03T16:41:05.625061+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260103-164105-4c1ddd7c",
+    "metadata": {
+      "completed_at": "2026-01-03T16:41:17.005973+00:00",
+      "updated_at": "2026-01-03T16:41:17.005980+00:00"
+    },
+    "modified_at": "2026-01-03T16:41:17.031780+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "test",
+      "retrospective": "Used TDD approach, tests passed on first try"
+    },
+    "status": "completed",
+    "title": "Test learning capture",
+    "version": 3
+  }
+}

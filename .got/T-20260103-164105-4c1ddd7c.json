@@ -1,0 +1,20 @@
+{
+  "_checksum": "2b67a8db4558b281",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-03T16:41:16.979414+00:00",
+  "data": {
+    "created_at": "2026-01-03T16:41:05.625061+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260103-164105-4c1ddd7c",
+    "metadata": {},
+    "modified_at": "2026-01-03T16:41:05.625069+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "test"
+    },
+    "status": "pending",
+    "title": "Test learning capture",
+    "version": 1
+  }
+}

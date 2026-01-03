@@ -1,0 +1,23 @@
+{
+  "_checksum": "f311b97bea3c76f2",
+  "_written_at": "2026-01-03T18:10:22.465758+00:00",
+  "data": {
+    "created_at": "2026-01-03T17:46:13.585768+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260103-174613-df7c7c81",
+    "metadata": {
+      "completed_at": "2026-01-03T18:10:22.448372+00:00",
+      "updated_at": "2026-01-03T18:10:22.448378+00:00"
+    },
+    "modified_at": "2026-01-03T18:10:22.465695+00:00",
+    "priority": "critical",
+    "properties": {
+      "category": "feature",
+      "retrospective": "Phase 0 cognitive framework complete. Used 6 parallel sub-agents to implement: tool invocation framework, QAPV integration, lesson retrieval, state checkpointing, behavioral tests, recovery hooks. 10,077 tests passing. Added ~1,600 lines to agents.py and 649 lines of integration tests."
+    },
+    "status": "completed",
+    "title": "Phase 0: Cognitive Framework Foundation",
+    "version": 3
+  }
+}

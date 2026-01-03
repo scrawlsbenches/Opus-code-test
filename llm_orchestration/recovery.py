@@ -28,11 +28,15 @@ from datetime import datetime, timedelta
 from enum import Enum, auto
 from typing import (
     Dict, List, Optional, Any, Set, Tuple,
-    Callable, Protocol
+    Callable, Protocol, TYPE_CHECKING
 )
 from pathlib import Path
 import hashlib
 import json
+import threading
+
+if TYPE_CHECKING:
+    from cortical.reasoning.prism_got import SynapticMemoryGraph
 
 
 # =============================================================================
@@ -390,6 +394,366 @@ class StateVerifier:
         return signals
 
 
+class SynapticConfusionDetector:
+    """
+    Detects confusion using synaptic memory patterns.
+
+    This detector bridges PRISM-GoT's synaptic memory with the recovery system,
+    using activation patterns to detect cognitive confusion states that may
+    not be obvious from action patterns alone.
+
+    Detection capabilities:
+    1. Activation loops: Same nodes repeatedly activated without progress
+    2. Contradictory activations: Opposing concepts both strongly activated
+    3. Stagnation: Activations fading without new learning
+    4. Oscillation: Rapid switching between competing thought patterns
+
+    Attributes:
+        memory_graph: The synaptic memory graph to analyze
+        loop_window: Number of recent activations to check for loops
+        contradiction_threshold: Confidence threshold for contradictions
+        stagnation_threshold: Minimum activation rate to avoid stagnation
+    """
+
+    def __init__(
+        self,
+        memory_graph: 'SynapticMemoryGraph',
+        loop_window: int = 5,
+        contradiction_threshold: float = 0.7,
+        stagnation_threshold: float = 0.1
+    ):
+        """
+        Initialize the synaptic confusion detector.
+
+        Args:
+            memory_graph: The synaptic memory graph to monitor
+            loop_window: Window size for detecting activation loops
+            contradiction_threshold: Threshold for detecting contradictions
+            stagnation_threshold: Minimum activation rate (per minute)
+        """
+        self._memory = memory_graph
+        self._loop_window = loop_window
+        self._contradiction_threshold = contradiction_threshold
+        self._stagnation_threshold = stagnation_threshold
+
+        # Track activation sequences for loop detection
+        self._activation_sequence: List[str] = []
+
+    @property
+    def signal_types(self) -> List[str]:
+        return [
+            'synaptic_loop',
+            'synaptic_contradiction',
+            'synaptic_stagnation',
+            'synaptic_oscillation'
+        ]
+
+    def detect(self, context: Optional[Dict[str, Any]] = None) -> List[ConfusionSignal]:
+        """
+        Detect confusion from synaptic patterns.
+
+        Args:
+            context: Optional context with additional information
+
+        Returns:
+            List of confusion signals detected
+        """
+        signals = []
+
+        # Check for activation loops
+        loop_signal = self._detect_activation_loop()
+        if loop_signal:
+            signals.append(loop_signal)
+
+        # Check for contradictory activations
+        contradiction_signals = self._detect_contradictory_activations()
+        signals.extend(contradiction_signals)
+
+        # Check for stagnation
+        stagnation_signal = self._detect_stagnation()
+        if stagnation_signal:
+            signals.append(stagnation_signal)
+
+        # Check for oscillation
+        oscillation_signal = self._detect_oscillation()
+        if oscillation_signal:
+            signals.append(oscillation_signal)
+
+        return signals
+
+    def record_activation(self, node_id: str):
+        """
+        Record a node activation for pattern tracking.
+
+        Args:
+            node_id: ID of the activated node
+        """
+        self._activation_sequence.append(node_id)
+
+        # Keep bounded history
+        max_history = self._loop_window * 10
+        if len(self._activation_sequence) > max_history:
+            self._activation_sequence = self._activation_sequence[-max_history:]
+
+    def _detect_activation_loop(self) -> Optional[ConfusionSignal]:
+        """
+        Detect circular activation patterns (loops).
+
+        Looks for repeated subsequences in recent activations,
+        which indicate the reasoning is going in circles.
+
+        Returns:
+            ConfusionSignal if loop detected, None otherwise
+        """
+        if len(self._activation_sequence) < self._loop_window * 2:
+            return None
+
+        recent = self._activation_sequence[-self._loop_window * 2:]
+
+        # Look for repeating patterns
+        for pattern_length in range(2, self._loop_window + 1):
+            for start in range(len(recent) - pattern_length * 2 + 1):
+                pattern = recent[start:start + pattern_length]
+                next_segment = recent[start + pattern_length:start + pattern_length * 2]
+
+                if pattern == next_segment:
+                    # Found a repeating pattern
+                    node_contents = []
+                    for node_id in pattern[:3]:  # Show first 3
+                        if node_id in self._memory.nodes:
+                            node_contents.append(
+                                self._memory.nodes[node_id].content[:50]
+                            )
+
+                    return ConfusionSignal(
+                        signal_type='synaptic_loop',
+                        description=f'Activation loop detected: {pattern_length}-node pattern repeating',
+                        evidence=[
+                            f'Pattern: {pattern}',
+                            f'Repeated {2} times in recent history',
+                            f'Nodes: {node_contents}'
+                        ],
+                        confidence=min(0.9, 0.3 * pattern_length),
+                        source='SynapticConfusionDetector'
+                    )
+
+        return None
+
+    def _detect_contradictory_activations(self) -> List[ConfusionSignal]:
+        """
+        Detect contradictory activations (opposing concepts both strong).
+
+        Looks for nodes with contradictory content that are both
+        recently and strongly activated, indicating conflicting reasoning.
+
+        Returns:
+            List of contradiction signals
+        """
+        signals = []
+
+        # Get recently active nodes (within last hour)
+        cutoff = datetime.now() - timedelta(hours=1)
+        active_nodes = []
+
+        for node_id, trace in self._memory.activation_traces.items():
+            if not trace.history:
+                continue
+
+            last_activation = datetime.fromisoformat(trace.history[-1]['timestamp'])
+            if last_activation >= cutoff:
+                activation_freq = trace.get_frequency(window_minutes=60)
+                if activation_freq > 0:
+                    active_nodes.append((node_id, activation_freq))
+
+        # Sort by frequency
+        active_nodes.sort(key=lambda x: x[1], reverse=True)
+
+        # Check for contradictions among top active nodes
+        for i, (node_id_1, freq_1) in enumerate(active_nodes[:10]):
+            for node_id_2, freq_2 in active_nodes[i+1:10]:
+                # Check if these nodes are marked as contradictory
+                contradiction_strength = self._check_contradiction(node_id_1, node_id_2)
+
+                if contradiction_strength >= self._contradiction_threshold:
+                    node_1 = self._memory.nodes.get(node_id_1)
+                    node_2 = self._memory.nodes.get(node_id_2)
+
+                    signals.append(ConfusionSignal(
+                        signal_type='synaptic_contradiction',
+                        description='Contradictory thoughts both strongly activated',
+                        evidence=[
+                            f'Node 1: {node_1.content[:50] if node_1 else node_id_1}',
+                            f'Node 2: {node_2.content[:50] if node_2 else node_id_2}',
+                            f'Activation rates: {freq_1:.2f}, {freq_2:.2f} per min',
+                            f'Contradiction strength: {contradiction_strength:.2f}'
+                        ],
+                        confidence=min(0.9, contradiction_strength),
+                        source='SynapticConfusionDetector'
+                    ))
+
+        return signals
+
+    def _check_contradiction(self, node_id_1: str, node_id_2: str) -> float:
+        """
+        Check if two nodes represent contradictory concepts.
+
+        Uses simple heuristics:
+        1. Opposite node types (HYPOTHESIS vs REFUTATION)
+        2. Negation in content
+        3. Conflicting decisions
+
+        Args:
+            node_id_1: First node ID
+            node_id_2: Second node ID
+
+        Returns:
+            Contradiction strength (0.0 to 1.0)
+        """
+        node_1 = self._memory.nodes.get(node_id_1)
+        node_2 = self._memory.nodes.get(node_id_2)
+
+        if not node_1 or not node_2:
+            return 0.0
+
+        strength = 0.0
+
+        # Check node types (HYPOTHESIS vs EVIDENCE could indicate contradiction)
+        from cortical.reasoning.graph_of_thought import NodeType
+        if ((node_1.node_type == NodeType.HYPOTHESIS and
+             node_2.node_type == NodeType.EVIDENCE) or
+            (node_1.node_type == NodeType.EVIDENCE and
+             node_2.node_type == NodeType.HYPOTHESIS)):
+            # Check if one has negation - would indicate refuting evidence
+            content_1_lower = node_1.content.lower()
+            content_2_lower = node_2.content.lower()
+            negation_words = ['not', 'no', 'never', 'dont', "don't", 'cannot', 'cant', "can't", 'false', 'wrong']
+            has_neg_1 = any(word in content_1_lower for word in negation_words)
+            has_neg_2 = any(word in content_2_lower for word in negation_words)
+            if has_neg_1 or has_neg_2:
+                strength += 0.4
+
+        # Check for negation patterns
+        content_1 = node_1.content.lower()
+        content_2 = node_2.content.lower()
+
+        negation_words = ['not', 'no', 'never', 'dont', "don't", 'cannot', 'cant', "can't"]
+        has_negation_1 = any(word in content_1 for word in negation_words)
+        has_negation_2 = any(word in content_2 for word in negation_words)
+
+        if has_negation_1 != has_negation_2:
+            # One has negation, other doesn't - possible contradiction
+            # Check if they share similar words
+            words_1 = set(content_1.split())
+            words_2 = set(content_2.split())
+            overlap = words_1 & words_2
+            if len(overlap) > 2:
+                strength += 0.3
+
+        return min(strength, 1.0)
+
+    def _detect_stagnation(self) -> Optional[ConfusionSignal]:
+        """
+        Detect stagnation (activations fading, no new learning).
+
+        Checks if:
+        1. Overall activation rate is declining
+        2. No new nodes being created
+        3. Edge weights are decaying without new strengthening
+
+        Returns:
+            ConfusionSignal if stagnation detected, None otherwise
+        """
+        # Calculate recent activation rate
+        total_activations_recent = 0
+        node_count = 0
+
+        for trace in self._memory.activation_traces.values():
+            freq = trace.get_frequency(window_minutes=10)
+            total_activations_recent += freq
+            node_count += 1
+
+        if node_count == 0:
+            return None
+
+        avg_activation_rate = total_activations_recent / node_count
+
+        # Check if below threshold
+        if avg_activation_rate < self._stagnation_threshold:
+            # Calculate average edge weight to see if connections are weakening
+            if self._memory.synaptic_edges:
+                avg_weight = sum(
+                    e.weight for e in self._memory.synaptic_edges.values()
+                ) / len(self._memory.synaptic_edges)
+            else:
+                avg_weight = 0.0
+
+            return ConfusionSignal(
+                signal_type='synaptic_stagnation',
+                description='Synaptic activity is stagnating',
+                evidence=[
+                    f'Average activation rate: {avg_activation_rate:.3f} per min',
+                    f'Threshold: {self._stagnation_threshold:.3f}',
+                    f'Average edge weight: {avg_weight:.3f}',
+                    f'Active nodes: {node_count}'
+                ],
+                confidence=min(0.8, (self._stagnation_threshold - avg_activation_rate) * 2),
+                source='SynapticConfusionDetector'
+            )
+
+        return None
+
+    def _detect_oscillation(self) -> Optional[ConfusionSignal]:
+        """
+        Detect oscillation (rapid switching between competing patterns).
+
+        Looks for alternating activation of mutually exclusive options,
+        which indicates indecision or flip-flopping.
+
+        Returns:
+            ConfusionSignal if oscillation detected, None otherwise
+        """
+        if len(self._activation_sequence) < 6:
+            return None
+
+        recent = self._activation_sequence[-10:]
+
+        # Look for ABAB or ABCABC patterns
+        for pattern_len in [2, 3]:
+            if len(recent) < pattern_len * 2:
+                continue
+
+            pattern_a = recent[-pattern_len * 2:-pattern_len]
+            pattern_b = recent[-pattern_len:]
+
+            if pattern_a == pattern_b:
+                # Possible oscillation
+                oscillation_count = 1
+                idx = len(recent) - pattern_len * 2
+
+                while idx >= pattern_len:
+                    prev_pattern = recent[idx - pattern_len:idx]
+                    if prev_pattern == pattern_a:
+                        oscillation_count += 1
+                        idx -= pattern_len
+                    else:
+                        break
+
+                if oscillation_count >= 2:
+                    return ConfusionSignal(
+                        signal_type='synaptic_oscillation',
+                        description=f'Oscillating between {pattern_len} thought patterns',
+                        evidence=[
+                            f'Pattern: {pattern_a}',
+                            f'Repeated {oscillation_count + 1} times',
+                            f'Recent sequence: {recent}'
+                        ],
+                        confidence=min(0.85, 0.2 * oscillation_count),
+                        source='SynapticConfusionDetector'
+                    )
+
+        return None
+
+
 @dataclass
 class ConfusionDiagnosis:
     """
@@ -458,7 +822,29 @@ class ConfusionDiagnoser:
         # Determine confusion type from signals
         signal_types = set(s.signal_type for s in all_signals)
 
-        if 'repetition' in signal_types or 'failed_retry' in signal_types:
+        # Check for synaptic patterns first (they're more specific)
+        if 'synaptic_loop' in signal_types:
+            confusion_type = ConfusionType.REPETITION_LOOP
+            likely_cause = "Circular reasoning pattern detected in synaptic activations"
+            recommended_action = "PRUNE unsuccessful pathways, try alternative approach"
+
+        elif 'synaptic_oscillation' in signal_types:
+            confusion_type = ConfusionType.OSCILLATION
+            likely_cause = "Rapid switching between competing thought patterns"
+            recommended_action = "PRUNE oscillating pathways, commit to single approach"
+
+        elif 'synaptic_contradiction' in signal_types:
+            confusion_type = ConfusionType.CONTRADICTION
+            likely_cause = "Contradictory concepts both strongly activated"
+            recommended_action = "RESET synaptic state, reconcile conflicting thoughts"
+
+        elif 'synaptic_stagnation' in signal_types:
+            confusion_type = ConfusionType.BLOCKED
+            likely_cause = "Synaptic activity declining without new learning"
+            recommended_action = "REINFORCE successful pathways or try new approach"
+
+        # Fall back to traditional detection
+        elif 'repetition' in signal_types or 'failed_retry' in signal_types:
             confusion_type = ConfusionType.REPETITION_LOOP
             likely_cause = "Repeating actions without adjusting approach"
             recommended_action = "STOP current action, analyze why previous attempts failed"
@@ -847,6 +1233,210 @@ class UserInterventionStrategy:
         return "\n".join(lines)
 
 
+class SynapticReinforcementStrategy:
+    """
+    Recovery by reinforcing successful synaptic pathways.
+
+    Used when stagnation is detected - strengthens edges that led
+    to successful outcomes to revive productive patterns.
+    """
+
+    @property
+    def name(self) -> str:
+        return "synaptic_reinforcement"
+
+    @property
+    def applicable_to(self) -> Set[ConfusionType]:
+        return {ConfusionType.BLOCKED}
+
+    def execute(self, diagnosis: ConfusionDiagnosis, context: Dict[str, Any]) -> bool:
+        """Execute synaptic reinforcement recovery."""
+        attempt = context.get('recovery_attempt')
+        memory_graph = context.get('memory_graph')
+
+        if not memory_graph:
+            attempt.add_action(RecoveryAction(
+                action_type='error',
+                description='No synaptic memory graph available',
+                success=False
+            ))
+            return False
+
+        # Step 1: Identify successful paths
+        successful_paths = context.get('successful_paths', [])
+        if not successful_paths:
+            attempt.add_action(RecoveryAction(
+                action_type='warning',
+                description='No successful paths to reinforce',
+                success=False
+            ))
+            return False
+
+        # Step 2: Strengthen edges along successful paths
+        reinforced_count = 0
+        for path in successful_paths:
+            try:
+                memory_graph.apply_reward(path, reward=0.5)
+                reinforced_count += 1
+            except Exception as e:
+                attempt.add_action(RecoveryAction(
+                    action_type='error',
+                    description=f'Failed to reinforce path: {e}',
+                    success=False
+                ))
+
+        attempt.add_action(RecoveryAction(
+            action_type='reinforce',
+            description=f'Reinforced {reinforced_count} successful pathways',
+            success=reinforced_count > 0,
+            details={'paths': successful_paths}
+        ))
+
+        return reinforced_count > 0
+
+
+class SynapticPruningStrategy:
+    """
+    Recovery by pruning unsuccessful synaptic pathways.
+
+    Used for repetition loops - weakens edges that led to failures
+    to discourage repeating unsuccessful approaches.
+    """
+
+    @property
+    def name(self) -> str:
+        return "synaptic_pruning"
+
+    @property
+    def applicable_to(self) -> Set[ConfusionType]:
+        return {ConfusionType.REPETITION_LOOP, ConfusionType.OSCILLATION}
+
+    def execute(self, diagnosis: ConfusionDiagnosis, context: Dict[str, Any]) -> bool:
+        """Execute synaptic pruning recovery."""
+        attempt = context.get('recovery_attempt')
+        memory_graph = context.get('memory_graph')
+
+        if not memory_graph:
+            attempt.add_action(RecoveryAction(
+                action_type='error',
+                description='No synaptic memory graph available',
+                success=False
+            ))
+            return False
+
+        # Step 1: Identify failed paths from signals
+        failed_paths = []
+        for signal in diagnosis.signals:
+            if signal.signal_type in ['synaptic_loop', 'synaptic_oscillation']:
+                # Extract pattern from evidence
+                for evidence in signal.evidence:
+                    if evidence.startswith('Pattern:'):
+                        pattern_str = evidence.split('Pattern:')[1].strip()
+                        # Parse pattern (e.g., "['A', 'B']" -> ['A', 'B'])
+                        try:
+                            import ast
+                            pattern = ast.literal_eval(pattern_str)
+                            if isinstance(pattern, list):
+                                failed_paths.append(pattern)
+                        except Exception:
+                            pass
+
+        if not failed_paths:
+            attempt.add_action(RecoveryAction(
+                action_type='warning',
+                description='No failed paths identified for pruning',
+                success=False
+            ))
+            return False
+
+        # Step 2: Weaken edges along failed paths
+        pruned_count = 0
+        for path in failed_paths:
+            try:
+                memory_graph.apply_reward(path, reward=-0.3)
+                pruned_count += 1
+            except Exception as e:
+                attempt.add_action(RecoveryAction(
+                    action_type='error',
+                    description=f'Failed to prune path: {e}',
+                    success=False
+                ))
+
+        attempt.add_action(RecoveryAction(
+            action_type='prune',
+            description=f'Pruned {pruned_count} unsuccessful pathways',
+            success=pruned_count > 0,
+            details={'paths': failed_paths}
+        ))
+
+        return pruned_count > 0
+
+
+class SynapticResetStrategy:
+    """
+    Recovery by resetting synaptic activation state.
+
+    Used for severe confusion - clears recent activations and
+    allows fresh reasoning without bias from confused state.
+    """
+
+    @property
+    def name(self) -> str:
+        return "synaptic_reset"
+
+    @property
+    def applicable_to(self) -> Set[ConfusionType]:
+        return {
+            ConfusionType.CONTRADICTION,
+            ConfusionType.TEMPORAL_CONFUSION,
+            ConfusionType.UNSPECIFIED
+        }
+
+    def execute(self, diagnosis: ConfusionDiagnosis, context: Dict[str, Any]) -> bool:
+        """Execute synaptic reset recovery."""
+        attempt = context.get('recovery_attempt')
+        memory_graph = context.get('memory_graph')
+        synaptic_detector = context.get('synaptic_detector')
+
+        if not memory_graph:
+            attempt.add_action(RecoveryAction(
+                action_type='error',
+                description='No synaptic memory graph available',
+                success=False
+            ))
+            return False
+
+        # Step 1: Clear recent activations
+        memory_graph._recent_activations.clear()
+
+        attempt.add_action(RecoveryAction(
+            action_type='clear',
+            description='Cleared recent activation state',
+            success=True
+        ))
+
+        # Step 2: Clear activation sequence in detector (if available)
+        if synaptic_detector:
+            synaptic_detector._activation_sequence.clear()
+            attempt.add_action(RecoveryAction(
+                action_type='clear',
+                description='Cleared activation sequence tracker',
+                success=True
+            ))
+
+        # Step 3: Reset focus in reasoner (if available)
+        reasoner = context.get('reasoner')
+        if reasoner:
+            reasoner.reset_focus()
+            attempt.add_action(RecoveryAction(
+                action_type='reset',
+                description='Reset reasoning focus',
+                success=True
+            ))
+
+        return True
+
+
 # =============================================================================
 # RECOVERY COORDINATOR
 # =============================================================================
@@ -867,6 +1457,7 @@ class RecoveryCoordinator:
         self.strategies: Dict[str, RecoveryStrategy] = {}
         self.recovery_history: List[RecoveryAttempt] = []
         self.storage_dir = storage_dir
+        self._lock = threading.RLock()  # Reentrant lock for nested calls
 
         # Set up default detectors
         self._setup_default_detectors()
@@ -880,6 +1471,7 @@ class RecoveryCoordinator:
         self.contradiction_detector = ContradictionDetector()
         self.progress_detector = ProgressDetector()
         self.state_verifier = StateVerifier()
+        self.synaptic_detector: Optional[SynapticConfusionDetector] = None
 
         self.diagnoser.add_detector(self.repetition_detector)
         self.diagnoser.add_detector(self.contradiction_detector)
@@ -892,7 +1484,10 @@ class RecoveryCoordinator:
             StopAndAnalyzeStrategy(),
             CheckpointRestoreStrategy(),
             EscalationStrategy(),
-            UserInterventionStrategy()
+            UserInterventionStrategy(),
+            SynapticReinforcementStrategy(),
+            SynapticPruningStrategy(),
+            SynapticResetStrategy()
         ]
 
         for strategy in strategies:
@@ -925,6 +1520,42 @@ class RecoveryCoordinator:
     def register_verifier(self, topic: str, verifier: Callable[[], Any]):
         """Register a way to verify a belief."""
         self.state_verifier.register_verifier(topic, verifier)
+
+    def enable_synaptic_detection(
+        self,
+        memory_graph: 'SynapticMemoryGraph',
+        loop_window: int = 5,
+        contradiction_threshold: float = 0.7,
+        stagnation_threshold: float = 0.1
+    ):
+        """
+        Enable synaptic memory-based confusion detection.
+
+        Args:
+            memory_graph: The synaptic memory graph to monitor
+            loop_window: Window size for detecting activation loops
+            contradiction_threshold: Threshold for detecting contradictions
+            stagnation_threshold: Minimum activation rate (per minute)
+        """
+        with self._lock:
+            self.synaptic_detector = SynapticConfusionDetector(
+                memory_graph=memory_graph,
+                loop_window=loop_window,
+                contradiction_threshold=contradiction_threshold,
+                stagnation_threshold=stagnation_threshold
+            )
+            self.diagnoser.add_detector(self.synaptic_detector)
+
+    def record_synaptic_activation(self, node_id: str):
+        """
+        Record a synaptic node activation.
+
+        Args:
+            node_id: ID of the activated node
+        """
+        with self._lock:
+            if self.synaptic_detector:
+                self.synaptic_detector.record_activation(node_id)
 
     def check_confusion(
         self,
@@ -965,6 +1596,14 @@ class RecoveryCoordinator:
         )
         context['recovery_attempt'] = attempt
 
+        # Add synaptic detector to context if available
+        with self._lock:
+            if self.synaptic_detector:
+                context['synaptic_detector'] = self.synaptic_detector
+                # Also add the memory graph if not already present
+                if 'memory_graph' not in context:
+                    context['memory_graph'] = self.synaptic_detector._memory
+
         # Try each strategy
         for strategy in applicable:
             attempt.strategy_used = strategy.name
@@ -984,7 +1623,8 @@ class RecoveryCoordinator:
         if not attempt.completed_at:
             attempt.complete(False)
 
-        self.recovery_history.append(attempt)
+        with self._lock:
+            self.recovery_history.append(attempt)
         self._save_attempt(attempt)
 
         return attempt
@@ -1022,21 +1662,25 @@ class RecoveryCoordinator:
 
     def get_recovery_stats(self) -> Dict[str, Any]:
         """Get statistics about recovery attempts."""
-        if not self.recovery_history:
-            return {
-                'total_attempts': 0,
-                'success_rate': 0.0,
-                'by_type': {},
-                'by_strategy': {}
-            }
+        with self._lock:
+            if not self.recovery_history:
+                return {
+                    'total_attempts': 0,
+                    'success_rate': 0.0,
+                    'by_type': {},
+                    'by_strategy': {}
+                }
 
-        total = len(self.recovery_history)
-        successes = sum(1 for a in self.recovery_history if a.success)
+            # Make a copy to avoid holding lock during iteration
+            history_copy = list(self.recovery_history)
+
+        total = len(history_copy)
+        successes = sum(1 for a in history_copy if a.success)
 
         by_type: Dict[str, Dict[str, int]] = {}
         by_strategy: Dict[str, Dict[str, int]] = {}
 
-        for attempt in self.recovery_history:
+        for attempt in history_copy:
             type_name = attempt.diagnosis.confusion_type.name
             if type_name not in by_type:
                 by_type[type_name] = {'total': 0, 'success': 0}

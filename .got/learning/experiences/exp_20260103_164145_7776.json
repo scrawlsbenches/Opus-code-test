@@ -1,0 +1,53 @@
+{
+  "id": "exp_20260103_164145_7776",
+  "experience_type": "TASK_EXECUTION",
+  "timestamp": "2026-01-03T16:41:45.488516",
+  "context": {
+    "goal_type": "debugging",
+    "goal_complexity": "complex",
+    "domain": "general",
+    "available_tools": [],
+    "available_agents": 1,
+    "prior_failures": 1,
+    "time_pressure": "none",
+    "constraints": [
+      "Missing dependencies"
+    ],
+    "notes": "Task: T-20260103-164130-bcab1ae7 - Test blocked task (FAILED)"
+  },
+  "intent": "Test blocked task",
+  "strategy_used": null,
+  "actions": [],
+  "outcome": {
+    "outcome_type": "FAILURE",
+    "description": "Task T-20260103-164130-bcab1ae7 failed: Missing dependencies",
+    "achieved": [],
+    "not_achieved": [
+      "Test blocked task"
+    ],
+    "unexpected": [],
+    "quality_score": 0.0,
+    "efficiency_score": 0.0,
+    "error_type": null,
+    "error_message": "Missing dependencies"
+  },
+  "what_worked": [],
+  "what_didnt_work": [
+    "Unknown approach",
+    "Missing dependencies",
+    "Blocker: Missing dependencies"
+  ],
+  "would_do_differently": [
+    "Need alternative approach",
+    "Address blockers first"
+  ],
+  "related_experiences": [],
+  "supersedes": null,
+  "tags": [
+    "debugging",
+    "general",
+    "task:T-20260103-164130-bcab1ae7",
+    "category:bugfix",
+    "failure"
+  ]
+}

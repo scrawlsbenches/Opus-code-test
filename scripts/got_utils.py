@@ -136,6 +136,10 @@ from cortical.got.cli.knowledge_transfer import (
     setup_knowledge_transfer_parser,
     handle_knowledge_transfer_command,
 )
+from cortical.got.cli.failure import (
+    setup_failure_parser,
+    handle_failure_command,
+)
 
 # Import shared constants from canonical source (single source of truth)
 from cortical.got.cli.shared import (
@@ -1084,6 +1088,7 @@ class TransactionalGoTAdapter:
         edge_type: str,
         weight: float = 1.0,
         reason: str = "",
+        validate_refs: bool = True,
     ):
         """Add a generic edge between two entities.
 
@@ -1093,6 +1098,7 @@ class TransactionalGoTAdapter:
             edge_type: Type of edge (e.g., DEPENDS_ON, BLOCKS, CAUSED_BY)
             weight: Edge weight (default: 1.0)
             reason: Why this relationship exists (context capture)
+            validate_refs: Whether to validate that entities exist (default: True)
 
         Returns:
             Edge object if successful, None otherwise
@@ -1101,7 +1107,8 @@ class TransactionalGoTAdapter:
         clean_target = self._strip_prefix(target_id)
         try:
             edge = self._manager.add_edge(
-                clean_source, clean_target, edge_type, weight=weight, reason=reason
+                clean_source, clean_target, edge_type, weight=weight, reason=reason,
+                validate_refs=validate_refs
             )
             return edge
         except AttributeError as e:
@@ -3301,7 +3308,7 @@ VALID_COMMANDS = [
     "task", "sprint", "epic", "handoff", "decision", "doc", "query",
     "blocked", "active", "stats", "dashboard", "validate", "infer",
     "export", "backup", "sync", "orphan", "backlog", "analyze", "edge",
-    "batch", "knowledge", "kt",
+    "batch", "knowledge", "kt", "failure",
 ]
 
 
@@ -3382,6 +3389,7 @@ def main():
     setup_edge_parser(subparsers)  # Direct edge management
     setup_batch_parser(subparsers)  # Batch operations with heredoc DSL
     setup_knowledge_transfer_parser(subparsers)  # Knowledge transfer documents
+    setup_failure_parser(subparsers)  # Failure tracking and lesson learning
 
     # Pre-check for invalid commands to provide better error messages
     # This runs before argparse's default error handling
@@ -3448,6 +3456,9 @@ def main():
 
     elif args.command in ("knowledge", "kt"):
         return handle_knowledge_transfer_command(args, manager)
+
+    elif args.command == "failure":
+        return handle_failure_command(args, manager)
 
     # Query-related commands (query, blocked, active, stats, etc.)
     result = handle_query_commands(args, manager)

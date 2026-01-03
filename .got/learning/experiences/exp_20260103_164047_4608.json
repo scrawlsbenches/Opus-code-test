@@ -1,0 +1,47 @@
+{
+  "id": "exp_20260103_164047_4608",
+  "experience_type": "TASK_EXECUTION",
+  "timestamp": "2026-01-03T16:40:47.425655",
+  "context": {
+    "goal_type": "debugging",
+    "goal_complexity": "complex",
+    "domain": "general",
+    "available_tools": [],
+    "available_agents": 1,
+    "prior_failures": 0,
+    "time_pressure": "none",
+    "constraints": [],
+    "notes": "Task: T-20260103-085959-78e2d2d9 - Fix ML hooks global configuration"
+  },
+  "intent": "Fix ML hooks global configuration",
+  "strategy_used": null,
+  "actions": [],
+  "outcome": {
+    "outcome_type": "SUCCESS",
+    "description": "Task T-20260103-085959-78e2d2d9 completed successfully",
+    "achieved": [
+      "Fix ML hooks global configuration"
+    ],
+    "not_achieved": [],
+    "unexpected": [],
+    "quality_score": 1.0,
+    "efficiency_score": 1.0,
+    "error_type": null,
+    "error_message": null
+  },
+  "what_worked": [
+    "## What Worked\n- Clear understanding from previous KT-20260103-084006\n- Hook scripts already existed and were executable\n\n## Verification Needed\nNew sessions should now capture to"
+  ],
+  "what_didnt_work": [],
+  "would_do_differently": [],
+  "related_experiences": [],
+  "supersedes": null,
+  "tags": [
+    "success",
+    "task:T-20260103-085959-78e2d2d9",
+    "general",
+    "debugging",
+    "priority:high",
+    "category:bugfix"
+  ]
+}

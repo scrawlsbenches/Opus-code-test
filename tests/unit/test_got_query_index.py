@@ -268,6 +268,7 @@ class TestEdgeTypeValidation:
             'DOCUMENTED_BY',
             'DOCUMENTS',   # KnowledgeTransfer documents Task/Decision
             'CONTINUES',   # KnowledgeTransfer continues from Handoff
+            'FAILED_ATTEMPT',  # Failure edge type from failure CLI
         }
 
         assert VALID_EDGE_TYPES == expected_types

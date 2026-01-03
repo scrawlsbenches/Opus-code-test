@@ -1,0 +1,18 @@
+{
+  "_checksum": "969a4c1afcf2699b",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-03T16:18:13.866210+00:00",
+  "data": {
+    "confidence": 1.0,
+    "created_at": "2026-01-03T16:18:05.168462+00:00",
+    "edge_type": "FAILED_ATTEMPT",
+    "entity_type": "edge",
+    "id": "E-F-20260103-161805-f33d3cf3-T-20260103-161416-44571f88-FAILED_ATTEMPT",
+    "modified_at": "2026-01-03T16:18:05.168470+00:00",
+    "reason": "Failed attempt: Final attempt with simplified design...",
+    "source_id": "F-20260103-161805-f33d3cf3",
+    "target_id": "T-20260103-161416-44571f88",
+    "version": 1,
+    "weight": 1.0
+  }
+}

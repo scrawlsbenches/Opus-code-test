@@ -1,0 +1,47 @@
+{
+  "id": "exp_20260103_164047_0944",
+  "experience_type": "TASK_EXECUTION",
+  "timestamp": "2026-01-03T16:40:47.423413",
+  "context": {
+    "goal_type": "testing",
+    "goal_complexity": "simple",
+    "domain": "general",
+    "available_tools": [],
+    "available_agents": 1,
+    "prior_failures": 0,
+    "time_pressure": "none",
+    "constraints": [],
+    "notes": "Task: T-20260103-122458-082362b5 - Test task from workflow validation"
+  },
+  "intent": "Test task from workflow validation",
+  "strategy_used": null,
+  "actions": [],
+  "outcome": {
+    "outcome_type": "SUCCESS",
+    "description": "Task T-20260103-122458-082362b5 completed successfully",
+    "achieved": [
+      "Test task from workflow validation"
+    ],
+    "not_achieved": [],
+    "unexpected": [],
+    "quality_score": 1.0,
+    "efficiency_score": 1.0,
+    "error_type": null,
+    "error_message": null
+  },
+  "what_worked": [
+    "Workflow validation test completed successfully"
+  ],
+  "what_didnt_work": [],
+  "would_do_differently": [],
+  "related_experiences": [],
+  "supersedes": null,
+  "tags": [
+    "success",
+    "priority:low",
+    "task:T-20260103-122458-082362b5",
+    "testing",
+    "general",
+    "category:test"
+  ]
+}

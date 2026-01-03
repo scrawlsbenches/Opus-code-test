@@ -1,0 +1,12 @@
+{
+  "id": "F-20260103-162148-2b904c09",
+  "task_id": "T-20260103-122458-082362b5",
+  "attempt": "Tried to implement feature using async/await pattern",
+  "error": "Race condition when multiple workers accessed shared state",
+  "lesson": "Need to use proper locking or message passing for shared state",
+  "timestamp": "2026-01-03T16:21:48.126408+00:00",
+  "files_affected": [
+    "cortical/got/api.py",
+    "cortical/got/tx_manager.py"
+  ]
+}

@@ -234,6 +234,8 @@ VALID_EDGE_TYPES = frozenset({
     # Knowledge transfer relationships
     'DOCUMENTS',     # KnowledgeTransfer documents Task/Decision
     'CONTINUES',     # KnowledgeTransfer continues from Handoff
+    # Failure tracking
+    'FAILED_ATTEMPT', # Failure record for a failed approach to a task
 })
 
 
@@ -251,6 +253,7 @@ VALID_ENTITY_TYPES = frozenset({
     'persona_profile',
     'team',
     'document',
+    'failure',
 })
 
 

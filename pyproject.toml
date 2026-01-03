@@ -108,6 +108,14 @@ markers = [
     "optional: Tests requiring optional dependencies (hypothesis)",
     "fuzz: Property-based fuzzing tests (requires hypothesis)",
     "slow: Tests that take >5 seconds to run",
+    "behavioral: Behavioral tests for user stories and workflows",
+    "cognitive: Tests for cognitive framework integration (learning, QAPV, state management)",
+    "coherence: Phase 1 cognitive coherence tests (Woven Mind, PRISM-GoT, bottlenecks, metrics, escalation)",
+    "optimization: Phase 2 cognitive optimization tests (strategy evolution, velocity prediction, consolidation, escalation)",
+    "evolution: Tests for strategy evolution using genetic algorithms",
+    "velocity: Tests for velocity prediction and trend analysis",
+    "consolidation: Tests for learning consolidation (Hive→Cortex transfer)",
+    "escalation: Tests for complete escalation action execution",
 ]
 
 # Default: skip optional and slow tests during development

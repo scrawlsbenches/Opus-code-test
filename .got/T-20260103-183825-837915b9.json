@@ -1,0 +1,20 @@
+{
+  "_checksum": "b27baf9e3abb9cca",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-03T18:40:29.143982+00:00",
+  "data": {
+    "created_at": "2026-01-03T18:38:25.496294+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260103-183825-837915b9",
+    "metadata": {},
+    "modified_at": "2026-01-03T18:38:25.496298+00:00",
+    "priority": "critical",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Phase 1: Cognitive Framework Coherence",
+    "version": 1
+  }
+}

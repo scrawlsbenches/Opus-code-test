@@ -1,0 +1,24 @@
+{
+  "_checksum": "92f5a3220f670b32",
+  "_written_at": "2026-01-03T16:36:55.006227+00:00",
+  "data": {
+    "created_at": "2026-01-03T16:36:34.375375+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260103-163634-0ad34646",
+    "metadata": {
+      "completed_at": "2026-01-03T16:36:54.987254+00:00",
+      "started_at": "2026-01-03T16:36:43.930420+00:00",
+      "updated_at": "2026-01-03T16:36:54.987262+00:00"
+    },
+    "modified_at": "2026-01-03T16:36:55.006139+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "test",
+      "retrospective": "Testing skip learning flag"
+    },
+    "status": "completed",
+    "title": "Another test task",
+    "version": 4
+  }
+}

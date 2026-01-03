@@ -158,6 +158,9 @@ class EdgeType(Enum):
     HAS_ASPECT = "has_aspect"
     PART_OF = "part_of"  # Entity belongs to sprint/epic
 
+    # Failure tracking edges
+    FAILED_ATTEMPT = "failed_attempt"  # Failure record for failed approach to task
+
     # Semantic role edges (for attention mechanisms)
     LOCATED_IN = "located_in"  # Entity is at location
     PERFORMS = "performs"      # Entity performs action

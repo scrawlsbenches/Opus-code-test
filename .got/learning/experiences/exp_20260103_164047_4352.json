@@ -1,0 +1,49 @@
+{
+  "id": "exp_20260103_164047_4352",
+  "experience_type": "TASK_EXECUTION",
+  "timestamp": "2026-01-03T16:40:47.424666",
+  "context": {
+    "goal_type": "testing",
+    "goal_complexity": "complex",
+    "domain": "general",
+    "available_tools": [],
+    "available_agents": 1,
+    "prior_failures": 0,
+    "time_pressure": "none",
+    "constraints": [],
+    "notes": "Task: T-20260103-090732-f89debb2 - Confirm ML hooks are capturing data"
+  },
+  "intent": "Confirm ML hooks are capturing data",
+  "strategy_used": null,
+  "actions": [],
+  "outcome": {
+    "outcome_type": "SUCCESS",
+    "description": "Task T-20260103-090732-f89debb2 completed successfully",
+    "achieved": [
+      "Confirm ML hooks are capturing data"
+    ],
+    "not_achieved": [],
+    "unexpected": [],
+    "quality_score": 1.0,
+    "efficiency_score": 1.0,
+    "error_type": null,
+    "error_message": null
+  },
+  "what_worked": [
+    "## What Worked\n- Handoff instructions were clear and actionable\n- Verification steps helped identify the real issue quickly\n- Hook scripts were already in place and executable\n\n## What Didn't Work\n- Previous session claimed to fix hook config but changes were NOT persisted\n- The ~/"
+  ],
+  "what_didnt_work": [
+    "json only contained the git-check Stop hook, not the ML hooks\n\n## Root Cause\nPrevious agent likely displayed the configuration but didn't actually write it to the file, or the write failed silently"
+  ],
+  "would_do_differently": [],
+  "related_experiences": [],
+  "supersedes": null,
+  "tags": [
+    "success",
+    "testing",
+    "general",
+    "task:T-20260103-090732-f89debb2",
+    "priority:high",
+    "category:test"
+  ]
+}

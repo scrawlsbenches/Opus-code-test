@@ -14,9 +14,10 @@ that feeds into the evolutionary learning system.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Literal
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 from .types import (
     Impediment,
@@ -199,27 +200,82 @@ class SprintPlanner:
 
 
 class VelocityTracker:
-    """Tracks velocity across sprints."""
+    """Tracks velocity across sprints with basic averaging and trend detection."""
 
     def __init__(self, config: SprintConfig | None = None):
         self.config = config or SprintConfig()
         self.history: list[float] = []
+        # Optional: Use advanced predictor for better predictions
+        self._predictor: VelocityPredictor | None = None
 
-    def record_sprint(self, sprint: WorkerSprint) -> None:
-        """Record a completed sprint's velocity."""
+    def enable_advanced_prediction(self) -> None:
+        """Enable advanced prediction using VelocityPredictor."""
+        self._predictor = VelocityPredictor(
+            history_window=self.config.velocity_window
+        )
+        # Migrate existing history
+        for velocity in self.history:
+            self._predictor.record_velocity(velocity)
+
+    def record_sprint(
+        self,
+        sprint: WorkerSprint,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """
+        Record a completed sprint's velocity.
+
+        Args:
+            sprint: Completed sprint
+            context: Optional sprint context for advanced prediction
+        """
         if sprint.velocity > 0:
             self.history.append(sprint.velocity)
+            if self._predictor:
+                # Build context from sprint if not provided
+                if context is None:
+                    context = {
+                        "impediments": len(sprint.impediments),
+                        "completion_rate": sprint.completion_rate,
+                    }
+                self._predictor.record_velocity(sprint.velocity, context)
 
     def get_velocity(self) -> float:
         """Get current velocity (rolling average)."""
+        if self._predictor:
+            # Use advanced prediction if enabled
+            prediction = self._predictor.predict_next()
+            return prediction.predicted_velocity
+
         if not self.history:
             return self.config.default_velocity
 
         window = self.history[-self.config.velocity_window:]
         return sum(window) / len(window)
 
+    def get_velocity_prediction(self) -> VelocityPrediction | None:
+        """
+        Get advanced velocity prediction with confidence metrics.
+
+        Returns:
+            VelocityPrediction if advanced prediction is enabled, None otherwise
+        """
+        if not self._predictor:
+            return None
+        return self._predictor.predict_next()
+
     def get_velocity_trend(self) -> Literal["improving", "stable", "declining"]:
         """Determine velocity trend."""
+        if self._predictor:
+            # Use advanced trend detection if enabled
+            trend = self._predictor.get_trend()
+            # Map to expected return types
+            if trend == "increasing":
+                return "improving"
+            elif trend == "decreasing":
+                return "declining"
+            return "stable"
+
         if len(self.history) < 3:
             return "stable"
 
@@ -251,6 +307,401 @@ class VelocityTracker:
         # Assume 15-minute sprints
         minutes = sprints_needed * 15
         return timedelta(minutes=minutes)
+
+    def get_anomalies(self) -> List[VelocityAnomaly]:
+        """
+        Get detected velocity anomalies.
+
+        Returns:
+            List of anomalies if advanced prediction is enabled, empty list otherwise
+        """
+        if not self._predictor:
+            return []
+        return self._predictor.detect_anomalies()
+
+
+# =============================================================================
+# VELOCITY PREDICTION WITH HISTORICAL ANALYSIS
+# =============================================================================
+
+
+@dataclass
+class VelocityPrediction:
+    """Prediction for next sprint velocity with confidence metrics."""
+
+    predicted_velocity: float
+    confidence_interval: Tuple[float, float]  # (low, high)
+    confidence: float  # 0-1 scale
+    trend: str  # "increasing", "stable", "decreasing"
+    factors: List[str]  # What influenced the prediction
+
+
+@dataclass
+class VelocityAnomaly:
+    """Detected anomaly in velocity data."""
+
+    sprint_index: int
+    velocity: float
+    expected_velocity: float
+    deviation: float  # Standard deviations from expected
+    potential_causes: List[str]
+
+
+class VelocityPredictor:
+    """
+    Advanced velocity prediction using historical data analysis.
+
+    Features:
+    - Exponential moving average for predictions
+    - Linear regression for trend detection
+    - Confidence intervals based on variance
+    - Anomaly detection for unusual velocities
+    - Pattern recognition for seasonal/cyclical changes
+    """
+
+    def __init__(self, history_window: int = 10):
+        """
+        Initialize predictor.
+
+        Args:
+            history_window: Number of sprints to consider for predictions
+        """
+        self._history: List[float] = []
+        self._contexts: List[Dict[str, Any]] = []  # Sprint context metadata
+        self._window = history_window
+        self._alpha = 0.3  # EMA smoothing factor (0.3 = 30% weight to new data)
+
+    def record_velocity(
+        self,
+        velocity: float,
+        sprint_context: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """
+        Record actual velocity from completed sprint.
+
+        Args:
+            velocity: Completed sprint velocity
+            sprint_context: Optional metadata (team_size, complexity, etc.)
+        """
+        if velocity < 0:
+            raise ValueError("Velocity cannot be negative")
+
+        self._history.append(velocity)
+        self._contexts.append(sprint_context or {})
+
+        # Keep only the window size
+        if len(self._history) > self._window * 2:  # Keep 2x for better trends
+            self._history = self._history[-self._window * 2:]
+            self._contexts = self._contexts[-self._window * 2:]
+
+    def predict_next(self) -> VelocityPrediction:
+        """
+        Predict velocity for next sprint with confidence metrics.
+
+        Returns:
+            VelocityPrediction with predicted value, confidence interval, and factors
+        """
+        if not self._history:
+            # No history - return default with low confidence
+            return VelocityPrediction(
+                predicted_velocity=5.0,
+                confidence_interval=(3.0, 7.0),
+                confidence=0.0,
+                trend="stable",
+                factors=["No historical data - using default"],
+            )
+
+        if len(self._history) == 1:
+            # Only one data point
+            v = self._history[0]
+            return VelocityPrediction(
+                predicted_velocity=v,
+                confidence_interval=(v * 0.7, v * 1.3),
+                confidence=0.3,
+                trend="stable",
+                factors=["Only one sprint completed"],
+            )
+
+        # Calculate prediction using exponential moving average
+        predicted = self._exponential_moving_average()
+
+        # Calculate confidence interval based on variance
+        std_dev = self._standard_deviation()
+        confidence_interval = (
+            max(0, predicted - 1.96 * std_dev),  # 95% confidence
+            predicted + 1.96 * std_dev,
+        )
+
+        # Calculate confidence (inverse of coefficient of variation)
+        mean = self._simple_moving_average()
+        cv = std_dev / mean if mean > 0 else 1.0
+        confidence = max(0.0, min(1.0, 1.0 - cv))
+
+        # Detect trend
+        trend = self.get_trend()
+
+        # Analyze factors
+        factors = self._analyze_prediction_factors()
+
+        return VelocityPrediction(
+            predicted_velocity=predicted,
+            confidence_interval=confidence_interval,
+            confidence=confidence,
+            trend=trend,
+            factors=factors,
+        )
+
+    def get_trend(self) -> str:
+        """
+        Analyze velocity trend using linear regression.
+
+        Returns:
+            "increasing", "stable", or "decreasing"
+        """
+        if len(self._history) < 3:
+            return "stable"
+
+        # Use recent history for trend
+        recent = self._history[-min(len(self._history), self._window):]
+
+        # Linear regression: y = mx + b
+        slope, _ = self._linear_regression(recent)
+
+        # Determine trend based on slope
+        # Slope threshold is relative to mean velocity
+        mean_velocity = sum(recent) / len(recent)
+        threshold = mean_velocity * 0.1  # 10% change is significant
+
+        if slope > threshold / len(recent):
+            return "increasing"
+        elif slope < -threshold / len(recent):
+            return "decreasing"
+        else:
+            return "stable"
+
+    def detect_anomalies(self) -> List[VelocityAnomaly]:
+        """
+        Detect unusual velocity values using statistical analysis.
+
+        Returns:
+            List of detected anomalies with potential causes
+        """
+        if len(self._history) < 5:  # Need enough data
+            return []
+
+        anomalies = []
+        mean = self._simple_moving_average()
+        std_dev = self._standard_deviation()
+
+        if std_dev == 0:  # No variance
+            return []
+
+        # Check each velocity for anomalies
+        for i, velocity in enumerate(self._history):
+            deviation = abs(velocity - mean) / std_dev
+
+            if deviation > 2.0:  # More than 2 standard deviations
+                # Identify potential causes
+                causes = self._identify_anomaly_causes(i, velocity, mean)
+
+                anomalies.append(VelocityAnomaly(
+                    sprint_index=i,
+                    velocity=velocity,
+                    expected_velocity=mean,
+                    deviation=deviation,
+                    potential_causes=causes,
+                ))
+
+        return anomalies
+
+    def get_statistics(self) -> Dict[str, float]:
+        """
+        Get statistical summary of velocity history.
+
+        Returns:
+            Dictionary with mean, median, std_dev, min, max, trend_slope
+        """
+        if not self._history:
+            return {
+                "mean": 0.0,
+                "median": 0.0,
+                "std_dev": 0.0,
+                "min": 0.0,
+                "max": 0.0,
+                "trend_slope": 0.0,
+                "count": 0,
+            }
+
+        sorted_history = sorted(self._history)
+        n = len(sorted_history)
+        median = (
+            sorted_history[n // 2]
+            if n % 2 == 1
+            else (sorted_history[n // 2 - 1] + sorted_history[n // 2]) / 2
+        )
+
+        slope, _ = self._linear_regression(self._history)
+
+        return {
+            "mean": self._simple_moving_average(),
+            "median": median,
+            "std_dev": self._standard_deviation(),
+            "min": min(self._history),
+            "max": max(self._history),
+            "trend_slope": slope,
+            "count": len(self._history),
+        }
+
+    # =========================================================================
+    # STATISTICAL METHODS
+    # =========================================================================
+
+    def _simple_moving_average(self) -> float:
+        """Calculate simple moving average of recent history."""
+        if not self._history:
+            return 0.0
+
+        window = self._history[-self._window:]
+        return sum(window) / len(window)
+
+    def _exponential_moving_average(self) -> float:
+        """
+        Calculate exponential moving average.
+
+        Gives more weight to recent data while considering all history.
+        """
+        if not self._history:
+            return 0.0
+
+        ema = self._history[0]
+        for velocity in self._history[1:]:
+            ema = self._alpha * velocity + (1 - self._alpha) * ema
+
+        return ema
+
+    def _standard_deviation(self) -> float:
+        """Calculate standard deviation of recent history."""
+        if len(self._history) < 2:
+            return 0.0
+
+        window = self._history[-self._window:]
+        mean = sum(window) / len(window)
+        variance = sum((v - mean) ** 2 for v in window) / len(window)
+        return math.sqrt(variance)
+
+    def _linear_regression(
+        self,
+        data: List[float],
+    ) -> Tuple[float, float]:
+        """
+        Calculate linear regression: y = mx + b
+
+        Args:
+            data: List of velocity values
+
+        Returns:
+            (slope, intercept)
+        """
+        if len(data) < 2:
+            return (0.0, data[0] if data else 0.0)
+
+        n = len(data)
+        x = list(range(n))  # Time indices
+        y = data
+
+        # Calculate means
+        x_mean = sum(x) / n
+        y_mean = sum(y) / n
+
+        # Calculate slope
+        numerator = sum((x[i] - x_mean) * (y[i] - y_mean) for i in range(n))
+        denominator = sum((x[i] - x_mean) ** 2 for i in range(n))
+
+        slope = numerator / denominator if denominator != 0 else 0.0
+        intercept = y_mean - slope * x_mean
+
+        return (slope, intercept)
+
+    # =========================================================================
+    # ANALYSIS HELPERS
+    # =========================================================================
+
+    def _analyze_prediction_factors(self) -> List[str]:
+        """Analyze what factors are influencing the prediction."""
+        factors = []
+
+        # Data quality
+        if len(self._history) < 5:
+            factors.append("Limited historical data")
+        elif len(self._history) >= self._window:
+            factors.append("Sufficient historical data")
+
+        # Variance
+        std_dev = self._standard_deviation()
+        mean = self._simple_moving_average()
+        if mean > 0:
+            cv = std_dev / mean
+            if cv > 0.3:
+                factors.append("High variance in velocity")
+            elif cv < 0.1:
+                factors.append("Consistent velocity")
+
+        # Trend
+        trend = self.get_trend()
+        if trend != "stable":
+            factors.append(f"Velocity is {trend}")
+
+        # Recent performance
+        if len(self._history) >= 2:
+            recent_change = (
+                (self._history[-1] - self._history[-2]) / self._history[-2]
+                if self._history[-2] != 0 else 0
+            )
+            if abs(recent_change) > 0.2:
+                direction = "increased" if recent_change > 0 else "decreased"
+                factors.append(f"Recent velocity {direction} significantly")
+
+        # Anomalies
+        anomalies = self.detect_anomalies()
+        if anomalies:
+            factors.append(f"{len(anomalies)} anomalies detected in history")
+
+        return factors
+
+    def _identify_anomaly_causes(
+        self,
+        index: int,
+        velocity: float,
+        expected: float,
+    ) -> List[str]:
+        """Identify potential causes of velocity anomaly."""
+        causes = []
+
+        # Check if unusually high or low
+        if velocity > expected:
+            causes.append("Velocity unusually high")
+
+            # Check context if available
+            if index < len(self._contexts):
+                context = self._contexts[index]
+                if context.get("team_size", 1) > 1:
+                    causes.append("Possible team size increase")
+                if context.get("complexity") == "low":
+                    causes.append("Lower complexity tasks")
+        else:
+            causes.append("Velocity unusually low")
+
+            # Check context if available
+            if index < len(self._contexts):
+                context = self._contexts[index]
+                if context.get("impediments", 0) > 0:
+                    causes.append("Impediments encountered")
+                if context.get("complexity") == "high":
+                    causes.append("Higher complexity tasks")
+                if context.get("team_changes", False):
+                    causes.append("Team composition changed")
+
+        return causes
 
 
 # =============================================================================

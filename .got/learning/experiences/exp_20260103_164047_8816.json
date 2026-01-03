@@ -1,0 +1,47 @@
+{
+  "id": "exp_20260103_164047_8816",
+  "experience_type": "TASK_EXECUTION",
+  "timestamp": "2026-01-03T16:40:47.442548",
+  "context": {
+    "goal_type": "debugging",
+    "goal_complexity": "complex",
+    "domain": "general",
+    "available_tools": [],
+    "available_agents": 1,
+    "prior_failures": 0,
+    "time_pressure": "none",
+    "constraints": [],
+    "notes": "Task: T-20260102-232032-5216f763 - Fix BALANCED mode: fsync WAL before entity writes"
+  },
+  "intent": "Fix BALANCED mode: fsync WAL before entity writes",
+  "strategy_used": null,
+  "actions": [],
+  "outcome": {
+    "outcome_type": "SUCCESS",
+    "description": "Task T-20260102-232032-5216f763 completed successfully",
+    "achieved": [
+      "Fix BALANCED mode: fsync WAL before entity writes"
+    ],
+    "not_achieved": [],
+    "unexpected": [],
+    "quality_score": 1.0,
+    "efficiency_score": 1.0,
+    "error_type": null,
+    "error_message": null
+  },
+  "what_worked": [
+    "Fixed fsync timing - WAL is now fsynced before applying writes in all durability modes. This ensures commit is durable before any entity modifications."
+  ],
+  "what_didnt_work": [],
+  "would_do_differently": [],
+  "related_experiences": [],
+  "supersedes": null,
+  "tags": [
+    "success",
+    "priority:critical",
+    "general",
+    "task:T-20260102-232032-5216f763",
+    "debugging",
+    "category:bugfix"
+  ]
+}
