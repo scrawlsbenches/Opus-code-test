@@ -1,19 +1,23 @@
 {
-  "_checksum": "57f3825cebc82353",
-  "_written_at": "2026-01-02T17:08:22.463518+00:00",
+  "_checksum": "ebf67de70b1af3e1",
+  "_written_at": "2026-01-03T00:01:38.333923+00:00",
   "data": {
     "created_at": "2026-01-02T17:08:22.458954+00:00",
     "description": "wal.py:139-143. _next_seq() reads/writes without lock. Concurrent writes get duplicate sequence numbers. Fix: Acquire lock BEFORE _next_seq().",
     "entity_type": "task",
     "id": "T-20260102-170822-ea3d8946",
-    "metadata": {},
-    "modified_at": "2026-01-02T17:08:22.463459+00:00",
+    "metadata": {
+      "completed_at": "2026-01-03T00:01:38.310905+00:00",
+      "updated_at": "2026-01-03T00:01:38.310912+00:00"
+    },
+    "modified_at": "2026-01-03T00:01:38.333843+00:00",
     "priority": "high",
     "properties": {
-      "category": "bugfix"
+      "category": "bugfix",
+      "retrospective": "Fixed in CDG ACID fixes commit. _next_seq() is now called inside _wal_lock block, and sequence only committed after successful write. GoT wraps CDG so inherits the fix."
     },
-    "status": "pending",
+    "status": "completed",
     "title": "HIGH: GoT WAL sequence counter not thread-safe",
-    "version": 2
+    "version": 3
   }
 }

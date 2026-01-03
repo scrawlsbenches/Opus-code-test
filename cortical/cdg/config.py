@@ -7,9 +7,15 @@ controlling durability modes, partition settings, and operational parameters.
 This module defines the configuration options that make CDG a flexible,
 configurable storage layer that can serve different use cases:
 
-- Simple apps: transactions=False, wal=False (fast, ephemeral)
-- GoT workloads: transactions=True, wal=True, recovery=full (ACID)
-- High-performance: transactions=False, recovery=none (maximum speed)
+DEFAULT (ACID-safe):
+- transactions=True, wal=True, recovery=full
+- WAL-first model: commits are durable before entity files are modified
+- Use CDGConfig() for standard safe operation
+
+PRESETS:
+- CDGConfig.for_got(): Same as default (full ACID)
+- CDGConfig.for_simple_storage(): transactions=False, wal=False (fast, ephemeral)
+- CDGConfig.for_high_performance(): Maximum speed, no safety guarantees
 """
 
 from dataclasses import dataclass, field
@@ -133,17 +139,22 @@ class CDGConfig:
     strict_edge_types: bool = True
 
     # Transaction settings
-    transactions_enabled: bool = False  # Enable begin/commit/rollback semantics
+    # Default: ACID transactions enabled for data safety
+    # Disable for ephemeral data or maximum performance
+    transactions_enabled: bool = True  # Enable begin/commit/rollback semantics
     isolation_level: IsolationLevel = IsolationLevel.SNAPSHOT
     transaction_timeout_seconds: int = 300  # 5 minutes default
 
     # WAL settings
-    enable_wal: bool = False  # Enable write-ahead log (requires transactions)
+    # Default: WAL enabled for crash recovery
+    # WAL-first model: commit is durable in WAL before entities are modified
+    enable_wal: bool = True  # Enable write-ahead log for crash recovery
     wal_archive_enabled: bool = True
     wal_archive_threshold: int = 1000  # Archive after N entries
 
     # Recovery settings
-    recovery_mode: RecoveryMode = RecoveryMode.CHECKSUM
+    # Default: FULL recovery for maximum safety
+    recovery_mode: RecoveryMode = RecoveryMode.FULL
     orphan_strategy: OrphanStrategy = OrphanStrategy.REPAIR
     auto_recover_on_startup: bool = True
 

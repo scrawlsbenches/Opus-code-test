@@ -138,10 +138,23 @@ class CDGWALManager:
                 os.fsync(f.fileno())
 
     def _next_seq(self) -> int:
-        """Get next sequence number and persist it."""
-        self._sequence += 1
+        """
+        Get next sequence number WITHOUT persisting.
+
+        The sequence is only persisted AFTER successful WAL write
+        to prevent sequence gaps on write failure.
+        """
+        return self._sequence + 1
+
+    def _commit_seq(self, seq: int) -> None:
+        """
+        Commit a sequence number after successful WAL write.
+
+        Only called after WAL entry is successfully written and fsynced.
+        This prevents sequence gaps when WAL writes fail.
+        """
+        self._sequence = seq
         self._save_sequence()
-        return self._sequence
 
     def log(self, tx_id: str, operation: str, data: Dict[str, Any]) -> int:
         """
@@ -149,6 +162,9 @@ class CDGWALManager:
 
         Uses file locking to prevent concurrent WAL corruption when multiple
         processes write simultaneously.
+
+        Sequence numbers are only committed AFTER successful write to prevent
+        gaps when writes fail.
 
         Args:
             tx_id: Transaction ID
@@ -160,6 +176,7 @@ class CDGWALManager:
         """
         # Acquire lock to prevent concurrent writes from interleaving
         with self._wal_lock:
+            # Get next sequence WITHOUT committing it yet
             seq = self._next_seq()
 
             # Create entry using shared TransactionWALEntry
@@ -178,6 +195,10 @@ class CDGWALManager:
                 # Only fsync if PARANOID mode
                 if self.durability == DurabilityMode.PARANOID:
                     os.fsync(f.fileno())
+
+            # Only commit sequence AFTER successful write
+            # This prevents sequence gaps on write failure
+            self._commit_seq(seq)
 
             return seq
 

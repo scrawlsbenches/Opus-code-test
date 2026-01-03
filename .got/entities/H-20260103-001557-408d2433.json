@@ -1,0 +1,29 @@
+{
+  "_checksum": "98b53917987cc42d",
+  "_written_at": "2026-01-03T00:15:57.595431+00:00",
+  "data": {
+    "accepted_at": "",
+    "artifacts": [],
+    "completed_at": "",
+    "context": {
+      "task_priority": "high",
+      "task_status": "pending",
+      "task_title": "Implement WAL entity rollback for crash recovery"
+    },
+    "created_at": "2026-01-03T00:15:57.583320+00:00",
+    "entity_type": "handoff",
+    "id": "H-20260103-001557-408d2433",
+    "initiated_at": "2026-01-03T00:15:57.583333+00:00",
+    "instructions": "# WAL Entity Rollback Implementation Handoff\n\n## Context\nThe CDG ACID guarantees are now in place (see KT-20260103-000745-cdg-acid-complete.md). The WAL-first durability model is working: TX_COMMIT is logged and fsynced BEFORE entity files are modified.\n\nHowever, there's a known limitation: if a crash happens after TX_COMMIT is durable but BEFORE entity files are written, recovery knows the transaction committed but CANNOT reconstruct the entity data.\n\n## Current State\nWAL WRITE entries only store metadata:\n```json\n{\"seq\": 2, \"tx\": \"TX-001\", \"op\": \"WRITE\", \"data\": {\"entity_id\": \"E-001\", \"old_version\": 0, \"new_version\": 1}}\n```\n\n## Goal\nStore full entity state in WAL WRITE entries:\n```json\n{\"seq\": 2, \"tx\": \"TX-001\", \"op\": \"WRITE\", \"data\": {\"entity_id\": \"E-001\", \"old_version\": 0, \"new_version\": 1, \"entity_data\": {<full entity dict>}}}\n```\n\n## Implementation Steps\n\n### 1. Modify WAL log_write() (cortical/cdg/wal.py)\n- Update `log_write()` signature to accept optional `entity_data: Dict`\n- Store entity_data in WRITE entry if provided\n- Consider compression for large entities (optional optimization)\n\n### 2. Update TransactionManager.commit() (cortical/cdg/transaction_manager.py)\n- When logging writes, pass full entity state from write_set\n- Location: around line 320-330 in commit() method\n\n### 3. Add redo_committed_writes() to Recovery (cortical/cdg/recovery.py)\n- Scan WAL for TX_COMMIT entries\n- For each committed transaction, verify entity files exist\n- If entity file missing but TX_COMMIT exists with entity_data:\n  - Reconstruct entity from WAL\n  - Write to disk\n  - Log recovery action\n- Call from recover() after WAL integrity check\n\n### 4. Add crash recovery tests\n- Test: Crash after TX_COMMIT, entity file missing \u2192 entity reconstructed\n- Test: Partial entity file \u2192 replaced with WAL version\n- Add to tests/behavioral/test_cdg_crash_recovery.py\n\n## Key Files\n- cortical/cdg/wal.py - log_write() modification\n- cortical/cdg/transaction_manager.py - pass entity data to WAL\n- cortical/cdg/recovery.py - redo_committed_writes()\n- cortical/cdg/config.py - (no changes expected)\n- tests/behavioral/test_cdg_crash_recovery.py - new tests\n\n## Verification Commands\n```bash\n# Run smoke tests first\npython -m pytest tests/smoke/ -v\n\n# Run existing CDG crash recovery tests\npython -m pytest tests/behavioral/test_cdg_crash_recovery.py -v\n\n# Run all CDG tests\npython -m pytest tests/behavioral/cdg_*.py tests/behavioral/test_cdg_*.py -v\n```\n\n## Related Decisions\n- D-20260102-235916-dd339178: Entity rollback deferred (original deferral)\n- D-20260102-231952-62e237a5: WAL-first architecture (foundational)\n\n## Branch\nContinue on: claude/review-engineering-handoff-6FSwI",
+    "modified_at": "2026-01-03T00:15:57.595356+00:00",
+    "properties": {},
+    "reject_reason": "",
+    "rejected_at": "",
+    "result": {},
+    "source_agent": "main",
+    "status": "initiated",
+    "target_agent": "next-agent",
+    "task_id": "T-20260103-001507-4d3ad2bb",
+    "version": 2
+  }
+}

@@ -405,9 +405,10 @@ class CDGStore:
 
     def delete(self, entity_id: str) -> bool:
         """
-        Delete an entity.
+        Delete an entity with crash-safe history persistence.
 
         Thread-safe and process-safe via write locks.
+        Uses pending file pattern for crash-safe history (same as write()).
 
         Args:
             entity_id: Entity identifier
@@ -422,11 +423,21 @@ class CDGStore:
                 if not path.exists():
                     return False
 
-                # Save to history before deleting
-                self._save_to_history(entity_id, self._version)
+                # Phase 1: Capture and write pending history (crash-safe)
+                # Use version 0 as expected_entity_version to indicate deletion
+                pending_path = None
+                history_entry = self._capture_history_entry(
+                    entity_id, self._version, expected_entity_version=0
+                )
+                if history_entry is not None:
+                    pending_path = self._write_pending_history(entity_id, history_entry)
 
-                # Delete file
+                # Phase 2: Delete file
                 path.unlink()
+
+                # Phase 3: Finalize history (move from pending to main)
+                if pending_path is not None:
+                    self._finalize_pending_history(entity_id, pending_path)
 
                 # Increment global version
                 self._version += 1
@@ -436,10 +447,11 @@ class CDGStore:
 
     def apply_deletes(self, delete_set: set) -> int:
         """
-        Delete multiple entities atomically.
+        Delete multiple entities atomically with crash-safe history.
 
         Thread-safe and process-safe via write locks.
         Either all deletes succeed or none do (rollback on failure).
+        Uses pending file pattern for crash-safe history (same as apply_writes()).
 
         Args:
             delete_set: Set of entity IDs to delete
@@ -456,24 +468,39 @@ class CDGStore:
         # Acquire both thread and process locks for full safety
         with self._write_lock:
             with self._write_process_lock:
-                deleted_files = []  # Track for rollback: (entity_id, entity_data)
+                deleted_files = []  # Track for rollback: (entity_id, entity_data, path)
+                pending_history = []  # Track pending history: (entity_id, pending_path)
 
                 try:
-                    # Step 1: Save all entities to history and capture data for rollback
+                    # Step 1: Capture history and write to pending files (crash-safe)
+                    # Pending files are written BEFORE deletes so crash recovery works
+                    for entity_id in delete_set:
+                        path = self._entity_path(entity_id)
+                        if path.exists():
+                            # Capture history entry with version 0 indicating deletion
+                            entry = self._capture_history_entry(
+                                entity_id, self._version, expected_entity_version=0
+                            )
+                            if entry is not None:
+                                pending_path = self._write_pending_history(entity_id, entry)
+                                pending_history.append((entity_id, pending_path))
+
+                    # Step 2: Delete all files (capture data for rollback)
                     for entity_id in delete_set:
                         path = self._entity_path(entity_id)
                         if path.exists():
                             # Read entity data for potential rollback
                             entity_data = path.read_text()
-
-                            # Save to history before deleting
-                            self._save_to_history(entity_id, self._version)
-
                             # Delete file
                             path.unlink()
                             deleted_files.append((entity_id, entity_data, path))
 
-                    # Step 2: Update global version (only if we deleted something)
+                    # Step 3: Finalize pending history files
+                    # If crash after step 2 but before step 3, recovery will finalize
+                    for entity_id, pending_path in pending_history:
+                        self._finalize_pending_history(entity_id, pending_path)
+
+                    # Step 4: Update global version (only if we deleted something)
                     if deleted_files:
                         self._version += 1
                         self._save_version()
@@ -487,6 +514,12 @@ class CDGStore:
                             path.write_text(entity_data)
                         except Exception:
                             pass  # Best effort rollback
+
+                    # Clean up pending history files (deletes didn't complete)
+                    for _, pending_path in pending_history:
+                        if pending_path.exists():
+                            pending_path.unlink()
+
                     raise
 
     def _entity_path(self, entity_id: str) -> Path:
@@ -769,14 +802,15 @@ class CDGStore:
 
     def _recover_pending_history(self) -> None:
         """
-        Recover any pending history entries from interrupted writes.
+        Recover any pending history entries from interrupted writes/deletes.
 
         Called on startup to handle crash recovery. For each pending file:
-        - If entity version matches expected_entity_version: finalize (write succeeded)
-        - Otherwise: delete pending (write did not complete)
+        - If expected_entity_version=0 (delete) and entity doesn't exist: finalize
+        - If expected_entity_version>0 (write) and entity.version matches: finalize
+        - Otherwise: delete pending (operation did not complete)
 
         This ensures history is never lost if crash happens after entity
-        write but before history finalization.
+        write/delete but before history finalization.
         """
         if not self._pending_history_dir.exists():
             return
@@ -794,14 +828,25 @@ class CDGStore:
                     pending_path.unlink()
                     continue
 
-                # Check if entity write completed
                 entity = self.read(entity_id)
-                if entity is not None and entity.version == expected_version:
-                    # Entity write succeeded, finalize history
-                    self._finalize_pending_history(entity_id, pending_path)
+
+                # Check if operation completed successfully
+                if expected_version == 0:
+                    # This was a delete operation
+                    # If entity doesn't exist, delete succeeded → finalize history
+                    if entity is None:
+                        self._finalize_pending_history(entity_id, pending_path)
+                    else:
+                        # Entity still exists, delete didn't complete
+                        pending_path.unlink()
                 else:
-                    # Entity write did not complete, discard pending history
-                    pending_path.unlink()
+                    # This was a write operation
+                    # If entity version matches expected, write succeeded → finalize
+                    if entity is not None and entity.version == expected_version:
+                        self._finalize_pending_history(entity_id, pending_path)
+                    else:
+                        # Version mismatch, write didn't complete
+                        pending_path.unlink()
 
             except (json.JSONDecodeError, OSError):
                 # Corrupted pending file, delete it

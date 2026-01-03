@@ -1,19 +1,23 @@
 {
-  "_checksum": "c6a9d2f07bb715eb",
-  "_written_at": "2026-01-02T23:20:18.335454+00:00",
+  "_checksum": "e1d943991f42101d",
+  "_written_at": "2026-01-02T23:57:57.682156+00:00",
   "data": {
     "created_at": "2026-01-02T23:20:18.331588+00:00",
     "description": "Current: apply_writes() then log_tx_commit(). Must be: log_tx_commit() then fsync then apply_writes(). Core ACID violation.",
     "entity_type": "task",
     "id": "T-20260102-232018-620564ef",
-    "metadata": {},
-    "modified_at": "2026-01-02T23:20:18.335386+00:00",
+    "metadata": {
+      "completed_at": "2026-01-02T23:57:57.664616+00:00",
+      "updated_at": "2026-01-02T23:57:57.664624+00:00"
+    },
+    "modified_at": "2026-01-02T23:57:57.682064+00:00",
     "priority": "critical",
     "properties": {
-      "category": "bugfix"
+      "category": "bugfix",
+      "retrospective": "Fixed WAL commit order - log TX_COMMIT before applying writes, fsync before modifying entities. This ensures WAL is source of truth and entities can be recovered."
     },
-    "status": "pending",
+    "status": "completed",
     "title": "Fix WAL commit order: log COMMIT before applying writes",
-    "version": 2
+    "version": 3
   }
 }

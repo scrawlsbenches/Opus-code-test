@@ -318,11 +318,18 @@ class CDGRecoveryManager:
 
         return result
 
+    # Minimum valid entity file size in bytes
+    # Even minimal JSON like {"data":{},"_checksum":"..."} is ~50 bytes
+    MIN_ENTITY_FILE_SIZE = 20
+
     def verify_store_integrity(self) -> List[str]:
         """
-        Verify all entities have valid checksums.
+        Verify all entities have valid checksums and are not truncated.
 
-        Reads all entity files and validates their embedded checksums.
+        Checks:
+        1. File size > MIN_ENTITY_FILE_SIZE (catches partial/truncated writes)
+        2. Valid JSON structure (catches malformed files)
+        3. Checksum matches content (catches corruption)
 
         Returns:
             List of corrupted entity IDs (empty if all valid)
@@ -337,9 +344,22 @@ class CDGRecoveryManager:
             if entity_file.name.startswith("_") or entity_file.suffix == ".tmp":
                 continue
 
+            entity_id = entity_file.stem
+
             try:
+                # Check for suspiciously small files (partial writes)
+                file_size = entity_file.stat().st_size
+                if file_size < self.MIN_ENTITY_FILE_SIZE:
+                    corrupted.append(entity_id)
+                    logger.warning(
+                        "Partial/truncated entity detected: %s - file size %d bytes < minimum %d",
+                        entity_id, file_size, self.MIN_ENTITY_FILE_SIZE
+                    )
+                    continue
+
                 # Read and verify checksum
                 self.store._read_and_verify(entity_file)
+
             except FileNotFoundError:
                 # File was deleted between glob and read (race condition)
                 # This is fine - another process may have cleaned it up
@@ -351,7 +371,6 @@ class CDGRecoveryManager:
                 # CorruptionError: checksum mismatch
                 # JSONDecodeError: truncated or malformed JSON file
                 # KeyError: missing required fields (_checksum, data, etc.)
-                entity_id = entity_file.stem
                 corrupted.append(entity_id)
                 logger.warning(
                     "Corrupted entity detected: %s - %s: %s",
@@ -472,15 +491,25 @@ class CDGRecoveryManager:
 
                         try:
                             entry = json.loads(line)
+                            op = entry.get('op')
+                            data = entry.get('data', {})
+
                             # Look for WRITE operations which track entity modifications
-                            if entry.get('op') == 'WRITE':
-                                if 'data' in entry and isinstance(entry['data'], dict):
-                                    if 'entity_id' in entry['data']:
-                                        wal_entity_ids.add(entry['data']['entity_id'])
-                            # Also check for ADOPTED operations (from recovery)
-                            elif entry.get('op') == 'ADOPTED':
-                                if 'entity_id' in entry:
+                            if op == 'WRITE':
+                                if isinstance(data, dict) and 'entity_id' in data:
+                                    wal_entity_ids.add(data['entity_id'])
+
+                            # Check for ADOPTED operations (from recovery)
+                            # Supports both legacy format (entity_id at root) and
+                            # new TransactionWALEntry format (entity_id in data)
+                            elif op == 'ADOPTED':
+                                # New format: entity_id in data dict
+                                if isinstance(data, dict) and 'entity_id' in data:
+                                    wal_entity_ids.add(data['entity_id'])
+                                # Legacy format: entity_id at root level
+                                elif 'entity_id' in entry:
                                     wal_entity_ids.add(entry['entity_id'])
+
                         except (json.JSONDecodeError, KeyError) as e:
                             # Skip malformed entries
                             logger.debug(
@@ -590,20 +619,16 @@ class CDGRecoveryManager:
                         continue
 
                     # Add synthetic WAL entry to adopt the orphan
+                    # Use proper WAL logging for durability (includes fsync and sequence)
                     if self.wal:
-                        synthetic_entry = {
-                            "op": "ADOPTED",
-                            "entity_id": entity_id,
-                            "reason": "orphan_recovery",
-                            "timestamp": time.time()
-                        }
-                        # Compute checksum for the entry
-                        checksum = compute_checksum(synthetic_entry)
-                        synthetic_entry["checksum"] = checksum
-
-                        # Append to WAL
-                        with open(self.wal.wal_file, 'a', encoding='utf-8') as f:
-                            f.write(json.dumps(synthetic_entry) + '\n')
+                        self.wal.log(
+                            tx_id="RECOVERY",
+                            operation="ADOPTED",
+                            data={
+                                "entity_id": entity_id,
+                                "reason": "orphan_recovery",
+                            }
+                        )
 
                         result.repaired_entities.append(entity_id)
                         result.repaired_count += 1

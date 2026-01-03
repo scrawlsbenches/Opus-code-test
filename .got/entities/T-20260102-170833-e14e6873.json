@@ -1,19 +1,23 @@
 {
-  "_checksum": "879daba3cc3abdb1",
-  "_written_at": "2026-01-02T17:08:33.348510+00:00",
+  "_checksum": "f5b4d970dc01157c",
+  "_written_at": "2026-01-03T00:02:20.327101+00:00",
   "data": {
     "created_at": "2026-01-02T17:08:33.344019+00:00",
     "description": "recovery.py:456-517. Only detects files without WAL records. Truncated/partial entity files undetected. Fix: Check for entity files < 100 bytes.",
     "entity_type": "task",
     "id": "T-20260102-170833-e14e6873",
-    "metadata": {},
-    "modified_at": "2026-01-02T17:08:33.348433+00:00",
+    "metadata": {
+      "completed_at": "2026-01-03T00:02:20.304631+00:00",
+      "updated_at": "2026-01-03T00:02:20.304639+00:00"
+    },
+    "modified_at": "2026-01-03T00:02:20.327033+00:00",
     "priority": "high",
     "properties": {
-      "category": "bugfix"
+      "category": "bugfix",
+      "retrospective": "Added MIN_ENTITY_FILE_SIZE check (20 bytes) in verify_store_integrity(). Files smaller than this are flagged as partial/truncated writes. Combined with existing JSONDecodeError and KeyError handling, this catches all forms of incomplete writes."
     },
-    "status": "pending",
+    "status": "completed",
     "title": "HIGH: GoT recovery doesn't handle partial writes",
-    "version": 2
+    "version": 3
   }
 }

@@ -1,19 +1,23 @@
 {
-  "_checksum": "d922fb16ad75ad98",
-  "_written_at": "2026-01-02T23:20:32.105521+00:00",
+  "_checksum": "e3298c78cdafeb24",
+  "_written_at": "2026-01-02T23:58:04.245426+00:00",
   "data": {
     "created_at": "2026-01-02T23:20:32.101209+00:00",
     "description": "Currently fsync happens after commit. Must fsync WAL entries before applying writes to guarantee durability.",
     "entity_type": "task",
     "id": "T-20260102-232032-5216f763",
-    "metadata": {},
-    "modified_at": "2026-01-02T23:20:32.105431+00:00",
+    "metadata": {
+      "completed_at": "2026-01-02T23:58:04.226262+00:00",
+      "updated_at": "2026-01-02T23:58:04.226270+00:00"
+    },
+    "modified_at": "2026-01-02T23:58:04.245361+00:00",
     "priority": "critical",
     "properties": {
-      "category": "bugfix"
+      "category": "bugfix",
+      "retrospective": "Fixed fsync timing - WAL is now fsynced before applying writes in all durability modes. This ensures commit is durable before any entity modifications."
     },
-    "status": "pending",
+    "status": "completed",
     "title": "Fix BALANCED mode: fsync WAL before entity writes",
-    "version": 2
+    "version": 3
   }
 }
