@@ -1,0 +1,19 @@
+{
+  "_checksum": "9a296fbfbc263fd0",
+  "_written_at": "2026-01-03T19:07:45.507329+00:00",
+  "data": {
+    "created_at": "2026-01-03T19:07:45.497205+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260103-190745-48c1daef",
+    "metadata": {},
+    "modified_at": "2026-01-03T19:07:45.507288+00:00",
+    "priority": "critical",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Phase 2: Cognitive Framework Optimization + Bug Fixes",
+    "version": 2
+  }
+}
