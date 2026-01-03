@@ -1,22 +1,24 @@
 {
-  "_checksum": "d0f54106917b1081",
-  "_written_at": "2026-01-03T12:25:07.480373+00:00",
+  "_checksum": "1981531a37416452",
+  "_written_at": "2026-01-03T12:25:21.531366+00:00",
   "data": {
     "created_at": "2026-01-03T12:24:58.465661+00:00",
     "description": "",
     "entity_type": "task",
     "id": "T-20260103-122458-082362b5",
     "metadata": {
+      "completed_at": "2026-01-03T12:25:21.510551+00:00",
       "started_at": "2026-01-03T12:25:07.458124+00:00",
-      "updated_at": "2026-01-03T12:25:07.458129+00:00"
+      "updated_at": "2026-01-03T12:25:21.510555+00:00"
     },
-    "modified_at": "2026-01-03T12:25:07.480314+00:00",
+    "modified_at": "2026-01-03T12:25:21.531320+00:00",
     "priority": "low",
     "properties": {
-      "category": "test"
+      "category": "test",
+      "retrospective": "Workflow validation test completed successfully"
     },
-    "status": "in_progress",
+    "status": "completed",
     "title": "Test task from workflow validation",
-    "version": 3
+    "version": 4
   }
 }
