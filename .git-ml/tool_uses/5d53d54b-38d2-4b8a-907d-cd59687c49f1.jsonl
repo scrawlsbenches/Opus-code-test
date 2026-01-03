@@ -3,3 +3,5 @@
 {"ts":"2026-01-03T10:17:52Z","tool":"Bash","input":{"command":"git status --short","description":"Check remaining files"},"output":{}}
 {"ts":"2026-01-03T10:18:01Z","tool":"Bash","input":{"command":"git add .git-ml/ && git commit -m \"ml: Update tool usage data\" && git push","description":"Commit tool usage data"},"output":{}}
 {"ts":"2026-01-03T10:18:08Z","tool":"Bash","input":{"command":"git status --short","description":"Final status check"},"output":{}}
+{"ts":"2026-01-03T10:18:18Z","tool":"Bash","input":{"command":"git add .git-ml/ && git commit -m \"ml: Sync tool captures\" && git push","description":"Final sync"},"output":{}}
+{"ts":"2026-01-03T10:18:25Z","tool":"Bash","input":{"command":"git status --short","description":"Check status"},"output":{}}
