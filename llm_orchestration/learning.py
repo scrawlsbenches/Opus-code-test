@@ -1737,3 +1737,230 @@ class LearningCycle:
             The Experience if found, None otherwise
         """
         return self.store.get(experience_id)
+
+    # =========================================================================
+    # FILE OUTCOME TRACKING
+    # =========================================================================
+    # These methods track which files are "risky" based on historical outcomes.
+    # From the Agent Survey (Worker Agent):
+    # > "If src/auth.py has broken 3 times in the last week, I want to know."
+
+    def get_files_from_experience(self, experience_id: str) -> List[str]:
+        """
+        Get the list of files touched in an experience.
+
+        Files are extracted from action targets that look like file paths.
+
+        Args:
+            experience_id: The experience ID to query
+
+        Returns:
+            List of file paths touched in the experience
+        """
+        experience = self.store.get(experience_id)
+        if not experience:
+            return []
+
+        files = []
+        for action in experience.actions:
+            # Check if target looks like a file path
+            target = action.target
+            if target and (
+                "/" in target or
+                "\\" in target or
+                target.endswith(".py") or
+                target.endswith(".js") or
+                target.endswith(".ts") or
+                target.endswith(".json") or
+                target.endswith(".yaml") or
+                target.endswith(".yml") or
+                target.endswith(".md") or
+                target.endswith(".txt")
+            ):
+                if target not in files:
+                    files.append(target)
+
+        return files
+
+    def get_file_history(self, file_path: str) -> Dict[str, Any]:
+        """
+        Get the outcome history for a specific file.
+
+        Scans all experiences to find those that touched this file,
+        and computes success/failure statistics.
+
+        Args:
+            file_path: The file path to query
+
+        Returns:
+            Dictionary with:
+            - total_experiences: Total times file was touched
+            - success_count: Number of successful outcomes
+            - failure_count: Number of failed outcomes
+            - success_rate: success_count / total_experiences
+            - error_patterns: Dict of error_type -> count
+            - recent_experiences: List of recent experience IDs
+        """
+        experiences = list(self.store._index.values())
+
+        matching = []
+        error_patterns: Dict[str, int] = {}
+
+        for exp in experiences:
+            files_touched = self.get_files_from_experience(exp.id)
+            if file_path in files_touched:
+                matching.append(exp)
+
+                # Track error patterns from failures
+                if exp.outcome and exp.outcome.outcome_type == OutcomeType.FAILURE:
+                    error_type = exp.outcome.error_type or "UnknownError"
+                    error_patterns[error_type] = error_patterns.get(error_type, 0) + 1
+
+        total = len(matching)
+        successes = sum(
+            1 for exp in matching
+            if exp.outcome and exp.outcome.was_successful()
+        )
+        failures = sum(
+            1 for exp in matching
+            if exp.outcome and exp.outcome.outcome_type == OutcomeType.FAILURE
+        )
+
+        return {
+            "total_experiences": total,
+            "success_count": successes,
+            "failure_count": failures,
+            "success_rate": successes / total if total > 0 else 1.0,
+            "error_patterns": error_patterns,
+            "recent_experiences": [exp.id for exp in matching[-5:]],
+        }
+
+    def get_risky_files(
+        self,
+        min_experiences: int = 3,
+        max_success_rate: float = 0.5
+    ) -> List[Dict[str, Any]]:
+        """
+        Find files with high failure rates.
+
+        A file is considered risky if:
+        - It has at least min_experiences touches
+        - Its success rate is below max_success_rate
+
+        Args:
+            min_experiences: Minimum touches to consider
+            max_success_rate: Maximum success rate to be flagged
+
+        Returns:
+            List of dicts with file_path, success_rate, failure_count
+        """
+        # Collect all unique files from experiences
+        all_files: Set[str] = set()
+        for exp in self.store._index.values():
+            files = self.get_files_from_experience(exp.id)
+            all_files.update(files)
+
+        risky = []
+        for file_path in all_files:
+            history = self.get_file_history(file_path)
+            if (
+                history["total_experiences"] >= min_experiences and
+                history["success_rate"] < max_success_rate
+            ):
+                risky.append({
+                    "file_path": file_path,
+                    "success_rate": history["success_rate"],
+                    "failure_count": history["failure_count"],
+                    "total_experiences": history["total_experiences"],
+                    "error_patterns": history["error_patterns"],
+                })
+
+        # Sort by success rate ascending (most risky first)
+        risky.sort(key=lambda x: x["success_rate"])
+        return risky
+
+    def get_guidance_for_files(
+        self,
+        intent: str,
+        files_to_modify: List[str],
+    ) -> Dict[str, Any]:
+        """
+        Get guidance for a task, including file risk assessment.
+
+        This combines semantic matching with file risk analysis.
+
+        Args:
+            intent: The task intent
+            files_to_modify: Files that will be modified
+
+        Returns:
+            Dictionary with:
+            - lessons: Applicable lessons
+            - recommendations: From similar successful tasks
+            - warnings: From failures and risky files
+            - file_risks: Per-file risk assessment
+        """
+        # Start with semantic matching
+        semantic_matches = self.find_by_intent(intent, min_similarity=0.15, limit=5)
+
+        guidance = {
+            "lessons": [],
+            "recommendations": [],
+            "warnings": [],
+            "file_risks": {},
+            "similar_experiences": semantic_matches,
+        }
+
+        # Assess risk for each file
+        for file_path in files_to_modify:
+            history = self.get_file_history(file_path)
+
+            is_risky = (
+                history["total_experiences"] >= 2 and
+                history["success_rate"] < 0.6
+            )
+
+            guidance["file_risks"][file_path] = {
+                "is_risky": is_risky,
+                "success_rate": history["success_rate"],
+                "failure_count": history["failure_count"],
+                "total_experiences": history["total_experiences"],
+                "error_patterns": history["error_patterns"],
+                "recent_failures": [
+                    exp_id for exp_id in history["recent_experiences"]
+                    if self._is_failure(exp_id)
+                ],
+            }
+
+            # Add warning for risky files
+            if is_risky:
+                warning = (
+                    f"Caution: {file_path} has {history['failure_count']} recent failures "
+                    f"({history['success_rate']:.0%} success rate)"
+                )
+                if warning not in guidance["warnings"]:
+                    guidance["warnings"].append(warning)
+
+                # Add specific error pattern warnings
+                for error_type, count in history["error_patterns"].items():
+                    if count >= 2:
+                        pattern_warning = f"Common error in {file_path}: {error_type} ({count} occurrences)"
+                        if pattern_warning not in guidance["warnings"]:
+                            guidance["warnings"].append(pattern_warning)
+
+        # Add recommendations from similar successful experiences
+        for exp in semantic_matches:
+            if exp.outcome and exp.outcome.was_successful() and exp.what_worked:
+                for insight in exp.what_worked[:2]:
+                    recommendation = f"From '{exp.intent}': {insight}"
+                    if recommendation not in guidance["recommendations"]:
+                        guidance["recommendations"].append(recommendation)
+
+        return guidance
+
+    def _is_failure(self, experience_id: str) -> bool:
+        """Check if an experience was a failure."""
+        exp = self.store.get(experience_id)
+        if not exp or not exp.outcome:
+            return False
+        return exp.outcome.outcome_type == OutcomeType.FAILURE
