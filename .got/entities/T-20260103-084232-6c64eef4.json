@@ -1,19 +1,22 @@
 {
-  "_checksum": "4e962cd7de95aa66",
-  "_written_at": "2026-01-03T08:42:32.907585+00:00",
+  "_checksum": "3c106b6cec71634e",
+  "_written_at": "2026-01-03T08:50:29.241574+00:00",
   "data": {
     "created_at": "2026-01-03T08:42:32.896624+00:00",
     "description": "Merge branch and verify:\n1. Hooks are configured in ~/.claude/settings.json\n2. SessionStart hook shows ML banner\n3. Stop hook captures session to sessions.jsonl\n4. Test isolation prevents metrics pollution\n\nReference: KT-20260103-084006",
     "entity_type": "task",
     "id": "T-20260103-084232-6c64eef4",
-    "metadata": {},
-    "modified_at": "2026-01-03T08:42:32.907529+00:00",
+    "metadata": {
+      "started_at": "2026-01-03T08:50:29.227080+00:00",
+      "updated_at": "2026-01-03T08:50:29.227083+00:00"
+    },
+    "modified_at": "2026-01-03T08:50:29.241483+00:00",
     "priority": "high",
     "properties": {
       "category": "test"
     },
-    "status": "pending",
+    "status": "in_progress",
     "title": "Verify ML metrics collection fix works end-to-end",
-    "version": 2
+    "version": 3
   }
 }

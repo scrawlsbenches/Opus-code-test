@@ -1,0 +1,30 @@
+{
+  "_checksum": "ae2f475756949ade",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-03T08:49:49.975781+00:00",
+  "data": {
+    "accepted_at": "2026-01-03T08:46:47.315053+00:00",
+    "artifacts": [],
+    "completed_at": "",
+    "context": {
+      "task_priority": "high",
+      "task_status": "pending",
+      "task_title": "Verify ML metrics collection fix works end-to-end"
+    },
+    "created_at": "2026-01-03T08:42:52.666963+00:00",
+    "entity_type": "handoff",
+    "id": "H-20260103-084252-59037b52",
+    "initiated_at": "2026-01-03T08:42:52.666979+00:00",
+    "instructions": "Verify ML metrics collection fix works end-to-end:\n\n1. MERGE FIRST: \n   git checkout main && git pull origin main\n   git merge origin/claude/investigate-metrics-collection-VQKg4\n\n2. VERIFY HOOKS CONFIGURED:\n   cat ~/.claude/settings.json\n   Should have SessionStart, PostToolUse, Stop hooks with 'cwd:Opus-code-test' matcher\n\n3. CHECK BASELINE:\n   python scripts/ml_data_collector.py stats\n   Note current counts (especially Sessions and Chats)\n\n4. VERIFY SESSION CAPTURE:\n   - SessionStart hook should show ML banner at session start\n   - Work normally during session\n   - End session cleanly (commit and push all changes)\n   - Next session check: tail -5 .git-ml/tracked/sessions.jsonl\n   - Should have new entry with current timestamp\n\n5. VERIFY TEST ISOLATION:\n   python -m pytest tests/unit/test_experiment_manager.py::test_file_prediction_experiment_get_metric_history -v\n   wc -l .git-ml/metrics/metrics.jsonl\n   Should still be 10 lines (no pollution)\n\n6. REPORT RESULTS:\n   Complete task T-20260103-084232-6c64eef4 with verification results\n\nReference: KT-20260103-084006 (ML Metrics Collection Fix)",
+    "modified_at": "2026-01-03T08:42:52.678214+00:00",
+    "properties": {},
+    "reject_reason": "",
+    "rejected_at": "",
+    "result": {},
+    "source_agent": "main",
+    "status": "accepted",
+    "target_agent": "next-session",
+    "task_id": "T-20260103-084232-6c64eef4",
+    "version": 2
+  }
+}
