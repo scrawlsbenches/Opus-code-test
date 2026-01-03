@@ -1,19 +1,23 @@
 {
-  "_checksum": "c190cbe4c7e5c036",
-  "_written_at": "2026-01-02T17:07:50.304205+00:00",
+  "_checksum": "3e340a543c493ef4",
+  "_written_at": "2026-01-03T01:34:48.632328+00:00",
   "data": {
     "created_at": "2026-01-02T17:07:50.300517+00:00",
     "description": "storage.py:260-273. History written before entity write. Failed write leaves history inconsistent. Fix: Save history AFTER successful write.",
     "entity_type": "task",
     "id": "T-20260102-170750-936c478c",
-    "metadata": {},
-    "modified_at": "2026-01-02T17:07:50.304139+00:00",
+    "metadata": {
+      "completed_at": "2026-01-03T01:34:48.615922+00:00",
+      "updated_at": "2026-01-03T01:34:48.615927+00:00"
+    },
+    "modified_at": "2026-01-03T01:34:48.632272+00:00",
     "priority": "critical",
     "properties": {
-      "category": "bugfix"
+      "category": "bugfix",
+      "retrospective": "Already fixed in prior ACID commit. storage.py now uses crash-safe pending history pattern: history is written to pending file first, only finalized AFTER successful entity write. Verified during WAL entity rollback implementation review."
     },
-    "status": "pending",
+    "status": "completed",
     "title": "CRITICAL: CDG history saved before write succeeds",
-    "version": 2
+    "version": 3
   }
 }
