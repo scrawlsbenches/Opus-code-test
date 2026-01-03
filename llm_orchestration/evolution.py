@@ -650,86 +650,339 @@ class StrategyEvolver:
     # CROSSOVER
     # =========================================================================
 
-    def crossover(
+    def crossover_single_point(
         self,
         parent_a: StrategyGenome,
         parent_b: StrategyGenome,
     ) -> StrategyGenome:
-        """Combine two successful strategies."""
+        """Single-point crossover: split genome at random point."""
         child_id = f"genome-{datetime.now().strftime('%Y%m%d%H%M%S')}-{random.randint(0, 9999)}"
 
-        child = StrategyGenome(
-            genome_id=child_id,
-            # For list genes, randomly choose from parents
-            decomposition_patterns=random.choice([
+        # Choose random crossover point (0-9 for 9 genes)
+        crossover_point = random.randint(0, 8)
+
+        genes = list(parent_a.genes())
+        child_genes = {}
+
+        for i, (gene_name, _) in enumerate(genes):
+            # Before crossover point: take from parent_a
+            # After crossover point: take from parent_b
+            if i < crossover_point:
+                child_genes[gene_name] = getattr(parent_a, gene_name)
+            else:
+                child_genes[gene_name] = getattr(parent_b, gene_name)
+
+        return StrategyGenome(genome_id=child_id, **child_genes)
+
+    def crossover_uniform(
+        self,
+        parent_a: StrategyGenome,
+        parent_b: StrategyGenome,
+    ) -> StrategyGenome:
+        """Uniform crossover: randomly select each gene from either parent."""
+        child_id = f"genome-{datetime.now().strftime('%Y%m%d%H%M%S')}-{random.randint(0, 9999)}"
+
+        child_genes = {}
+        for gene_name, _ in parent_a.genes():
+            # 50/50 chance to inherit from either parent
+            child_genes[gene_name] = getattr(
+                random.choice([parent_a, parent_b]),
+                gene_name
+            )
+
+        return StrategyGenome(genome_id=child_id, **child_genes)
+
+    def crossover_blend(
+        self,
+        parent_a: StrategyGenome,
+        parent_b: StrategyGenome,
+        alpha: float = 0.5,
+    ) -> StrategyGenome:
+        """Blend crossover: interpolate continuous genes, random for discrete."""
+        child_id = f"genome-{datetime.now().strftime('%Y%m%d%H%M%S')}-{random.randint(0, 9999)}"
+
+        # For list genes, randomly choose from parents
+        child_genes = {
+            "decomposition_patterns": random.choice([
                 parent_a.decomposition_patterns,
                 parent_b.decomposition_patterns,
             ]),
-            delegation_strategies=random.choice([
+            "delegation_strategies": random.choice([
                 parent_a.delegation_strategies,
                 parent_b.delegation_strategies,
             ]),
-            context_compression_methods=random.choice([
+            "context_compression_methods": random.choice([
                 parent_a.context_compression_methods,
                 parent_b.context_compression_methods,
             ]),
-            coordination_protocols=random.choice([
+            "coordination_protocols": random.choice([
                 parent_a.coordination_protocols,
                 parent_b.coordination_protocols,
             ]),
-            failure_strategies=random.choice([
+            "failure_strategies": random.choice([
                 parent_a.failure_strategies,
                 parent_b.failure_strategies,
             ]),
-            synthesis_patterns=random.choice([
+            "synthesis_patterns": random.choice([
                 parent_a.synthesis_patterns,
                 parent_b.synthesis_patterns,
             ]),
-            # For numeric genes, average
-            exploration_rate=(
-                parent_a.exploration_rate + parent_b.exploration_rate
-            ) / 2,
-            confidence_threshold=random.choice([
-                parent_a.confidence_threshold,
-                parent_b.confidence_threshold,
-            ]),
-            parallelism_preference=(
-                parent_a.parallelism_preference + parent_b.parallelism_preference
-            ) / 2,
+        }
+
+        # For numeric genes, blend with alpha parameter
+        # Child = alpha * parent_a + (1 - alpha) * parent_b
+        child_genes["exploration_rate"] = (
+            alpha * parent_a.exploration_rate +
+            (1 - alpha) * parent_b.exploration_rate
+        )
+        child_genes["confidence_threshold"] = (
+            alpha * parent_a.confidence_threshold +
+            (1 - alpha) * parent_b.confidence_threshold
+        )
+        child_genes["parallelism_preference"] = (
+            alpha * parent_a.parallelism_preference +
+            (1 - alpha) * parent_b.parallelism_preference
         )
 
-        return child
+        return StrategyGenome(genome_id=child_id, **child_genes)
+
+    def crossover(
+        self,
+        parent_a: StrategyGenome,
+        parent_b: StrategyGenome,
+        method: str = "blend",
+    ) -> StrategyGenome:
+        """
+        Combine two successful strategies.
+
+        Args:
+            parent_a: First parent genome
+            parent_b: Second parent genome
+            method: Crossover method - "single_point", "uniform", or "blend"
+
+        Returns:
+            New child genome
+        """
+        if method == "single_point":
+            return self.crossover_single_point(parent_a, parent_b)
+        elif method == "uniform":
+            return self.crossover_uniform(parent_a, parent_b)
+        elif method == "blend":
+            return self.crossover_blend(parent_a, parent_b)
+        else:
+            # Default to blend
+            return self.crossover_blend(parent_a, parent_b)
 
     # =========================================================================
     # MUTATION
     # =========================================================================
 
-    def mutate(
+    def mutate_gaussian(
         self,
         genome: StrategyGenome,
         mutation_rate: float = 0.1,
+        stddev: float = 0.05,
     ) -> StrategyGenome:
-        """Introduce variations to explore new strategies."""
+        """Gaussian mutation: small perturbations to numeric genes."""
         mutated = genome.copy()
         mutated.genome_id = f"{genome.genome_id}-mutated"
 
         # Mutate numeric genes with small perturbations
         if random.random() < mutation_rate:
-            mutated.exploration_rate = max(0, min(1,
-                mutated.exploration_rate + random.gauss(0, 0.05)
+            mutated.exploration_rate = max(0.0, min(1.0,
+                mutated.exploration_rate + random.gauss(0, stddev)
             ))
 
         if random.random() < mutation_rate:
-            mutated.confidence_threshold = max(0, min(1,
-                mutated.confidence_threshold + random.gauss(0, 0.05)
+            mutated.confidence_threshold = max(0.0, min(1.0,
+                mutated.confidence_threshold + random.gauss(0, stddev)
             ))
 
         if random.random() < mutation_rate:
-            mutated.parallelism_preference = max(0, min(1,
-                mutated.parallelism_preference + random.gauss(0, 0.1)
+            mutated.parallelism_preference = max(0.0, min(1.0,
+                mutated.parallelism_preference + random.gauss(0, stddev * 2)
             ))
 
         return mutated
+
+    def mutate_uniform(
+        self,
+        genome: StrategyGenome,
+        mutation_rate: float = 0.1,
+    ) -> StrategyGenome:
+        """Uniform mutation: random reset of genes within valid bounds."""
+        mutated = genome.copy()
+        mutated.genome_id = f"{genome.genome_id}-mutated"
+
+        # Completely randomize numeric genes
+        if random.random() < mutation_rate:
+            mutated.exploration_rate = random.uniform(0.0, 0.3)
+
+        if random.random() < mutation_rate:
+            mutated.confidence_threshold = random.uniform(0.5, 0.95)
+
+        if random.random() < mutation_rate:
+            mutated.parallelism_preference = random.uniform(0.0, 1.0)
+
+        return mutated
+
+    def mutate_adaptive(
+        self,
+        genome: StrategyGenome,
+        population: list[StrategyGenome],
+        base_rate: float = 0.1,
+    ) -> StrategyGenome:
+        """
+        Adaptive mutation: rate based on population diversity.
+        Low diversity -> higher mutation rate (explore more).
+        High diversity -> lower mutation rate (exploit more).
+        """
+        # Compute diversity
+        diversity = self._compute_diversity(population)
+
+        # Adapt mutation rate inversely to diversity
+        # Low diversity (0.0) -> 3x base rate
+        # High diversity (1.0) -> 0.5x base rate
+        adapted_rate = base_rate * (3.0 - 2.5 * diversity)
+        adapted_rate = max(0.01, min(0.5, adapted_rate))
+
+        # Use Gaussian mutation with adapted rate
+        return self.mutate_gaussian(genome, mutation_rate=adapted_rate)
+
+    def mutate(
+        self,
+        genome: StrategyGenome,
+        mutation_rate: float = 0.1,
+        method: str = "gaussian",
+        population: list[StrategyGenome] | None = None,
+    ) -> StrategyGenome:
+        """
+        Introduce variations to explore new strategies.
+
+        Args:
+            genome: Genome to mutate
+            mutation_rate: Base probability of mutation per gene
+            method: Mutation method - "gaussian", "uniform", or "adaptive"
+            population: Required for adaptive mutation
+
+        Returns:
+            Mutated genome
+        """
+        if method == "gaussian":
+            return self.mutate_gaussian(genome, mutation_rate)
+        elif method == "uniform":
+            return self.mutate_uniform(genome, mutation_rate)
+        elif method == "adaptive":
+            if population is None:
+                # Fall back to gaussian if no population provided
+                return self.mutate_gaussian(genome, mutation_rate)
+            return self.mutate_adaptive(genome, population, mutation_rate)
+        else:
+            # Default to gaussian
+            return self.mutate_gaussian(genome, mutation_rate)
+
+    # =========================================================================
+    # DIVERSITY MANAGEMENT
+    # =========================================================================
+
+    def _compute_diversity(self, population: list[StrategyGenome]) -> float:
+        """
+        Compute population diversity.
+
+        Returns:
+            Diversity score in [0, 1], where 0 = no diversity, 1 = high diversity
+        """
+        if len(population) < 2:
+            return 1.0
+
+        # Measure variance in meta-genes
+        exploration_rates = [g.exploration_rate for g in population]
+        confidence_thresholds = [g.confidence_threshold for g in population]
+        parallelism_prefs = [g.parallelism_preference for g in population]
+
+        var_exploration = self._variance(exploration_rates)
+        var_confidence = self._variance(confidence_thresholds)
+        var_parallelism = self._variance(parallelism_prefs)
+
+        # Average variance (normalized to 0-1)
+        # Max variance for uniform distribution in [0,1] is 1/12 ≈ 0.083
+        avg_variance = (var_exploration + var_confidence + var_parallelism) / 3
+        normalized_diversity = min(1.0, avg_variance / 0.083)
+
+        return normalized_diversity
+
+    def _variance(self, values: list[float]) -> float:
+        """Compute variance of a list of values."""
+        if not values:
+            return 0.0
+        mean = sum(values) / len(values)
+        return sum((v - mean) ** 2 for v in values) / len(values)
+
+    def maintain_diversity(
+        self,
+        population: list[StrategyGenome],
+        traces: list[ExecutionTrace],
+        min_diversity: float = 0.2,
+    ) -> list[StrategyGenome]:
+        """
+        Maintain population diversity by injecting novel strategies.
+
+        Args:
+            population: Current population
+            traces: Execution traces for generating novel strategies
+            min_diversity: Minimum acceptable diversity threshold
+
+        Returns:
+            Population with diversity maintained
+        """
+        diversity = self._compute_diversity(population)
+
+        if diversity < min_diversity:
+            # Inject novel strategies to increase diversity
+            inject_count = max(1, len(population) // 10)  # 10% of population
+
+            for _ in range(inject_count):
+                novel = self.generate_novel_strategy(traces)
+                # Replace random low-fitness individual
+                if len(population) > 5:
+                    # Don't replace if population is too small
+                    replace_idx = random.randint(len(population) // 2, len(population) - 1)
+                    population[replace_idx] = novel
+                else:
+                    population.append(novel)
+
+        return population
+
+    # =========================================================================
+    # ELITISM
+    # =========================================================================
+
+    def select_elites(
+        self,
+        population: list[StrategyGenome],
+        fitness_scores: dict[str, FitnessScore],
+        elite_count: int = 2,
+    ) -> list[StrategyGenome]:
+        """
+        Select top N strategies to preserve across generations.
+
+        Args:
+            population: Current population
+            fitness_scores: Fitness scores for each genome
+            elite_count: Number of elites to preserve
+
+        Returns:
+            List of elite genomes
+        """
+        # Sort by fitness
+        sorted_pop = sorted(
+            population,
+            key=lambda g: fitness_scores.get(g.genome_id, FitnessScore()).aggregate(),
+            reverse=True
+        )
+
+        # Return top N
+        return sorted_pop[:elite_count]
 
     # =========================================================================
     # NOVEL GENERATION
@@ -764,8 +1017,24 @@ class StrategyEvolver:
     def evolve_generation(
         self,
         traces: list[ExecutionTrace],
+        elite_count: int = 2,
+        min_diversity: float = 0.2,
+        crossover_method: str = "blend",
+        mutation_method: str = "adaptive",
     ) -> EvolutionResult:
-        """Complete one evolution cycle."""
+        """
+        Complete one evolution cycle with elitism and diversity maintenance.
+
+        Args:
+            traces: Execution traces to evaluate fitness
+            elite_count: Number of top strategies to preserve
+            min_diversity: Minimum diversity threshold
+            crossover_method: Crossover method - "single_point", "uniform", or "blend"
+            mutation_method: Mutation method - "gaussian", "uniform", or "adaptive"
+
+        Returns:
+            EvolutionResult with generation statistics
+        """
         self.generation += 1
 
         # 1. Evaluate fitness
@@ -783,35 +1052,57 @@ class StrategyEvolver:
                 self.pool.add(novel)
             population = self.pool.get_current_generation()
 
-        # 3. Select parents
+        # 3. ELITISM: Preserve top strategies
+        elites = self.select_elites(population, fitness_scores, elite_count)
+
+        # 4. Select parents (from remaining population)
         parents = self.select_parents(population, fitness_scores)
 
-        # 4. Generate offspring
+        # 5. Generate offspring
         offspring = []
 
-        # Crossover
+        # Crossover with specified method
         for i in range(0, len(parents) - 1, 2):
-            child = self.crossover(parents[i], parents[i + 1])
-            child = self.mutate(child)
+            child = self.crossover(
+                parents[i],
+                parents[i + 1],
+                method=crossover_method
+            )
+            # Mutate with specified method
+            child = self.mutate(
+                child,
+                method=mutation_method,
+                population=population
+            )
             offspring.append(child)
 
-        # Novel strategies
+        # Novel strategies (exploration)
         novel_count = max(1, int(len(population) * 0.05))
         for _ in range(novel_count):
             novel = self.generate_novel_strategy(traces)
             offspring.append(novel)
 
-        # 5. Update pool
+        # 6. Combine elites + parents + offspring
+        new_generation = elites + parents + offspring
+
+        # 7. DIVERSITY MAINTENANCE: Inject novel strategies if needed
+        new_generation = self.maintain_diversity(
+            new_generation,
+            traces,
+            min_diversity
+        )
+
+        # 8. Update pool
         new_generation = self.pool.update(
-            survivors=parents,
+            survivors=elites + parents,
             offspring=offspring,
             fitness_scores={
                 g.genome_id: fitness_scores.get(g.genome_id, FitnessScore()).aggregate()
-                for g in parents + offspring
+                for g in new_generation
             },
         )
 
-        # 6. Record history
+        # 9. Record history
         best_fitness = max(
             fitness_scores.values(),
             key=lambda f: f.aggregate()
@@ -828,7 +1119,7 @@ class StrategyEvolver:
             best_fitness=best_fitness,
             avg_fitness=avg_fitness,
             novel_strategies_added=novel_count,
-            strategies_retired=len(population) - len(parents),
+            strategies_retired=len(population) - len(elites + parents),
         )
 
         self.history.record(result)

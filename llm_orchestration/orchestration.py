@@ -134,7 +134,69 @@ class FlowMetrics:
 
 
 class BottleneckDetector:
-    """Detects bottlenecks in agent workflow using multiple algorithms."""
+    """
+    Detects bottlenecks in agent workflow using multiple detection algorithms.
+
+    The BottleneckDetector analyzes flow metrics and board state to identify
+    where work is piling up or slowing down. It uses four complementary
+    detection algorithms to catch different types of bottlenecks.
+
+    Detection Algorithms:
+        1. **WIP Violations**: Columns exceeding or approaching WIP limits
+           - Detects when column count > limit
+           - Warns when approaching limit (>90% by default)
+           - Calculates severity based on excess
+
+        2. **Queue Buildup**: Growing queues indicating flow issues
+           - Tracks queue depth history
+           - Detects growth trends
+           - Diagnoses root cause (downstream, intake, processing)
+
+        3. **Slow Stages**: Abnormal cycle time increases
+           - Compares current vs historical cycle times
+           - Detects significant slowdowns (>50% by default)
+           - Baseline: median of historical data
+
+        4. **Blocked Work**: Items stuck without progress
+           - Tracks time in stage
+           - Flags items blocked >30min (default)
+           - Identifies blocking patterns
+
+    Example:
+        >>> from llm_orchestration.orchestration import (
+        ...     BottleneckDetector,
+        ...     FlowMetrics,
+        ...     OrchestrationBoard,
+        ... )
+        >>>
+        >>> # Create detector with custom thresholds
+        >>> detector = BottleneckDetector(
+        ...     wip_threshold=0.85,  # Warn at 85% of WIP limit
+        ...     queue_growth_threshold=0.15,  # Alert on 15% growth
+        ...     slow_stage_threshold=0.3,  # Alert on 30% slowdown
+        ...     blocked_time_threshold=timedelta(minutes=45),
+        ... )
+        >>>
+        >>> # Detect bottlenecks
+        >>> bottlenecks = detector.detect(flow_metrics, board)
+        >>>
+        >>> # Review bottlenecks
+        >>> for bottleneck in bottlenecks:
+        ...     print(f"{bottleneck.type} in {bottleneck.location}:")
+        ...     print(f"  Severity: {bottleneck.severity:.2f}")
+        ...     print(f"  Recommendation: {bottleneck.recommendation}")
+
+    Attributes:
+        wip_threshold (float): WIP warning threshold (0-1)
+        queue_growth_threshold (float): Queue growth alert threshold
+        slow_stage_threshold (float): Slowdown ratio threshold
+        blocked_time_threshold (timedelta): Time before item considered blocked
+
+    See Also:
+        FlowOptimizer: Suggests optimizations based on bottlenecks
+        FlowMetrics: Metrics for bottleneck detection
+        Bottleneck: Detected bottleneck data structure
+    """
 
     def __init__(
         self,
@@ -435,7 +497,58 @@ class BottleneckDetector:
 
 
 class FlowOptimizer:
-    """Suggests optimizations based on detected bottlenecks."""
+    """
+    Suggests concrete optimizations based on detected bottlenecks.
+
+    The FlowOptimizer analyzes bottlenecks and generates prioritized,
+    actionable optimizations to improve system flow. It maps each bottleneck
+    type to specific remediation strategies with estimated impact.
+
+    Optimization Types:
+        - **Throttle**: Reduce intake rate to prevent overload
+        - **Rebalance**: Redistribute work or resources
+        - **Scale**: Add parallel capacity
+        - **Escalate**: Elevate for human intervention
+
+    Strategy Mapping:
+        - WIP Violation → Throttle intake, Swarm to clear backlog
+        - Queue Buildup → Address root cause (downstream/intake/processing)
+        - Slow Stage → Investigate, Parallelize, Optimize process
+        - Blocked Work → Escalate, Reassign, Remove blockers
+
+    Example:
+        >>> from llm_orchestration.orchestration import FlowOptimizer
+        >>>
+        >>> # Create optimizer
+        >>> optimizer = FlowOptimizer()
+        >>>
+        >>> # Generate optimizations from bottlenecks
+        >>> optimizations = optimizer.suggest(bottlenecks)
+        >>>
+        >>> # Review and apply optimizations
+        >>> for opt in optimizations:
+        ...     print(f"\n{opt.type.upper()} (Priority {opt.priority}/5):")
+        ...     print(f"  Target: {opt.target}")
+        ...     print(f"  Action: {opt.action}")
+        ...     print(f"  Impact: {opt.estimated_impact:.1%}")
+        ...     print(f"  Rationale: {opt.rationale}")
+        ...
+        ...     # Check prerequisites
+        ...     if all(check(prereq) for prereq in opt.prerequisites):
+        ...         apply_optimization(opt)
+
+    Optimization Prioritization:
+        Priority 5 (Critical): Severe issues blocking system
+        Priority 4 (High): Significant impact, should apply soon
+        Priority 3 (Medium): Important but not urgent
+        Priority 2 (Low): Nice to have, long-term improvement
+        Priority 1 (FYI): Informational, monitor
+
+    See Also:
+        BottleneckDetector: Detects bottlenecks for optimization
+        Optimization: Suggested optimization data structure
+        Bottleneck: Detected bottleneck data structure
+    """
 
     def __init__(self):
         """Initialize flow optimizer."""
@@ -446,6 +559,13 @@ class FlowOptimizer:
         Generate optimization suggestions.
 
         Analyzes bottlenecks and suggests concrete actions to improve flow.
+        Optimizations are sorted by priority (highest first) and estimated impact.
+
+        Args:
+            bottlenecks: List of detected bottlenecks
+
+        Returns:
+            List of Optimization objects, sorted by priority and impact
         """
         optimizations = []
 

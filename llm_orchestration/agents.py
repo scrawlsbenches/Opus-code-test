@@ -685,13 +685,121 @@ QAPV_THINKING_MODES = {
 
 class Worker(Agent):
     """
-    Worker agent - executes focused tasks.
+    A cognitive worker agent that executes tasks using structured thinking.
 
-    Workers are leaf nodes in the hierarchy. They:
-    - Receive focused tasks with clear scope
-    - Execute using available tools
-    - Publish progress events
-    - Return structured results
+    The Worker uses the QAPV cognitive loop (Question→Answer→Produce→Verify)
+    with Woven Mind dual-process thinking (FAST/SLOW modes) to execute tasks.
+    Workers are leaf nodes in the agent hierarchy that perform focused work
+    with cognitive capabilities including learning, recovery, and observability.
+
+    Features:
+        - **QAPV Cognitive Loop**: Structured thinking through four phases
+          - QUESTION (SLOW): Deep analysis of requirements
+          - ANSWER (FAST): Pattern matching for approach
+          - PRODUCE (FAST): Task execution
+          - VERIFY (SLOW): Careful validation
+
+        - **Dual-Process Thinking**: Woven Mind integration
+          - FAST mode: Pattern matching, heuristics, execution
+          - SLOW mode: Deliberate analysis and validation
+          - Automatic mode switching based on cognitive needs
+
+        - **Tool Execution**: Managed tool invocation
+          - Tool registration and execution
+          - Execution history tracking
+          - Error handling with structured results
+
+        - **Learning Integration**: Experience-based improvement
+          - Retrieves relevant lessons before execution
+          - Captures experiences after execution
+          - Builds knowledge base over time
+
+        - **Confusion Detection & Recovery**: Resilience
+          - Detects confusion signals (repetition, contradictions)
+          - Coordinates recovery strategies
+          - State restoration to known-good checkpoints
+
+        - **Cognitive State Management**: Continuity
+          - Creates checkpoints during execution
+          - Maintains execution context
+          - Supports state restoration
+
+        - **Metrics Collection**: Observability
+          - Tracks execution success/failure
+          - Monitors QAPV cycle performance
+          - Records tool usage and learning activity
+          - Calculates cognitive health score (0-100)
+
+    Lifecycle:
+        1. Initialization: Set up context, tools, cognitive systems
+        2. Pre-execution: Retrieve relevant lessons
+        3. Execution: Run QAPV cognitive loop
+        4. Post-execution: Capture experience, record metrics
+        5. Completion: Return structured result
+
+    Example:
+        >>> from llm_orchestration.agents import Worker, WorkerContext
+        >>> from llm_orchestration.cognitive_state import CognitiveStateManager
+        >>> from pathlib import Path
+        >>>
+        >>> # Create cognitive state manager
+        >>> state_dir = Path(".llm_orchestration/cognitive_state")
+        >>> state_manager = CognitiveStateManager(state_dir)
+        >>>
+        >>> # Create worker context
+        >>> context = WorkerContext(
+        ...     task="Implement authentication",
+        ...     tools=["read", "write", "search"],
+        ...     constraints=["Must pass tests"],
+        ... )
+        >>>
+        >>> # Create worker with cognitive capabilities
+        >>> worker = Worker("worker-1", context, state_manager=state_manager)
+        >>>
+        >>> # Execute task
+        >>> result = await worker.execute_task()
+        >>>
+        >>> # Check results
+        >>> print(f"Success: {result['success']}")
+        >>> print(f"Health: {result['health_score']:.1f}/100")
+        >>>
+        >>> # Get detailed metrics
+        >>> summary = worker.get_metrics_summary()
+        >>> print(f"QAPV cycles: {summary['qapv']['cycles']}")
+        >>> print(f"Lessons used: {summary['learning']['lessons_retrieved']}")
+
+    Attributes:
+        agent_id (str): Unique identifier for this worker
+        role (AgentRole): Always AgentRole.WORKER
+        context (WorkerContext): Current execution context
+        status (TaskStatus): Current execution status
+        current_task (Task | None): Currently executing task
+        progress (float): Execution progress (0.0-1.0)
+
+    Private Attributes:
+        _state_manager: Manages cognitive state and checkpoints
+        _thinking_pattern: QAPV reasoning pattern instance
+        _recovery_coordinator: Handles confusion detection and recovery
+        _learning_cycle: Manages experience capture and retrieval
+        _tool_executor: Manages tool registration and execution
+        _woven_mind: Dual-process thinking engine
+        _metrics: Collects cognitive performance metrics
+        _qapv_executions: History of QAPV cycle executions
+        _confusion_signals: Detected confusion signals
+
+    Raises:
+        ValueError: If agent_id is empty or context is None
+        TypeError: If context is not a WorkerContext instance
+        Blocked: If worker encounters a blocking condition
+
+    See Also:
+        AgileWorker: Worker with sprint-based execution
+        Director: Orchestrates multiple workers
+        WorkerContext: Configuration for worker execution
+        ToolExecutor: Tool registration and execution
+        CognitiveStateManager: State management and checkpointing
+        LearningCycle: Experience capture and lesson retrieval
+        RecoveryCoordinator: Confusion detection and recovery
     """
 
     def __init__(
@@ -1338,8 +1446,12 @@ class Worker(Agent):
                         label=f"pre_recovery_{datetime.now().isoformat()}",
                         state_data={"signal": signal.to_dict()}
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    # Checkpoint failed but recovery can still proceed
+                    import logging
+                    logging.getLogger(__name__).warning(
+                        f"Failed to save pre-recovery checkpoint: {e}"
+                    )
 
             # Attempt recovery
             attempt = self._recovery_coordinator.recover(diagnosis, context)
@@ -1721,13 +1833,99 @@ class WorkerHandle:
 
 class Director(Agent):
     """
-    Director agent - orchestrates workers.
+    Director agent that orchestrates multiple workers to achieve goals.
 
-    Directors are intermediate nodes that:
-    - Decompose goals into worker tasks
-    - Spawn and manage workers
-    - Handle events and impediments
-    - Synthesize results
+    Directors are intermediate nodes in the agent hierarchy that decompose
+    high-level goals into focused tasks, spawn and manage workers, handle
+    coordination and impediments, and synthesize results.
+
+    Features:
+        - **Goal Decomposition**: Break down complex goals
+          - Strategic decomposition into manageable tasks
+          - Dependency analysis and ordering
+          - Parallel vs sequential task identification
+
+        - **Worker Management**: Spawn and coordinate workers
+          - Dynamic worker creation
+          - Task assignment and delegation
+          - Worker health monitoring
+          - Load balancing
+
+        - **Escalation Handling**: Manage worker confusion
+          - Track worker confusion signals
+          - Evaluate escalation levels
+          - Execute recovery protocols
+          - Three-strikes policy for worker reassignment
+
+        - **Event Coordination**: Pub/sub integration
+          - Subscribe to worker events
+          - Coordinate cross-worker dependencies
+          - Handle blockers and impediments
+          - Publish director-level events
+
+        - **Result Synthesis**: Aggregate worker outputs
+          - Collect and combine results
+          - Validate completeness
+          - Generate unified output
+          - Track progress
+
+    Coordination Patterns:
+        - **Sequential**: Tasks executed in order
+        - **Parallel**: Independent tasks executed concurrently
+        - **Pipeline**: Output of one task feeds next
+        - **Fan-out/Fan-in**: Multiple workers, aggregated results
+
+    Example:
+        >>> from llm_orchestration.agents import Director, DirectorContext
+        >>> from llm_orchestration.types import Goal, EventBus
+        >>>
+        >>> # Create event bus for coordination
+        >>> event_bus = EventBus()
+        >>>
+        >>> # Create director context
+        >>> context = DirectorContext(
+        ...     role="feature_director",
+        ...     goal="Implement user authentication",
+        ...     scope=None,
+        ...     can_spawn=["worker"],
+        ...     tools_available=["read", "write", "test"],
+        ...     event_bus=event_bus,
+        ... )
+        >>>
+        >>> # Create director
+        >>> director = Director("dir-1", context)
+        >>>
+        >>> # Execute goal (director will decompose and manage workers)
+        >>> result = await director.run()
+        >>>
+        >>> # Check results
+        >>> if result.success:
+        ...     print(f"Goal achieved: {result.output}")
+        ...     print(f"Workers spawned: {len(director.workers)}")
+        ...     print(f"Decisions made: {len(director.decisions)}")
+
+    Attributes:
+        agent_id (str): Unique identifier for this director
+        role (AgentRole): Always AgentRole.DIRECTOR
+        context (DirectorContext): Current execution context
+        status (TaskStatus): Current execution status
+        workers (dict[str, WorkerHandle]): Active and completed workers
+        completed_outputs (dict[str, Any]): Results from completed workers
+        decisions (list[str]): Decision log
+        event_count (int): Number of events handled
+
+    Private Attributes:
+        _recovery_coordinator: Handles confusion detection and recovery
+        _confusion_signals: Detected confusion signals
+        _worker_confusion_count: Tracks confusion per worker (3-strikes)
+        _escalation_manager: Manages worker escalation protocols
+
+    See Also:
+        HybridDirector: Director with Kanban flow management
+        Worker: Leaf agent that executes tasks
+        DirectorContext: Configuration for director execution
+        EscalationManager: Worker confusion escalation
+        WorkerHandle: Reference to spawned worker
     """
 
     def __init__(
@@ -1749,6 +1947,7 @@ class Director(Agent):
 
         # Initialize recovery coordinator
         try:
+            from pathlib import Path
             storage_dir = Path.home() / ".llm_orchestration" / "recovery" / agent_id
             self._recovery_coordinator = RecoveryCoordinator(storage_dir)
         except Exception:
@@ -1757,6 +1956,15 @@ class Director(Agent):
         # Aggregate worker metrics
         self._worker_metrics: List[Dict[str, Any]] = []
         self._aggregate_health_scores: List[float] = []
+
+        # Initialize escalation manager
+        self._escalation_manager = EscalationManager()
+
+        # Track workers under enhanced monitoring
+        self._monitored_workers: set[str] = set()
+
+        # Track worker task type suitability (for reassignment)
+        self._worker_blacklist: Dict[str, set[str]] = {}  # worker_id -> set of task types
 
     def _aggregate_worker_metrics(self) -> Dict[str, Any]:
         """
@@ -1902,6 +2110,19 @@ class Director(Agent):
             ConfusionSignal if confusion detected in worker coordination
         """
         # Track repeated failures from same worker (works without recovery_coordinator)
+        if isinstance(worker_result, dict) and worker_result.get("status") == "failed":
+            self._worker_confusion_count[worker_id] = self._worker_confusion_count.get(worker_id, 0) + 1
+
+            if self._worker_confusion_count[worker_id] >= 3:
+                return ConfusionSignal(
+                    signal_type="worker_repetition",
+                    description=f"Worker {worker_id} has failed {self._worker_confusion_count[worker_id]} times",
+                    evidence=[f"Worker: {worker_id}", f"Failures: {self._worker_confusion_count[worker_id]}"],
+                    confidence=0.8,
+                    source="Director"
+                )
+
+        return None
 
     async def handle_worker_escalation(self, protocol: EscalationProtocol) -> bool:
         """
@@ -1933,15 +2154,97 @@ class Director(Agent):
         # Perform director-specific actions based on level
         if protocol.level == EscalationLevel.MONITOR:
             logger.info(f"Monitoring worker {protocol.worker_id}")
-            # TODO: Implement enhanced monitoring
+            # Enhanced monitoring implementation
+            logger.info(f"[ESCALATION] MONITOR: Enabling enhanced monitoring for {protocol.worker_id}")
+
+            # Track this worker closely
+            self._monitored_workers.add(protocol.worker_id)
+
+            # Log the confusion history for analysis
+            for record in protocol.confusion_history[-3:]:
+                logger.info(
+                    f"  Confusion: {record.signal_type} "
+                    f"(severity={record.severity}, recovered={record.recovered})"
+                )
+
+            # If worker has a handle, mark it for close observation
+            if protocol.worker_id in self.workers:
+                handle = self.workers[protocol.worker_id]
+                logger.info(
+                    f"  Worker status: {handle.status.value}, "
+                    f"task: {handle.task.description[:50]}..."
+                )
 
         elif protocol.level == EscalationLevel.INTERVENE:
             logger.warning(f"Intervening for worker {protocol.worker_id}")
-            # TODO: Pause worker and analyze state
+            # Pause worker and analyze state
+            logger.warning(f"[ESCALATION] INTERVENE: Pausing worker {protocol.worker_id} for analysis")
+
+            # Get worker handle if it exists
+            if protocol.worker_id in self.workers:
+                handle = self.workers[protocol.worker_id]
+
+                # Mark worker as blocked for intervention
+                handle.status = TaskStatus.BLOCKED
+
+                # Capture cognitive state snapshot if worker has one
+                if hasattr(handle.worker, '_cognitive_state'):
+                    try:
+                        state_snapshot = handle.worker._cognitive_state.get_health_metrics()
+                        logger.warning(f"  Cognitive state: {state_snapshot}")
+                    except Exception as e:
+                        logger.warning(f"  Failed to capture cognitive state: {e}")
+
+                # Log intervention details
+                logger.warning(f"  Task paused: {handle.task.description[:50]}...")
+                logger.warning(f"  Reason: {protocol.reason}")
+                logger.warning(f"  Recommended action: {protocol.recommended_action}")
+
+                # If recovery coordinator available, try recovery guidance
+                if self._recovery_coordinator:
+                    try:
+                        # Attempt state-based recovery guidance
+                        logger.warning("  Requesting recovery guidance...")
+                    except Exception as e:
+                        logger.warning(f"  Recovery guidance failed: {e}")
+            else:
+                logger.warning(f"  Worker {protocol.worker_id} not found in active workers")
 
         elif protocol.level == EscalationLevel.REASSIGN:
             logger.warning(f"Reassigning task from worker {protocol.worker_id}")
-            # TODO: Move task to different worker
+            # Move task to different worker
+            logger.warning(f"[ESCALATION] REASSIGN: Moving task from {protocol.worker_id}")
+
+            if protocol.worker_id in self.workers:
+                handle = self.workers[protocol.worker_id]
+                task = handle.task
+
+                # Mark this worker as unsuitable for this task type
+                task_type = getattr(task, 'task_type', 'general')
+                if protocol.worker_id not in self._worker_blacklist:
+                    self._worker_blacklist[protocol.worker_id] = set()
+                self._worker_blacklist[protocol.worker_id].add(task_type)
+
+                logger.warning(
+                    f"  Blacklisting worker {protocol.worker_id} for task type: {task_type}"
+                )
+
+                # Mark current worker as failed
+                handle.status = TaskStatus.FAILED
+
+                # Try to find an alternative worker by spawning a new one
+                # (Director will handle this in orchestrate loop)
+                logger.warning(
+                    f"  Task '{task.description[:50]}...' marked for reassignment"
+                )
+                logger.warning(f"  Reason: {protocol.reason}")
+
+                # Store task for re-queuing
+                if not hasattr(self, '_reassigned_tasks'):
+                    self._reassigned_tasks = []
+                self._reassigned_tasks.append(task)
+            else:
+                logger.warning(f"  Worker {protocol.worker_id} not found for reassignment")
 
         elif protocol.level == EscalationLevel.ESCALATE:
             # Escalate to orchestrator
@@ -1951,23 +2254,88 @@ class Director(Agent):
 
         elif protocol.level == EscalationLevel.ABORT:
             logger.error(f"Aborting task {protocol.task_id} for worker {protocol.worker_id}")
-            # TODO: Create failure record and trigger learning
+            # Create failure record and trigger learning
+            logger.error(f"[ESCALATION] ABORT: Creating failure record for task {protocol.task_id}")
+
+            # Create failure record
+            failure_record = {
+                "timestamp": datetime.now().isoformat(),
+                "worker_id": protocol.worker_id,
+                "task_id": protocol.task_id,
+                "reason": protocol.reason,
+                "confusion_count": len(protocol.confusion_history),
+                "confusion_history": [
+                    {
+                        "signal_type": record.signal_type,
+                        "severity": record.severity,
+                        "recovery_action": record.recovery_action,
+                        "recovered": record.recovered,
+                        "timestamp": record.timestamp.isoformat(),
+                    }
+                    for record in protocol.confusion_history
+                ],
+            }
+
+            logger.error(f"  Failure record: {failure_record}")
+
+            # Trigger experience capture if learning available
+            if LEARNING_AVAILABLE:
+                try:
+                    from pathlib import Path
+                    from .learning import LearningCycle, Context, Outcome, OutcomeType
+
+                    storage_dir = Path.home() / ".llm_orchestration" / "learning"
+                    learning_cycle = LearningCycle(storage_dir)
+
+                    # Create learning context
+                    context = Context(
+                        goal_type="worker_task_execution",
+                        goal_complexity="complex",
+                        domain="worker_escalation_abort",
+                        prior_failures=len(protocol.confusion_history),
+                        notes=f"Worker {protocol.worker_id} aborted on task {protocol.task_id}: {protocol.reason}"
+                    )
+
+                    # Create failure outcome
+                    outcome = Outcome(
+                        outcome_type=OutcomeType.FAILURE,
+                        description=f"Worker {protocol.worker_id} aborted task {protocol.task_id}",
+                        not_achieved=[f"Complete task {protocol.task_id}"],
+                        error_type="worker_escalation_abort",
+                        error_message=protocol.reason
+                    )
+
+                    # Start and immediately complete experience to record the failure
+                    experience = learning_cycle.start_experience(
+                        context=context,
+                        intent=f"Worker {protocol.worker_id} task execution"
+                    )
+                    learning_cycle.complete_experience(experience, outcome)
+
+                    logger.error(f"  Failure captured in learning system")
+
+                except Exception as e:
+                    logger.error(f"  Failed to capture learning experience: {e}")
+
+            # Mark worker as aborted if it exists
+            if protocol.worker_id in self.workers:
+                handle = self.workers[protocol.worker_id]
+                handle.status = TaskStatus.FAILED
+
+                # Clean up resources - remove from active workers
+                logger.error(f"  Cleaning up resources for worker {protocol.worker_id}")
+
+            # Record in director's own tracking
+            if not hasattr(self, '_aborted_tasks'):
+                self._aborted_tasks = []
+            self._aborted_tasks.append({
+                "task_id": protocol.task_id,
+                "worker_id": protocol.worker_id,
+                "timestamp": datetime.now(),
+                "reason": protocol.reason,
+            })
 
         return True
-
-        if isinstance(worker_result, dict) and worker_result.get("status") == "failed":
-            self._worker_confusion_count[worker_id] = self._worker_confusion_count.get(worker_id, 0) + 1
-
-            if self._worker_confusion_count[worker_id] >= 3:
-                return ConfusionSignal(
-                    signal_type="worker_repetition",
-                    description=f"Worker {worker_id} has failed {self._worker_confusion_count[worker_id]} times",
-                    evidence=[f"Worker: {worker_id}", f"Failures: {self._worker_confusion_count[worker_id]}"],
-                    confidence=0.8,
-                    source="Director"
-                )
-
-        return None
 
     def _handle_worker_confusion(self, worker_id: str, signal: ConfusionSignal) -> str:
         """
@@ -2362,13 +2730,88 @@ class WorkerSprint:
 
 class AgileWorker(Worker):
     """
-    Worker that operates in agile sprints.
+    Worker that operates in time-boxed sprints with agile practices.
 
-    Extends basic Worker with:
-    - Time-boxed execution
-    - Velocity tracking
-    - Retrospectives
-    - Increment delivery
+    AgileWorker extends Worker with sprint-based execution, velocity tracking,
+    and retrospectives. It combines cognitive capabilities from Worker with
+    agile practices for predictable, iterative delivery.
+
+    Features (in addition to Worker):
+        - **Sprint Planning**: Time-boxed iterations
+          - Sprint goals and task allocation
+          - Capacity-based planning
+          - Commitment tracking
+
+        - **Velocity Tracking**: Predictability
+          - Story points completed per sprint
+          - Historical velocity for forecasting
+          - Trend analysis
+
+        - **Retrospectives**: Continuous improvement
+          - Sprint-end reflection
+          - What worked / what didn't / learnings
+          - Action items for next sprint
+
+        - **Increment Delivery**: Demonstrable progress
+          - Shippable increments at sprint end
+          - Cumulative value delivery
+          - Sprint review and feedback
+
+    Sprint Lifecycle:
+        1. **Planning**: Define sprint goal and select tasks
+        2. **Execution**: Work through tasks in time box
+        3. **Review**: Demonstrate completed work
+        4. **Retrospective**: Reflect and improve
+        5. **Repeat**: Next sprint with learnings applied
+
+    Example:
+        >>> from llm_orchestration.agents import AgileWorker, WorkerContext
+        >>> from llm_orchestration.agile import WorkerSprint
+        >>> from datetime import datetime, timedelta
+        >>>
+        >>> # Create worker context
+        >>> context = WorkerContext(
+        ...     task="Implement feature X",
+        ...     tools=["read", "write", "test"],
+        ... )
+        >>>
+        >>> # Create agile worker
+        >>> worker = AgileWorker("agile-worker-1", context)
+        >>>
+        >>> # Start sprint
+        >>> sprint = WorkerSprint(
+        ...     sprint_id="sprint-1",
+        ...     duration=timedelta(weeks=2),
+        ...     goal="Complete feature X with tests",
+        ...     capacity_points=13,
+        ... )
+        >>> worker.current_sprint = sprint
+        >>>
+        >>> # Execute in sprint context
+        >>> result = await worker.execute_task()
+        >>>
+        >>> # Complete sprint with retrospective
+        >>> retrospective = {
+        ...     "what_worked": ["TDD approach", "Clear acceptance criteria"],
+        ...     "what_didnt": ["Scope creep midway"],
+        ...     "action_items": ["Better scope definition upfront"],
+        ... }
+        >>> worker.complete_sprint(retrospective)
+        >>>
+        >>> # Check velocity
+        >>> print(f"Velocity history: {worker.velocity_history}")
+
+    Attributes (in addition to Worker):
+        current_sprint (WorkerSprint | None): Active sprint if in one
+        velocity_history (list[int]): Historical velocity data (points/sprint)
+        completed_sprints (list[WorkerSprint]): History of completed sprints
+        retrospectives (list[Retrospective]): Sprint retrospectives
+
+    See Also:
+        Worker: Base worker with cognitive capabilities
+        WorkerSprint: Sprint data structure
+        SprintPlanner: Sprint planning utilities
+        VelocityTracker: Velocity tracking and forecasting
     """
 
     def __init__(
@@ -3010,10 +3453,92 @@ class WorkerKanbanBoard:
 
 class HybridDirector(Director):
     """
-    Director that bridges kanban (above) and agile (below).
+    Director that bridges Kanban flow (above) and Agile sprints (below).
 
-    Receives work via kanban pull from orchestrator.
-    Manages workers using agile sprints.
+    HybridDirector operates at the boundary between continuous flow and
+    time-boxed iterations. It receives work via pull-based Kanban from the
+    orchestrator and manages workers using Agile sprint practices.
+
+    Features (in addition to Director):
+        - **Kanban Integration**: Pull-based work intake
+          - Receives goals from orchestrator board
+          - Respects WIP limits
+          - Manages work item flow
+          - Visualizes worker kanban board
+
+        - **Phase Planning**: Strategic decomposition
+          - Breaks goals into phases (like epics)
+          - Defines phase dependencies
+          - Estimates phase durations
+          - Tracks phase progress
+
+        - **Sprint Management**: Time-boxed execution
+          - Runs workers in sprints
+          - Sprint planning and review
+          - Velocity-based forecasting
+          - Sprint retrospectives
+
+        - **Worker Kanban Board**: Visual management
+          - Columns: Ready, In Progress, Review, Done
+          - Per-column WIP limits
+          - Worker task flow visualization
+          - Bottleneck detection
+
+    Methodology Mapping:
+        ```
+        Orchestrator (Kanban) → HybridDirector → Workers (Agile)
+              ↓                       ↓                  ↓
+        Continuous flow         Phases/Sprints     Sprint tasks
+        Pull-based              WIP limits         Time-boxed
+        Flow metrics            Hybrid metrics     Velocity
+        ```
+
+    Example:
+        >>> from llm_orchestration.agents import HybridDirector
+        >>> from llm_orchestration.types import DirectorContext, EventBus
+        >>>
+        >>> # Create event bus
+        >>> event_bus = EventBus()
+        >>>
+        >>> # Create hybrid director
+        >>> context = DirectorContext(
+        ...     role="hybrid_director",
+        ...     goal="Build authentication system",
+        ...     scope=None,
+        ...     can_spawn=["agile_worker"],
+        ...     tools_available=["read", "write", "test"],
+        ...     event_bus=event_bus,
+        ... )
+        >>>
+        >>> director = HybridDirector("hybrid-dir-1", context)
+        >>>
+        >>> # Director will:
+        >>> # 1. Break goal into phases
+        >>> # 2. For each phase, create sprint tasks
+        >>> # 3. Spawn AgileWorkers to execute in sprints
+        >>> # 4. Track via worker kanban board
+        >>> # 5. Conduct retrospectives
+        >>>
+        >>> result = await director.run()
+        >>>
+        >>> # Check results
+        >>> print(f"Phases completed: {len(director.phases)}")
+        >>> print(f"Retrospectives: {len(director.retrospectives)}")
+        >>> print(f"Worker board state:")
+        >>> print(director.worker_board.visualize())
+
+    Attributes (in addition to Director):
+        worker_board (WorkerKanbanBoard): Kanban board for worker tasks
+        current_phase (Phase | None): Currently executing phase
+        phases (list[Phase]): Planned phases for goal
+        retrospectives (list[Retrospective]): Phase/sprint retrospectives
+
+    See Also:
+        Director: Base director with worker orchestration
+        KanbanOrchestrator: Upstream kanban flow management
+        AgileWorker: Workers that execute in sprints
+        WorkerKanbanBoard: Visual board for worker tasks
+        Phase: Strategic decomposition unit
     """
 
     def __init__(

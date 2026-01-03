@@ -74,12 +74,100 @@ class EscalationManager:
     """
     Manages escalation of worker confusion for Directors.
 
-    The EscalationManager:
-    - Evaluates confusion signals from workers
-    - Determines appropriate escalation level
-    - Tracks worker strike history
-    - Executes escalation protocols
-    - Records escalation history for learning
+    The EscalationManager implements a formal escalation protocol for handling
+    worker confusion signals. It uses a three-strikes policy combined with
+    severity-based escalation to determine appropriate intervention levels.
+
+    Features:
+        - **Confusion Tracking**: Per-worker confusion history
+          - Tracks all confusion signals
+          - Records recovery attempts
+          - Maintains strike count
+
+        - **Severity-Based Escalation**: Graduated response
+          - Severity inferred from confusion confidence
+          - Escalation level increases with count and severity
+          - Three-strikes policy for worker reassignment
+
+        - **Protocol Execution**: Automated intervention
+          - Generates recommended actions
+          - Executes escalation protocols
+          - Records outcomes for learning
+
+        - **History Recording**: Learning from patterns
+          - Maintains escalation history
+          - Tracks worker-specific patterns
+          - Enables pattern analysis
+
+    Escalation Levels (in order of severity):
+        0. **NONE**: No escalation needed
+        1. **MONITOR**: Increased monitoring, no intervention
+        2. **INTERVENE**: Director provides guidance/hints
+        3. **REASSIGN**: Task reassigned to different worker
+        4. **ESCALATE**: Escalate to higher authority
+        5. **ABORT**: Abort task entirely
+
+    Escalation Rules Matrix:
+        ```
+        Confusion Count | LOW         | MEDIUM      | HIGH        | CRITICAL
+        ─────────────────────────────────────────────────────────────────────
+        1st confusion   | MONITOR     | MONITOR     | INTERVENE   | INTERVENE
+        2nd confusion   | INTERVENE   | REASSIGN    | ESCALATE    | ESCALATE
+        3rd+ confusion  | ABORT       | ABORT       | ABORT       | ABORT
+        ```
+
+    Three-Strikes Policy:
+        - Strike 1: Monitor or intervene based on severity
+        - Strike 2: Escalate response (intervene → reassign)
+        - Strike 3: Abort task (worker unable to complete)
+
+    Example:
+        >>> from llm_orchestration.escalation import (
+        ...     EscalationManager,
+        ...     EscalationLevel,
+        ... )
+        >>> from llm_orchestration.recovery import ConfusionSignal
+        >>>
+        >>> # Create escalation manager
+        >>> manager = EscalationManager()
+        >>>
+        >>> # Worker reports confusion
+        >>> confusion = ConfusionSignal(
+        ...     signal_type="repetition_loop",
+        ...     description="Repeating same failed approach",
+        ...     evidence=["read_file", "read_file", "read_file"],
+        ...     confidence=0.85,  # HIGH severity
+        ...     source="worker-1",
+        ... )
+        >>>
+        >>> # Evaluate escalation
+        >>> protocol = manager.evaluate(
+        ...     worker_id="worker-1",
+        ...     confusion=confusion,
+        ...     task_id="T-123",
+        ... )
+        >>>
+        >>> print(f"Level: {protocol.level.name}")  # INTERVENE
+        >>> print(f"Action: {protocol.recommended_action}")
+        >>>
+        >>> # Execute protocol
+        >>> if protocol.level.value >= EscalationLevel.INTERVENE.value:
+        ...     result = manager.execute(protocol)
+        ...     print(f"Executed: {result}")
+
+    Attributes:
+        ESCALATION_RULES (dict): Matrix mapping (count, severity) → level
+
+    Private Attributes:
+        _escalation_history: History of all escalation protocols
+        _worker_strikes: Strike count per worker
+        _worker_confusion_history: Confusion records per worker
+
+    See Also:
+        EscalationLevel: Severity levels for escalation
+        EscalationProtocol: Escalation response protocol
+        ConfusionSignal: Worker confusion indicators
+        Director: Uses EscalationManager to handle worker confusion
     """
 
     # Escalation rules: (confusion_count, severity) -> level

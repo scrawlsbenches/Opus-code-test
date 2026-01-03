@@ -728,6 +728,10 @@ class Lesson:
     last_validated: Optional[datetime] = None
     validation_count: int = 0
 
+    # Lesson application tracking (for aging)
+    last_applied: Optional[datetime] = None
+    application_count: int = 0
+
     # Has this lesson been superseded?
     superseded_by: Optional[str] = None
 
@@ -760,6 +764,67 @@ class Lesson:
         else:
             # Decrease confidence
             self.confidence = max(0.0, self.confidence - 0.1)
+
+    def record_application(self):
+        """Record that this lesson was applied."""
+        self.last_applied = datetime.now()
+        self.application_count += 1
+        # Boost confidence slightly when applied
+        self.confidence = min(0.95, self.confidence + 0.01)
+
+    def apply_aging(self, days_since_last_use: int):
+        """
+        Apply aging to reduce confidence of unused lessons.
+
+        Lessons lose confidence over time if not used, as the world changes
+        and old lessons may become less relevant.
+        """
+        if days_since_last_use > 30:
+            # Reduce confidence for lessons not used in 30+ days
+            decay_factor = min(0.5, (days_since_last_use - 30) * 0.01)
+            self.confidence = max(0.0, self.confidence - decay_factor)
+
+    def similarity_to(self, other: 'Lesson') -> float:
+        """
+        Calculate similarity to another lesson.
+
+        Used for consolidation to merge similar lessons.
+        """
+        score = 0.0
+
+        # Compare applicable conditions (30%)
+        if self.applicable_conditions == other.applicable_conditions:
+            score += 0.3
+        elif self.applicable_conditions and other.applicable_conditions:
+            # Partial match on goal types
+            my_goals = set(self.applicable_conditions.get('goal_types', []))
+            other_goals = set(other.applicable_conditions.get('goal_types', []))
+            if my_goals and other_goals:
+                overlap = len(my_goals & other_goals) / len(my_goals | other_goals)
+                score += 0.3 * overlap
+
+        # Compare recommendations (40%)
+        my_recs = set(self.recommendations)
+        other_recs = set(other.recommendations)
+        if my_recs and other_recs:
+            rec_overlap = len(my_recs & other_recs) / len(my_recs | other_recs)
+            score += 0.4 * rec_overlap
+
+        # Compare warnings (20%)
+        my_warns = set(self.warnings)
+        other_warns = set(other.warnings)
+        if my_warns and other_warns:
+            warn_overlap = len(my_warns & other_warns) / len(my_warns | other_warns)
+            score += 0.2 * warn_overlap
+
+        # Compare supporting patterns (10%)
+        my_patterns = set(self.supporting_patterns)
+        other_patterns = set(other.supporting_patterns)
+        if my_patterns and other_patterns:
+            pattern_overlap = len(my_patterns & other_patterns) / len(my_patterns | other_patterns)
+            score += 0.1 * pattern_overlap
+
+        return score
 
 
 class LessonDistiller:
@@ -909,6 +974,272 @@ class LessonDistiller:
                     lessons.append(lesson)
 
         return lessons
+
+
+# =============================================================================
+# LEARNING CONSOLIDATION
+# =============================================================================
+
+@dataclass
+class ConsolidationResult:
+    """Results from a consolidation pass."""
+    lessons_merged: int
+    lessons_deprecated: int
+    lessons_promoted: int
+    new_patterns: List[str] = field(default_factory=list)
+
+    def summary(self) -> str:
+        """Human-readable summary of consolidation."""
+        return (
+            f"Consolidation: {self.lessons_promoted} promoted, "
+            f"{self.lessons_merged} merged, {self.lessons_deprecated} deprecated, "
+            f"{len(self.new_patterns)} new patterns"
+        )
+
+
+class LearningConsolidator:
+    """
+    Consolidates lessons by promoting, merging, and deprecating.
+
+    Over time, lessons accumulate. Consolidation:
+    1. Promotes high-confidence lessons (marks them as validated)
+    2. Merges similar lessons to avoid redundancy
+    3. Deprecates low-confidence or outdated lessons
+    4. Extracts meta-patterns from promoted lessons
+
+    This keeps the lesson base clean and actionable.
+    """
+
+    def __init__(self, learning_cycle: 'LearningCycle'):
+        self._cycle = learning_cycle
+        self._confidence_threshold = 0.8  # High confidence for promotion
+        self._deprecation_threshold = 0.3  # Low confidence for deprecation
+        self._similarity_threshold = 0.85  # For merging similar lessons
+
+    def consolidate(self) -> ConsolidationResult:
+        """
+        Run a full consolidation pass on all lessons.
+
+        Returns a ConsolidationResult describing what was done.
+        """
+        result = ConsolidationResult(0, 0, 0, [])
+
+        # 1. Apply aging to all lessons
+        self._apply_aging_to_all()
+
+        # 2. Identify and promote high-confidence lessons
+        promoted = self._promote_high_confidence()
+        result.lessons_promoted = len(promoted)
+
+        # 3. Find and merge similar lessons
+        merged = self._merge_similar_lessons()
+        result.lessons_merged = merged
+
+        # 4. Deprecate low-confidence lessons
+        deprecated = self._deprecate_low_confidence()
+        result.lessons_deprecated = deprecated
+
+        # 5. Extract new patterns from promoted lessons
+        result.new_patterns = self._extract_patterns(promoted)
+
+        return result
+
+    def _apply_aging_to_all(self):
+        """Apply aging decay to all lessons based on usage."""
+        now = datetime.now()
+
+        for lesson in self._cycle.distiller.lessons.values():
+            if lesson.superseded_by:
+                # Don't age already deprecated lessons
+                continue
+
+            # Calculate days since last use
+            if lesson.last_applied:
+                days_since_use = (now - lesson.last_applied).days
+            else:
+                # Never applied - use creation date
+                days_since_use = (now - lesson.created_at).days
+
+            lesson.apply_aging(days_since_use)
+
+    def _promote_high_confidence(self) -> List[Lesson]:
+        """
+        Identify high-confidence lessons for promotion.
+
+        High-confidence lessons are those that:
+        - Have confidence >= threshold
+        - Have been validated multiple times
+        - Are not already superseded
+        """
+        promoted = []
+
+        for lesson in self._cycle.distiller.lessons.values():
+            if lesson.superseded_by:
+                continue
+
+            if lesson.confidence >= self._confidence_threshold:
+                # Mark as promoted by recording validation
+                if lesson.validation_count == 0:
+                    lesson.validate(was_helpful=True)
+                promoted.append(lesson)
+
+        return promoted
+
+    def _merge_similar_lessons(self) -> int:
+        """
+        Find and merge similar lessons to reduce redundancy.
+
+        Returns the number of lessons merged.
+        """
+        merged_count = 0
+        lessons = [
+            l for l in self._cycle.distiller.lessons.values()
+            if not l.superseded_by
+        ]
+
+        # Find pairs of similar lessons
+        already_merged = set()
+
+        for i, lesson1 in enumerate(lessons):
+            if lesson1.id in already_merged:
+                continue
+
+            for lesson2 in lessons[i + 1:]:
+                if lesson2.id in already_merged:
+                    continue
+
+                similarity = lesson1.similarity_to(lesson2)
+
+                if similarity >= self._similarity_threshold:
+                    # Merge lesson2 into lesson1 (keep the one with higher confidence)
+                    if lesson1.confidence >= lesson2.confidence:
+                        self._merge_lesson_into(source=lesson2, target=lesson1)
+                    else:
+                        self._merge_lesson_into(source=lesson1, target=lesson2)
+
+                    already_merged.add(lesson2.id)
+                    merged_count += 1
+
+        return merged_count
+
+    def _merge_lesson_into(self, source: Lesson, target: Lesson):
+        """
+        Merge source lesson into target lesson.
+
+        The source lesson is marked as superseded by the target.
+        """
+        # Mark source as superseded
+        source.superseded_by = target.id
+
+        # Merge evidence
+        target.supporting_patterns.extend(
+            p for p in source.supporting_patterns
+            if p not in target.supporting_patterns
+        )
+        target.supporting_experiences.extend(
+            e for e in source.supporting_experiences
+            if e not in target.supporting_experiences
+        )
+
+        # Merge recommendations (avoid duplicates)
+        for rec in source.recommendations:
+            if rec not in target.recommendations:
+                target.recommendations.append(rec)
+
+        for warn in source.warnings:
+            if warn not in target.warnings:
+                target.warnings.append(warn)
+
+        # Boost target confidence based on merged evidence
+        combined_validations = source.validation_count + target.validation_count
+        combined_applications = source.application_count + target.application_count
+
+        # Weighted average of confidence
+        if combined_validations > 0:
+            target.confidence = (
+                (source.confidence * source.validation_count +
+                 target.confidence * target.validation_count) /
+                combined_validations
+            )
+
+        target.validation_count = combined_validations
+        target.application_count = combined_applications
+
+        # Update timestamps
+        if source.last_applied and target.last_applied:
+            target.last_applied = max(source.last_applied, target.last_applied)
+        elif source.last_applied:
+            target.last_applied = source.last_applied
+
+    def _deprecate_low_confidence(self) -> int:
+        """
+        Deprecate lessons with low confidence.
+
+        Returns the number of lessons deprecated.
+        """
+        deprecated_count = 0
+
+        for lesson in self._cycle.distiller.lessons.values():
+            if lesson.superseded_by:
+                # Already deprecated
+                continue
+
+            if lesson.confidence < self._deprecation_threshold:
+                # Create a deprecation marker
+                deprecation_id = f"deprecated_{lesson.id}"
+                lesson.superseded_by = deprecation_id
+                deprecated_count += 1
+
+        return deprecated_count
+
+    def _extract_patterns(self, promoted_lessons: List[Lesson]) -> List[str]:
+        """
+        Extract meta-patterns from promoted lessons.
+
+        Looks for common themes across high-confidence lessons to create
+        higher-order insights (patterns of patterns).
+        """
+        new_patterns = []
+
+        if len(promoted_lessons) < 3:
+            # Need at least 3 lessons to find meta-patterns
+            return new_patterns
+
+        # Group by applicable conditions
+        from collections import defaultdict
+        by_goal_type: Dict[str, List[Lesson]] = defaultdict(list)
+
+        for lesson in promoted_lessons:
+            goal_types = lesson.applicable_conditions.get('goal_types', [])
+            for goal_type in goal_types:
+                by_goal_type[goal_type].append(lesson)
+
+        # Find goal types with multiple successful lessons
+        for goal_type, goal_lessons in by_goal_type.items():
+            if len(goal_lessons) >= 3:
+                # Create a meta-pattern
+                pattern_desc = (
+                    f"Meta-pattern: Goal type '{goal_type}' has {len(goal_lessons)} "
+                    f"high-confidence lessons, indicating a well-understood domain"
+                )
+                new_patterns.append(pattern_desc)
+
+        # Look for common recommendations across lessons
+        rec_counts: Dict[str, int] = defaultdict(int)
+        for lesson in promoted_lessons:
+            for rec in lesson.recommendations:
+                rec_counts[rec] += 1
+
+        # Recommendations appearing in multiple lessons become patterns
+        for rec, count in rec_counts.items():
+            if count >= 3:
+                pattern_desc = (
+                    f"Meta-pattern: '{rec}' appears in {count} high-confidence "
+                    f"lessons, indicating a general best practice"
+                )
+                new_patterns.append(pattern_desc)
+
+        return new_patterns
 
 
 # =============================================================================
@@ -1110,6 +1441,16 @@ class LearningCycle:
         if lesson:
             lesson.validate(was_helpful)
 
+    def consolidate_lessons(self) -> ConsolidationResult:
+        """
+        Run consolidation on lessons.
+
+        This should be called periodically (e.g., after extracting patterns)
+        to keep the lesson base clean and actionable.
+        """
+        consolidator = LearningConsolidator(self)
+        return consolidator.consolidate()
+
     def get_stats(self) -> Dict[str, Any]:
         """Get statistics about the learning system."""
         return {
@@ -1127,5 +1468,9 @@ class LearningCycle:
             'high_confidence_lessons': len([
                 l for l in self.distiller.lessons.values()
                 if l.confidence >= 0.7
+            ]),
+            'active_lessons': len([
+                l for l in self.distiller.lessons.values()
+                if not l.superseded_by
             ])
         }
