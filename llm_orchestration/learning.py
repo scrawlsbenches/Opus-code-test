@@ -1506,3 +1506,234 @@ class LearningCycle:
                 if not l.superseded_by
             ])
         }
+
+    # =========================================================================
+    # SEMANTIC INTENT MATCHING
+    # =========================================================================
+    # These methods enable finding experiences by semantic similarity of intent,
+    # not just by categorical context matching. This is critical for useful
+    # learning - agents need to find "what worked for JWT auth" not just
+    # "what worked for features".
+
+    # Stop words to filter out during keyword extraction
+    _STOP_WORDS: Set[str] = {
+        'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+        'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
+        'should', 'may', 'might', 'must', 'shall', 'can', 'need', 'dare',
+        'ought', 'used', 'to', 'of', 'in', 'for', 'on', 'with', 'at', 'by',
+        'from', 'up', 'about', 'into', 'through', 'during', 'before', 'after',
+        'above', 'below', 'between', 'under', 'again', 'further', 'then',
+        'once', 'here', 'there', 'when', 'where', 'why', 'how', 'all', 'each',
+        'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not',
+        'only', 'own', 'same', 'so', 'than', 'too', 'very', 's', 't', 'just',
+        'don', 'now', 'and', 'or', 'but', 'if', 'this', 'that', 'these', 'those',
+    }
+
+    def extract_keywords(self, intent: str) -> Set[str]:
+        """
+        Extract meaningful keywords from a natural language intent string.
+
+        This is the foundation of semantic matching. We extract terms that
+        carry meaning and filter out common stop words.
+
+        Args:
+            intent: Natural language intent like "Implement JWT authentication"
+
+        Returns:
+            Set of keywords like {"implement", "jwt", "authentication"}
+
+        Example:
+            >>> cycle.extract_keywords("Implement JWT authentication for the API")
+            {'implement', 'jwt', 'authentication', 'api'}
+        """
+        # Normalize: lowercase and split on word boundaries
+        words = intent.lower().split()
+
+        # Clean punctuation from words
+        cleaned = []
+        for word in words:
+            # Remove leading/trailing punctuation
+            clean = word.strip('.,!?;:()[]{}"\'-')
+            if clean:
+                cleaned.append(clean)
+
+        # Filter stop words and very short words
+        keywords = {
+            word for word in cleaned
+            if word not in self._STOP_WORDS and len(word) > 1
+        }
+
+        return keywords
+
+    def intent_similarity(self, intent1: str, intent2: str) -> float:
+        """
+        Calculate semantic similarity between two intent strings.
+
+        Uses Jaccard similarity on extracted keywords:
+        similarity = |intersection| / |union|
+
+        Args:
+            intent1: First intent string
+            intent2: Second intent string
+
+        Returns:
+            Similarity score between 0.0 and 1.0
+
+        Example:
+            >>> cycle.intent_similarity(
+            ...     "Implement JWT authentication",
+            ...     "Add JWT token verification"
+            ... )
+            0.4  # Both have 'jwt', one has 'authentication'/'verification'
+        """
+        keywords1 = self.extract_keywords(intent1)
+        keywords2 = self.extract_keywords(intent2)
+
+        if not keywords1 or not keywords2:
+            return 0.0
+
+        intersection = keywords1 & keywords2
+        union = keywords1 | keywords2
+
+        return len(intersection) / len(union)
+
+    def find_by_intent(
+        self,
+        intent: str,
+        min_similarity: float = 0.2,
+        limit: int = 10
+    ) -> List[Experience]:
+        """
+        Find experiences with semantically similar intents.
+
+        This is the key method for semantic matching. It finds experiences
+        where the intent text is similar, regardless of context categories.
+
+        Args:
+            intent: The intent to search for
+            min_similarity: Minimum similarity score (0.0-1.0)
+            limit: Maximum number of results
+
+        Returns:
+            List of experiences sorted by intent similarity (highest first)
+
+        Example:
+            >>> cycle.find_by_intent("Add JWT token authentication")
+            # Returns experiences with intents like:
+            # - "Implement JWT authentication"
+            # - "Fix token expiry verification"
+            # - "Add OAuth token support"
+        """
+        experiences = list(self.store._index.values())
+
+        scored = []
+        for exp in experiences:
+            similarity = self.intent_similarity(intent, exp.intent)
+            if similarity >= min_similarity:
+                scored.append((exp, similarity))
+
+        # Sort by similarity descending
+        scored.sort(key=lambda x: x[1], reverse=True)
+
+        # Return just the experiences (not the scores)
+        return [exp for exp, _ in scored[:limit]]
+
+    def find_similar_context(
+        self,
+        context: Context,
+        min_similarity: float = 0.5,
+        limit: int = 10
+    ) -> List[Tuple[Experience, float]]:
+        """
+        Find experiences with similar contexts.
+
+        This is a wrapper around ExperienceStore.find_similar_context
+        for consistency in the API.
+
+        Args:
+            context: The context to match
+            min_similarity: Minimum context similarity score
+            limit: Maximum number of results
+
+        Returns:
+            List of (experience, similarity_score) tuples
+        """
+        return self.store.find_similar_context(context, min_similarity, limit)
+
+    def find_by_context_and_intent(
+        self,
+        context: Context,
+        intent: str,
+        context_weight: float = 0.3,
+        intent_weight: float = 0.7,
+        min_combined_score: float = 0.3,
+        limit: int = 10
+    ) -> List[Tuple[Experience, float]]:
+        """
+        Find experiences using both context and intent similarity.
+
+        This combines categorical context matching with semantic intent
+        matching to get the best of both worlds.
+
+        Args:
+            context: The context to match
+            intent: The intent to match
+            context_weight: Weight for context similarity (0.0-1.0)
+            intent_weight: Weight for intent similarity (0.0-1.0)
+            min_combined_score: Minimum combined score to include
+            limit: Maximum number of results
+
+        Returns:
+            List of (experience, combined_score) tuples
+
+        Example:
+            >>> cycle.find_by_context_and_intent(
+            ...     context=Context(goal_type="feature", domain="api"),
+            ...     intent="Add JWT authentication",
+            ...     context_weight=0.3,
+            ...     intent_weight=0.7,
+            ... )
+            # Returns experiences that match BOTH the context and intent,
+            # weighted toward intent similarity
+        """
+        # Normalize weights
+        total_weight = context_weight + intent_weight
+        if total_weight == 0:
+            total_weight = 1.0
+        ctx_w = context_weight / total_weight
+        int_w = intent_weight / total_weight
+
+        experiences = list(self.store._index.values())
+
+        scored = []
+        for exp in experiences:
+            # Calculate context similarity
+            ctx_sim = context.similarity_to(exp.context)
+
+            # Calculate intent similarity
+            int_sim = self.intent_similarity(intent, exp.intent)
+
+            # Combined weighted score
+            combined = (ctx_w * ctx_sim) + (int_w * int_sim)
+
+            if combined >= min_combined_score:
+                scored.append((exp, combined))
+
+        # Sort by combined score descending
+        scored.sort(key=lambda x: x[1], reverse=True)
+
+        return scored[:limit]
+
+    def get_experience(self, experience_id: str) -> Optional[Experience]:
+        """
+        Get an experience by ID.
+
+        Convenience wrapper around ExperienceStore.get.
+
+        Args:
+            experience_id: The ID of the experience to retrieve
+
+        Returns:
+            The Experience if found, None otherwise
+        """
+        return self.store.get(experience_id)
