@@ -1,22 +1,24 @@
 {
-  "_checksum": "18d20c800891f176",
-  "_written_at": "2026-01-03T16:36:00.119618+00:00",
+  "_checksum": "dc7d2f1d971da350",
+  "_written_at": "2026-01-03T16:36:11.880719+00:00",
   "data": {
     "created_at": "2026-01-03T16:35:49.373066+00:00",
     "description": "",
     "entity_type": "task",
     "id": "T-20260103-163549-49640184",
     "metadata": {
+      "completed_at": "2026-01-03T16:36:11.862941+00:00",
       "started_at": "2026-01-03T16:36:00.100877+00:00",
-      "updated_at": "2026-01-03T16:36:00.100883+00:00"
+      "updated_at": "2026-01-03T16:36:11.862950+00:00"
     },
-    "modified_at": "2026-01-03T16:36:00.119534+00:00",
+    "modified_at": "2026-01-03T16:36:11.880657+00:00",
     "priority": "medium",
     "properties": {
-      "category": "test"
+      "category": "test",
+      "retrospective": "Successfully integrated learning bridge into task workflow. Tests passed on first try."
     },
-    "status": "in_progress",
+    "status": "completed",
     "title": "Test learning integration",
-    "version": 3
+    "version": 4
   }
 }
