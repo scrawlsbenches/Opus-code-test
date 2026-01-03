@@ -1,19 +1,22 @@
 {
-  "_checksum": "2119ff97a55019f7",
-  "_written_at": "2026-01-03T16:35:49.384359+00:00",
+  "_checksum": "18d20c800891f176",
+  "_written_at": "2026-01-03T16:36:00.119618+00:00",
   "data": {
     "created_at": "2026-01-03T16:35:49.373066+00:00",
     "description": "",
     "entity_type": "task",
     "id": "T-20260103-163549-49640184",
-    "metadata": {},
-    "modified_at": "2026-01-03T16:35:49.384309+00:00",
+    "metadata": {
+      "started_at": "2026-01-03T16:36:00.100877+00:00",
+      "updated_at": "2026-01-03T16:36:00.100883+00:00"
+    },
+    "modified_at": "2026-01-03T16:36:00.119534+00:00",
     "priority": "medium",
     "properties": {
       "category": "test"
     },
-    "status": "pending",
+    "status": "in_progress",
     "title": "Test learning integration",
-    "version": 2
+    "version": 3
   }
 }
