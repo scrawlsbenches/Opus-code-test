@@ -31,6 +31,10 @@ Usage:
 import json
 import logging
 import sys
+import fcntl
+import os
+import re
+import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Set
@@ -55,18 +59,147 @@ logger = logging.getLogger(__name__)
 class AutoLearningCapture:
     """Automatic learning capture from completed tasks."""
 
+    # Task ID validation pattern
+    TASK_ID_PATTERN = re.compile(r'^T-\d{8}-\d{6}-[a-f0-9]{8}$')
+
+    # Max values for safety
+    MAX_BATCH_SIZE = 100
+    MAX_DAYS = 365
+
     def __init__(self, got_dir: Path = GOT_DIR):
         """Initialize the auto-capture system."""
-        self.got_dir = Path(got_dir)
+        self.got_dir = Path(got_dir).resolve()  # Resolve to absolute path
+        self._validate_path(self.got_dir, "got_dir")
+
         self.entities_dir = self.got_dir / "entities"
         self.learning_dir = self.got_dir / "learning"
+        self.locks_dir = self.got_dir / "locks"
         self.bridge = GoTLearningBridge(self.got_dir)
 
         # Ensure directories exist
         self.entities_dir.mkdir(parents=True, exist_ok=True)
         self.learning_dir.mkdir(parents=True, exist_ok=True)
+        self.locks_dir.mkdir(parents=True, exist_ok=True)
 
         logger.debug(f"AutoLearningCapture initialized with {self.got_dir}")
+
+    def _validate_path(self, path: Path, name: str) -> None:
+        """
+        Validate that path is within expected directories (prevent traversal).
+
+        Args:
+            path: Path to validate
+            name: Name of the path (for error messages)
+
+        Raises:
+            ValueError: If path is invalid or outside allowed directories
+        """
+        resolved = path.resolve()
+
+        # Must be within PROJECT_ROOT
+        try:
+            resolved.relative_to(PROJECT_ROOT)
+        except ValueError:
+            raise ValueError(f"{name} must be within project root: {resolved}")
+
+    def _validate_task_id(self, task_id: str) -> None:
+        """
+        Validate task ID format.
+
+        Args:
+            task_id: Task ID to validate
+
+        Raises:
+            ValueError: If task ID format is invalid
+        """
+        if not task_id:
+            raise ValueError("task_id cannot be empty")
+
+        if not self.TASK_ID_PATTERN.match(task_id):
+            raise ValueError(
+                f"Invalid task_id format: {task_id}. "
+                f"Expected format: T-YYYYMMDD-HHMMSS-xxxxxxxx"
+            )
+
+    def _validate_days(self, days: int) -> None:
+        """
+        Validate days parameter.
+
+        Args:
+            days: Number of days to validate
+
+        Raises:
+            ValueError: If days is invalid
+        """
+        if days < 0:
+            raise ValueError("days must be non-negative")
+        if days > self.MAX_DAYS:
+            raise ValueError(f"days cannot exceed {self.MAX_DAYS}")
+
+    def _with_lock(self, task_id: str):
+        """
+        Get exclusive lock for a task to prevent race conditions.
+
+        Args:
+            task_id: Task ID to lock
+
+        Returns:
+            File handle with exclusive lock
+        """
+        self._validate_task_id(task_id)
+
+        lock_path = self.locks_dir / f"{task_id}.lock"
+        lock_file = open(lock_path, 'w')
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+        return lock_file
+
+    def _get_files_changed(self, task_id: str) -> List[str]:
+        """
+        Try to get files changed for a task from git history.
+
+        Args:
+            task_id: Task ID to get files for
+
+        Returns:
+            List of file paths changed, or empty list if not available
+        """
+        try:
+            # Try to find commits mentioning this task
+            result = subprocess.run(
+                ['git', 'log', '--all', '--oneline', '--grep', task_id],
+                cwd=PROJECT_ROOT,
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+
+            if result.returncode != 0 or not result.stdout.strip():
+                return []
+
+            # Get the first commit hash
+            lines = result.stdout.strip().split('\n')
+            if not lines:
+                return []
+
+            commit_hash = lines[0].split()[0]
+
+            # Get files changed in that commit
+            result = subprocess.run(
+                ['git', 'diff-tree', '--no-commit-id', '--name-only', '-r', commit_hash],
+                cwd=PROJECT_ROOT,
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+
+            if result.returncode == 0:
+                files = [f.strip() for f in result.stdout.strip().split('\n') if f.strip()]
+                return files[:50]  # Limit to 50 files
+
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as e:
+            logger.debug(f"Could not get files changed for {task_id}: {e}")
+
+        return []
 
     def get_recent_tasks(
         self,
@@ -83,6 +216,9 @@ class AutoLearningCapture:
         Returns:
             List of task dictionaries
         """
+        # Validate input
+        self._validate_days(days)
+
         if not self.entities_dir.exists():
             logger.warning(f"Entities directory not found: {self.entities_dir}")
             return []
@@ -213,9 +349,12 @@ class AutoLearningCapture:
         Returns:
             List of tasks that need learning capture
         """
+        # Validate input
+        self._validate_days(days)
+
         logger.info(f"Scanning for tasks in last {days} day(s)...")
 
-        # Get recent tasks
+        # Get recent tasks (this will validate days again, but that's ok)
         recent_tasks = self.get_recent_tasks(days=days, status_filter=status_filter)
         logger.info(f"Found {len(recent_tasks)} recent tasks")
 
@@ -235,29 +374,76 @@ class AutoLearningCapture:
     def capture_missing(
         self,
         tasks: List[Dict[str, Any]],
-        dry_run: bool = False
-    ) -> Dict[str, int]:
+        dry_run: bool = False,
+        batch_size: int = 50
+    ) -> Dict[str, Any]:
         """
         Capture learning from missing tasks.
 
         Args:
             tasks: List of tasks to capture
             dry_run: If True, don't actually capture (just report)
+            batch_size: Number of tasks to process in one batch
 
         Returns:
-            Dictionary with counts: {'captured': N, 'failed': M}
+            Dictionary with counts and errors: {'captured': N, 'failed': M, 'errors': [...]}
         """
-        results = {'captured': 0, 'failed': 0}
+        # Validate batch_size
+        if batch_size <= 0:
+            raise ValueError("batch_size must be positive")
+        if batch_size > self.MAX_BATCH_SIZE:
+            raise ValueError(f"batch_size cannot exceed {self.MAX_BATCH_SIZE}")
 
-        for task in tasks:
-            task_id = task['id']
-            status = task['status']
+        results = {
+            'captured': 0,
+            'failed': 0,
+            'skipped': 0,
+            'errors': []
+        }
 
+        # Process tasks in batches
+        for i, task in enumerate(tasks):
+            if i >= batch_size:
+                logger.info(f"Reached batch limit ({batch_size}), stopping")
+                break
+
+            task_id = task.get('id', '')
+            status = task.get('status', '')
+
+            # Validate task_id
+            try:
+                self._validate_task_id(task_id)
+            except ValueError as e:
+                logger.error(f"Invalid task ID '{task_id}': {e}")
+                results['failed'] += 1
+                results['errors'].append({
+                    'task_id': task_id,
+                    'error': str(e),
+                    'type': 'validation'
+                })
+                continue
+
+            lock_file = None
             try:
                 if dry_run:
                     logger.info(f"[DRY-RUN] Would capture {task_id} ({status})")
                     results['captured'] += 1
                     continue
+
+                # Acquire lock to prevent race condition
+                lock_file = self._with_lock(task_id)
+
+                # Double-check if already captured (race condition check)
+                captured_ids = self.get_captured_task_ids()
+                if task_id in captured_ids:
+                    logger.info(f"Task {task_id} already captured (skipping)")
+                    results['skipped'] += 1
+                    continue
+
+                # Get files changed from git
+                files_changed = self._get_files_changed(task_id)
+                if files_changed:
+                    logger.debug(f"Found {len(files_changed)} files changed for {task_id}")
 
                 # Capture based on status
                 if status == 'completed':
@@ -265,7 +451,7 @@ class AutoLearningCapture:
                     experience = self.bridge.capture_task_completion(
                         task_id=task_id,
                         retrospective=task.get('retrospective', ''),
-                        files_changed=[],  # Not available in scan
+                        files_changed=files_changed,
                         task_title=task.get('title', ''),
                         task_category=task.get('category', 'general'),
                         task_priority=task.get('priority', 'medium'),
@@ -291,10 +477,26 @@ class AutoLearningCapture:
                 else:
                     # Unknown status, skip
                     logger.debug(f"Skipping {task_id} with status '{status}'")
+                    results['skipped'] += 1
 
             except Exception as e:
-                logger.error(f"Failed to capture {task_id}: {e}")
+                logger.error(f"Failed to capture {task_id}: {e}", exc_info=True)
                 results['failed'] += 1
+                results['errors'].append({
+                    'task_id': task_id,
+                    'error': str(e),
+                    'type': type(e).__name__
+                })
+                # Continue processing other tasks
+
+            finally:
+                # Release lock
+                if lock_file:
+                    try:
+                        fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+                        lock_file.close()
+                    except Exception as e:
+                        logger.warning(f"Failed to release lock for {task_id}: {e}")
 
         return results
 
@@ -357,6 +559,12 @@ def main():
         help='Task statuses to capture (default: completed blocked)'
     )
     capture_parser.add_argument(
+        '--batch-size',
+        type=int,
+        default=50,
+        help='Maximum tasks to process in one run (default: 50, max: 100)'
+    )
+    capture_parser.add_argument(
         '--extract-patterns',
         action='store_true',
         help='Run pattern extraction after capture'
@@ -383,6 +591,13 @@ def main():
     auto_capture = AutoLearningCapture()
 
     if args.command == 'scan':
+        # Validate arguments
+        try:
+            auto_capture._validate_days(args.days)
+        except ValueError as e:
+            print(f"Error: {e}")
+            return 1
+
         # Scan for missing captures
         missing = auto_capture.scan_missing_captures(
             days=args.days,
@@ -408,6 +623,19 @@ def main():
         return 0
 
     elif args.command == 'capture':
+        # Validate arguments
+        try:
+            auto_capture._validate_days(args.days)
+            if args.batch_size <= 0:
+                print(f"Error: batch-size must be positive")
+                return 1
+            if args.batch_size > AutoLearningCapture.MAX_BATCH_SIZE:
+                print(f"Error: batch-size cannot exceed {AutoLearningCapture.MAX_BATCH_SIZE}")
+                return 1
+        except ValueError as e:
+            print(f"Error: {e}")
+            return 1
+
         # Scan and capture
         missing = auto_capture.scan_missing_captures(
             days=args.days,
@@ -419,14 +647,27 @@ def main():
             return 0
 
         print(f"Capturing learning from {len(missing)} tasks...")
-        results = auto_capture.capture_missing(missing, dry_run=False)
+        results = auto_capture.capture_missing(
+            missing,
+            dry_run=False,
+            batch_size=args.batch_size
+        )
 
         print(f"\n{'='*70}")
         print("CAPTURE RESULTS")
         print(f"{'='*70}")
         print(f"  Captured:  {results['captured']}")
+        print(f"  Skipped:   {results['skipped']}")
         print(f"  Failed:    {results['failed']}")
         print(f"{'='*70}")
+
+        # Show errors if any
+        if results['errors']:
+            print(f"\nERRORS ({len(results['errors'])}):")
+            for error in results['errors'][:10]:  # Show first 10
+                print(f"  {error['task_id']}: {error['error'][:80]}")
+            if len(results['errors']) > 10:
+                print(f"  ... and {len(results['errors']) - 10} more")
 
         # Extract patterns if requested
         if args.extract_patterns and results['captured'] > 0:

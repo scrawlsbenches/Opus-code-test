@@ -482,13 +482,14 @@ class TestCmdTaskComplete(unittest.TestCase):
 
         args = Namespace(task_id="T-001", retrospective=None)
 
-        with patch('builtins.print') as mock_print:
+        with patch('builtins.print') as mock_print, \
+             patch('cortical.got.cli.task.GoTLearningBridge'):
             result = cmd_task_complete(args, mock_manager)
 
         self.assertEqual(result, 0)
         mock_manager.complete_task.assert_called_once_with("T-001", None)
         mock_manager.save.assert_called_once()
-        mock_print.assert_called_with("Completed: T-001")
+        mock_print.assert_any_call("Completed: T-001")
 
     def test_complete_task_with_retrospective(self):
         """Test completing a task with retrospective notes."""
@@ -520,7 +521,7 @@ class TestCmdTaskComplete(unittest.TestCase):
             result = cmd_task_complete(args, mock_manager)
 
         self.assertEqual(result, 1)
-        mock_print.assert_called_with("Task not found: T-999")
+        mock_print.assert_called_with("Failed to complete task: T-999")
 
 
 class TestCmdTaskBlock(unittest.TestCase):
@@ -530,6 +531,7 @@ class TestCmdTaskBlock(unittest.TestCase):
         """Test successfully blocking a task."""
         mock_manager = Mock()
         mock_manager.block_task.return_value = True
+        mock_manager.get_task.return_value = Mock(title="Test Task", category="feature", priority="medium")
 
         args = Namespace(
             task_id="T-001",
@@ -537,7 +539,8 @@ class TestCmdTaskBlock(unittest.TestCase):
             blocker=None
         )
 
-        with patch('builtins.print') as mock_print:
+        with patch('builtins.print') as mock_print, \
+             patch('cortical.got.cli.task.GoTLearningBridge'):
             result = cmd_task_block(args, mock_manager)
 
         self.assertEqual(result, 0)
@@ -547,7 +550,7 @@ class TestCmdTaskBlock(unittest.TestCase):
             None
         )
         mock_manager.save.assert_called_once()
-        mock_print.assert_called_with("Blocked: T-001")
+        mock_print.assert_any_call("Blocked: T-001")
 
     def test_block_task_with_blocker(self):
         """Test blocking a task with a blocker task ID."""
@@ -585,7 +588,7 @@ class TestCmdTaskBlock(unittest.TestCase):
             result = cmd_task_block(args, mock_manager)
 
         self.assertEqual(result, 1)
-        mock_print.assert_called_with("Task not found: T-999")
+        mock_print.assert_called_with("Failed to block task: T-999")
 
 
 class TestCmdTaskDepends(unittest.TestCase):

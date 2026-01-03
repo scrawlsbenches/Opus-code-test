@@ -105,6 +105,15 @@ class Worker(Agent):
         context: WorkerContext,
     ):
         super().__init__(agent_id, AgentRole.WORKER)
+
+        # Validate inputs
+        if not agent_id or not isinstance(agent_id, str):
+            raise ValueError("agent_id must be a non-empty string")
+        if context is None:
+            raise ValueError("context cannot be None")
+        if not isinstance(context, WorkerContext):
+            raise TypeError(f"context must be WorkerContext, got {type(context)}")
+
         self.context = context
         self.current_task: Task | None = None
         self.progress: float = 0.0
@@ -163,8 +172,10 @@ class Worker(Agent):
         Execute the task using available tools.
 
         This method:
+        - Validates task context
         - Tracks execution time
         - Records the execution as an experience in the LearningCycle
+        - Executes using available tools
         - Returns structured results
 
         Subclasses can override this to implement specific task execution logic.
@@ -178,6 +189,10 @@ class Worker(Agent):
 
         logger = logging.getLogger(__name__)
         start_time = datetime.now()
+
+        # Validate execution context
+        if not self.context or not self.context.task:
+            raise ValueError("Cannot execute task: context or task is not set")
 
         try:
             # Initialize learning cycle if available
@@ -219,17 +234,51 @@ class Worker(Agent):
                 )
                 experience.add_action(action)
 
-            # Execute task logic (placeholder - subclasses implement actual logic)
+            # Execute task logic - try to use available tools
+            tool_outputs = []
+            if self.context.tools:
+                logger.debug(f"Available tools: {self.context.tools}")
+                for tool_name in self.context.tools:
+                    try:
+                        # Placeholder for tool execution
+                        # Subclasses should implement actual tool invocation
+                        tool_result = f"Tool '{tool_name}' would be invoked for: {self.context.task}"
+                        tool_outputs.append({
+                            "tool": tool_name,
+                            "result": tool_result,
+                            "status": "simulated"
+                        })
+                        logger.debug(f"Simulated tool '{tool_name}' execution")
+                    except Exception as tool_error:
+                        logger.warning(f"Tool '{tool_name}' execution failed: {tool_error}")
+                        tool_outputs.append({
+                            "tool": tool_name,
+                            "error": str(tool_error),
+                            "status": "failed"
+                        })
+
+            # Build result with actual execution details
             result = {
                 "status": "completed",
                 "task": self.context.task,
-                "output": "Task executed successfully",
-                "timestamp": datetime.now().isoformat()
+                "agent_id": self.agent_id,
+                "output": {
+                    "description": f"Executed task: {self.context.task}",
+                    "tools_used": len(tool_outputs),
+                    "tool_results": tool_outputs if tool_outputs else None,
+                },
+                "timestamp": datetime.now().isoformat(),
+                "execution_metadata": {
+                    "worker_id": self.agent_id,
+                    "tools_available": self.context.tools or [],
+                    "constraints": len(self.context.constraints) if self.context.constraints else 0,
+                }
             }
 
             # Calculate duration
             end_time = datetime.now()
             duration_ms = (end_time - start_time).total_seconds() * 1000
+            result["duration_ms"] = duration_ms
 
             # Record outcome if learning
             if learning_cycle and experience:
@@ -246,13 +295,19 @@ class Worker(Agent):
                     experience,
                     outcome,
                     reflection={
-                        "worked": ["Task execution completed"],
+                        "worked": [
+                            "Task execution completed",
+                            f"Used {len(tool_outputs)} tools" if tool_outputs else "No tools used"
+                        ],
                         "didnt_work": [],
                         "different": []
                     }
                 )
 
-            logger.info(f"Task completed in {duration_ms:.2f}ms")
+            logger.info(
+                f"Task completed in {duration_ms:.2f}ms "
+                f"(tools: {len(tool_outputs) if tool_outputs else 0})"
+            )
             return result
 
         except Exception as e:
@@ -537,6 +592,16 @@ class Director(Agent):
 
     async def spawn_worker(self, task: Task) -> WorkerHandle:
         """Spawn a worker for a task."""
+        # Validate task
+        if task is None:
+            raise ValueError("task cannot be None")
+        if not isinstance(task, Task):
+            raise TypeError(f"task must be Task, got {type(task)}")
+        if not task.id or not isinstance(task.id, str):
+            raise ValueError("task.id must be a non-empty string")
+        if not task.description:
+            raise ValueError("task.description cannot be empty")
+
         worker_id = f"{self.agent_id}-worker-{len(self.workers)}"
 
         worker_context = WorkerContext(
@@ -691,6 +756,23 @@ class WorkerSprint:
     increment: Increment | None = None
     retrospective: Retrospective | None = None
 
+    @property
+    def completion_rate(self) -> float:
+        """Calculate completion rate (completed/estimated points)."""
+        if self.estimated_points == 0:
+            return 0.0
+        return self.completed_points / self.estimated_points
+
+    @property
+    def velocity(self) -> float:
+        """Get velocity (completed points per day)."""
+        if not self.timebox or self.timebox.total_seconds() == 0:
+            return 0.0
+        days = self.timebox.total_seconds() / (24 * 3600)
+        if days == 0:
+            return float(self.completed_points)
+        return self.completed_points / days
+
 
 class AgileWorker(Worker):
     """
@@ -745,6 +827,16 @@ class AgileWorker(Worker):
         timebox: timedelta,
     ) -> WorkerSprint:
         """Plan a sprint with estimated tasks."""
+        # Validate inputs
+        if not goal or not isinstance(goal, str):
+            raise ValueError("goal must be a non-empty string")
+        if timebox is None:
+            raise ValueError("timebox cannot be None")
+        if not isinstance(timebox, timedelta):
+            raise TypeError(f"timebox must be timedelta, got {type(timebox)}")
+        if timebox.total_seconds() <= 0:
+            raise ValueError(f"timebox must be positive, got {timebox.total_seconds()}s")
+
         tasks = await self.decompose_to_tasks(goal)
 
         # Estimate tasks
@@ -956,20 +1048,19 @@ class AgileWorker(Worker):
 
         logger = logging.getLogger(__name__)
 
+        # Preserve original context for restoration
+        original_task = self.context.task
+
         try:
             # Mark task as started
             task.started_at = datetime.now()
             logger.info(f"Starting sprint task: {task.description}")
 
             # Update worker context to current task
-            original_task = self.context.task
             self.context.task = task.description
 
             # Execute the task using parent Worker logic
             result = await self.execute_task()
-
-            # Restore original context
-            self.context.task = original_task
 
             # Mark task as completed
             task.completed_at = datetime.now()
@@ -995,6 +1086,10 @@ class AgileWorker(Worker):
         except Exception as e:
             logger.error(f"Task execution failed: {e}", exc_info=True)
             raise
+
+        finally:
+            # Always restore original context
+            self.context.task = original_task
 
     async def analyze_successes(self) -> list[str]:
         """

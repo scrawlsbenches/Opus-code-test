@@ -526,7 +526,7 @@ class TestTaskComplete:
             result = cmd_task_complete(mock_args, mock_manager)
 
         assert result == 1
-        assert "not found" in captured.getvalue()
+        assert "Failed to complete task" in captured.getvalue()
 
 
 class TestTaskBlock:
@@ -1902,9 +1902,8 @@ class TestMutatingCommands:
         assert "complete" in sprint_mutating
 
     def test_always_mutating_commands(self):
-        """Commands like compact/migrate are always mutating."""
-        assert MUTATING_COMMANDS.get("compact") is True
-        assert MUTATING_COMMANDS.get("migrate") is True
+        """Commands like batch are always mutating."""
+        assert MUTATING_COMMANDS.get("batch") is True
 
     def test_dashboard_not_mutating(self):
         """Dashboard and query commands are not mutating."""

@@ -15,21 +15,146 @@ Storage: .got/learning/ subdirectory for experiences, patterns, and lessons.
 """
 
 import logging
+import os
+import re
+import threading
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Optional, Any, Set
 
-from llm_orchestration.learning import (
-    LearningCycle,
-    Experience,
-    Context,
-    Action,
-    Outcome,
-    OutcomeType,
-    ExperienceType,
-)
+# Try to import learning module with graceful fallback
+try:
+    from llm_orchestration.learning import (
+        LearningCycle,
+        Experience,
+        Context,
+        Action,
+        Outcome,
+        OutcomeType,
+        ExperienceType,
+    )
+    LEARNING_AVAILABLE = True
+except ImportError as e:
+    LEARNING_AVAILABLE = False
+    _import_error = str(e)
+    # Create stub classes for when learning module is unavailable
+    class LearningCycle:
+        def __init__(self, *args, **kwargs):
+            raise ImportError(f"Learning module not available: {_import_error}")
+
+    class Experience:
+        pass
+
+    class Context:
+        pass
+
+    class Action:
+        pass
+
+    class Outcome:
+        pass
+
+    class OutcomeType:
+        SUCCESS = "success"
+        FAILURE = "failure"
+
+    class ExperienceType:
+        TASK_EXECUTION = "task_execution"
 
 logger = logging.getLogger(__name__)
+
+# Constants for validation
+MAX_TASK_ID_LENGTH = 100
+MAX_RETROSPECTIVE_LENGTH = 50000  # 50KB of text
+MAX_STRING_LENGTH = 10000
+MAX_JSON_SIZE = 10 * 1024 * 1024  # 10MB
+TASK_ID_PATTERN = re.compile(r'^[A-Za-z0-9_\-]+$')
+
+# Thread safety lock for shared state
+_bridge_lock = threading.Lock()
+
+
+def _validate_path(path: str, base_dir: str) -> str:
+    """
+    Prevent directory traversal attacks.
+
+    Args:
+        path: Path to validate
+        base_dir: Base directory that path must be within
+
+    Returns:
+        Resolved absolute path
+
+    Raises:
+        ValueError: If path attempts to escape base directory
+    """
+    resolved = os.path.abspath(path)
+    base = os.path.abspath(base_dir)
+
+    # Ensure resolved path is within base directory
+    if not resolved.startswith(base + os.sep) and resolved != base:
+        raise ValueError(f"Path traversal detected: {path}")
+
+    return resolved
+
+
+def _validate_task_id(task_id: str) -> None:
+    """
+    Validate task ID format.
+
+    Args:
+        task_id: Task identifier to validate
+
+    Raises:
+        ValueError: If task_id is invalid
+    """
+    if not task_id:
+        raise ValueError("task_id cannot be empty")
+
+    if len(task_id) > MAX_TASK_ID_LENGTH:
+        raise ValueError(f"task_id exceeds maximum length of {MAX_TASK_ID_LENGTH}")
+
+    if not TASK_ID_PATTERN.match(task_id):
+        raise ValueError(
+            f"task_id contains invalid characters. Must match pattern: {TASK_ID_PATTERN.pattern}"
+        )
+
+
+def _validate_string_length(value: Optional[str], field_name: str, max_length: int) -> None:
+    """
+    Validate string length.
+
+    Args:
+        value: String to validate
+        field_name: Name of field for error messages
+        max_length: Maximum allowed length
+
+    Raises:
+        ValueError: If string exceeds max_length
+    """
+    if value and len(value) > max_length:
+        raise ValueError(
+            f"{field_name} exceeds maximum length of {max_length} characters"
+        )
+
+
+def _validate_file_size(file_path: Path, max_size: int) -> None:
+    """
+    Validate file size before reading.
+
+    Args:
+        file_path: Path to file
+        max_size: Maximum allowed size in bytes
+
+    Raises:
+        ValueError: If file exceeds max_size
+    """
+    if file_path.exists():
+        size = file_path.stat().st_size
+        if size > max_size:
+            raise ValueError(
+                f"File {file_path} size ({size} bytes) exceeds maximum allowed ({max_size} bytes)"
+            )
 
 
 class GoTLearningBridge:
@@ -65,13 +190,34 @@ class GoTLearningBridge:
 
         Args:
             got_dir: Base GoT directory (e.g., /path/to/.got)
+
+        Raises:
+            ImportError: If learning module is not available
+            ValueError: If path validation fails
         """
+        if not LEARNING_AVAILABLE:
+            raise ImportError(
+                f"Learning module is not available. "
+                f"Install llm_orchestration package or ensure it's in PYTHONPATH. "
+                f"Error: {_import_error}"
+            )
+
         self.got_dir = Path(got_dir)
         self.learning_dir = self.got_dir / "learning"
+
+        # Validate paths to prevent directory traversal
+        # Note: We validate that learning_dir is within or equal to got_dir's parent
+        got_parent = self.got_dir.parent
+        _validate_path(str(self.got_dir), str(got_parent))
+
         self.learning_dir.mkdir(parents=True, exist_ok=True)
 
+        # Instance-level lock for thread safety
+        self._lock = threading.Lock()
+
         # Initialize learning cycle with subdirectory
-        self.cycle = LearningCycle(self.learning_dir)
+        with self._lock:
+            self.cycle = LearningCycle(self.learning_dir)
 
         logger.info(f"GoTLearningBridge initialized at {self.learning_dir}")
 
@@ -107,74 +253,94 @@ class GoTLearningBridge:
 
         Returns:
             The created Experience object
+
+        Raises:
+            ValueError: If input validation fails
         """
-        # Map task category to goal type
-        goal_type = self._map_category_to_goal_type(task_category)
+        # Input validation
+        _validate_task_id(task_id)
+        _validate_string_length(retrospective, "retrospective", MAX_RETROSPECTIVE_LENGTH)
+        _validate_string_length(task_title, "task_title", MAX_STRING_LENGTH)
+        _validate_string_length(approach, "approach", MAX_STRING_LENGTH)
+        _validate_string_length(task_category, "task_category", 100)
+        _validate_string_length(task_priority, "task_priority", 100)
 
-        # Map task priority to complexity
-        goal_complexity = self._map_priority_to_complexity(task_priority)
-
-        # Build context
-        context = Context(
-            goal_type=goal_type,
-            goal_complexity=goal_complexity,
-            domain=self._infer_domain_from_files(files_changed or []),
-            available_tools=self._infer_tools_from_files(files_changed or []),
-            notes=f"Task: {task_id} - {task_title}"
-        )
-
-        # Start experience
-        experience = self.cycle.start_experience(
-            context=context,
-            intent=task_title or f"Complete task {task_id}",
-            experience_type=ExperienceType.TASK_EXECUTION,
-            strategy=approach
-        )
-
-        # Add actions based on files changed
+        # Validate files_changed list
         if files_changed:
+            if len(files_changed) > 1000:
+                raise ValueError("files_changed list exceeds maximum of 1000 items")
             for file_path in files_changed:
-                action = Action(
-                    action_type=self._infer_action_type(file_path),
-                    description=f"Modified {file_path}",
-                    target=file_path,
-                    parameters={"task_id": task_id},
-                    timestamp=datetime.now(),
-                    duration_ms=None
-                )
-                experience.add_action(action)
+                _validate_string_length(file_path, "file_path", MAX_STRING_LENGTH)
 
-        # Create successful outcome
-        outcome = Outcome(
-            outcome_type=OutcomeType.SUCCESS,
-            description=f"Task {task_id} completed successfully",
-            achieved=[task_title or task_id],
-            quality_score=1.0,
-            efficiency_score=self._compute_efficiency_score(duration_seconds)
-        )
+        # Thread-safe execution
+        with self._lock:
+            # Map task category to goal type
+            goal_type = self._map_category_to_goal_type(task_category)
 
-        # Parse retrospective into structured reflection
-        reflection = self._parse_retrospective(retrospective)
+            # Map task priority to complexity
+            goal_complexity = self._map_priority_to_complexity(task_priority)
 
-        # Complete and save experience
-        self.cycle.complete_experience(
-            experience=experience,
-            outcome=outcome,
-            reflection=reflection
-        )
+            # Build context
+            context = Context(
+                goal_type=goal_type,
+                goal_complexity=goal_complexity,
+                domain=self._infer_domain_from_files(files_changed or []),
+                available_tools=self._infer_tools_from_files(files_changed or []),
+                notes=f"Task: {task_id} - {task_title}"
+            )
 
-        # Add task-specific tags
-        experience.tags.add(f"task:{task_id}")
-        experience.tags.add(f"category:{task_category}")
-        experience.tags.add(f"priority:{task_priority}")
-        if approach:
-            experience.tags.add(f"approach:{approach}")
+            # Start experience
+            experience = self.cycle.start_experience(
+                context=context,
+                intent=task_title or f"Complete task {task_id}",
+                experience_type=ExperienceType.TASK_EXECUTION,
+                strategy=approach
+            )
 
-        # Re-save with additional tags
-        self.cycle.store.save(experience)
+            # Add actions based on files changed
+            if files_changed:
+                for file_path in files_changed:
+                    action = Action(
+                        action_type=self._infer_action_type(file_path),
+                        description=f"Modified {file_path}",
+                        target=file_path,
+                        parameters={"task_id": task_id},
+                        timestamp=datetime.now(),
+                        duration_ms=None
+                    )
+                    experience.add_action(action)
 
-        logger.info(f"Captured task completion: {task_id} -> {experience.id}")
-        return experience
+            # Create successful outcome
+            outcome = Outcome(
+                outcome_type=OutcomeType.SUCCESS,
+                description=f"Task {task_id} completed successfully",
+                achieved=[task_title or task_id],
+                quality_score=1.0,
+                efficiency_score=self._compute_efficiency_score(duration_seconds)
+            )
+
+            # Parse retrospective into structured reflection
+            reflection = self._parse_retrospective(retrospective)
+
+            # Complete and save experience
+            self.cycle.complete_experience(
+                experience=experience,
+                outcome=outcome,
+                reflection=reflection
+            )
+
+            # Add task-specific tags
+            experience.tags.add(f"task:{task_id}")
+            experience.tags.add(f"category:{task_category}")
+            experience.tags.add(f"priority:{task_priority}")
+            if approach:
+                experience.tags.add(f"approach:{approach}")
+
+            # Re-save with additional tags
+            self.cycle.store.save(experience)
+
+            logger.info(f"Captured task completion: {task_id} -> {experience.id}")
+            return experience
 
     def capture_task_failure(
         self,
@@ -205,75 +371,102 @@ class GoTLearningBridge:
 
         Returns:
             The created Experience object
+
+        Raises:
+            ValueError: If input validation fails
         """
-        # Build context
-        context = Context(
-            goal_type=self._map_category_to_goal_type(task_category),
-            goal_complexity=self._map_priority_to_complexity(task_priority),
-            domain=self._infer_domain_from_files(files_attempted or []),
-            prior_failures=1,
-            constraints=blockers or [],
-            notes=f"Task: {task_id} - {task_title} (FAILED)"
-        )
+        # Input validation
+        _validate_task_id(task_id)
+        _validate_string_length(error_message, "error_message", MAX_STRING_LENGTH)
+        _validate_string_length(attempted_approach, "attempted_approach", MAX_STRING_LENGTH)
+        _validate_string_length(task_title, "task_title", MAX_STRING_LENGTH)
+        _validate_string_length(task_category, "task_category", 100)
+        _validate_string_length(task_priority, "task_priority", 100)
 
-        # Start experience
-        experience = self.cycle.start_experience(
-            context=context,
-            intent=task_title or f"Complete task {task_id}",
-            experience_type=ExperienceType.TASK_EXECUTION,
-            strategy=attempted_approach
-        )
-
-        # Add attempted actions
+        # Validate files_attempted list
         if files_attempted:
+            if len(files_attempted) > 1000:
+                raise ValueError("files_attempted list exceeds maximum of 1000 items")
             for file_path in files_attempted:
-                action = Action(
-                    action_type=self._infer_action_type(file_path),
-                    description=f"Attempted to modify {file_path}",
-                    target=file_path,
-                    parameters={"task_id": task_id, "failed": True}
-                )
-                experience.add_action(action)
+                _validate_string_length(file_path, "file_path", MAX_STRING_LENGTH)
 
-        # Create failure outcome
-        outcome = Outcome(
-            outcome_type=OutcomeType.FAILURE,
-            description=f"Task {task_id} failed: {error_message}",
-            not_achieved=[task_title or task_id],
-            error_message=error_message,
-            quality_score=0.0,
-            efficiency_score=0.0
-        )
-
-        # Add failure reflection
-        reflection = {
-            'worked': [],
-            'didnt_work': [attempted_approach or "Unknown approach", error_message],
-            'different': ["Need alternative approach", "Address blockers first"]
-        }
-
+        # Validate blockers list
         if blockers:
-            reflection['didnt_work'].extend([f"Blocker: {b}" for b in blockers])
+            if len(blockers) > 100:
+                raise ValueError("blockers list exceeds maximum of 100 items")
+            for blocker in blockers:
+                _validate_string_length(blocker, "blocker", MAX_STRING_LENGTH)
 
-        # Complete and save
-        self.cycle.complete_experience(
-            experience=experience,
-            outcome=outcome,
-            reflection=reflection
-        )
+        # Thread-safe execution
+        with self._lock:
+            # Build context
+            context = Context(
+                goal_type=self._map_category_to_goal_type(task_category),
+                goal_complexity=self._map_priority_to_complexity(task_priority),
+                domain=self._infer_domain_from_files(files_attempted or []),
+                prior_failures=1,
+                constraints=blockers or [],
+                notes=f"Task: {task_id} - {task_title} (FAILED)"
+            )
 
-        # Add failure-specific tags
-        experience.tags.add(f"task:{task_id}")
-        experience.tags.add(f"category:{task_category}")
-        experience.tags.add("failure")
-        if attempted_approach:
-            experience.tags.add(f"failed_approach:{attempted_approach}")
+            # Start experience
+            experience = self.cycle.start_experience(
+                context=context,
+                intent=task_title or f"Complete task {task_id}",
+                experience_type=ExperienceType.TASK_EXECUTION,
+                strategy=attempted_approach
+            )
 
-        # Re-save with tags
-        self.cycle.store.save(experience)
+            # Add attempted actions
+            if files_attempted:
+                for file_path in files_attempted:
+                    action = Action(
+                        action_type=self._infer_action_type(file_path),
+                        description=f"Attempted to modify {file_path}",
+                        target=file_path,
+                        parameters={"task_id": task_id, "failed": True}
+                    )
+                    experience.add_action(action)
 
-        logger.warning(f"Captured task failure: {task_id} -> {experience.id}")
-        return experience
+            # Create failure outcome
+            outcome = Outcome(
+                outcome_type=OutcomeType.FAILURE,
+                description=f"Task {task_id} failed: {error_message}",
+                not_achieved=[task_title or task_id],
+                error_message=error_message,
+                quality_score=0.0,
+                efficiency_score=0.0
+            )
+
+            # Add failure reflection
+            reflection = {
+                'worked': [],
+                'didnt_work': [attempted_approach or "Unknown approach", error_message],
+                'different': ["Need alternative approach", "Address blockers first"]
+            }
+
+            if blockers:
+                reflection['didnt_work'].extend([f"Blocker: {b}" for b in blockers])
+
+            # Complete and save
+            self.cycle.complete_experience(
+                experience=experience,
+                outcome=outcome,
+                reflection=reflection
+            )
+
+            # Add failure-specific tags
+            experience.tags.add(f"task:{task_id}")
+            experience.tags.add(f"category:{task_category}")
+            experience.tags.add("failure")
+            if attempted_approach:
+                experience.tags.add(f"failed_approach:{attempted_approach}")
+
+            # Re-save with tags
+            self.cycle.store.save(experience)
+
+            logger.warning(f"Captured task failure: {task_id} -> {experience.id}")
+            return experience
 
     def get_guidance_for_task(
         self,
@@ -304,26 +497,43 @@ class GoTLearningBridge:
             - warnings: List of warning strings
             - relevant_successes: List of successful Experience objects
             - relevant_failures: List of failed Experience objects
+
+        Raises:
+            ValueError: If input validation fails
         """
-        # Build context for the upcoming task
-        context = Context(
-            goal_type=self._map_category_to_goal_type(task_category),
-            goal_complexity=self._map_priority_to_complexity(task_priority),
-            domain=self._infer_domain_from_files(files_to_modify or []),
-            notes=f"Planning: {task_title}"
-        )
+        # Input validation
+        _validate_string_length(task_title, "task_title", MAX_STRING_LENGTH)
+        _validate_string_length(task_category, "task_category", 100)
+        _validate_string_length(task_priority, "task_priority", 100)
 
-        # Get guidance from learning cycle
-        guidance = self.cycle.get_guidance(context, include_experiences=True)
+        # Validate files_to_modify list
+        if files_to_modify:
+            if len(files_to_modify) > 1000:
+                raise ValueError("files_to_modify list exceeds maximum of 1000 items")
+            for file_path in files_to_modify:
+                _validate_string_length(file_path, "file_path", MAX_STRING_LENGTH)
 
-        logger.info(
-            f"Retrieved guidance for '{task_title}': "
-            f"{len(guidance['lessons'])} lessons, "
-            f"{len(guidance['relevant_successes'])} successes, "
-            f"{len(guidance['relevant_failures'])} failures"
-        )
+        # Thread-safe execution
+        with self._lock:
+            # Build context for the upcoming task
+            context = Context(
+                goal_type=self._map_category_to_goal_type(task_category),
+                goal_complexity=self._map_priority_to_complexity(task_priority),
+                domain=self._infer_domain_from_files(files_to_modify or []),
+                notes=f"Planning: {task_title}"
+            )
 
-        return guidance
+            # Get guidance from learning cycle
+            guidance = self.cycle.get_guidance(context, include_experiences=True)
+
+            logger.info(
+                f"Retrieved guidance for '{task_title}': "
+                f"{len(guidance['lessons'])} lessons, "
+                f"{len(guidance['relevant_successes'])} successes, "
+                f"{len(guidance['relevant_failures'])} failures"
+            )
+
+            return guidance
 
     def link_task_to_experiences(
         self,
@@ -343,39 +553,49 @@ class GoTLearningBridge:
 
         Returns:
             List of related Experience objects
+
+        Raises:
+            ValueError: If input validation fails
         """
-        related = []
+        # Input validation
+        _validate_task_id(task_id)
+        _validate_string_length(task_category, "task_category", 100)
+        _validate_string_length(task_title, "task_title", MAX_STRING_LENGTH)
 
-        # Search by category tag
-        category_tag = f"category:{task_category}"
-        tagged_experiences = self.cycle.store.find_by_tags({category_tag})
+        # Thread-safe execution
+        with self._lock:
+            related = []
 
-        # If we have a title, also search by context similarity
-        if task_title:
-            context = Context(
-                goal_type=self._map_category_to_goal_type(task_category),
-                goal_complexity="moderate",
-                notes=task_title
-            )
-            similar = self.cycle.store.find_similar_context(
-                context,
-                min_similarity=0.3,
-                limit=10
-            )
-            # Combine results
-            related_ids = {exp.id for exp in tagged_experiences}
-            for exp, similarity in similar:
-                if exp.id not in related_ids:
-                    related.append(exp)
-                    related_ids.add(exp.id)
+            # Search by category tag
+            category_tag = f"category:{task_category}"
+            tagged_experiences = self.cycle.store.find_by_tags({category_tag})
 
-            # Add tagged experiences
-            related.extend(tagged_experiences)
-        else:
-            related = tagged_experiences
+            # If we have a title, also search by context similarity
+            if task_title:
+                context = Context(
+                    goal_type=self._map_category_to_goal_type(task_category),
+                    goal_complexity="moderate",
+                    notes=task_title
+                )
+                similar = self.cycle.store.find_similar_context(
+                    context,
+                    min_similarity=0.3,
+                    limit=10
+                )
+                # Combine results
+                related_ids = {exp.id for exp in tagged_experiences}
+                for exp, similarity in similar:
+                    if exp.id not in related_ids:
+                        related.append(exp)
+                        related_ids.add(exp.id)
 
-        logger.debug(f"Found {len(related)} related experiences for {task_id}")
-        return related
+                # Add tagged experiences
+                related.extend(tagged_experiences)
+            else:
+                related = tagged_experiences
+
+            logger.debug(f"Found {len(related)} related experiences for {task_id}")
+            return related
 
     def extract_patterns_and_lessons(self) -> Dict[str, int]:
         """
@@ -387,16 +607,18 @@ class GoTLearningBridge:
         Returns:
             Dictionary with counts of patterns and lessons extracted
         """
-        logger.info("Extracting patterns and distilling lessons...")
-        results = self.cycle.extract_and_distill()
-        logger.info(
-            f"Extraction complete: "
-            f"{results['sequence_patterns']} sequence patterns, "
-            f"{results['strategy_patterns']} strategy patterns, "
-            f"{results['antipatterns']} antipatterns, "
-            f"{results['lessons']} lessons"
-        )
-        return results
+        # Thread-safe execution
+        with self._lock:
+            logger.info("Extracting patterns and distilling lessons...")
+            results = self.cycle.extract_and_distill()
+            logger.info(
+                f"Extraction complete: "
+                f"{results['sequence_patterns']} sequence patterns, "
+                f"{results['strategy_patterns']} strategy patterns, "
+                f"{results['antipatterns']} antipatterns, "
+                f"{results['lessons']} lessons"
+            )
+            return results
 
     def get_learning_stats(self) -> Dict[str, Any]:
         """
@@ -405,7 +627,9 @@ class GoTLearningBridge:
         Returns:
             Dictionary with experience counts, pattern counts, lesson counts
         """
-        return self.cycle.get_stats()
+        # Thread-safe execution
+        with self._lock:
+            return self.cycle.get_stats()
 
     # ==================== Private Helper Methods ====================
 

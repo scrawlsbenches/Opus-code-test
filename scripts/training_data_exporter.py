@@ -22,13 +22,15 @@ Quality Filtering:
     - Includes quality score based on completeness
 """
 
+import glob
 import json
 import logging
+import os
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Set
+from typing import Dict, List, Optional, Any, Set, Iterator
 
 # Configure logging
 logging.basicConfig(
@@ -40,6 +42,21 @@ logger = logging.getLogger(__name__)
 # Paths
 REPO_ROOT = Path(__file__).parent.parent
 GOT_DIR = REPO_ROOT / ".got" / "entities"
+
+# Security and memory limits
+MAX_ENTITY_SIZE = 10 * 1024 * 1024  # 10MB
+ALLOWED_OUTPUT_DIRS = [
+    os.getcwd(),
+    '/tmp',
+    str(REPO_ROOT / 'training_data'),
+    str(REPO_ROOT / 'exports')
+]
+
+# Sensitive field patterns to redact
+SENSITIVE_PATTERNS = [
+    'password', 'secret', 'token', 'key', 'credential',
+    'api_key', 'auth', 'private'
+]
 
 
 # =============================================================================
@@ -214,6 +231,8 @@ class TrainingStats:
     published_kts: int = 0
     total_edges: int = 0
     edge_types: Dict[str, int] = field(default_factory=dict)
+    failed_entities: List[str] = field(default_factory=list)
+    skipped_oversized: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -240,6 +259,10 @@ class TrainingStats:
             "edges": {
                 "total": self.total_edges,
                 "by_type": self.edge_types
+            },
+            "errors": {
+                "failed_entities": len(self.failed_entities),
+                "skipped_oversized": self.skipped_oversized
             }
         }
 
@@ -254,51 +277,176 @@ class TrainingDataExporter:
 
     Exports decision rationales, task retrospectives, handoff instructions,
     knowledge transfers, and edge relationships with quality filtering.
+
+    Uses streaming/generator-based iteration to avoid loading all entities
+    into memory at once.
     """
 
-    def __init__(self, got_dir: Path = GOT_DIR):
-        """Initialize exporter with GoT directory."""
+    def __init__(self, got_dir: Path = GOT_DIR, sanitize_sensitive: bool = False):
+        """
+        Initialize exporter with GoT directory.
+
+        Args:
+            got_dir: Path to GoT entities directory
+            sanitize_sensitive: Whether to redact sensitive data
+        """
         self.got_dir = Path(got_dir)
         if not self.got_dir.exists():
             raise ValueError(f"GoT directory does not exist: {self.got_dir}")
 
-        # Cache for loaded entities
-        self._entity_cache: Dict[str, Dict[str, Any]] = {}
-        self._load_entities()
+        self.sanitize_sensitive = sanitize_sensitive
+        self.failed_entities: List[str] = []
+        self.skipped_oversized: int = 0
 
-    def _load_entities(self):
-        """Load all entities from GoT directory into cache."""
-        logger.info(f"Loading entities from {self.got_dir}")
+        # Lightweight cache for entity lookups (ID -> title mapping only)
+        self._title_cache: Dict[str, str] = {}
+        self._type_cache: Dict[str, str] = {}
 
-        for entity_file in self.got_dir.glob("*.json"):
+    def _validate_output_path(self, output_path: str) -> Path:
+        """
+        Prevent directory traversal attacks.
+
+        Args:
+            output_path: User-provided output path
+
+        Returns:
+            Validated absolute path
+
+        Raises:
+            ValueError: If path is not in allowed directories
+        """
+        resolved = Path(output_path).resolve()
+
+        # Check if path is within allowed base directories
+        allowed = False
+        for base in ALLOWED_OUTPUT_DIRS:
+            base_path = Path(base).resolve()
             try:
-                with open(entity_file, 'r', encoding='utf-8') as f:
-                    entity = json.load(f)
+                resolved.relative_to(base_path)
+                allowed = True
+                break
+            except ValueError:
+                continue
 
-                # Extract entity data
-                if isinstance(entity, dict) and 'data' in entity:
-                    entity_data = entity['data']
-                    entity_id = entity_data.get('id', entity_file.stem)
-                    self._entity_cache[entity_id] = entity_data
+        if not allowed:
+            raise ValueError(
+                f"Output path not allowed: {resolved}\n"
+                f"Allowed base directories: {ALLOWED_OUTPUT_DIRS}"
+            )
 
-            except (json.JSONDecodeError, KeyError, IOError) as e:
-                logger.warning(f"Failed to load {entity_file.name}: {e}")
+        return resolved
 
-        logger.info(f"Loaded {len(self._entity_cache)} entities")
+    def _load_single_entity(self, filepath: Path) -> Optional[Dict[str, Any]]:
+        """
+        Load a single entity with size checking.
+
+        Args:
+            filepath: Path to entity JSON file
+
+        Returns:
+            Entity data dict or None if failed/oversized
+        """
+        try:
+            # Check file size before loading
+            file_size = filepath.stat().st_size
+            if file_size > MAX_ENTITY_SIZE:
+                logger.warning(
+                    f"Skipping oversized entity {filepath.name}: "
+                    f"{file_size / 1024 / 1024:.2f}MB > {MAX_ENTITY_SIZE / 1024 / 1024}MB"
+                )
+                self.skipped_oversized += 1
+                return None
+
+            with open(filepath, 'r', encoding='utf-8') as f:
+                entity = json.load(f)
+
+            # Extract entity data
+            if isinstance(entity, dict) and 'data' in entity:
+                entity_data = entity['data']
+
+                # Sanitize if requested
+                if self.sanitize_sensitive:
+                    entity_data = self._sanitize_data(entity_data)
+
+                return entity_data
+
+            return None
+
+        except (json.JSONDecodeError, KeyError, IOError, OSError) as e:
+            logger.warning(f"Failed to load {filepath.name}: {e}")
+            self.failed_entities.append(filepath.name)
+            return None
+
+    def _iter_entities(self, entity_type: Optional[str] = None) -> Iterator[Dict[str, Any]]:
+        """
+        Yield entities one at a time without loading all into memory.
+
+        Args:
+            entity_type: Filter by entity type (task, decision, etc.)
+
+        Yields:
+            Entity data dictionaries
+        """
+        for filepath in self.got_dir.glob("*.json"):
+            entity_data = self._load_single_entity(filepath)
+
+            if entity_data is None:
+                continue
+
+            # Filter by type if specified
+            if entity_type and entity_data.get('entity_type') != entity_type:
+                continue
+
+            # Cache title and type for lookups
+            entity_id = entity_data.get('id', filepath.stem)
+            self._title_cache[entity_id] = entity_data.get('title', entity_id)
+            self._type_cache[entity_id] = entity_data.get('entity_type', 'unknown')
+
+            yield entity_data
+
+    def _sanitize_data(self, data: Any) -> Any:
+        """
+        Recursively sanitize sensitive data from dictionaries.
+
+        Args:
+            data: Data to sanitize (dict, list, or primitive)
+
+        Returns:
+            Sanitized copy of data
+        """
+        if isinstance(data, dict):
+            sanitized = {}
+            for key, value in data.items():
+                # Check if key contains sensitive patterns
+                key_lower = key.lower()
+                is_sensitive = any(pattern in key_lower for pattern in SENSITIVE_PATTERNS)
+
+                if is_sensitive:
+                    sanitized[key] = "[REDACTED]"
+                else:
+                    sanitized[key] = self._sanitize_data(value)
+            return sanitized
+
+        elif isinstance(data, list):
+            return [self._sanitize_data(item) for item in data]
+
+        elif isinstance(data, str):
+            # Redact file paths containing home directories or sensitive locations
+            if '/home/' in data or '/Users/' in data or 'C:\\Users\\' in data:
+                # Replace with generic placeholder
+                return data.replace(os.path.expanduser('~'), '~')
+            return data
+
+        else:
+            return data
 
     def _get_entity_title(self, entity_id: str) -> str:
-        """Get title for an entity by ID."""
-        entity = self._entity_cache.get(entity_id)
-        if entity:
-            return entity.get('title', entity_id)
-        return entity_id
+        """Get title for an entity by ID from cache."""
+        return self._title_cache.get(entity_id, entity_id)
 
     def _get_entity_type(self, entity_id: str) -> str:
-        """Get entity type by ID."""
-        entity = self._entity_cache.get(entity_id)
-        if entity:
-            return entity.get('entity_type', 'unknown')
-        return 'unknown'
+        """Get entity type by ID from cache."""
+        return self._type_cache.get(entity_id, 'unknown')
 
     def _calculate_quality_score(self, text: str, min_length: int = 50) -> float:
         """
@@ -333,278 +481,379 @@ class TrainingDataExporter:
 
         return round(quality, 2)
 
-    def export_decisions(self, output_path: Path) -> List[DecisionTrainingExample]:
+    def export_decisions(self, output_path: Path, limit: Optional[int] = None, dry_run: bool = False) -> List[DecisionTrainingExample]:
         """
         Export decision rationales.
 
         Args:
             output_path: Path to output JSONL file
+            limit: Maximum number to export (for testing)
+            dry_run: If True, don't write to file
 
         Returns:
             List of decision training examples
         """
+        # Validate output path
+        if not dry_run:
+            output_path = self._validate_output_path(str(output_path))
+
         decisions = []
+        processed = 0
 
-        for entity_id, entity in self._entity_cache.items():
-            if entity.get('entity_type') != 'decision':
+        for entity in self._iter_entities(entity_type='decision'):
+            try:
+                entity_id = entity.get('id', 'unknown')
+                title = entity.get('title', '')
+                rationale = entity.get('rationale', '')
+
+                # Skip if no rationale
+                if not rationale or not rationale.strip():
+                    continue
+
+                quality_score = self._calculate_quality_score(rationale, min_length=30)
+
+                # Skip low quality
+                if quality_score < 0.2:
+                    continue
+
+                example = DecisionTrainingExample(
+                    decision_id=entity_id,
+                    title=title,
+                    rationale=rationale,
+                    affects=entity.get('affects', []),
+                    created_at=entity.get('created_at', ''),
+                    quality_score=quality_score
+                )
+                decisions.append(example)
+
+                processed += 1
+                if limit and processed >= limit:
+                    logger.info(f"Reached limit of {limit} decisions")
+                    break
+
+            except Exception as e:
+                logger.error(f"Error processing decision entity: {e}", exc_info=True)
                 continue
-
-            title = entity.get('title', '')
-            rationale = entity.get('rationale', '')
-
-            # Skip if no rationale
-            if not rationale or not rationale.strip():
-                continue
-
-            quality_score = self._calculate_quality_score(rationale, min_length=30)
-
-            # Skip low quality
-            if quality_score < 0.2:
-                continue
-
-            example = DecisionTrainingExample(
-                decision_id=entity_id,
-                title=title,
-                rationale=rationale,
-                affects=entity.get('affects', []),
-                created_at=entity.get('created_at', ''),
-                quality_score=quality_score
-            )
-            decisions.append(example)
 
         # Write JSONL
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, 'w', encoding='utf-8') as f:
-            for decision in decisions:
-                f.write(json.dumps(decision.to_dict()) + '\n')
+        if not dry_run:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(output_path, 'w', encoding='utf-8') as f:
+                for decision in decisions:
+                    try:
+                        f.write(json.dumps(decision.to_dict()) + '\n')
+                    except Exception as e:
+                        logger.error(f"Error writing decision {decision.decision_id}: {e}")
 
-        logger.info(f"Exported {len(decisions)} decision rationales to {output_path}")
+        logger.info(f"Exported {len(decisions)} decision rationales" +
+                   (f" to {output_path}" if not dry_run else " (dry run)"))
         return decisions
 
-    def export_retrospectives(self, output_path: Path) -> List[RetrospectiveTrainingExample]:
+    def export_retrospectives(self, output_path: Path, limit: Optional[int] = None, dry_run: bool = False) -> List[RetrospectiveTrainingExample]:
         """
         Export task retrospectives.
 
         Args:
             output_path: Path to output JSONL file
+            limit: Maximum number to export (for testing)
+            dry_run: If True, don't write to file
 
         Returns:
             List of retrospective training examples
         """
+        # Validate output path
+        if not dry_run:
+            output_path = self._validate_output_path(str(output_path))
+
         retrospectives = []
+        processed = 0
 
-        for entity_id, entity in self._entity_cache.items():
-            if entity.get('entity_type') != 'task':
+        for entity in self._iter_entities(entity_type='task'):
+            try:
+                entity_id = entity.get('id', 'unknown')
+
+                # Get retrospective from properties
+                properties = entity.get('properties', {})
+                retrospective = properties.get('retrospective', '')
+
+                # Skip if no retrospective
+                if not retrospective or not retrospective.strip():
+                    continue
+
+                title = entity.get('title', '')
+                description = entity.get('description', '')
+                category = properties.get('category', 'unknown')
+                priority = entity.get('priority', 'medium')
+                status = entity.get('status', 'unknown')
+
+                quality_score = self._calculate_quality_score(retrospective, min_length=50)
+
+                # Skip low quality
+                if quality_score < 0.2:
+                    continue
+
+                # Determine success from status and retrospective content
+                success = status == 'completed'
+
+                metadata = entity.get('metadata', {})
+                example = RetrospectiveTrainingExample(
+                    task_id=entity_id,
+                    title=title,
+                    description=description,
+                    retrospective=retrospective,
+                    category=category,
+                    priority=priority,
+                    success=success,
+                    created_at=entity.get('created_at', ''),
+                    completed_at=metadata.get('completed_at'),
+                    quality_score=quality_score
+                )
+                retrospectives.append(example)
+
+                processed += 1
+                if limit and processed >= limit:
+                    logger.info(f"Reached limit of {limit} retrospectives")
+                    break
+
+            except Exception as e:
+                logger.error(f"Error processing task entity: {e}", exc_info=True)
                 continue
-
-            # Get retrospective from properties
-            properties = entity.get('properties', {})
-            retrospective = properties.get('retrospective', '')
-
-            # Skip if no retrospective
-            if not retrospective or not retrospective.strip():
-                continue
-
-            title = entity.get('title', '')
-            description = entity.get('description', '')
-            category = properties.get('category', 'unknown')
-            priority = entity.get('priority', 'medium')
-            status = entity.get('status', 'unknown')
-
-            quality_score = self._calculate_quality_score(retrospective, min_length=50)
-
-            # Skip low quality
-            if quality_score < 0.2:
-                continue
-
-            # Determine success from status and retrospective content
-            success = status == 'completed'
-
-            metadata = entity.get('metadata', {})
-            example = RetrospectiveTrainingExample(
-                task_id=entity_id,
-                title=title,
-                description=description,
-                retrospective=retrospective,
-                category=category,
-                priority=priority,
-                success=success,
-                created_at=entity.get('created_at', ''),
-                completed_at=metadata.get('completed_at'),
-                quality_score=quality_score
-            )
-            retrospectives.append(example)
 
         # Write JSONL
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, 'w', encoding='utf-8') as f:
-            for retro in retrospectives:
-                f.write(json.dumps(retro.to_dict()) + '\n')
+        if not dry_run:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(output_path, 'w', encoding='utf-8') as f:
+                for retro in retrospectives:
+                    try:
+                        f.write(json.dumps(retro.to_dict()) + '\n')
+                    except Exception as e:
+                        logger.error(f"Error writing retrospective {retro.task_id}: {e}")
 
-        logger.info(f"Exported {len(retrospectives)} task retrospectives to {output_path}")
+        logger.info(f"Exported {len(retrospectives)} task retrospectives" +
+                   (f" to {output_path}" if not dry_run else " (dry run)"))
         return retrospectives
 
-    def export_handoffs(self, output_path: Path) -> List[HandoffTrainingExample]:
+    def export_handoffs(self, output_path: Path, limit: Optional[int] = None, dry_run: bool = False) -> List[HandoffTrainingExample]:
         """
         Export handoff instructions.
 
         Args:
             output_path: Path to output JSONL file
+            limit: Maximum number to export (for testing)
+            dry_run: If True, don't write to file
 
         Returns:
             List of handoff training examples
         """
+        # Validate output path
+        if not dry_run:
+            output_path = self._validate_output_path(str(output_path))
+
         handoffs = []
+        processed = 0
 
-        for entity_id, entity in self._entity_cache.items():
-            if entity.get('entity_type') != 'handoff':
+        for entity in self._iter_entities(entity_type='handoff'):
+            try:
+                entity_id = entity.get('id', 'unknown')
+                instructions = entity.get('instructions', '')
+
+                # Skip if no instructions
+                if not instructions or not instructions.strip():
+                    continue
+
+                task_id = entity.get('task_id', '')
+                context = entity.get('context', {})
+                task_title = context.get('task_title', self._get_entity_title(task_id))
+
+                quality_score = self._calculate_quality_score(instructions, min_length=100)
+
+                # Skip low quality
+                if quality_score < 0.2:
+                    continue
+
+                # Determine success from status
+                status = entity.get('status', '')
+                success = status == 'completed'
+
+                example = HandoffTrainingExample(
+                    handoff_id=entity_id,
+                    task_id=task_id,
+                    task_title=task_title,
+                    instructions=instructions,
+                    target_agent=entity.get('target_agent', 'unknown'),
+                    result=entity.get('result', {}),
+                    success=success,
+                    created_at=entity.get('created_at', ''),
+                    completed_at=entity.get('completed_at'),
+                    quality_score=quality_score
+                )
+                handoffs.append(example)
+
+                processed += 1
+                if limit and processed >= limit:
+                    logger.info(f"Reached limit of {limit} handoffs")
+                    break
+
+            except Exception as e:
+                logger.error(f"Error processing handoff entity: {e}", exc_info=True)
                 continue
-
-            instructions = entity.get('instructions', '')
-
-            # Skip if no instructions
-            if not instructions or not instructions.strip():
-                continue
-
-            task_id = entity.get('task_id', '')
-            context = entity.get('context', {})
-            task_title = context.get('task_title', self._get_entity_title(task_id))
-
-            quality_score = self._calculate_quality_score(instructions, min_length=100)
-
-            # Skip low quality
-            if quality_score < 0.2:
-                continue
-
-            # Determine success from status
-            status = entity.get('status', '')
-            success = status == 'completed'
-
-            example = HandoffTrainingExample(
-                handoff_id=entity_id,
-                task_id=task_id,
-                task_title=task_title,
-                instructions=instructions,
-                target_agent=entity.get('target_agent', 'unknown'),
-                result=entity.get('result', {}),
-                success=success,
-                created_at=entity.get('created_at', ''),
-                completed_at=entity.get('completed_at'),
-                quality_score=quality_score
-            )
-            handoffs.append(example)
 
         # Write JSONL
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, 'w', encoding='utf-8') as f:
-            for handoff in handoffs:
-                f.write(json.dumps(handoff.to_dict()) + '\n')
+        if not dry_run:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(output_path, 'w', encoding='utf-8') as f:
+                for handoff in handoffs:
+                    try:
+                        f.write(json.dumps(handoff.to_dict()) + '\n')
+                    except Exception as e:
+                        logger.error(f"Error writing handoff {handoff.handoff_id}: {e}")
 
-        logger.info(f"Exported {len(handoffs)} handoff instructions to {output_path}")
+        logger.info(f"Exported {len(handoffs)} handoff instructions" +
+                   (f" to {output_path}" if not dry_run else " (dry run)"))
         return handoffs
 
-    def export_knowledge_transfers(self, output_path: Path) -> List[KnowledgeTransferTrainingExample]:
+    def export_knowledge_transfers(self, output_path: Path, limit: Optional[int] = None, dry_run: bool = False) -> List[KnowledgeTransferTrainingExample]:
         """
         Export knowledge transfers.
 
         Args:
             output_path: Path to output JSONL file
+            limit: Maximum number to export (for testing)
+            dry_run: If True, don't write to file
 
         Returns:
             List of knowledge transfer training examples
         """
+        # Validate output path
+        if not dry_run:
+            output_path = self._validate_output_path(str(output_path))
+
         kts = []
+        processed = 0
 
-        for entity_id, entity in self._entity_cache.items():
-            if entity.get('entity_type') != 'knowledge_transfer':
+        for entity in self._iter_entities(entity_type='knowledge_transfer'):
+            try:
+                entity_id = entity.get('id', 'unknown')
+                title = entity.get('title', '')
+                summary = entity.get('summary', '')
+
+                # Skip if no summary
+                if not summary or not summary.strip():
+                    continue
+
+                quality_score = self._calculate_quality_score(summary, min_length=100)
+
+                # Skip low quality
+                if quality_score < 0.2:
+                    continue
+
+                example = KnowledgeTransferTrainingExample(
+                    kt_id=entity_id,
+                    title=title,
+                    summary=summary,
+                    sections=entity.get('sections', {}),
+                    related_tasks=entity.get('related_tasks', []),
+                    related_decisions=entity.get('related_decisions', []),
+                    status=entity.get('status', 'draft'),
+                    created_at=entity.get('created_at', ''),
+                    quality_score=quality_score
+                )
+                kts.append(example)
+
+                processed += 1
+                if limit and processed >= limit:
+                    logger.info(f"Reached limit of {limit} knowledge transfers")
+                    break
+
+            except Exception as e:
+                logger.error(f"Error processing knowledge transfer entity: {e}", exc_info=True)
                 continue
-
-            title = entity.get('title', '')
-            summary = entity.get('summary', '')
-
-            # Skip if no summary
-            if not summary or not summary.strip():
-                continue
-
-            quality_score = self._calculate_quality_score(summary, min_length=100)
-
-            # Skip low quality
-            if quality_score < 0.2:
-                continue
-
-            example = KnowledgeTransferTrainingExample(
-                kt_id=entity_id,
-                title=title,
-                summary=summary,
-                sections=entity.get('sections', {}),
-                related_tasks=entity.get('related_tasks', []),
-                related_decisions=entity.get('related_decisions', []),
-                status=entity.get('status', 'draft'),
-                created_at=entity.get('created_at', ''),
-                quality_score=quality_score
-            )
-            kts.append(example)
 
         # Write JSONL
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, 'w', encoding='utf-8') as f:
-            for kt in kts:
-                f.write(json.dumps(kt.to_dict()) + '\n')
+        if not dry_run:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(output_path, 'w', encoding='utf-8') as f:
+                for kt in kts:
+                    try:
+                        f.write(json.dumps(kt.to_dict()) + '\n')
+                    except Exception as e:
+                        logger.error(f"Error writing knowledge transfer {kt.kt_id}: {e}")
 
-        logger.info(f"Exported {len(kts)} knowledge transfers to {output_path}")
+        logger.info(f"Exported {len(kts)} knowledge transfers" +
+                   (f" to {output_path}" if not dry_run else " (dry run)"))
         return kts
 
-    def export_edges(self, output_path: Path) -> List[EdgeTrainingExample]:
+    def export_edges(self, output_path: Path, limit: Optional[int] = None, dry_run: bool = False) -> List[EdgeTrainingExample]:
         """
         Export edge relationships.
 
         Args:
             output_path: Path to output JSONL file
+            limit: Maximum number to export (for testing)
+            dry_run: If True, don't write to file
 
         Returns:
             List of edge training examples
         """
-        edges = []
+        # Validate output path
+        if not dry_run:
+            output_path = self._validate_output_path(str(output_path))
 
-        for entity_id, entity in self._entity_cache.items():
-            if entity.get('entity_type') != 'edge':
+        edges = []
+        processed = 0
+
+        for entity in self._iter_entities(entity_type='edge'):
+            try:
+                entity_id = entity.get('id', 'unknown')
+                source_id = entity.get('source_id', '')
+                target_id = entity.get('target_id', '')
+                edge_type = entity.get('edge_type', '')
+
+                # Get titles for source and target
+                source_title = self._get_entity_title(source_id)
+                target_title = self._get_entity_title(target_id)
+                source_type = self._get_entity_type(source_id)
+                target_type = self._get_entity_type(target_id)
+
+                example = EdgeTrainingExample(
+                    edge_id=entity_id,
+                    source_id=source_id,
+                    target_id=target_id,
+                    edge_type=edge_type,
+                    source_type=source_type,
+                    target_type=target_type,
+                    source_title=source_title,
+                    target_title=target_title,
+                    weight=entity.get('weight', 1.0),
+                    confidence=entity.get('confidence', 1.0),
+                    created_at=entity.get('created_at', '')
+                )
+                edges.append(example)
+
+                processed += 1
+                if limit and processed >= limit:
+                    logger.info(f"Reached limit of {limit} edges")
+                    break
+
+            except Exception as e:
+                logger.error(f"Error processing edge entity: {e}", exc_info=True)
                 continue
 
-            source_id = entity.get('source_id', '')
-            target_id = entity.get('target_id', '')
-            edge_type = entity.get('edge_type', '')
-
-            # Get titles for source and target
-            source_title = self._get_entity_title(source_id)
-            target_title = self._get_entity_title(target_id)
-            source_type = self._get_entity_type(source_id)
-            target_type = self._get_entity_type(target_id)
-
-            example = EdgeTrainingExample(
-                edge_id=entity_id,
-                source_id=source_id,
-                target_id=target_id,
-                edge_type=edge_type,
-                source_type=source_type,
-                target_type=target_type,
-                source_title=source_title,
-                target_title=target_title,
-                weight=entity.get('weight', 1.0),
-                confidence=entity.get('confidence', 1.0),
-                created_at=entity.get('created_at', '')
-            )
-            edges.append(example)
-
         # Write JSONL
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, 'w', encoding='utf-8') as f:
-            for edge in edges:
-                f.write(json.dumps(edge.to_dict()) + '\n')
+        if not dry_run:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(output_path, 'w', encoding='utf-8') as f:
+                for edge in edges:
+                    try:
+                        f.write(json.dumps(edge.to_dict()) + '\n')
+                    except Exception as e:
+                        logger.error(f"Error writing edge {edge.edge_id}: {e}")
 
-        logger.info(f"Exported {len(edges)} edge relationships to {output_path}")
+        logger.info(f"Exported {len(edges)} edge relationships" +
+                   (f" to {output_path}" if not dry_run else " (dry run)"))
         return edges
 
-    def export_all(self, output_dir: Path) -> Dict[str, int]:
+    def export_all(self, output_dir: Path, limit: Optional[int] = None, dry_run: bool = False) -> Dict[str, int]:
         """
         Export all training data to a directory.
 
@@ -612,37 +861,51 @@ class TrainingDataExporter:
 
         Args:
             output_dir: Directory to write files to
+            limit: Maximum number of each type to export (for testing)
+            dry_run: If True, don't write to files
 
         Returns:
             Dict with counts of exported items
         """
+        # Validate output path
         output_dir = Path(output_dir)
-        output_dir.mkdir(parents=True, exist_ok=True)
+        if not dry_run:
+            output_dir = self._validate_output_path(str(output_dir))
+            output_dir.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"Exporting all training data to {output_dir}")
+        logger.info(f"Exporting all training data to {output_dir}" +
+                   (" (dry run)" if dry_run else ""))
 
         # Export each type
-        decisions = self.export_decisions(output_dir / "decisions.jsonl")
-        retrospectives = self.export_retrospectives(output_dir / "retrospectives.jsonl")
-        handoffs = self.export_handoffs(output_dir / "handoffs.jsonl")
-        kts = self.export_knowledge_transfers(output_dir / "knowledge_transfers.jsonl")
-        edges = self.export_edges(output_dir / "edges.jsonl")
+        decisions = self.export_decisions(output_dir / "decisions.jsonl", limit=limit, dry_run=dry_run)
+        retrospectives = self.export_retrospectives(output_dir / "retrospectives.jsonl", limit=limit, dry_run=dry_run)
+        handoffs = self.export_handoffs(output_dir / "handoffs.jsonl", limit=limit, dry_run=dry_run)
+        kts = self.export_knowledge_transfers(output_dir / "knowledge_transfers.jsonl", limit=limit, dry_run=dry_run)
+        edges = self.export_edges(output_dir / "edges.jsonl", limit=limit, dry_run=dry_run)
 
         # Generate markdown summary
-        self._write_markdown_summary(
-            output_dir / "README.md",
-            decisions, retrospectives, handoffs, kts, edges
-        )
+        if not dry_run:
+            self._write_markdown_summary(
+                output_dir / "README.md",
+                decisions, retrospectives, handoffs, kts, edges
+            )
 
         counts = {
             'decisions': len(decisions),
             'retrospectives': len(retrospectives),
             'handoffs': len(handoffs),
             'knowledge_transfers': len(kts),
-            'edges': len(edges)
+            'edges': len(edges),
+            'failed_entities': len(self.failed_entities),
+            'skipped_oversized': self.skipped_oversized
         }
 
-        logger.info(f"Export complete: {sum(counts.values())} total examples")
+        logger.info(f"Export complete: {sum(counts.values())} total items")
+        if self.failed_entities:
+            logger.warning(f"Failed to process {len(self.failed_entities)} entities: {self.failed_entities[:10]}")
+        if self.skipped_oversized:
+            logger.warning(f"Skipped {self.skipped_oversized} oversized entities")
+
         return counts
 
     def _write_markdown_summary(
@@ -717,36 +980,45 @@ class TrainingDataExporter:
         """
         stats = TrainingStats()
 
-        for entity_id, entity in self._entity_cache.items():
-            entity_type = entity.get('entity_type')
+        for entity in self._iter_entities():
+            try:
+                entity_type = entity.get('entity_type')
 
-            if entity_type == 'decision':
-                stats.total_decisions += 1
-                rationale = entity.get('rationale', '')
-                if rationale and self._calculate_quality_score(rationale, 30) >= 0.2:
-                    stats.quality_decisions += 1
+                if entity_type == 'decision':
+                    stats.total_decisions += 1
+                    rationale = entity.get('rationale', '')
+                    if rationale and self._calculate_quality_score(rationale, 30) >= 0.2:
+                        stats.quality_decisions += 1
 
-            elif entity_type == 'task':
-                stats.total_tasks += 1
-                properties = entity.get('properties', {})
-                retrospective = properties.get('retrospective', '')
-                if retrospective and self._calculate_quality_score(retrospective, 50) >= 0.2:
-                    stats.tasks_with_retrospectives += 1
+                elif entity_type == 'task':
+                    stats.total_tasks += 1
+                    properties = entity.get('properties', {})
+                    retrospective = properties.get('retrospective', '')
+                    if retrospective and self._calculate_quality_score(retrospective, 50) >= 0.2:
+                        stats.tasks_with_retrospectives += 1
 
-            elif entity_type == 'handoff':
-                stats.total_handoffs += 1
-                if entity.get('status') == 'completed':
-                    stats.successful_handoffs += 1
+                elif entity_type == 'handoff':
+                    stats.total_handoffs += 1
+                    if entity.get('status') == 'completed':
+                        stats.successful_handoffs += 1
 
-            elif entity_type == 'knowledge_transfer':
-                stats.total_kts += 1
-                if entity.get('status') == 'published':
-                    stats.published_kts += 1
+                elif entity_type == 'knowledge_transfer':
+                    stats.total_kts += 1
+                    if entity.get('status') == 'published':
+                        stats.published_kts += 1
 
-            elif entity_type == 'edge':
-                stats.total_edges += 1
-                edge_type = entity.get('edge_type', 'unknown')
-                stats.edge_types[edge_type] = stats.edge_types.get(edge_type, 0) + 1
+                elif entity_type == 'edge':
+                    stats.total_edges += 1
+                    edge_type = entity.get('edge_type', 'unknown')
+                    stats.edge_types[edge_type] = stats.edge_types.get(edge_type, 0) + 1
+
+            except Exception as e:
+                logger.error(f"Error processing entity for stats: {e}")
+                continue
+
+        # Add error tracking
+        stats.failed_entities = self.failed_entities.copy()
+        stats.skipped_oversized = self.skipped_oversized
 
         return stats
 
@@ -762,6 +1034,11 @@ def main():
     parser = argparse.ArgumentParser(
         description='Export GoT data for AI training'
     )
+
+    # Global options
+    parser.add_argument('--sanitize', action='store_true',
+                       help='Redact sensitive data (paths, usernames, etc.)')
+
     subparsers = parser.add_subparsers(dest='command', help='Commands')
 
     # Stats command
@@ -772,6 +1049,10 @@ def main():
     export_parser = subparsers.add_parser('export', help='Export all training data')
     export_parser.add_argument('--output', '-o', type=str, required=True,
                               help='Output directory')
+    export_parser.add_argument('--limit', type=int,
+                              help='Limit number of items per type (for testing)')
+    export_parser.add_argument('--dry-run', action='store_true',
+                              help='Count items without writing files')
 
     # Export individual types
     export_decisions_parser = subparsers.add_parser('export-decisions',
@@ -779,35 +1060,55 @@ def main():
     export_decisions_parser.add_argument('--output', '-o', type=str,
                                         default='./training_data/decisions.jsonl',
                                         help='Output file')
+    export_decisions_parser.add_argument('--limit', type=int,
+                                        help='Limit number of items (for testing)')
+    export_decisions_parser.add_argument('--dry-run', action='store_true',
+                                        help='Count items without writing files')
 
     export_retro_parser = subparsers.add_parser('export-retrospectives',
                                                 help='Export task retrospectives')
     export_retro_parser.add_argument('--output', '-o', type=str,
                                      default='./training_data/retrospectives.jsonl',
                                      help='Output file')
+    export_retro_parser.add_argument('--limit', type=int,
+                                    help='Limit number of items (for testing)')
+    export_retro_parser.add_argument('--dry-run', action='store_true',
+                                    help='Count items without writing files')
 
     export_handoffs_parser = subparsers.add_parser('export-handoffs',
                                                    help='Export handoff instructions')
     export_handoffs_parser.add_argument('--output', '-o', type=str,
                                         default='./training_data/handoffs.jsonl',
                                         help='Output file')
+    export_handoffs_parser.add_argument('--limit', type=int,
+                                       help='Limit number of items (for testing)')
+    export_handoffs_parser.add_argument('--dry-run', action='store_true',
+                                       help='Count items without writing files')
 
     export_kts_parser = subparsers.add_parser('export-kts',
                                               help='Export knowledge transfers')
     export_kts_parser.add_argument('--output', '-o', type=str,
                                    default='./training_data/knowledge_transfers.jsonl',
                                    help='Output file')
+    export_kts_parser.add_argument('--limit', type=int,
+                                  help='Limit number of items (for testing)')
+    export_kts_parser.add_argument('--dry-run', action='store_true',
+                                  help='Count items without writing files')
 
     export_edges_parser = subparsers.add_parser('export-edges',
                                                 help='Export edge relationships')
     export_edges_parser.add_argument('--output', '-o', type=str,
                                      default='./training_data/edges.jsonl',
                                      help='Output file')
+    export_edges_parser.add_argument('--limit', type=int,
+                                    help='Limit number of items (for testing)')
+    export_edges_parser.add_argument('--dry-run', action='store_true',
+                                    help='Count items without writing files')
 
     args = parser.parse_args()
 
     try:
-        exporter = TrainingDataExporter()
+        exporter = TrainingDataExporter(sanitize_sensitive=args.sanitize)
     except ValueError as e:
         print(f"Error: {e}")
         return 1
@@ -852,6 +1153,12 @@ def main():
                                               key=lambda x: -x[1])[:10]:
                     print(f"    {edge_type:<20} {count:>5}")
 
+            # Error tracking
+            if stats_dict.get('errors'):
+                print("\nErrors:")
+                print(f"  Failed entities:      {stats_dict['errors']['failed_entities']}")
+                print(f"  Skipped oversized:    {stats_dict['errors']['skipped_oversized']}")
+
             print("\n" + "=" * 70)
 
             # Estimate training value
@@ -866,32 +1173,50 @@ def main():
 
     elif args.command == 'export':
         output_dir = Path(args.output)
-        counts = exporter.export_all(output_dir)
+        limit = getattr(args, 'limit', None)
+        dry_run = getattr(args, 'dry_run', False)
 
-        print(f"\nExported training data to {output_dir}:")
+        counts = exporter.export_all(output_dir, limit=limit, dry_run=dry_run)
+
+        print(f"\n{'[DRY RUN] ' if dry_run else ''}Exported training data" +
+              (f" to {output_dir}" if not dry_run else ""))
         for data_type, count in counts.items():
             print(f"  {data_type}: {count}")
-        print(f"\nTotal: {sum(counts.values())} examples")
 
     elif args.command == 'export-decisions':
-        decisions = exporter.export_decisions(Path(args.output))
-        print(f"Exported {len(decisions)} decision rationales to {args.output}")
+        limit = getattr(args, 'limit', None)
+        dry_run = getattr(args, 'dry_run', False)
+        decisions = exporter.export_decisions(Path(args.output), limit=limit, dry_run=dry_run)
+        print(f"{'[DRY RUN] ' if dry_run else ''}Exported {len(decisions)} decision rationales" +
+              (f" to {args.output}" if not dry_run else ""))
 
     elif args.command == 'export-retrospectives':
-        retros = exporter.export_retrospectives(Path(args.output))
-        print(f"Exported {len(retros)} task retrospectives to {args.output}")
+        limit = getattr(args, 'limit', None)
+        dry_run = getattr(args, 'dry_run', False)
+        retros = exporter.export_retrospectives(Path(args.output), limit=limit, dry_run=dry_run)
+        print(f"{'[DRY RUN] ' if dry_run else ''}Exported {len(retros)} task retrospectives" +
+              (f" to {args.output}" if not dry_run else ""))
 
     elif args.command == 'export-handoffs':
-        handoffs = exporter.export_handoffs(Path(args.output))
-        print(f"Exported {len(handoffs)} handoff instructions to {args.output}")
+        limit = getattr(args, 'limit', None)
+        dry_run = getattr(args, 'dry_run', False)
+        handoffs = exporter.export_handoffs(Path(args.output), limit=limit, dry_run=dry_run)
+        print(f"{'[DRY RUN] ' if dry_run else ''}Exported {len(handoffs)} handoff instructions" +
+              (f" to {args.output}" if not dry_run else ""))
 
     elif args.command == 'export-kts':
-        kts = exporter.export_knowledge_transfers(Path(args.output))
-        print(f"Exported {len(kts)} knowledge transfers to {args.output}")
+        limit = getattr(args, 'limit', None)
+        dry_run = getattr(args, 'dry_run', False)
+        kts = exporter.export_knowledge_transfers(Path(args.output), limit=limit, dry_run=dry_run)
+        print(f"{'[DRY RUN] ' if dry_run else ''}Exported {len(kts)} knowledge transfers" +
+              (f" to {args.output}" if not dry_run else ""))
 
     elif args.command == 'export-edges':
-        edges = exporter.export_edges(Path(args.output))
-        print(f"Exported {len(edges)} edge relationships to {args.output}")
+        limit = getattr(args, 'limit', None)
+        dry_run = getattr(args, 'dry_run', False)
+        edges = exporter.export_edges(Path(args.output), limit=limit, dry_run=dry_run)
+        print(f"{'[DRY RUN] ' if dry_run else ''}Exported {len(edges)} edge relationships" +
+              (f" to {args.output}" if not dry_run else ""))
 
     else:
         parser.print_help()

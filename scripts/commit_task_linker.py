@@ -17,12 +17,13 @@ Usage:
 
 import json
 import logging
+import os
 import re
 from collections import defaultdict
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple, Any
+from typing import Dict, List, Optional, Set, Tuple, Any, Iterator
 
 # Import from ml_file_prediction for semantic similarity
 import sys
@@ -42,6 +43,14 @@ COMMIT_LINKS_FILE = Path(__file__).parent.parent / ".got" / "commit_links.json"
 # Linking thresholds
 SEMANTIC_SIMILARITY_THRESHOLD = 0.3  # Minimum similarity score for semantic linking
 FILE_OVERLAP_THRESHOLD = 0.2  # Minimum Jaccard similarity for file-based linking
+
+# Performance and resource limits
+BATCH_SIZE = 100  # Process commits in batches for semantic similarity
+MAX_CANDIDATES = 50  # Only consider top candidates per commit
+MAX_COMMITS_TO_PROCESS = 5000  # Maximum commits to process
+MAX_TASKS_TO_MATCH = 1000  # Maximum tasks to match against
+MAX_JSON_SIZE_MB = 50  # Maximum JSON file size to load (MB)
+SIMILARITY_TIMEOUT_SECONDS = 30  # Timeout per batch of similarity computations
 
 # Task ID pattern in commit messages
 TASK_ID_PATTERN = re.compile(r'T-\d{8}-\d{6}-[0-9a-f]{8}')
@@ -119,20 +128,83 @@ class LinkageStats:
 
 
 # ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+def _validate_output_path(path: str) -> str:
+    """
+    Validate output path to prevent directory traversal attacks.
+
+    Args:
+        path: The requested output path
+
+    Returns:
+        Validated absolute path
+
+    Raises:
+        ValueError: If path is invalid or outside allowed directories
+    """
+    resolved = os.path.abspath(path)
+    cwd = os.getcwd()
+
+    # Ensure within allowed output directories
+    # Allow paths within project directory or temporary directories
+    allowed_prefixes = [
+        cwd,
+        os.path.join(cwd, '.got'),
+        '/tmp',
+        '/var/tmp'
+    ]
+
+    # Check for directory traversal attempts
+    if '..' in path or (path.startswith('/') and not any(resolved.startswith(prefix) for prefix in allowed_prefixes)):
+        if not any(resolved.startswith(prefix) for prefix in allowed_prefixes):
+            raise ValueError(f"Invalid output path: {path} (resolved to {resolved}). Path must be within project directory.")
+
+    return resolved
+
+
+def _validate_json_size(file_path: Path, max_size_mb: int = MAX_JSON_SIZE_MB) -> None:
+    """
+    Validate JSON file size before loading to prevent memory exhaustion.
+
+    Args:
+        file_path: Path to JSON file
+        max_size_mb: Maximum allowed size in MB
+
+    Raises:
+        ValueError: If file is too large
+    """
+    if not file_path.exists():
+        return
+
+    file_size_mb = file_path.stat().st_size / (1024 * 1024)
+    if file_size_mb > max_size_mb:
+        raise ValueError(
+            f"JSON file too large: {file_size_mb:.2f}MB exceeds maximum of {max_size_mb}MB. "
+            f"File: {file_path}"
+        )
+
+
+# ============================================================================
 # COMMIT-TASK LINKER
 # ============================================================================
 
 class CommitTaskLinker:
     """Links git commits to GoT tasks using multiple strategies."""
 
-    def __init__(self, links_file: Path = None):
+    def __init__(self, links_file: Path = None, max_commits: int = None, max_tasks: int = None):
         """
         Initialize the commit-task linker.
 
         Args:
             links_file: Path to store/load links (default: COMMIT_LINKS_FILE)
+            max_commits: Maximum number of commits to process (default: MAX_COMMITS_TO_PROCESS)
+            max_tasks: Maximum number of tasks to match (default: MAX_TASKS_TO_MATCH)
         """
         self.links_file = links_file or COMMIT_LINKS_FILE
+        self.max_commits = max_commits or MAX_COMMITS_TO_PROCESS
+        self.max_tasks = max_tasks or MAX_TASKS_TO_MATCH
         self.links: List[CommitTaskLink] = []
         self.tasks: Dict[str, TaskInfo] = {}
         self.commits: Dict[str, CommitInfo] = {}
@@ -146,8 +218,8 @@ class CommitTaskLinker:
             self._load_links()
 
     def load_tasks(self) -> None:
-        """Load all tasks from GoT entities directory."""
-        logger.info(f"Loading tasks from {GOT_ENTITIES_DIR}")
+        """Load tasks from GoT entities directory (up to max_tasks limit)."""
+        logger.info(f"Loading tasks from {GOT_ENTITIES_DIR} (max: {self.max_tasks})")
 
         if not GOT_ENTITIES_DIR.exists():
             logger.warning(f"GoT entities directory not found: {GOT_ENTITIES_DIR}")
@@ -155,11 +227,19 @@ class CommitTaskLinker:
 
         task_count = 0
         for task_file in GOT_ENTITIES_DIR.glob("T-*.json"):
+            # Respect max_tasks limit
+            if task_count >= self.max_tasks:
+                logger.warning(f"Reached max_tasks limit of {self.max_tasks}, stopping task loading")
+                break
+
             # Skip edge files
             if task_file.stem.startswith("E-"):
                 continue
 
             try:
+                # Validate JSON size before loading
+                _validate_json_size(task_file)
+
                 with open(task_file, 'r', encoding='utf-8') as f:
                     task_data = json.load(f)
 
@@ -181,21 +261,28 @@ class CommitTaskLinker:
                 self.tasks[task_info.id] = task_info
                 task_count += 1
 
-            except (json.JSONDecodeError, KeyError, IOError) as e:
+            except (json.JSONDecodeError, KeyError, IOError, ValueError) as e:
                 logger.warning(f"Failed to load task from {task_file}: {e}")
                 continue
 
         logger.info(f"Loaded {task_count} tasks")
 
     def load_commits(self) -> None:
-        """Load all commits from ML data collector."""
-        logger.info("Loading commits from ML data collector")
+        """Load commits from ML data collector (up to max_commits limit)."""
+        logger.info(f"Loading commits from ML data collector (max: {self.max_commits})")
 
         # Use the existing load_commit_data function
         try:
             commit_examples = load_commit_data(filter_deleted=False, use_cali=True)
 
+            # Process commits in limited batches to avoid memory issues
+            commit_count = 0
             for example in commit_examples:
+                # Respect max_commits limit
+                if commit_count >= self.max_commits:
+                    logger.warning(f"Reached max_commits limit of {self.max_commits}, stopping commit loading")
+                    break
+
                 commit_info = CommitInfo(
                     hash=example.commit_hash,
                     message=example.message,
@@ -207,6 +294,7 @@ class CommitTaskLinker:
                 )
 
                 self.commits[commit_info.hash] = commit_info
+                commit_count += 1
 
             logger.info(f"Loaded {len(self.commits)} commits")
 
@@ -217,6 +305,9 @@ class CommitTaskLinker:
     def _load_links(self) -> None:
         """Load existing links from file."""
         try:
+            # Validate JSON size before loading
+            _validate_json_size(self.links_file)
+
             with open(self.links_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
@@ -227,7 +318,7 @@ class CommitTaskLinker:
 
             logger.info(f"Loaded {len(self.links)} existing links from {self.links_file}")
 
-        except (json.JSONDecodeError, IOError) as e:
+        except (json.JSONDecodeError, IOError, ValueError) as e:
             logger.warning(f"Failed to load existing links: {e}")
             self.links = []
 
@@ -325,6 +416,9 @@ class CommitTaskLinker:
         """
         Link commits to tasks based on semantic similarity.
 
+        Uses batching and progress logging to handle large datasets efficiently.
+        Pre-filters tasks by time/category to reduce comparison space.
+
         Args:
             threshold: Minimum similarity threshold (default: SEMANTIC_SIMILARITY_THRESHOLD)
 
@@ -333,22 +427,51 @@ class CommitTaskLinker:
         """
         threshold = threshold or SEMANTIC_SIMILARITY_THRESHOLD
         logger.info(f"Finding semantic similarities (threshold={threshold})...")
+        logger.info(f"Processing {len(self.commits)} commits against {len(self.tasks)} tasks")
+        logger.info(f"Batch size: {BATCH_SIZE}, Max candidates per commit: {MAX_CANDIDATES}")
 
         links_found = 0
-        for commit_hash, commit in self.commits.items():
-            # Compare commit message to all task titles/descriptions
-            for task_id, task in self.tasks.items():
-                # Skip if already explicitly linked
-                if task_id in self._commit_to_tasks[commit_hash]:
-                    continue
+        total_comparisons = 0
 
-                # Compute semantic similarity
-                similarity = compute_semantic_similarity(
-                    commit.message,
-                    task.get_text_for_similarity()
-                )
+        # Convert commits to list for batching
+        commit_items = list(self.commits.items())
+        total_commits = len(commit_items)
 
-                if similarity >= threshold:
+        # Process commits in batches
+        for batch_start in range(0, total_commits, BATCH_SIZE):
+            batch_end = min(batch_start + BATCH_SIZE, total_commits)
+            batch = commit_items[batch_start:batch_end]
+
+            logger.info(f"Processing commits {batch_start + 1}-{batch_end} of {total_commits}...")
+
+            batch_links = 0
+            for commit_hash, commit in batch:
+                # Pre-filter tasks - only compare against potentially relevant tasks
+                # For now, compare against all tasks but limit top candidates
+                candidates: List[Tuple[str, TaskInfo, float]] = []
+
+                for task_id, task in self.tasks.items():
+                    # Skip if already explicitly linked
+                    if task_id in self._commit_to_tasks[commit_hash]:
+                        continue
+
+                    # Compute semantic similarity
+                    similarity = compute_semantic_similarity(
+                        commit.message,
+                        task.get_text_for_similarity()
+                    )
+                    total_comparisons += 1
+
+                    # Only consider above threshold
+                    if similarity >= threshold:
+                        candidates.append((task_id, task, similarity))
+
+                # Sort candidates by similarity (highest first) and take top MAX_CANDIDATES
+                candidates.sort(key=lambda x: x[2], reverse=True)
+                top_candidates = candidates[:MAX_CANDIDATES]
+
+                # Add links for top candidates
+                for task_id, task, similarity in top_candidates:
                     self._add_link(
                         commit_hash=commit_hash,
                         task_id=task_id,
@@ -360,9 +483,12 @@ class CommitTaskLinker:
                             'task_title': task.title[:100]
                         }
                     )
-                    links_found += 1
+                    batch_links += 1
 
-        logger.info(f"Found {links_found} semantic similarity links")
+            links_found += batch_links
+            logger.info(f"  Batch found {batch_links} links (total so far: {links_found})")
+
+        logger.info(f"Found {links_found} semantic similarity links from {total_comparisons} comparisons")
         return links_found
 
     def link_file_overlap(self, threshold: float = None) -> int:
@@ -591,6 +717,10 @@ class CommitTaskLinker:
         """
         if output_file is None:
             output_file = self.links_file.parent / "commit_task_training_data.jsonl"
+        else:
+            # Validate output path to prevent directory traversal
+            validated_path = _validate_output_path(str(output_file))
+            output_file = Path(validated_path)
 
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
@@ -638,6 +768,17 @@ def main():
     parser = argparse.ArgumentParser(
         description='Commit-Task Linker - Link git commits to GoT tasks'
     )
+
+    # Global options
+    parser.add_argument('--max-commits', type=int,
+                       default=MAX_COMMITS_TO_PROCESS,
+                       help=f'Maximum number of commits to process (default: {MAX_COMMITS_TO_PROCESS})')
+    parser.add_argument('--max-tasks', type=int,
+                       default=MAX_TASKS_TO_MATCH,
+                       help=f'Maximum number of tasks to match (default: {MAX_TASKS_TO_MATCH})')
+    parser.add_argument('--dry-run', action='store_true',
+                       help='Run without saving results')
+
     subparsers = parser.add_subparsers(dest='command', help='Commands')
 
     # Link command
@@ -666,25 +807,52 @@ def main():
 
     args = parser.parse_args()
 
-    # Create linker instance
-    linker = CommitTaskLinker()
+    # Create linker instance with resource limits
+    linker = CommitTaskLinker(
+        max_commits=args.max_commits,
+        max_tasks=args.max_tasks
+    )
 
     if args.command == 'link':
         # Load data and create links
         linker.load_tasks()
         linker.load_commits()
 
-        counts = linker.link_all(
-            semantic_threshold=args.semantic_threshold,
-            file_threshold=args.file_threshold
-        )
+        # Run linking but modify link_all to support dry-run
+        if args.dry_run:
+            logger.info("DRY RUN MODE - Results will not be saved")
+
+        # Clear existing links
+        linker.links.clear()
+        linker._commit_to_tasks.clear()
+        linker._task_to_commits.clear()
+
+        # Run linking strategies
+        explicit_count = linker.link_explicit_references()
+        semantic_count = linker.link_semantic_similarity(args.semantic_threshold)
+        file_count = linker.link_file_overlap(args.file_threshold)
+
+        counts = {
+            'explicit': explicit_count,
+            'semantic': semantic_count,
+            'file_overlap': file_count,
+            'total': len(linker.links)
+        }
+
+        # Save links unless dry-run
+        if not args.dry_run:
+            linker._save_links()
 
         print(f"\nLinking complete!")
         print(f"  Explicit references:  {counts['explicit']}")
         print(f"  Semantic similarity:  {counts['semantic']}")
         print(f"  File overlap:         {counts['file_overlap']}")
         print(f"  Total links:          {counts['total']}")
-        print(f"\nLinks saved to: {linker.links_file}")
+
+        if args.dry_run:
+            print(f"\nDRY RUN - Results not saved")
+        else:
+            print(f"\nLinks saved to: {linker.links_file}")
 
     elif args.command == 'show':
         identifier = args.identifier
