@@ -333,15 +333,75 @@ Invoke with the Skill tool (e.g., `skill: "codebase-search"`):
 
 **Verify skills work**: Read `.claude/skills/<skill-name>/SKILL.md` for full documentation.
 
-### ML Data Collection Hooks
+### ML Data Collection System
 
-This project collects ML training data via hooks in `.claude/settings.local.json`:
+This project collects ML training data to train micro-models for code intelligence. The collection is hook-based and requires proper configuration to work.
 
-- **SessionStart**: Logs session start for ML training
-- **PostToolUse**: Captures tool usage patterns
-- **Stop**: Captures session summary for training data
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     ML DATA COLLECTION ARCHITECTURE                      │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  HOOKS (in ~/.claude/settings.json):                                    │
+│  ────────────────────────────────────                                   │
+│  SessionStart  → scripts/ml-session-start-hook.sh                       │
+│                  Starts ML session, shows GoT context, runs tests       │
+│                                                                          │
+│  PostToolUse   → scripts/ml-tool-capture-hook.sh                        │
+│                  Captures tool usage patterns for training              │
+│                                                                          │
+│  Stop          → scripts/ml-session-capture-hook.sh                     │
+│                  Processes transcript, extracts chat exchanges          │
+│                                                                          │
+│  DATA STORAGE (.git-ml/):                                               │
+│  ────────────────────────                                               │
+│  .git-ml/                                                               │
+│  ├── chats/           # Extracted chat exchanges (training data)        │
+│  ├── commits/         # Full commit diffs                               │
+│  ├── sessions/        # Full session metadata                           │
+│  ├── actions/         # Tool use logs                                   │
+│  ├── metrics/         # ML experiment results (metrics.jsonl)           │
+│  └── tracked/                                                           │
+│      ├── commits.jsonl   # Lightweight commit log (git-tracked)         │
+│      └── sessions.jsonl  # Lightweight session log (git-tracked)        │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
-Data is stored in `.git-ml/`. This is automatic and requires no action.
+**Training Milestones:**
+
+| Model | Target | Purpose |
+|-------|--------|---------|
+| `file_prediction` | 500 commits | Predict which files need changes |
+| `commit_messages` | 2,000 commits | Generate commit messages |
+| `code_suggestions` | 5,000 chats | Suggest code completions |
+
+**Verify Collection is Working:**
+
+```bash
+# Check current stats
+python scripts/ml_data_collector.py stats
+
+# Check for recent sessions
+ls -la .git-ml/tracked/sessions.jsonl
+tail -5 .git-ml/tracked/sessions.jsonl
+
+# Check for hook errors
+cat ~/.claude/ml-capture-errors.log
+```
+
+**Troubleshooting:**
+
+If no new data is being captured:
+1. **Check hooks are configured**: Hooks must be in `~/.claude/settings.json` (global), not just project-level
+2. **Check matcher patterns**: Use `"matcher": "cwd:Opus-code-test"` to target this project
+3. **Check Stop hook isn't blocking**: The git-check Stop hook exits with code 2 if there are uncommitted changes
+
+**Key Files:**
+- `scripts/ml_data_collector.py` — Main data collection logic
+- `scripts/ml-session-start-hook.sh` — SessionStart hook
+- `scripts/ml-session-capture-hook.sh` — Stop hook (captures transcripts)
+- `cortical/ml_experiments/metrics.py` — Metrics tracking for experiments
 
 ### Tool Reliability Policy
 
