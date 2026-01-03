@@ -1611,31 +1611,73 @@ class Worker(Agent):
         lessons = self._get_lessons_for_task(task_context)
         logger.info(f"Retrieved {len(lessons)} lessons for guidance")
 
-        # Retrieve relevant lessons from GoT Learning Bridge before execution
-        got_lessons = []
+        # Retrieve guidance from GoT Learning Bridge before execution
+        # This includes lessons, recommendations, warnings, and relevant experiences
+        got_guidance = {
+            "lessons": [],
+            "recommendations": [],
+            "warnings": [],
+            "relevant_successes": [],
+            "relevant_failures": [],
+        }
+        got_lesson_ids_used = []  # Track for feedback loop
+
         if self._got_learning_bridge:
             try:
-                got_lessons = self._got_learning_bridge.get_relevant_lessons(
-                    task_description=self.context.task,
-                    limit=5
+                got_guidance = self._got_learning_bridge.get_guidance_for_task(
+                    task_title=self.context.task,
+                    task_category="task_execution",
+                    task_priority="medium",
                 )
-                if got_lessons:
-                    logger.info(f"Worker {self.agent_id}: Retrieved {len(got_lessons)} relevant lessons from GoT")
+
+                # Track lesson IDs for later validation
+                got_lesson_ids_used = [lesson.id for lesson in got_guidance.get("lessons", [])]
+
+                if got_guidance.get("lessons") or got_guidance.get("recommendations"):
+                    logger.info(
+                        f"Worker {self.agent_id}: Retrieved GoT guidance - "
+                        f"{len(got_guidance.get('lessons', []))} lessons, "
+                        f"{len(got_guidance.get('recommendations', []))} recommendations, "
+                        f"{len(got_guidance.get('warnings', []))} warnings"
+                    )
             except Exception as e:
-                logger.warning(f"Failed to retrieve GoT lessons: {e}")
+                logger.warning(f"Failed to retrieve GoT guidance: {e}")
 
         # =====================================================================
         # RUN QAPV COGNITIVE CYCLE
         # =====================================================================
         logger.info(f"[QAPV] Running cognitive cycle for task: {self.context.task}")
         
-        # Prepare QAPV task context
+        # Prepare QAPV task context with injected learning
         qapv_task_context = {
             "task_description": self.context.task,
             "tools_available": self.context.tools or [],
             "constraints": self.context.constraints or [],
-            "success_criteria": "Task completed successfully"
+            "success_criteria": "Task completed successfully",
+
+            # INJECTED FROM GOT LEARNING - This is the key integration!
+            # Recommendations from past successful experiences
+            "learned_recommendations": got_guidance.get("recommendations", []),
+            # Warnings from past failures to avoid
+            "learned_warnings": got_guidance.get("warnings", []),
+            # Similar past failures to be aware of
+            "similar_failures": [
+                exp.intent for exp in got_guidance.get("relevant_failures", [])
+                if hasattr(exp, 'intent')
+            ][:3],  # Limit to 3 most relevant
         }
+
+        # Log if we have actionable learning guidance
+        if qapv_task_context["learned_recommendations"]:
+            logger.info(
+                f"[QAPV] Applying {len(qapv_task_context['learned_recommendations'])} "
+                f"learned recommendations from past experiences"
+            )
+        if qapv_task_context["learned_warnings"]:
+            logger.warning(
+                f"[QAPV] {len(qapv_task_context['learned_warnings'])} warnings from past failures: "
+                f"{qapv_task_context['learned_warnings'][:2]}"  # Show first 2
+            )
         
         # Run QAPV cycle to structure thinking
         qapv_result = self._run_qapv_cycle(qapv_task_context)
@@ -1852,15 +1894,41 @@ class Worker(Agent):
                     }
                 )
 
-            # Capture experience to GoT Learning Bridge
+            # =========================================================================
+            # GOT LEARNING FEEDBACK LOOP - Close the loop!
+            # =========================================================================
             if self._got_learning_bridge:
+                # Step 1: Validate lessons that were used (feedback loop)
+                # This strengthens helpful lessons and weakens unhelpful ones
+                if got_lesson_ids_used:
+                    try:
+                        for lesson_id in got_lesson_ids_used:
+                            # Task succeeded, so the lessons were helpful
+                            self._got_learning_bridge.cycle.validate_lesson(
+                                lesson_id=lesson_id,
+                                was_helpful=True
+                            )
+                        logger.info(
+                            f"Worker {self.agent_id}: Validated {len(got_lesson_ids_used)} lessons "
+                            f"as helpful (task succeeded)"
+                        )
+                    except Exception as e:
+                        logger.debug(f"Failed to validate lessons: {e}")
+
+                # Step 2: Capture this task completion for future learning
                 try:
                     self._got_learning_bridge.capture_task_completion(
                         task_id=self.agent_id,
-                        outcome='success',
-                        execution_time=duration_ms / 1000.0,  # Convert to seconds
-                        metrics=self._metrics.get_summary()
+                        task_title=self.context.task,
+                        task_category="task_execution",
+                        task_priority="medium",
+                        duration_seconds=duration_ms / 1000.0,
+                        retrospective=f"Task completed successfully. "
+                                      f"Used {len(tool_outputs) if tool_outputs else 0} tools. "
+                                      f"QAPV verified: {verify_passed}.",
+                        approach=qapv_execution.answer_approach if qapv_execution else None,
                     )
+                    logger.info(f"Worker {self.agent_id}: Captured task completion for learning")
                 except Exception as e:
                     logger.warning(f"Failed to capture GoT learning experience: {e}")
 
@@ -1888,6 +1956,39 @@ class Worker(Agent):
                     error_message=str(e)
                 )
                 learning_cycle.complete_experience(experience, outcome)
+
+            # =========================================================================
+            # GOT LEARNING FEEDBACK LOOP - Negative feedback on failure
+            # =========================================================================
+            if self._got_learning_bridge:
+                # Step 1: Validate lessons as unhelpful (task failed)
+                if got_lesson_ids_used:
+                    try:
+                        for lesson_id in got_lesson_ids_used:
+                            self._got_learning_bridge.cycle.validate_lesson(
+                                lesson_id=lesson_id,
+                                was_helpful=False  # Task failed, lessons didn't help
+                            )
+                        logger.info(
+                            f"Worker {self.agent_id}: Validated {len(got_lesson_ids_used)} lessons "
+                            f"as unhelpful (task failed)"
+                        )
+                    except Exception as ve:
+                        logger.debug(f"Failed to validate lessons on failure: {ve}")
+
+                # Step 2: Capture failure for future avoidance learning
+                try:
+                    self._got_learning_bridge.capture_task_failure(
+                        task_id=self.agent_id,
+                        task_title=self.context.task,
+                        task_category="task_execution",
+                        task_priority="medium",
+                        error_message=str(e),
+                        attempted_approach=qapv_execution.answer_approach if qapv_execution else None,
+                    )
+                    logger.info(f"Worker {self.agent_id}: Captured task failure for learning")
+                except Exception as fe:
+                    logger.debug(f"Failed to capture failure experience: {fe}")
 
             # Offer to restore to last good checkpoint on failure
             if checkpoint_history and self._checkpoint_id:
