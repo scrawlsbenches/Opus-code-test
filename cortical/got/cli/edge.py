@@ -31,6 +31,8 @@ VALID_EDGE_TYPES = [
     "HAS_OPTION", "HAS_ASPECT", "PART_OF",
     # Other
     "LOCATED_IN", "CAUSED_BY",
+    # Failure tracking
+    "FAILED_ATTEMPT",
 ]
 
 

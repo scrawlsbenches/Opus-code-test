@@ -1,0 +1,17 @@
+{
+  "_checksum": "55f5a3bc711d339c",
+  "_written_at": "2026-01-03T16:21:48.141962+00:00",
+  "data": {
+    "confidence": 1.0,
+    "created_at": "2026-01-03T16:21:48.128492+00:00",
+    "edge_type": "FAILED_ATTEMPT",
+    "entity_type": "edge",
+    "id": "E-F-20260103-162148-2b904c09-T-20260103-122458-082362b5-FAILED_ATTEMPT",
+    "modified_at": "2026-01-03T16:21:48.141897+00:00",
+    "reason": "Failed attempt: Tried to implement feature using async/await patte...",
+    "source_id": "F-20260103-162148-2b904c09",
+    "target_id": "T-20260103-122458-082362b5",
+    "version": 2,
+    "weight": 1.0
+  }
+}
