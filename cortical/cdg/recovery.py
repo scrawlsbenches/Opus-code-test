@@ -318,11 +318,18 @@ class CDGRecoveryManager:
 
         return result
 
+    # Minimum valid entity file size in bytes
+    # Even minimal JSON like {"data":{},"_checksum":"..."} is ~50 bytes
+    MIN_ENTITY_FILE_SIZE = 20
+
     def verify_store_integrity(self) -> List[str]:
         """
-        Verify all entities have valid checksums.
+        Verify all entities have valid checksums and are not truncated.
 
-        Reads all entity files and validates their embedded checksums.
+        Checks:
+        1. File size > MIN_ENTITY_FILE_SIZE (catches partial/truncated writes)
+        2. Valid JSON structure (catches malformed files)
+        3. Checksum matches content (catches corruption)
 
         Returns:
             List of corrupted entity IDs (empty if all valid)
@@ -337,9 +344,22 @@ class CDGRecoveryManager:
             if entity_file.name.startswith("_") or entity_file.suffix == ".tmp":
                 continue
 
+            entity_id = entity_file.stem
+
             try:
+                # Check for suspiciously small files (partial writes)
+                file_size = entity_file.stat().st_size
+                if file_size < self.MIN_ENTITY_FILE_SIZE:
+                    corrupted.append(entity_id)
+                    logger.warning(
+                        "Partial/truncated entity detected: %s - file size %d bytes < minimum %d",
+                        entity_id, file_size, self.MIN_ENTITY_FILE_SIZE
+                    )
+                    continue
+
                 # Read and verify checksum
                 self.store._read_and_verify(entity_file)
+
             except FileNotFoundError:
                 # File was deleted between glob and read (race condition)
                 # This is fine - another process may have cleaned it up
@@ -351,7 +371,6 @@ class CDGRecoveryManager:
                 # CorruptionError: checksum mismatch
                 # JSONDecodeError: truncated or malformed JSON file
                 # KeyError: missing required fields (_checksum, data, etc.)
-                entity_id = entity_file.stem
                 corrupted.append(entity_id)
                 logger.warning(
                     "Corrupted entity detected: %s - %s: %s",
