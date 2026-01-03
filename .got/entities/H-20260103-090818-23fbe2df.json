@@ -1,8 +1,8 @@
 {
-  "_checksum": "af4455e2b17ca264",
-  "_written_at": "2026-01-03T09:08:18.644550+00:00",
+  "_checksum": "9e6fb2b0fb0910bb",
+  "_written_at": "2026-01-03T09:42:29.250750+00:00",
   "data": {
-    "accepted_at": "",
+    "accepted_at": "2026-01-03T09:42:29.234600+00:00",
     "artifacts": [],
     "completed_at": "",
     "context": {
@@ -15,15 +15,15 @@
     "id": "H-20260103-090818-23fbe2df",
     "initiated_at": "2026-01-03T09:08:18.629743+00:00",
     "instructions": "# ML Hooks Configuration - Confirmation Handoff\n\n## Summary\nFixed the ML data collection system that was losing 99.6% of training data. The hook configuration has been updated in ~/.claude/settings.json.\n\n## What Was Done\n1. Accepted and verified handoff H-20260103-084252-59037b52\n2. Confirmed test isolation fix is working (no metrics pollution)\n3. Fixed hook configuration by adding ML hooks to global settings with cwd:Opus-code-test matcher\n\n## Your Task: Confirm Hooks Are Working\n\n### Step 1: Check SessionStart Hook\nAt the START of your session, you should see output from ml-session-start-hook.sh\nIf you see an ML banner or GoT context output, the hook is running \u2705\n\n### Step 2: Work Normally\nDo some work in the session (doesn't matter what)\n\n### Step 3: End Session Cleanly\nCommit and push all changes before ending\n\n### Step 4: In NEXT Session, Verify Capture\n```bash\ntail -5 .git-ml/tracked/sessions.jsonl\n```\nShould show a NEW entry with recent timestamp (not just Dec 27 entries)\n\n### Step 5: Check Stats\n```bash\npython scripts/ml_data_collector.py stats\n```\nSessions count should be > 186\n\n### Step 6: Complete Task\n```bash\npython scripts/got_utils.py task complete T-20260103-090732-f89debb2 --retrospective \"...\"\n```\n\n## Reference\n- Knowledge Transfer: KT-20260103-090434\n- Previous KT: KT-20260103-084006\n- Config file: ~/.claude/settings.json\n\n## Troubleshooting\nIf hooks aren't running, see Troubleshooting section in KT-20260103-090434",
-    "modified_at": "2026-01-03T09:08:18.644483+00:00",
+    "modified_at": "2026-01-03T09:42:29.250673+00:00",
     "properties": {},
     "reject_reason": "",
     "rejected_at": "",
     "result": {},
     "source_agent": "main",
-    "status": "initiated",
+    "status": "accepted",
     "target_agent": "next-session",
     "task_id": "T-20260103-090732-f89debb2",
-    "version": 2
+    "version": 3
   }
 }
