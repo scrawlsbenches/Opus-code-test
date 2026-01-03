@@ -1,22 +1,24 @@
 {
-  "_checksum": "d5e70bd67beeed34",
-  "_written_at": "2026-01-03T08:30:32.044602+00:00",
+  "_checksum": "2090c9bc867f24c8",
+  "_written_at": "2026-01-03T08:36:31.502538+00:00",
   "data": {
     "created_at": "2026-01-03T08:30:20.043891+00:00",
     "description": "Deep investigation of .git-ml/metrics/metrics.jsonl collection:\n- Fixed test isolation bug in temp_experiments_dir fixture\n- Cleaned 25 polluted test entries from metrics.jsonl\n- Identified 99.6% data gap in ML training data (19/5000 chats)\n- Found GoT and ML systems not integrated\n- CLAUDE.md lacks ML documentation\nNext: Debug SessionStart hooks, integrate GoT with ML, update CLAUDE.md",
     "entity_type": "task",
     "id": "T-20260103-083020-b5853c69",
     "metadata": {
+      "completed_at": "2026-01-03T08:36:31.481778+00:00",
       "started_at": "2026-01-03T08:30:32.026845+00:00",
-      "updated_at": "2026-01-03T08:30:32.026851+00:00"
+      "updated_at": "2026-01-03T08:36:31.481783+00:00"
     },
-    "modified_at": "2026-01-03T08:30:32.044519+00:00",
+    "modified_at": "2026-01-03T08:36:31.502476+00:00",
     "priority": "high",
     "properties": {
-      "category": "research"
+      "category": "research",
+      "retrospective": "Completed investigation of ML metrics collection:\n1. Fixed test isolation bug in temp_experiments_dir fixture (was polluting metrics.jsonl)\n2. Cleaned 25 polluted entries from metrics.jsonl\n3. Identified root cause of 99.6% data loss: hooks in project settings.local.json weren't running because global settings.json was overriding\n4. Fixed by adding project-specific hooks to global ~/.claude/settings.json with cwd:Opus-code-test matcher\n5. Updated CLAUDE.md with comprehensive ML documentation\n\nKey learnings:\n- Claude Code hooks need to be in global settings.json for reliability\n- Project-level settings.local.json may be ignored when global hooks exist\n- Test fixtures must patch ALL relevant module constants, not just the direct ones"
     },
-    "status": "in_progress",
+    "status": "completed",
     "title": "Investigate and fix ML metrics collection",
-    "version": 3
+    "version": 4
   }
 }
