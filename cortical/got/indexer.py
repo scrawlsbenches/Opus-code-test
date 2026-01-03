@@ -172,14 +172,23 @@ class QueryIndexManager:
             except (json.JSONDecodeError, KeyError) as e:
                 logger.warning(f"Failed to load sprint index: {e}")
 
-    def _save_indexes(self) -> None:
-        """Save all indexes to disk using atomic temp-rename pattern."""
+    def _save_indexes(self) -> bool:
+        """
+        Save all indexes to disk using atomic temp-rename pattern.
+
+        Returns:
+            True if all saves succeeded, False if any failed.
+            Only clears dirty flag if all saves succeeded.
+        """
         if not self._dirty:
-            return
+            return True
+
+        all_succeeded = True
 
         for field_name, index in self._indexes.items():
             index_file = self._index_dir / f"by_{field_name}.json"
-            self._atomic_write_json(index_file, index.to_dict())
+            if not self._atomic_write_json(index_file, index.to_dict()):
+                all_succeeded = False
 
         # Save sprint index
         sprint_file = self._index_dir / "by_sprint.json"
@@ -187,16 +196,27 @@ class QueryIndexManager:
             "sprints": {k: list(v) for k, v in self._sprint_index.items()},
             "version": 1,
         }
-        self._atomic_write_json(sprint_file, data)
+        if not self._atomic_write_json(sprint_file, data):
+            all_succeeded = False
 
-        self._dirty = False
+        # Only clear dirty flag if ALL saves succeeded
+        # This ensures retry on next save() call if any failed
+        if all_succeeded:
+            self._dirty = False
+        else:
+            logger.warning("Index save partially failed - will retry on next save()")
 
-    def _atomic_write_json(self, filepath: Path, data: Any) -> None:
+        return all_succeeded
+
+    def _atomic_write_json(self, filepath: Path, data: Any) -> bool:
         """
         Write JSON atomically using temp file + os.replace().
 
         If a crash occurs during write, the original file remains intact.
         Uses threading.Lock for thread safety within the same process.
+
+        Returns:
+            True if write succeeded, False if failed
         """
         temp_file = filepath.with_suffix(".json.tmp")
         # Thread lock prevents concurrent writes from racing on temp file
@@ -208,6 +228,7 @@ class QueryIndexManager:
                     os.fsync(f.fileno())
                 # Atomic rename - either succeeds completely or fails completely
                 os.replace(temp_file, filepath)
+                return True
             except IOError as e:
                 logger.error(f"Failed to save {filepath.name}: {e}")
                 # Clean up temp file if it exists
@@ -216,6 +237,7 @@ class QueryIndexManager:
                         temp_file.unlink()
                     except OSError:
                         pass
+                return False
 
     def has_index(self, field_name: str) -> bool:
         """Check if an index exists for the given field."""
@@ -401,9 +423,15 @@ class QueryIndexManager:
         self._save_indexes()
         logger.info(f"Rebuilt indexes: {len(tasks)} tasks indexed")
 
-    def save(self) -> None:
-        """Persist indexes to disk."""
-        self._save_indexes()
+    def save(self) -> bool:
+        """
+        Persist indexes to disk.
+
+        Returns:
+            True if save succeeded, False if any index file failed to save.
+            On failure, dirty flag remains set for retry on next save().
+        """
+        return self._save_indexes()
 
     def get_stats(self) -> Dict[str, Any]:
         """Get index usage statistics."""
