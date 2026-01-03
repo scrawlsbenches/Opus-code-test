@@ -66,10 +66,11 @@ class TestLearningPipelineHypothesis:
         cycle = LearningCycle(temp_storage)
 
         # =====================================================================
-        # STEP 2: Create 4 similar successful experiences
-        # (minimum 3 needed for pattern, using 4 for confidence)
+        # STEP 2: Create 7 similar successful experiences
+        # Pattern confidence = log(occurrences + 1) / 5
+        # Need 7+ occurrences to reach 0.4 confidence threshold for lessons
         # =====================================================================
-        for i in range(4):
+        for i in range(7):
             context = Context(
                 goal_type="feature_implementation",
                 goal_complexity="moderate",
@@ -113,7 +114,7 @@ class TestLearningPipelineHypothesis:
 
         # Verify experiences were captured
         stats = cycle.get_stats()
-        assert stats["total_experiences"] == 4, "Should have 4 experiences"
+        assert stats["total_experiences"] == 7, "Should have 7 experiences"
 
         # =====================================================================
         # STEP 3: Extract patterns and distill lessons
@@ -176,8 +177,8 @@ class TestLearningPipelineHypothesis:
         """
         cycle = LearningCycle(temp_storage)
 
-        # Create 4 similar FAILING experiences
-        for i in range(4):
+        # Create 7 similar FAILING experiences (need 7+ for confidence >= 0.4)
+        for i in range(7):
             context = Context(
                 goal_type="bugfix",
                 goal_complexity="complex",
@@ -256,8 +257,8 @@ class TestLearningPipelineHypothesis:
         """
         cycle = LearningCycle(temp_storage)
 
-        # Create experiences and extract lessons
-        for i in range(4):
+        # Create 7 experiences and extract lessons (need 7+ for confidence >= 0.4)
+        for i in range(7):
             context = Context(goal_type="test", goal_complexity="simple", domain="unit")
             exp = cycle.start_experience(context=context, intent=f"Test {i}")
             exp.add_action(Action("test_action", "Do something", "target"))
