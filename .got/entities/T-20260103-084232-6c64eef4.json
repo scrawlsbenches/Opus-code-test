@@ -1,22 +1,24 @@
 {
-  "_checksum": "3c106b6cec71634e",
-  "_written_at": "2026-01-03T08:50:29.241574+00:00",
+  "_checksum": "a94ae2073d2e7f26",
+  "_written_at": "2026-01-03T08:50:52.835861+00:00",
   "data": {
     "created_at": "2026-01-03T08:42:32.896624+00:00",
     "description": "Merge branch and verify:\n1. Hooks are configured in ~/.claude/settings.json\n2. SessionStart hook shows ML banner\n3. Stop hook captures session to sessions.jsonl\n4. Test isolation prevents metrics pollution\n\nReference: KT-20260103-084006",
     "entity_type": "task",
     "id": "T-20260103-084232-6c64eef4",
     "metadata": {
+      "completed_at": "2026-01-03T08:50:52.819020+00:00",
       "started_at": "2026-01-03T08:50:29.227080+00:00",
-      "updated_at": "2026-01-03T08:50:29.227083+00:00"
+      "updated_at": "2026-01-03T08:50:52.819029+00:00"
     },
-    "modified_at": "2026-01-03T08:50:29.241483+00:00",
+    "modified_at": "2026-01-03T08:50:52.835793+00:00",
     "priority": "high",
     "properties": {
-      "category": "test"
+      "category": "test",
+      "retrospective": "## Verification Results\n\n### \u2705 Merge Status\nBranch claude/investigate-metrics-collection-VQKg4 was successfully merged via PR #244 (commit 74a5adcf).\n\n### \u26a0\ufe0f Hook Configuration\n- Project hooks exist in .claude/settings.local.json (SessionStart, PostToolUse, Stop)\n- Global ~/.claude/settings.json has conflicting Stop hook (git-check)\n- ML hooks may not be running - no new sessions captured since Dec 27\n- Recommendation: Add ML hooks to global settings with cwd:Opus-code-test matcher\n\n### \u2705 Baseline Stats Verified\n- Sessions: 186, Commits: 2421, Chats: 19\n- Stats command works correctly\n\n### \u2705 Test Isolation PASSED\n- Ran test_file_prediction_experiment_get_metric_history\n- metrics.jsonl still has exactly 10 lines (no pollution)\n- Fixture patching for temp_experiments_dir is working correctly\n\n## What Worked\n- Test isolation fix is effective\n- Documentation is clear\n- Handoff instructions were comprehensive\n\n## What Needs Attention\n- Hook configuration still has global/local conflict\n- Sessions not being captured (last entry Dec 27)\n- May need manual hook configuration in global settings"
     },
-    "status": "in_progress",
+    "status": "completed",
     "title": "Verify ML metrics collection fix works end-to-end",
-    "version": 3
+    "version": 4
   }
 }
