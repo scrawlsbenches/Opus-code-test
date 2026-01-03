@@ -6,7 +6,7 @@
     "entity_type": "knowledge_transfer",
     "version": 1,
     "created_at": "2026-01-03T00:07:45.623382",
-    "modified_at": "2026-01-03T00:07:45.623390",
+    "modified_at": "2026-01-03T00:09:17.109565",
     "title": "CDG ACID Guarantees - Complete Implementation",
     "session_id": "",
     "session_date": "",
@@ -18,7 +18,7 @@
     "related_decisions": [],
     "source_file": null,
     "tags": [],
-    "status": "draft",
+    "status": "published",
     "properties": {}
   }
 }
