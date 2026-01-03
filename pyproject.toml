@@ -110,6 +110,7 @@ markers = [
     "slow: Tests that take >5 seconds to run",
     "behavioral: Behavioral tests for user stories and workflows",
     "cognitive: Tests for cognitive framework integration (learning, QAPV, state management)",
+    "coherence: Phase 1 cognitive coherence tests (Woven Mind, PRISM-GoT, bottlenecks, metrics, escalation)",
 ]
 
 # Default: skip optional and slow tests during development

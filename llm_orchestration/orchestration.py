@@ -75,10 +75,26 @@ class Bottleneck:
     """A detected bottleneck in the flow."""
 
     location: str
+    type: str  # "wip_violation", "queue_buildup", "slow_stage", "blocked_work"
+    severity: float  # 0.0-1.0
     queue_depth: int
     blocked_items: list[str]
     recommendation: str
     detected_at: datetime = field(default_factory=datetime.now)
+    metrics: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class Optimization:
+    """Suggested optimization for flow improvement."""
+
+    type: str  # "rebalance", "scale", "escalate", "throttle"
+    target: str  # Column or worker affected
+    action: str  # Specific action to take
+    priority: int  # 1-5, higher = more urgent
+    estimated_impact: float  # Expected improvement %
+    rationale: str = ""
+    prerequisites: list[str] = field(default_factory=list)
 
 
 # =============================================================================
@@ -105,6 +121,506 @@ class FlowMetrics:
     # Bottlenecks
     bottleneck_column: str | None = None
     queue_depths: dict[str, int] = field(default_factory=dict)
+
+    # Historical data for trend analysis
+    queue_history: dict[str, list[int]] = field(default_factory=dict)
+    cycle_time_by_stage: dict[str, list[timedelta]] = field(default_factory=dict)
+    blocked_items: dict[str, datetime] = field(default_factory=dict)
+
+
+# =============================================================================
+# BOTTLENECK DETECTOR
+# =============================================================================
+
+
+class BottleneckDetector:
+    """Detects bottlenecks in agent workflow using multiple algorithms."""
+
+    def __init__(
+        self,
+        wip_threshold: float = 0.9,
+        queue_growth_threshold: float = 0.2,
+        slow_stage_threshold: float = 0.5,
+        blocked_time_threshold: timedelta = timedelta(minutes=30),
+    ):
+        """
+        Initialize detector with thresholds.
+
+        Args:
+            wip_threshold: Fraction of WIP limit to trigger warning (0.9 = 90%)
+            queue_growth_threshold: Growth rate to trigger queue buildup alert
+            slow_stage_threshold: Slowdown ratio to trigger slow stage alert
+            blocked_time_threshold: Time before item is considered blocked
+        """
+        self.wip_threshold = wip_threshold
+        self.queue_growth_threshold = queue_growth_threshold
+        self.slow_stage_threshold = slow_stage_threshold
+        self.blocked_time_threshold = blocked_time_threshold
+
+    def detect(
+        self,
+        flow_metrics: FlowMetrics,
+        board: OrchestrationBoard,
+    ) -> list[Bottleneck]:
+        """
+        Identify bottlenecks in the current flow.
+
+        Uses multiple detection algorithms:
+        - WIP violations
+        - Queue buildup
+        - Slow stages
+        - Blocked work
+        """
+        bottlenecks = []
+        bottlenecks.extend(self._detect_wip_violations(flow_metrics, board))
+        bottlenecks.extend(self._detect_queue_buildup(flow_metrics, board))
+        bottlenecks.extend(self._detect_slow_stages(flow_metrics, board))
+        bottlenecks.extend(self._detect_blocked_work(flow_metrics, board))
+        return bottlenecks
+
+    def _detect_wip_violations(
+        self,
+        flow_metrics: FlowMetrics,
+        board: OrchestrationBoard,
+    ) -> list[Bottleneck]:
+        """Detect columns exceeding or near WIP limits."""
+        bottlenecks = []
+
+        for column in board.columns:
+            if column.wip_limit is None:
+                continue
+
+            ratio = column.count / column.wip_limit if column.wip_limit > 0 else 0
+
+            # Exceeding limit
+            if ratio > 1.0:
+                severity = min((ratio - 1.0) / 0.5, 1.0)  # 0-1 scale
+                bottlenecks.append(Bottleneck(
+                    location=column.name,
+                    type="wip_violation",
+                    severity=severity,
+                    queue_depth=column.count,
+                    blocked_items=[g.id for g in column.items],
+                    recommendation=f"WIP limit exceeded: {column.count}/{column.wip_limit}. "
+                                   f"Consider: reduce intake, increase capacity, or temporarily raise limit.",
+                    metrics={
+                        "wip_ratio": ratio,
+                        "excess_count": column.count - column.wip_limit,
+                    }
+                ))
+
+            # Near limit (warning)
+            elif ratio >= self.wip_threshold:
+                severity = (ratio - self.wip_threshold) / (1.0 - self.wip_threshold) * 0.5
+                bottlenecks.append(Bottleneck(
+                    location=column.name,
+                    type="wip_violation",
+                    severity=severity,
+                    queue_depth=column.count,
+                    blocked_items=[],
+                    recommendation=f"WIP approaching limit: {column.count}/{column.wip_limit}. "
+                                   f"Monitor closely and prepare to reduce intake.",
+                    metrics={
+                        "wip_ratio": ratio,
+                        "remaining_capacity": column.wip_limit - column.count,
+                    }
+                ))
+
+        return bottlenecks
+
+    def _detect_queue_buildup(
+        self,
+        flow_metrics: FlowMetrics,
+        board: OrchestrationBoard,
+    ) -> list[Bottleneck]:
+        """Detect growing queues indicating flow issues."""
+        bottlenecks = []
+
+        for column in board.columns:
+            # Need historical data to detect growth
+            if column.name not in flow_metrics.queue_history:
+                flow_metrics.queue_history[column.name] = []
+
+            history = flow_metrics.queue_history[column.name]
+            current_depth = column.count
+
+            # Add current reading
+            history.append(current_depth)
+            if len(history) > 10:  # Keep last 10 readings
+                history.pop(0)
+
+            # Need at least 3 readings to detect trend
+            if len(history) < 3:
+                continue
+
+            # Calculate growth rate
+            recent_avg = sum(history[-3:]) / 3
+            older_avg = sum(history[:-3]) / max(len(history) - 3, 1)
+
+            if older_avg == 0:
+                continue
+
+            growth_rate = (recent_avg - older_avg) / older_avg
+
+            # Growing queue detected
+            if growth_rate > self.queue_growth_threshold:
+                severity = min(growth_rate / 0.5, 1.0)  # Scale to 0-1
+
+                # Diagnose root cause
+                root_cause = self._diagnose_queue_cause(column, board)
+
+                bottlenecks.append(Bottleneck(
+                    location=column.name,
+                    type="queue_buildup",
+                    severity=severity,
+                    queue_depth=current_depth,
+                    blocked_items=[g.id for g in column.items[:min(5, len(column.items))]],
+                    recommendation=f"Queue growing at {growth_rate:.1%} rate. "
+                                   f"Root cause: {root_cause}. "
+                                   f"Consider: {self._queue_remediation(root_cause)}",
+                    metrics={
+                        "growth_rate": growth_rate,
+                        "recent_avg": recent_avg,
+                        "older_avg": older_avg,
+                        "root_cause": root_cause,
+                    }
+                ))
+
+        return bottlenecks
+
+    def _diagnose_queue_cause(
+        self,
+        column: KanbanColumn,
+        board: OrchestrationBoard,
+    ) -> str:
+        """Determine why queue is building up."""
+        # Find next column
+        idx = board.columns.index(column)
+        if idx >= len(board.columns) - 1:
+            return "end_of_flow"
+
+        next_column = board.columns[idx + 1]
+
+        # Next column is full (slow processing)
+        if next_column.wip_limit and next_column.count >= next_column.wip_limit:
+            return "downstream_bottleneck"
+
+        # High intake rate
+        if column.name == "backlog" or column.name == "ready":
+            return "high_intake_rate"
+
+        return "slow_processing"
+
+    def _queue_remediation(self, root_cause: str) -> str:
+        """Suggest remediation based on root cause."""
+        remediation = {
+            "downstream_bottleneck": "Address bottleneck in downstream stage",
+            "high_intake_rate": "Throttle intake or increase ready capacity",
+            "slow_processing": "Add parallel workers or optimize processing",
+            "end_of_flow": "Review completion criteria",
+        }
+        return remediation.get(root_cause, "Investigate further")
+
+    def _detect_slow_stages(
+        self,
+        flow_metrics: FlowMetrics,
+        board: OrchestrationBoard,
+    ) -> list[Bottleneck]:
+        """Detect stages with abnormally long cycle times."""
+        bottlenecks = []
+
+        for column in board.columns:
+            if column.name not in flow_metrics.cycle_time_by_stage:
+                flow_metrics.cycle_time_by_stage[column.name] = []
+
+            history = flow_metrics.cycle_time_by_stage[column.name]
+
+            # Need baseline to compare
+            if len(history) < 5:
+                continue
+
+            # Calculate baseline (median of historical data)
+            sorted_history = sorted(history)
+            baseline = sorted_history[len(sorted_history) // 2]
+
+            # Calculate current average (last 3)
+            if len(history) < 3:
+                continue
+
+            current_avg = sum(history[-3:], timedelta()) / 3
+
+            # Check if current is significantly slower
+            if baseline.total_seconds() == 0:
+                continue
+
+            slowdown_ratio = current_avg.total_seconds() / baseline.total_seconds()
+
+            if slowdown_ratio > (1.0 + self.slow_stage_threshold):
+                severity = min((slowdown_ratio - 1.0) / 1.0, 1.0)
+
+                bottlenecks.append(Bottleneck(
+                    location=column.name,
+                    type="slow_stage",
+                    severity=severity,
+                    queue_depth=column.count,
+                    blocked_items=[],
+                    recommendation=f"Stage is {slowdown_ratio:.1%} slower than baseline. "
+                                   f"Baseline: {baseline}, Current: {current_avg}. "
+                                   f"Consider: investigate delays, parallelize work, or optimize process.",
+                    metrics={
+                        "slowdown_ratio": slowdown_ratio,
+                        "baseline_seconds": baseline.total_seconds(),
+                        "current_seconds": current_avg.total_seconds(),
+                    }
+                ))
+
+        return bottlenecks
+
+    def _detect_blocked_work(
+        self,
+        flow_metrics: FlowMetrics,
+        board: OrchestrationBoard,
+    ) -> list[Bottleneck]:
+        """Detect items blocked for too long."""
+        bottlenecks = []
+        now = datetime.now()
+
+        for column in board.columns:
+            blocked_in_column = []
+
+            for goal in column.items:
+                # Check if item is in blocked tracking
+                if goal.id in flow_metrics.blocked_items:
+                    blocked_since = flow_metrics.blocked_items[goal.id]
+                    blocked_duration = now - blocked_since
+
+                    if blocked_duration > self.blocked_time_threshold:
+                        blocked_in_column.append(goal.id)
+                else:
+                    # Check if item should be tracked as blocked
+                    # For simplicity, consider items blocked if they've been
+                    # in a column for too long without progress
+                    if hasattr(goal, 'entered_ready_at') and goal.entered_ready_at:
+                        time_in_stage = now - goal.entered_ready_at
+                        if time_in_stage > self.blocked_time_threshold * 2:
+                            flow_metrics.blocked_items[goal.id] = goal.entered_ready_at
+                            blocked_in_column.append(goal.id)
+
+            # Create bottleneck if blocked items found
+            if blocked_in_column:
+                blocked_ratio = len(blocked_in_column) / max(column.count, 1)
+                severity = min(blocked_ratio * 2, 1.0)
+
+                bottlenecks.append(Bottleneck(
+                    location=column.name,
+                    type="blocked_work",
+                    severity=severity,
+                    queue_depth=column.count,
+                    blocked_items=blocked_in_column,
+                    recommendation=f"{len(blocked_in_column)} items blocked for >{self.blocked_time_threshold}. "
+                                   f"Consider: escalate, reassign, or remove blockers.",
+                    metrics={
+                        "blocked_count": len(blocked_in_column),
+                        "blocked_ratio": blocked_ratio,
+                        "threshold_minutes": self.blocked_time_threshold.total_seconds() / 60,
+                    }
+                ))
+
+        return bottlenecks
+
+
+# =============================================================================
+# FLOW OPTIMIZER
+# =============================================================================
+
+
+class FlowOptimizer:
+    """Suggests optimizations based on detected bottlenecks."""
+
+    def __init__(self):
+        """Initialize flow optimizer."""
+        pass
+
+    def suggest(self, bottlenecks: list[Bottleneck]) -> list[Optimization]:
+        """
+        Generate optimization suggestions.
+
+        Analyzes bottlenecks and suggests concrete actions to improve flow.
+        """
+        optimizations = []
+
+        for bottleneck in bottlenecks:
+            if bottleneck.type == "wip_violation":
+                optimizations.extend(self._optimize_wip_violation(bottleneck))
+            elif bottleneck.type == "queue_buildup":
+                optimizations.extend(self._optimize_queue_buildup(bottleneck))
+            elif bottleneck.type == "slow_stage":
+                optimizations.extend(self._optimize_slow_stage(bottleneck))
+            elif bottleneck.type == "blocked_work":
+                optimizations.extend(self._optimize_blocked_work(bottleneck))
+
+        # Sort by priority and impact
+        optimizations.sort(key=lambda o: (-o.priority, -o.estimated_impact))
+
+        return optimizations
+
+    def _optimize_wip_violation(self, bottleneck: Bottleneck) -> list[Optimization]:
+        """Suggest fixes for WIP violations."""
+        opts = []
+
+        wip_ratio = bottleneck.metrics.get("wip_ratio", 0)
+
+        if wip_ratio > 1.0:
+            # Exceeded limit - urgent
+            opts.append(Optimization(
+                type="throttle",
+                target=bottleneck.location,
+                action=f"Block new work from entering {bottleneck.location} until WIP drops below limit",
+                priority=5,
+                estimated_impact=0.8,
+                rationale="Prevent system overload by enforcing WIP limit",
+                prerequisites=["downstream_capacity_available"],
+            ))
+
+            opts.append(Optimization(
+                type="rebalance",
+                target=bottleneck.location,
+                action=f"Swarm {bottleneck.location}: redirect available workers to clear backlog",
+                priority=4,
+                estimated_impact=0.6,
+                rationale="Increase throughput by adding temporary capacity",
+                prerequisites=["workers_available"],
+            ))
+        else:
+            # Near limit - preventive
+            opts.append(Optimization(
+                type="throttle",
+                target=bottleneck.location,
+                action=f"Reduce intake rate to {bottleneck.location} by 20%",
+                priority=3,
+                estimated_impact=0.4,
+                rationale="Prevent WIP violation by reducing intake",
+            ))
+
+        return opts
+
+    def _optimize_queue_buildup(self, bottleneck: Bottleneck) -> list[Optimization]:
+        """Suggest fixes for queue buildup."""
+        opts = []
+
+        root_cause = bottleneck.metrics.get("root_cause", "unknown")
+        growth_rate = bottleneck.metrics.get("growth_rate", 0)
+
+        if root_cause == "downstream_bottleneck":
+            opts.append(Optimization(
+                type="rebalance",
+                target=bottleneck.location,
+                action=f"Address downstream bottleneck before adding to {bottleneck.location}",
+                priority=4,
+                estimated_impact=0.7,
+                rationale="Queue buildup caused by downstream constraint",
+                prerequisites=["downstream_bottleneck_resolved"],
+            ))
+
+        elif root_cause == "high_intake_rate":
+            opts.append(Optimization(
+                type="throttle",
+                target=bottleneck.location,
+                action=f"Throttle intake to {bottleneck.location} by {min(growth_rate * 100, 50):.0f}%",
+                priority=4,
+                estimated_impact=0.6,
+                rationale="Match intake rate to processing capacity",
+            ))
+
+        elif root_cause == "slow_processing":
+            opts.append(Optimization(
+                type="scale",
+                target=bottleneck.location,
+                action=f"Add parallel workers to {bottleneck.location} to increase throughput",
+                priority=3,
+                estimated_impact=0.5,
+                rationale="Increase processing capacity to clear queue",
+                prerequisites=["workers_available"],
+            ))
+
+        return opts
+
+    def _optimize_slow_stage(self, bottleneck: Bottleneck) -> list[Optimization]:
+        """Suggest fixes for slow stages."""
+        opts = []
+
+        slowdown_ratio = bottleneck.metrics.get("slowdown_ratio", 1.0)
+
+        opts.append(Optimization(
+            type="escalate",
+            target=bottleneck.location,
+            action=f"Investigate why {bottleneck.location} is {slowdown_ratio:.1%} slower than baseline",
+            priority=3,
+            estimated_impact=0.6,
+            rationale="Identify root cause of slowdown",
+        ))
+
+        if slowdown_ratio > 2.0:
+            # Severe slowdown
+            opts.append(Optimization(
+                type="scale",
+                target=bottleneck.location,
+                action=f"Parallelize work in {bottleneck.location} to compensate for slowdown",
+                priority=4,
+                estimated_impact=0.7,
+                rationale="Mitigate severe slowdown with parallel processing",
+                prerequisites=["work_is_parallelizable"],
+            ))
+
+        opts.append(Optimization(
+            type="rebalance",
+            target=bottleneck.location,
+            action=f"Review and optimize process for {bottleneck.location}",
+            priority=2,
+            estimated_impact=0.5,
+            rationale="Long-term improvement to stage efficiency",
+        ))
+
+        return opts
+
+    def _optimize_blocked_work(self, bottleneck: Bottleneck) -> list[Optimization]:
+        """Suggest fixes for blocked work."""
+        opts = []
+
+        blocked_count = bottleneck.metrics.get("blocked_count", 0)
+        blocked_ratio = bottleneck.metrics.get("blocked_ratio", 0)
+
+        if blocked_ratio > 0.5:
+            # Majority blocked - urgent
+            opts.append(Optimization(
+                type="escalate",
+                target=bottleneck.location,
+                action=f"Escalate {blocked_count} blocked items in {bottleneck.location} immediately",
+                priority=5,
+                estimated_impact=0.8,
+                rationale="Majority of work is blocked - urgent intervention needed",
+            ))
+        else:
+            opts.append(Optimization(
+                type="escalate",
+                target=bottleneck.location,
+                action=f"Review and unblock {blocked_count} items in {bottleneck.location}",
+                priority=4,
+                estimated_impact=0.6,
+                rationale="Clear blocked work to restore flow",
+            ))
+
+        opts.append(Optimization(
+            type="rebalance",
+            target=bottleneck.location,
+            action=f"Reassign blocked items in {bottleneck.location} to available workers",
+            priority=3,
+            estimated_impact=0.5,
+            rationale="Route around blockers when possible",
+            prerequisites=["blockers_identified", "workers_available"],
+        ))
+
+        return opts
 
 
 # =============================================================================
@@ -318,6 +834,10 @@ class KanbanOrchestrator:
         self.strategy_pool = strategy_pool
         self.exploration_rate = 0.1
 
+        # Bottleneck detection and optimization
+        self.bottleneck_detector = BottleneckDetector()
+        self.flow_optimizer = FlowOptimizer()
+
         # Active directors
         self.directors: dict[str, Director] = {}
 
@@ -489,31 +1009,92 @@ class KanbanOrchestrator:
     # =========================================================================
 
     def detect_bottlenecks(self) -> list[Bottleneck]:
-        """Find where work is piling up."""
-        bottlenecks = []
+        """
+        Find where work is piling up using comprehensive detection.
 
-        for i, column in enumerate(self.board.columns[:-1]):
-            next_column = self.board.columns[i + 1]
+        Uses BottleneckDetector to identify:
+        - WIP violations
+        - Queue buildup
+        - Slow stages
+        - Blocked work
+        """
+        metrics = self.get_flow_metrics()
+        return self.bottleneck_detector.detect(metrics, self.board)
 
-            # Bottleneck: queue building before a full column
-            if next_column.wip_limit:
-                if (column.count > 0 and
-                    next_column.count >= next_column.wip_limit):
+    def get_optimizations(self, bottlenecks: list[Bottleneck] | None = None) -> list[Optimization]:
+        """
+        Get optimization suggestions based on bottlenecks.
 
-                    bottleneck = Bottleneck(
-                        location=next_column.name,
-                        queue_depth=column.count,
-                        blocked_items=[g.id for g in column.items],
-                        recommendation=self._recommend_bottleneck_action(
-                            next_column
-                        ),
-                    )
-                    bottlenecks.append(bottleneck)
+        Args:
+            bottlenecks: Optional list of bottlenecks. If None, will detect them.
 
-        return bottlenecks
+        Returns:
+            List of suggested optimizations, sorted by priority and impact.
+        """
+        if bottlenecks is None:
+            bottlenecks = self.detect_bottlenecks()
+
+        return self.flow_optimizer.suggest(bottlenecks)
+
+    def apply_optimization(self, optimization: Optimization) -> bool:
+        """
+        Apply an optimization to the system.
+
+        Args:
+            optimization: The optimization to apply
+
+        Returns:
+            True if successfully applied, False otherwise
+        """
+        # Check prerequisites
+        for prereq in optimization.prerequisites:
+            if not self._check_prerequisite(prereq):
+                return False
+
+        # Apply based on type
+        if optimization.type == "throttle":
+            return self._apply_throttle(optimization)
+        elif optimization.type == "rebalance":
+            return self._apply_rebalance(optimization)
+        elif optimization.type == "scale":
+            return self._apply_scale(optimization)
+        elif optimization.type == "escalate":
+            return self._apply_escalate(optimization)
+
+        return False
+
+    def _check_prerequisite(self, prereq: str) -> bool:
+        """Check if a prerequisite is met."""
+        # Simplified: always return True
+        # In real system, would check actual conditions
+        return True
+
+    def _apply_throttle(self, optimization: Optimization) -> bool:
+        """Apply throttling optimization."""
+        # Simplified: just log the action
+        # In real system, would actually throttle intake
+        return True
+
+    def _apply_rebalance(self, optimization: Optimization) -> bool:
+        """Apply rebalancing optimization."""
+        # Simplified: just log the action
+        # In real system, would actually rebalance workers
+        return True
+
+    def _apply_scale(self, optimization: Optimization) -> bool:
+        """Apply scaling optimization."""
+        # Simplified: just log the action
+        # In real system, would actually add workers
+        return True
+
+    def _apply_escalate(self, optimization: Optimization) -> bool:
+        """Apply escalation optimization."""
+        # Simplified: just log the action
+        # In real system, would actually escalate items
+        return True
 
     def _recommend_bottleneck_action(self, column: KanbanColumn) -> str:
-        """Suggest how to relieve bottleneck."""
+        """Suggest how to relieve bottleneck (legacy method)."""
         recommendations = {
             "in_progress": "Consider: swarm on blocked items, or temporarily increase WIP",
             "review": "Consider: expedite reviews, or batch similar items",
@@ -561,7 +1142,7 @@ class KanbanOrchestrator:
     # =========================================================================
 
     async def run(self) -> None:
-        """Main orchestration loop."""
+        """Main orchestration loop with auto-optimization."""
         while True:
             # 1. Try to pull and assign work
             goal = await self.pull_next_goal()
@@ -573,16 +1154,48 @@ class KanbanOrchestrator:
             # 2. Check WIP limits
             self.enforce_wip_limits()
 
-            # 3. Detect bottlenecks
+            # 3. Detect bottlenecks and get optimizations
             bottlenecks = self.detect_bottlenecks()
-            for bottleneck in bottlenecks:
-                await self.event_bus.publish(Event(
-                    type="orchestrator.bottleneck_detected",
-                    payload={
-                        "location": bottleneck.location,
-                        "queue_depth": bottleneck.queue_depth,
-                    },
-                ))
+            if bottlenecks:
+                for bottleneck in bottlenecks:
+                    await self.event_bus.publish(Event(
+                        type="orchestrator.bottleneck_detected",
+                        payload={
+                            "location": bottleneck.location,
+                            "type": bottleneck.type,
+                            "severity": bottleneck.severity,
+                            "queue_depth": bottleneck.queue_depth,
+                            "recommendation": bottleneck.recommendation,
+                        },
+                    ))
+
+                # Get optimization suggestions
+                optimizations = self.get_optimizations(bottlenecks)
+                if optimizations:
+                    # Publish top optimization
+                    top_opt = optimizations[0]
+                    await self.event_bus.publish(Event(
+                        type="orchestrator.optimization_suggested",
+                        payload={
+                            "type": top_opt.type,
+                            "target": top_opt.target,
+                            "action": top_opt.action,
+                            "priority": top_opt.priority,
+                            "estimated_impact": top_opt.estimated_impact,
+                        },
+                    ))
+
+                    # Auto-apply high-priority optimizations (priority >= 4)
+                    if top_opt.priority >= 4:
+                        success = self.apply_optimization(top_opt)
+                        if success:
+                            await self.event_bus.publish(Event(
+                                type="orchestrator.optimization_applied",
+                                payload={
+                                    "type": top_opt.type,
+                                    "target": top_opt.target,
+                                },
+                            ))
 
             # 4. Advance backlog items to ready
             backlog = self.board.get_column("backlog")

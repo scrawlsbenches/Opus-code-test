@@ -29,6 +29,11 @@ from .recovery import (
     ConfusionDiagnosis,
     SeverityLevel,
 )
+from .escalation import (
+    EscalationLevel,
+    EscalationProtocol,
+    EscalationManager,
+)
 from .types import (
     AgentRole,
     Blocked,
@@ -60,6 +65,18 @@ except ImportError:
     LearningCycle = None
     Lesson = None
     LearningContext = None
+
+# Import Woven Mind for dual-process cognition with graceful fallback
+try:
+    from cortical.reasoning.woven_mind import WovenMind, WovenMindConfig, WovenMindResult
+    from cortical.reasoning.loom import ThinkingMode
+    WOVEN_MIND_AVAILABLE = True
+except ImportError:
+    WOVEN_MIND_AVAILABLE = False
+    WovenMind = None
+    WovenMindConfig = None
+    WovenMindResult = None
+    ThinkingMode = None
 
 
 # =============================================================================
@@ -322,6 +339,288 @@ class ConfusionRecord:
 
 
 @dataclass
+class CognitiveMetrics:
+    """
+    Metrics for tracking worker cognitive performance and health.
+
+    Tracks execution, learning, tool usage, QAPV cycles, and recovery metrics
+    for observability and optimization of worker behavior.
+    """
+    # Execution metrics
+    tasks_executed: int = 0
+    tasks_successful: int = 0
+    tasks_failed: int = 0
+
+    # QAPV metrics
+    qapv_cycles: int = 0
+    verify_pass_rate: float = 0.0
+    avg_phase_duration: Dict[str, float] = field(default_factory=dict)
+
+    # Learning metrics
+    lessons_retrieved: int = 0
+    lessons_applied: int = 0
+    experiences_captured: int = 0
+
+    # Tool metrics
+    tools_invoked: int = 0
+    tool_success_rate: float = 0.0
+    avg_tool_duration: float = 0.0
+
+    # Recovery metrics
+    confusion_signals: int = 0
+    recoveries_attempted: int = 0
+    recoveries_successful: int = 0
+
+    # Checkpoint metrics
+    checkpoints_created: int = 0
+    checkpoints_restored: int = 0
+
+
+class CognitiveMetricsCollector:
+    """
+    Collects and aggregates cognitive metrics for worker agents.
+
+    Provides methods to record various cognitive activities (task execution,
+    QAPV cycles, tool use, learning, recovery) and calculate health scores
+    for observability and optimization.
+    """
+
+    def __init__(self):
+        self._metrics = CognitiveMetrics()
+        self._start_time = datetime.now()
+
+        # Track cumulative data for averages
+        self._qapv_verify_passes: int = 0
+        self._qapv_verify_total: int = 0
+        self._tool_successes: int = 0
+        self._tool_failures: int = 0
+        self._tool_duration_sum: float = 0.0
+        self._phase_duration_sums: Dict[str, float] = {}
+        self._phase_duration_counts: Dict[str, int] = {}
+
+    def record_task(self, success: bool) -> None:
+        """
+        Record a task execution.
+
+        Args:
+            success: Whether the task succeeded
+        """
+        self._metrics.tasks_executed += 1
+        if success:
+            self._metrics.tasks_successful += 1
+        else:
+            self._metrics.tasks_failed += 1
+
+    def record_qapv_cycle(self, execution: QAPVExecution) -> None:
+        """
+        Record a QAPV cognitive cycle.
+
+        Args:
+            execution: The QAPV execution record
+        """
+        self._metrics.qapv_cycles += 1
+
+        # Track verification pass rate
+        if execution.verify_passed:
+            self._qapv_verify_passes += 1
+        self._qapv_verify_total += 1
+
+        if self._qapv_verify_total > 0:
+            self._metrics.verify_pass_rate = self._qapv_verify_passes / self._qapv_verify_total
+
+        # Track phase durations (cumulative average)
+        for phase, duration in execution.phase_durations.items():
+            if phase not in self._phase_duration_sums:
+                self._phase_duration_sums[phase] = 0.0
+                self._phase_duration_counts[phase] = 0
+
+            self._phase_duration_sums[phase] += duration
+            self._phase_duration_counts[phase] += 1
+
+        # Update average phase durations
+        self._metrics.avg_phase_duration = {
+            phase: self._phase_duration_sums[phase] / self._phase_duration_counts[phase]
+            for phase in self._phase_duration_sums
+        }
+
+    def record_tool_use(self, result: ToolResult) -> None:
+        """
+        Record a tool execution.
+
+        Args:
+            result: The tool execution result
+        """
+        self._metrics.tools_invoked += 1
+
+        # Track success rate
+        if result.status == "success":
+            self._tool_successes += 1
+        elif result.status == "failed":
+            self._tool_failures += 1
+
+        total_tool_executions = self._tool_successes + self._tool_failures
+        if total_tool_executions > 0:
+            self._metrics.tool_success_rate = self._tool_successes / total_tool_executions
+
+        # Track average duration
+        self._tool_duration_sum += result.duration_ms
+        if self._metrics.tools_invoked > 0:
+            self._metrics.avg_tool_duration = self._tool_duration_sum / self._metrics.tools_invoked
+
+    def record_lesson(self, retrieved: bool = False, applied: bool = False) -> None:
+        """
+        Record lesson retrieval and application.
+
+        Args:
+            retrieved: Whether lessons were retrieved
+            applied: Whether lessons were applied
+        """
+        if retrieved:
+            self._metrics.lessons_retrieved += 1
+        if applied:
+            self._metrics.lessons_applied += 1
+
+    def record_experience(self) -> None:
+        """Record that an experience was captured."""
+        self._metrics.experiences_captured += 1
+
+    def record_confusion(self, signal: ConfusionSignal, recovered: bool) -> None:
+        """
+        Record a confusion signal and recovery attempt.
+
+        Args:
+            signal: The confusion signal detected
+            recovered: Whether recovery was successful
+        """
+        self._metrics.confusion_signals += 1
+        self._metrics.recoveries_attempted += 1
+        if recovered:
+            self._metrics.recoveries_successful += 1
+
+    def record_checkpoint(self, created: bool = False, restored: bool = False) -> None:
+        """
+        Record checkpoint creation or restoration.
+
+        Args:
+            created: Whether a checkpoint was created
+            restored: Whether a checkpoint was restored
+        """
+        if created:
+            self._metrics.checkpoints_created += 1
+        if restored:
+            self._metrics.checkpoints_restored += 1
+
+    def calculate_health_score(self) -> float:
+        """
+        Calculate overall cognitive health score (0-100).
+
+        Health score is a weighted combination of:
+        - Success rate (40%): tasks_successful / tasks_executed
+        - Verify pass rate (20%): QAPV verification success rate
+        - Recovery success rate (20%): recoveries_successful / recoveries_attempted
+        - Tool success rate (20%): tool successes / tool executions
+
+        Returns:
+            float: Health score between 0 and 100
+        """
+        score = 0.0
+
+        # Success rate (40%)
+        if self._metrics.tasks_executed > 0:
+            success_rate = self._metrics.tasks_successful / self._metrics.tasks_executed
+            score += success_rate * 40.0
+
+        # Verify pass rate (20%)
+        if self._qapv_verify_total > 0:
+            score += self._metrics.verify_pass_rate * 20.0
+
+        # Recovery success rate (20%)
+        if self._metrics.recoveries_attempted > 0:
+            recovery_rate = self._metrics.recoveries_successful / self._metrics.recoveries_attempted
+            score += recovery_rate * 20.0
+        else:
+            # No confusion detected is good - full score
+            score += 20.0
+
+        # Tool success rate (20%)
+        total_tool_executions = self._tool_successes + self._tool_failures
+        if total_tool_executions > 0:
+            score += self._metrics.tool_success_rate * 20.0
+        else:
+            # No tools used - neutral score (half points)
+            score += 10.0
+
+        return min(100.0, max(0.0, score))
+
+    def get_summary(self) -> Dict[str, Any]:
+        """
+        Get a summary of collected metrics.
+
+        Returns:
+            dict: Summary with metrics and health score
+        """
+        runtime_seconds = (datetime.now() - self._start_time).total_seconds()
+
+        return {
+            "health_score": self.calculate_health_score(),
+            "runtime_seconds": runtime_seconds,
+            "execution": {
+                "tasks_executed": self._metrics.tasks_executed,
+                "tasks_successful": self._metrics.tasks_successful,
+                "tasks_failed": self._metrics.tasks_failed,
+                "success_rate": (
+                    self._metrics.tasks_successful / self._metrics.tasks_executed
+                    if self._metrics.tasks_executed > 0 else 0.0
+                ),
+            },
+            "qapv": {
+                "cycles": self._metrics.qapv_cycles,
+                "verify_pass_rate": self._metrics.verify_pass_rate,
+                "avg_phase_duration": self._metrics.avg_phase_duration,
+            },
+            "learning": {
+                "lessons_retrieved": self._metrics.lessons_retrieved,
+                "lessons_applied": self._metrics.lessons_applied,
+                "experiences_captured": self._metrics.experiences_captured,
+            },
+            "tools": {
+                "tools_invoked": self._metrics.tools_invoked,
+                "tool_success_rate": self._metrics.tool_success_rate,
+                "avg_tool_duration_ms": self._metrics.avg_tool_duration,
+            },
+            "recovery": {
+                "confusion_signals": self._metrics.confusion_signals,
+                "recoveries_attempted": self._metrics.recoveries_attempted,
+                "recoveries_successful": self._metrics.recoveries_successful,
+                "recovery_success_rate": (
+                    self._metrics.recoveries_successful / self._metrics.recoveries_attempted
+                    if self._metrics.recoveries_attempted > 0 else 1.0
+                ),
+            },
+            "checkpoints": {
+                "checkpoints_created": self._metrics.checkpoints_created,
+                "checkpoints_restored": self._metrics.checkpoints_restored,
+            },
+        }
+
+    def get_metrics(self) -> CognitiveMetrics:
+        """Get the current metrics snapshot."""
+        return self._metrics
+
+    def reset(self) -> None:
+        """Reset all metrics to initial state."""
+        self._metrics = CognitiveMetrics()
+        self._start_time = datetime.now()
+        self._qapv_verify_passes = 0
+        self._qapv_verify_total = 0
+        self._tool_successes = 0
+        self._tool_failures = 0
+        self._tool_duration_sum = 0.0
+        self._phase_duration_sums = {}
+        self._phase_duration_counts = {}
+
+
+@dataclass
 class WorkerResult:
     """Result from a worker execution."""
 
@@ -329,6 +628,21 @@ class WorkerResult:
     output: Any = None
     error: str | None = None
     metrics: dict[str, Any] = field(default_factory=dict)
+    cognitive_metrics: Optional[CognitiveMetrics] = None
+
+@dataclass
+class WovenMindExecution:
+    """
+    Record of Woven Mind dual-process thinking during QAPV execution.
+
+    Tracks which thinking mode (FAST/SLOW) was used for each phase,
+    mode switches, and surprise-triggered transitions.
+    """
+    modes_used: Dict[str, str]  # phase -> mode name (e.g., "FAST", "SLOW")
+    mode_switches: int  # Number of mode switches during execution
+    surprise_triggers: int  # Number of surprise-based mode switches
+    consolidation_triggered: bool  # Whether consolidation was triggered
+
 
 @dataclass
 class QAPVExecution:
@@ -340,6 +654,7 @@ class QAPVExecution:
     phase_durations: Dict[str, float]
 
     confusion_records: List[ConfusionRecord] = field(default_factory=list)
+    woven_mind: Optional[WovenMindExecution] = None  # Woven Mind execution tracking
 
 
 @dataclass
@@ -355,6 +670,17 @@ class TaskGuidance:
     recommended_approach: Optional[str] = None
     warnings: List[str] = field(default_factory=list)
     confidence: float = 0.0
+
+
+
+# QAPV Phase to Thinking Mode Mapping
+# Maps each QAPV phase to the appropriate thinking mode (FAST/SLOW)
+QAPV_THINKING_MODES = {
+    "QUESTION": "SLOW",   # Deep analysis needed to understand the problem
+    "ANSWER": "FAST",     # Pattern matching, use heuristics for approach
+    "PRODUCE": "FAST",    # Execution, muscle memory, automated processes
+    "VERIFY": "SLOW",     # Careful checking, deliberate validation
+}
 
 
 class Worker(Agent):
@@ -420,6 +746,24 @@ class Worker(Agent):
 
         # Tool executor for managing tool invocations
         self._tool_executor = ToolExecutor()
+
+        # Woven Mind for dual-process cognition (FAST/SLOW thinking)
+        self._woven_mind: Optional[Any] = None  # WovenMind when available
+        if WOVEN_MIND_AVAILABLE:
+            try:
+                # Initialize with default configuration
+                self._woven_mind = WovenMind(config=WovenMindConfig(
+                    surprise_threshold=0.3,
+                    k_winners=5,
+                    auto_switch=True,
+                    enable_observability=True,
+                ))
+            except Exception:
+                # Woven Mind initialization failed, proceed without it
+                pass
+
+        # Metrics collector for cognitive observability
+        self._metrics = CognitiveMetricsCollector()
     async def run(self) -> Result:
         """Execute the worker's task."""
         try:
@@ -435,6 +779,9 @@ class Worker(Agent):
             self.status = TaskStatus.IN_PROGRESS
             result = await self.execute_task()
 
+            # Record successful task execution
+            self._metrics.record_task(success=True)
+
             # Publish completion
             if self.context.event_bus:
                 await self.context.event_bus.publish(Event(
@@ -447,6 +794,9 @@ class Worker(Agent):
             return Result(success=True, output=result)
 
         except Blocked as b:
+            # Record failed task execution
+            self._metrics.record_task(success=False)
+
             self.status = TaskStatus.BLOCKED
             if self.context.event_bus:
                 await self.context.event_bus.publish(Event(
@@ -460,6 +810,9 @@ class Worker(Agent):
             return Result(success=False, error=b.reason)
 
         except Exception as e:
+            # Record failed task execution
+            self._metrics.record_task(success=False)
+
             self.status = TaskStatus.FAILED
             if self.context.event_bus:
                 await self.context.event_bus.publish(Event(
@@ -486,6 +839,10 @@ class Worker(Agent):
                 timestamp = checkpoint_data.get("timestamp", datetime.now().isoformat())
                 checkpoint_id = f"ckpt-{self.agent_id}-{label}-{timestamp.replace(':', '-').replace('.', '-')}"
                 self._checkpoint_id = checkpoint_id
+
+                # Record checkpoint creation
+                self._metrics.record_checkpoint(created=True)
+
                 return checkpoint_id
             except Exception as e:
                 import logging
@@ -515,6 +872,10 @@ class Worker(Agent):
                     checkpoint_data = self._state_manager.load_checkpoint(checkpoint_path)
                     # Restore the checkpoint
                     self._state_manager.restore_from_checkpoint(checkpoint_data)
+
+                    # Record checkpoint restoration
+                    self._metrics.record_checkpoint(restored=True)
+
                     return True
 
                 import logging
@@ -528,6 +889,29 @@ class Worker(Agent):
                 logger.error(f"Failed to restore checkpoint '{checkpoint_id}': {e}")
                 return False
         return False
+
+
+    def _get_thinking_mode(self, phase: str) -> Optional[str]:
+        """
+        Get the appropriate thinking mode for a QAPV phase.
+
+        Maps QAPV phases to thinking modes (FAST/SLOW) based on the
+        cognitive requirements of each phase:
+        - QUESTION: SLOW (deep analysis)
+        - ANSWER: FAST (pattern matching)
+        - PRODUCE: FAST (execution)
+        - VERIFY: SLOW (careful validation)
+
+        Args:
+            phase: QAPV phase name (QUESTION, ANSWER, PRODUCE, VERIFY)
+
+        Returns:
+            Thinking mode name ("FAST" or "SLOW"), or None if not available
+        """
+        if not WOVEN_MIND_AVAILABLE or not self._woven_mind:
+            return None
+
+        return QAPV_THINKING_MODES.get(phase.upper())
 
     def _run_qapv_cycle(self, task_context: dict) -> dict:
         """
@@ -555,6 +939,13 @@ class Worker(Agent):
         logger = logging.getLogger(__name__)
         phase_durations: Dict[str, float] = {}
 
+        # Initialize Woven Mind execution tracking
+        modes_used: Dict[str, str] = {}
+        mode_switches = 0
+        surprise_triggers = 0
+        consolidation_triggered = False
+        previous_mode: Optional[str] = None
+
         # Initialize QAPV pattern if needed
         if not self._thinking_pattern or not self._state_manager:
             # Create temporary state manager if not available
@@ -578,6 +969,21 @@ class Worker(Agent):
             # ===================================================================
             # PHASE 1: QUESTION - What am I trying to do?
             # ===================================================================
+            # Switch to SLOW mode for deep analysis
+            current_mode = self._get_thinking_mode("QUESTION")
+            if current_mode and self._woven_mind:
+                try:
+                    # Get ThinkingMode enum from string
+                    mode_enum = ThinkingMode.SLOW if current_mode == "SLOW" else ThinkingMode.FAST
+                    self._woven_mind.force_mode(mode_enum, reason="QAPV_QUESTION_phase")
+                    modes_used["QUESTION"] = current_mode
+                    if previous_mode and previous_mode != current_mode:
+                        mode_switches += 1
+                    previous_mode = current_mode
+                    logger.debug(f"[Woven Mind] Switched to {current_mode} mode for QUESTION phase")
+                except Exception as e:
+                    logger.warning(f"[Woven Mind] Mode switch failed: {e}")
+
             logger.info("[QAPV] QUESTION phase: Clarifying task requirements")
             question_start = datetime.now()
 
@@ -602,6 +1008,20 @@ class Worker(Agent):
             # ===================================================================
             # PHASE 2: ANSWER - Determine approach
             # ===================================================================
+            # Switch to FAST mode for pattern matching
+            current_mode = self._get_thinking_mode("ANSWER")
+            if current_mode and self._woven_mind:
+                try:
+                    mode_enum = ThinkingMode.SLOW if current_mode == "SLOW" else ThinkingMode.FAST
+                    self._woven_mind.force_mode(mode_enum, reason="QAPV_ANSWER_phase")
+                    modes_used["ANSWER"] = current_mode
+                    if previous_mode and previous_mode != current_mode:
+                        mode_switches += 1
+                    previous_mode = current_mode
+                    logger.debug(f"[Woven Mind] Switched to {current_mode} mode for ANSWER phase")
+                except Exception as e:
+                    logger.warning(f"[Woven Mind] Mode switch failed: {e}")
+
             logger.info("[QAPV] ANSWER phase: Determining approach")
             answer_start = datetime.now()
 
@@ -635,6 +1055,20 @@ class Worker(Agent):
             # ===================================================================
             # PHASE 3: PRODUCE - Execute the approach
             # ===================================================================
+            # Switch to FAST mode for execution
+            current_mode = self._get_thinking_mode("PRODUCE")
+            if current_mode and self._woven_mind:
+                try:
+                    mode_enum = ThinkingMode.SLOW if current_mode == "SLOW" else ThinkingMode.FAST
+                    self._woven_mind.force_mode(mode_enum, reason="QAPV_PRODUCE_phase")
+                    modes_used["PRODUCE"] = current_mode
+                    if previous_mode and previous_mode != current_mode:
+                        mode_switches += 1
+                    previous_mode = current_mode
+                    logger.debug(f"[Woven Mind] Switched to {current_mode} mode for PRODUCE phase")
+                except Exception as e:
+                    logger.warning(f"[Woven Mind] Mode switch failed: {e}")
+
             logger.info("[QAPV] PRODUCE phase: Executing task")
             produce_start = datetime.now()
 
@@ -664,6 +1098,20 @@ class Worker(Agent):
             # ===================================================================
             # PHASE 4: VERIFY - Validate results
             # ===================================================================
+            # Switch to SLOW mode for careful validation
+            current_mode = self._get_thinking_mode("VERIFY")
+            if current_mode and self._woven_mind:
+                try:
+                    mode_enum = ThinkingMode.SLOW if current_mode == "SLOW" else ThinkingMode.FAST
+                    self._woven_mind.force_mode(mode_enum, reason="QAPV_VERIFY_phase")
+                    modes_used["VERIFY"] = current_mode
+                    if previous_mode and previous_mode != current_mode:
+                        mode_switches += 1
+                    previous_mode = current_mode
+                    logger.debug(f"[Woven Mind] Switched to {current_mode} mode for VERIFY phase")
+                except Exception as e:
+                    logger.warning(f"[Woven Mind] Mode switch failed: {e}")
+
             logger.info("[QAPV] VERIFY phase: Validating results")
             verify_start = datetime.now()
 
@@ -708,16 +1156,35 @@ class Worker(Agent):
                 f"V:{phase_durations['verify']:.3f}s)"
             )
 
+            # Create Woven Mind execution record
+            woven_mind_execution: Optional[WovenMindExecution] = None
+            if modes_used:
+                woven_mind_execution = WovenMindExecution(
+                    modes_used=modes_used,
+                    mode_switches=mode_switches,
+                    surprise_triggers=surprise_triggers,
+                    consolidation_triggered=consolidation_triggered
+                )
+                logger.info(
+                    f"[Woven Mind] Execution summary: "
+                    f"{len(modes_used)} phases, {mode_switches} mode switches, "
+                    f"{surprise_triggers} surprise triggers"
+                )
+
             # Create execution record
             qapv_execution = QAPVExecution(
                 question_result=f"Clarified: {task_desc}",
                 answer_approach=approach,
                 produce_output=execution_result,
                 verify_passed=verify_passed,
-                phase_durations=phase_durations
+                phase_durations=phase_durations,
+                woven_mind=woven_mind_execution
             )
 
             self._qapv_executions.append(qapv_execution)
+
+            # Record QAPV cycle metrics
+            self._metrics.record_qapv_cycle(qapv_execution)
 
             return {
                 "qapv_result": execution_result,
@@ -725,6 +1192,7 @@ class Worker(Agent):
                 "pattern_progress": pattern.get_progress(),
                 "verify_passed": verify_passed,
                 "phase_durations": phase_durations,
+                "woven_mind": woven_mind_execution,
             }
 
         except Exception as e:
@@ -770,6 +1238,10 @@ class Worker(Agent):
 
             lessons = guidance.get("lessons", [])
             logger.info(f"Retrieved {len(lessons)} lessons for task")
+
+            # Record lesson retrieval
+            if lessons:
+                self._metrics.record_lesson(retrieved=True)
 
             # Log lesson summaries
             for lesson in lessons[:3]:  # Log top 3 lessons
@@ -853,6 +1325,8 @@ class Worker(Agent):
             logging.getLogger(__name__).warning(
                 f"Low-severity confusion detected: {signal.description}"
             )
+            # Record confusion with recovery success (low severity = handled)
+            self._metrics.record_confusion(signal, recovered=True)
             return "CONTINUE"
 
         elif diagnosis.severity == SeverityLevel.MEDIUM:
@@ -871,6 +1345,10 @@ class Worker(Agent):
             attempt = self._recovery_coordinator.recover(diagnosis, context)
 
             if attempt.success:
+                # Record confusion with recovery outcome
+                self._metrics.record_confusion(signal, recovered=attempt.success)
+
+            if attempt.success:
                 return "CHECKPOINT"
             else:
                 return "ESCALATE"
@@ -882,6 +1360,8 @@ class Worker(Agent):
                 f"Critical confusion detected: {diagnosis.confusion_type.name}. "
                 f"Cause: {diagnosis.likely_cause}"
             )
+            # Record confusion with no recovery
+            self._metrics.record_confusion(signal, recovered=False)
             return "ESCALATE"
 
         return "CONTINUE"
@@ -1013,6 +1493,9 @@ class Worker(Agent):
                             context=self.context.task
                         )
                         
+                        # Record tool use
+                        self._metrics.record_tool_use(tool_result)
+
                         # Convert ToolResult to dict for compatibility
                         tool_outputs.append({
                             "tool": tool_name,
@@ -1126,6 +1609,9 @@ class Worker(Agent):
                     efficiency_score=0.7
                 )
 
+                # Record experience capture
+                self._metrics.record_experience()
+
                 # Complete experience
                 learning_cycle.complete_experience(
                     experience,
@@ -1144,9 +1630,15 @@ class Worker(Agent):
                     }
                 )
 
+            # Add cognitive metrics summary to result
+            result["cognitive_metrics"] = self._metrics.get_summary()
+            result["health_score"] = self._metrics.calculate_health_score()
+
+            health_score = result.get("health_score", 0.0)
             logger.info(
                 f"Task completed in {duration_ms:.2f}ms "
-                f"(tools: {len(tool_outputs) if tool_outputs else 0})"
+                f"(tools: {len(tool_outputs) if tool_outputs else 0}) "
+                f"[health: {health_score:.1f}]"
             )
             return result
 
@@ -1262,6 +1754,99 @@ class Director(Agent):
         except Exception:
             pass
 
+        # Aggregate worker metrics
+        self._worker_metrics: List[Dict[str, Any]] = []
+        self._aggregate_health_scores: List[float] = []
+
+    def _aggregate_worker_metrics(self) -> Dict[str, Any]:
+        """
+        Aggregate cognitive metrics from all workers.
+
+        Returns:
+            dict: Aggregated metrics with fleet-wide statistics
+        """
+        if not self._worker_metrics:
+            return {
+                "fleet_health_score": 0.0,
+                "total_workers": 0,
+                "workers_analyzed": 0,
+            }
+
+        # Calculate fleet-wide statistics
+        total_workers = len(self._worker_metrics)
+        avg_health_score = (
+            sum(self._aggregate_health_scores) / len(self._aggregate_health_scores)
+            if self._aggregate_health_scores else 0.0
+        )
+
+        # Aggregate execution metrics
+        total_tasks = sum(m.get("execution", {}).get("tasks_executed", 0) for m in self._worker_metrics)
+        total_successful = sum(m.get("execution", {}).get("tasks_successful", 0) for m in self._worker_metrics)
+        total_failed = sum(m.get("execution", {}).get("tasks_failed", 0) for m in self._worker_metrics)
+
+        # Aggregate QAPV metrics
+        total_qapv_cycles = sum(m.get("qapv", {}).get("cycles", 0) for m in self._worker_metrics)
+        avg_verify_pass_rate = (
+            sum(m.get("qapv", {}).get("verify_pass_rate", 0) for m in self._worker_metrics) / total_workers
+            if total_workers > 0 else 0.0
+        )
+
+        # Aggregate learning metrics
+        total_lessons_retrieved = sum(m.get("learning", {}).get("lessons_retrieved", 0) for m in self._worker_metrics)
+        total_experiences_captured = sum(m.get("learning", {}).get("experiences_captured", 0) for m in self._worker_metrics)
+
+        # Aggregate tool metrics
+        total_tools_invoked = sum(m.get("tools", {}).get("tools_invoked", 0) for m in self._worker_metrics)
+        avg_tool_success_rate = (
+            sum(m.get("tools", {}).get("tool_success_rate", 0) for m in self._worker_metrics) / total_workers
+            if total_workers > 0 else 0.0
+        )
+
+        # Aggregate recovery metrics
+        total_confusion_signals = sum(m.get("recovery", {}).get("confusion_signals", 0) for m in self._worker_metrics)
+        total_recoveries = sum(m.get("recovery", {}).get("recoveries_attempted", 0) for m in self._worker_metrics)
+        total_recovery_successes = sum(m.get("recovery", {}).get("recoveries_successful", 0) for m in self._worker_metrics)
+
+        # Identify underperforming workers (health score < 70)
+        underperforming_workers = [
+            i for i, score in enumerate(self._aggregate_health_scores)
+            if score < 70.0
+        ]
+
+        return {
+            "fleet_health_score": avg_health_score,
+            "total_workers": total_workers,
+            "workers_analyzed": len(self._worker_metrics),
+            "underperforming_workers": len(underperforming_workers),
+            "execution": {
+                "total_tasks_executed": total_tasks,
+                "total_tasks_successful": total_successful,
+                "total_tasks_failed": total_failed,
+                "fleet_success_rate": total_successful / total_tasks if total_tasks > 0 else 0.0,
+            },
+            "qapv": {
+                "total_cycles": total_qapv_cycles,
+                "avg_verify_pass_rate": avg_verify_pass_rate,
+            },
+            "learning": {
+                "total_lessons_retrieved": total_lessons_retrieved,
+                "total_experiences_captured": total_experiences_captured,
+            },
+            "tools": {
+                "total_tools_invoked": total_tools_invoked,
+                "avg_tool_success_rate": avg_tool_success_rate,
+            },
+            "recovery": {
+                "total_confusion_signals": total_confusion_signals,
+                "total_recoveries_attempted": total_recoveries,
+                "total_recoveries_successful": total_recovery_successes,
+                "fleet_recovery_success_rate": (
+                    total_recovery_successes / total_recoveries
+                    if total_recoveries > 0 else 1.0
+                ),
+            },
+        }
+
     async def run(self) -> Result:
         """Execute the director's orchestration loop."""
         try:
@@ -1317,6 +1902,59 @@ class Director(Agent):
             ConfusionSignal if confusion detected in worker coordination
         """
         # Track repeated failures from same worker (works without recovery_coordinator)
+
+    async def handle_worker_escalation(self, protocol: EscalationProtocol) -> bool:
+        """
+        Handle an escalation protocol from the escalation manager.
+
+        This method executes the recommended actions based on the escalation level:
+        - MONITOR: Enable additional logging and monitoring
+        - INTERVENE: Pause worker and analyze state
+        - REASSIGN: Move task to a different worker
+        - ESCALATE: Escalate to orchestrator
+        - ABORT: Abort task and create failure record
+
+        Args:
+            protocol: The escalation protocol to handle
+
+        Returns:
+            True if handling succeeded, False otherwise
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        # Execute the protocol using the escalation manager
+        success = self._escalation_manager.execute(protocol)
+
+        if not success:
+            logger.error(f"Failed to execute escalation protocol for worker {protocol.worker_id}")
+            return False
+
+        # Perform director-specific actions based on level
+        if protocol.level == EscalationLevel.MONITOR:
+            logger.info(f"Monitoring worker {protocol.worker_id}")
+            # TODO: Implement enhanced monitoring
+
+        elif protocol.level == EscalationLevel.INTERVENE:
+            logger.warning(f"Intervening for worker {protocol.worker_id}")
+            # TODO: Pause worker and analyze state
+
+        elif protocol.level == EscalationLevel.REASSIGN:
+            logger.warning(f"Reassigning task from worker {protocol.worker_id}")
+            # TODO: Move task to different worker
+
+        elif protocol.level == EscalationLevel.ESCALATE:
+            # Escalate to orchestrator
+            await self.escalate(
+                f"Worker {protocol.worker_id} escalation: {protocol.reason}"
+            )
+
+        elif protocol.level == EscalationLevel.ABORT:
+            logger.error(f"Aborting task {protocol.task_id} for worker {protocol.worker_id}")
+            # TODO: Create failure record and trigger learning
+
+        return True
+
         if isinstance(worker_result, dict) and worker_result.get("status") == "failed":
             self._worker_confusion_count[worker_id] = self._worker_confusion_count.get(worker_id, 0) + 1
 
@@ -1568,6 +2206,14 @@ class Director(Agent):
                     "result"
                 )
 
+                # Collect worker metrics if available
+                worker_result = event.payload.get("result")
+                if isinstance(worker_result, dict):
+                    if "cognitive_metrics" in worker_result:
+                        self._worker_metrics.append(worker_result["cognitive_metrics"])
+                    if "health_score" in worker_result:
+                        self._aggregate_health_scores.append(worker_result["health_score"])
+
             elif "blocked" in event.type:
                 handle.status = TaskStatus.BLOCKED
 
@@ -1632,6 +2278,7 @@ class Director(Agent):
     async def synthesize_results(self) -> Any:
         """Synthesize worker outputs into final result."""
         return {
+            "fleet_metrics": self._aggregate_worker_metrics(),
             "workers": len(self.workers),
             "completed": len(self.completed_outputs),
             "outputs": self.completed_outputs,
