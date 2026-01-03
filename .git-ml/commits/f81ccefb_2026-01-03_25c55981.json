@@ -1,0 +1,74 @@
+{
+  "hash": "f81ccefb2c1660dc92675936a1fa16f2637cfd41",
+  "message": "fix(hooks): Actually persist ML hooks configuration",
+  "author": "Claude",
+  "timestamp": "2026-01-03 09:48:43 +0000",
+  "branch": "claude/accept-handoff-next-session-ZIyKW",
+  "files_changed": [
+    ".branch-state/active/claude-accept-handoff-next-session-ZIyKW.json",
+    ".git-ml/tracked/commits.jsonl"
+  ],
+  "insertions": 15,
+  "deletions": 0,
+  "hunks": [
+    {
+      "file": ".branch-state/active/claude-accept-handoff-next-session-ZIyKW.json",
+      "function": null,
+      "start_line": 0,
+      "lines_added": [
+        "{",
+        "  \"branch\": \"claude/accept-handoff-next-session-ZIyKW\",",
+        "  \"started\": \"2026-01-03T09:44:29.286483\",",
+        "  \"files_claimed\": [],",
+        "  \"files_touched\": [],",
+        "  \"last_main_sync\": null,",
+        "  \"sub_agents\": [],",
+        "  \"session_id\": null,",
+        "  \"checkpoints\": [],",
+        "  \"last_checkpoint\": null",
+        "}"
+      ],
+      "lines_removed": [],
+      "context_before": [],
+      "context_after": [],
+      "change_type": "add"
+    },
+    {
+      "file": ".git-ml/tracked/commits.jsonl",
+      "function": null,
+      "start_line": 2412,
+      "lines_added": [
+        "{\"hash\":\"f129a2f45d9e2d711cf560dc3d2173b15bde19dc\",\"message\":\"chore(got): Complete task T-20260103-090732-f89debb2\",\"author\":\"Claude\",\"timestamp\":\"2026-01-03 09:45:13 +0000\",\"branch\":\"claude/accept-handoff-next-session-ZIyKW\",\"files_changed\":[\".got/entities/T-20260103-090732-f89debb2.json\",\".got/entities/_history/T-20260103-090732-f89debb2.jsonl\"],\"insertions\":12,\"deletions\":7,\"hour_of_day\":9,\"day_of_week\":\"Saturday\",\"is_merge\":false,\"is_initial\":false,\"parent_count\":1,\"seconds_since_last_commit\":164,\"session_id\":\"0be020bc\"}",
+        "{\"hash\":\"22ec54d5d56d71e47264f4571c909646b35e4308\",\"message\":\"chore(got): Auto-save after kt create\",\"author\":\"Claude\",\"timestamp\":\"2026-01-03 09:45:27 +0000\",\"branch\":\"claude/accept-handoff-next-session-ZIyKW\",\"files_changed\":[\".got/entities/KT-20260103-094527.json\"],\"insertions\":24,\"deletions\":0,\"hour_of_day\":9,\"day_of_week\":\"Saturday\",\"is_merge\":false,\"is_initial\":false,\"parent_count\":1,\"seconds_since_last_commit\":14,\"session_id\":\"0be020bc\"}",
+        "{\"hash\":\"cd1a69d25212284d0e2e6dff8c2648ceab34744e\",\"message\":\"chore(got): Auto-save after kt finalize\",\"author\":\"Claude\",\"timestamp\":\"2026-01-03 09:45:42 +0000\",\"branch\":\"claude/accept-handoff-next-session-ZIyKW\",\"files_changed\":[\".got/entities/KT-20260103-094527.json\"],\"insertions\":2,\"deletions\":2,\"hour_of_day\":9,\"day_of_week\":\"Saturday\",\"is_merge\":false,\"is_initial\":false,\"parent_count\":1,\"seconds_since_last_commit\":15,\"session_id\":\"0be020bc\"}",
+        "{\"hash\":\"31f0e18e4eb9dbb28bdeaa48822ccb6714173ff6\",\"message\":\"chore(got): Complete handoff H-20260103-090818-23fbe2df\",\"author\":\"Claude\",\"timestamp\":\"2026-01-03 09:45:58 +0000\",\"branch\":\"claude/accept-handoff-next-session-ZIyKW\",\"files_changed\":[\".got/entities/H-20260103-090818-23fbe2df.json\",\".got/entities/_history/H-20260103-090818-23fbe2df.jsonl\"],\"insertions\":10,\"deletions\":7,\"hour_of_day\":9,\"day_of_week\":\"Saturday\",\"is_merge\":false,\"is_initial\":false,\"parent_count\":1,\"seconds_since_last_commit\":16,\"session_id\":\"0be020bc\"}"
+      ],
+      "lines_removed": [],
+      "context_before": [
+        "{\"hash\":\"9caf50e6e2e1abb80f3c8a8e17567a92576393e6\",\"message\":\"chore(ml): Track commit data for model training\",\"author\":\"Claude\",\"timestamp\":\"2025-12-27 03:02:17 +0000\",\"branch\":\"claude/accept-handoff-ctrSI\",\"files_changed\":[\".git-ml/commits/954e52cc_2025-12-27_04dc156e.json\",\".git-ml/commits/a173e23f_2025-12-27_7887d247.json\",\".git-ml/tracked/commits.jsonl\"],\"insertions\":247,\"deletions\":0,\"hour_of_day\":3,\"day_of_week\":\"Saturday\",\"is_merge\":false,\"is_initial\":false,\"parent_count\":1,\"seconds_since_last_commit\":27,\"session_id\":\"c7e7f25e\"}",
+        "{\"hash\":\"aee32a9d0ceccda64f054eb432beca0d5d82858d\",\"message\":\"chore(ml): Backfill chat data from session transcripts\",\"author\":\"Claude\",\"timestamp\":\"2025-12-27 03:05:03 +0000\",\"branch\":\"claude/accept-handoff-ctrSI\",\"files_changed\":[\".git-ml/actions/2025-12-27/A-20251227-030426-e1b5-000.json\",\".git-ml/actions/2025-12-27/A-20251227-030426-e1b5-001.json\",\".git-ml/actions/2025-12-27/A-20251227-030426-e1b5-002.json\",\".git-ml/actions/2025-12-27/A-20251227-030426-e1b5-003.json\",\".git-ml/actions/2025-12-27/A-20251227-030426-e1b5-004.json\",\".git-ml/actions/2025-12-27/A-20251227-030435-1cf3-000.json\",\".git-ml/actions/2025-12-27/A-20251227-030435-1cf3-001.json\",\".git-ml/actions/2025-12-27/A-20251227-030435-1cf3-002.json\",\".git-ml/actions/2025-12-27/A-20251227-030435-1cf3-003.json\",\".git-ml/actions/2025-12-27/A-20251227-030435-1cf3-004.json\",\".git-ml/actions/2025-12-27/A-20251227-030435-1cf3-005.json\",\".git-ml/actions/2025-12-27/A-20251227-030435-1cf3-006.json\",\".git-ml/actions/2025-12-27/A-20251227-030435-1cf3-007.json\",\".git-ml/actions/2025-12-27/A-20251227-030435-1cf3-008.json\",\".git-ml/actions/2025-12-27/A-20251227-030435-1cf3-009.json\",\".git-ml/actions/2025-12-27/A-20251227-030435-1cf3-010.json\",\".git-ml/actions/2025-12-27/A-20251227-030435-1cf3-011.json\",\".git-ml/chats/2025-12-27/chat-20251227-030426-36881a.json\",\".git-ml/chats/2025-12-27/chat-20251227-030426-3cb863.json\",\".git-ml/chats/2025-12-27/chat-20251227-030426-610791.json\",\".git-ml/chats/2025-12-27/chat-20251227-030426-85cf7b.json\",\".git-ml/chats/2025-12-27/chat-20251227-030426-9eabf1.json\",\".git-ml/chats/2025-12-27/chat-20251227-030435-0a255f.json\",\".git-ml/chats/2025-12-27/chat-20251227-030435-15e794.json\",\".git-ml/chats/2025-12-27/chat-20251227-030435-1bb65d.json\",\".git-ml/chats/2025-12-27/chat-20251227-030435-2d0ed4.json\",\".git-ml/chats/2025-12-27/chat-20251227-030435-2dd56a.json\",\".git-ml/chats/2025-12-27/chat-20251227-030435-3697cf.json\",\".git-ml/chats/2025-12-27/chat-20251227-030435-9712af.json\",\".git-ml/chats/2025-12-27/chat-20251227-030435-c9a05a.json\",\".git-ml/chats/2025-12-27/chat-20251227-030435-d4a0a7.json\",\".git-ml/chats/2025-12-27/chat-20251227-030435-dbbe82.json\",\".git-ml/chats/2025-12-27/chat-20251227-030435-e3fe18.json\",\".git-ml/chats/2025-12-27/chat-20251227-030435-ee5907.json\",\".git-ml/chats/2025-12-27/chat-20251227-030435-f99551.json\",\".git-ml/chats/2025-12-27/chat-20251227-030435-ff75f5.json\",\".git-ml/commits/9caf50e6_2025-12-27_0c3ac82b.json\",\".git-ml/sessions/2025-12-27_04aa272c.json\",\".git-ml/sessions/2025-12-27_c7e7f25e.json\",\".git-ml/tracked/commits.jsonl\",\".git-ml/tracked/sessions.jsonl\"],\"insertions\":1071,\"deletions\":0,\"hour_of_day\":3,\"day_of_week\":\"Saturday\",\"is_merge\":false,\"is_initial\":false,\"parent_count\":1,\"seconds_since_last_commit\":166}",
+        "{\"hash\":\"32d78e8a7b36336e5a55819bedad23285f9787a9\",\"message\":\"chore(ml): Track commit metadata from chat backfill\",\"author\":\"Claude\",\"timestamp\":\"2025-12-27 03:05:24 +0000\",\"branch\":\"claude/accept-handoff-ctrSI\",\"files_changed\":[\".git-ml/commits/aee32a9d_2025-12-27_211598f7.json\",\".git-ml/tracked/commits.jsonl\"],\"insertions\":1610,\"deletions\":0,\"hour_of_day\":3,\"day_of_week\":\"Saturday\",\"is_merge\":false,\"is_initial\":false,\"parent_count\":1,\"seconds_since_last_commit\":21}",
+        "{\"hash\":\"b196de9a545b21c68a022d4cfa719d138f28bf71\",\"message\":\"docs(ml): Document transcript backfill process for chat data\",\"author\":\"Claude\",\"timestamp\":\"2025-12-27 03:06:01 +0000\",\"branch\":\"claude/accept-handoff-ctrSI\",\"files_changed\":[\".git-ml/commits/32d78e8a_2025-12-27_e3706529.json\",\".git-ml/tracked/commits.jsonl\",\"scripts/ml_data_collector.py\"],\"insertions\":1678,\"deletions\":0,\"hour_of_day\":3,\"day_of_week\":\"Saturday\",\"is_merge\":false,\"is_initial\":false,\"parent_count\":1,\"seconds_since_last_commit\":37}",
+        "{\"hash\":\"f7c78dd732dce7916dcf13546318c6cfbcc26ff0\",\"message\":\"chore(ml): Track commit metadata\",\"author\":\"Claude\",\"timestamp\":\"2025-12-27 03:06:22 +0000\",\"branch\":\"claude/accept-handoff-ctrSI\",\"files_changed\":[\".git-ml/commits/b196de9a_2025-12-27_990f86de.json\",\".git-ml/tracked/commits.jsonl\"],\"insertions\":1772,\"deletions\":0,\"hour_of_day\":3,\"day_of_week\":\"Saturday\",\"is_merge\":false,\"is_initial\":false,\"parent_count\":1,\"seconds_since_last_commit\":21}",
+        "{\"hash\":\"d1e23af8f067b2f8bdce2ff809d9b1f7543a5eb0\",\"message\":\"chore(ml): Track commit metadata\",\"author\":\"Claude\",\"timestamp\":\"2025-12-27 03:06:42 +0000\",\"branch\":\"claude/accept-handoff-ctrSI\",\"files_changed\":[\".git-ml/commits/f7c78dd7_2025-12-27_8ad98221.json\",\".git-ml/tracked/commits.jsonl\"],\"insertions\":1832,\"deletions\":0,\"hour_of_day\":3,\"day_of_week\":\"Saturday\",\"is_merge\":false,\"is_initial\":false,\"parent_count\":1,\"seconds_since_last_commit\":20}",
+        "{\"hash\":\"879719b8b1f4847b261662fb77ff17065bda27c6\",\"message\":\"chore(ml): Final commit tracking for session\",\"author\":\"Claude\",\"timestamp\":\"2025-12-27 03:06:55 +0000\",\"branch\":\"claude/accept-handoff-ctrSI\",\"files_changed\":[\".git-ml/commits/d1e23af8_2025-12-27_0730fcc7.json\",\".git-ml/tracked/commits.jsonl\"],\"insertions\":1892,\"deletions\":0,\"hour_of_day\":3,\"day_of_week\":\"Saturday\",\"is_merge\":false,\"is_initial\":false,\"parent_count\":1,\"seconds_since_last_commit\":13}",
+        "{\"hash\":\"5488c8ba935dc6c9a99234cf37b2200f921bb760\",\"message\":\"chore(ml): Train file prediction model on session data\",\"author\":\"Claude\",\"timestamp\":\"2025-12-27 03:08:59 +0000\",\"branch\":\"claude/accept-handoff-ctrSI\",\"files_changed\":[\".git-ml/commits/879719b8_2025-12-27_99b108c1.json\",\".git-ml/tracked/commits.jsonl\"],\"insertions\":1952,\"deletions\":0,\"hour_of_day\":3,\"day_of_week\":\"Saturday\",\"is_merge\":false,\"is_initial\":false,\"parent_count\":1,\"seconds_since_last_commit\":124}",
+        "{\"hash\":\"8b078efbae1863a0f08fee610ea6cc9cc202a7c5\",\"message\":\"chore(ml): Track commit metadata\",\"author\":\"Claude\",\"timestamp\":\"2025-12-27 03:09:25 +0000\",\"branch\":\"claude/accept-handoff-ctrSI\",\"files_changed\":[\".git-ml/commits/5488c8ba_2025-12-27_757475e9.json\",\".git-ml/tracked/commits.jsonl\"],\"insertions\":2012,\"deletions\":0,\"hour_of_day\":3,\"day_of_week\":\"Saturday\",\"is_merge\":false,\"is_initial\":false,\"parent_count\":1,\"seconds_since_last_commit\":26}",
+        "{\"hash\":\"838160c6e4d162274dd470bfb4ecbf3eab09a597\",\"message\":\"chore(ml): Final session tracking\",\"author\":\"Claude\",\"timestamp\":\"2025-12-27 03:11:47 +0000\",\"branch\":\"claude/accept-handoff-ctrSI\",\"files_changed\":[\".git-ml/commits/8b078efb_2025-12-27_e31e4f62.json\",\".git-ml/tracked/commits.jsonl\"],\"insertions\":2072,\"deletions\":0,\"hour_of_day\":3,\"day_of_week\":\"Saturday\",\"is_merge\":false,\"is_initial\":false,\"parent_count\":1,\"seconds_since_last_commit\":142}"
+      ],
+      "context_after": [],
+      "change_type": "add"
+    }
+  ],
+  "hour_of_day": 9,
+  "day_of_week": "Saturday",
+  "seconds_since_last_commit": 165,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": "0be020bc",
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}
