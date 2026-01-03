@@ -1,0 +1,17 @@
+{
+  "id": "chat-20260103-102325-abfeae",
+  "timestamp": "2026-01-03T09:52:39.166Z",
+  "session_id": "f3b1bce9-e21e-4e1d-ab21-02c75c0c3576",
+  "query": "Why don't I see any changes to ~/.claude/settings.json in git?",
+  "response": "`~/.claude/settings.json` is a **global user configuration file** located at `/root/.claude/settings.json` - it's outside the git repository.\n\nThis is intentional:\n- Global settings apply across all projects\n- They contain user-specific configuration\n- They shouldn't be committed to individual repos\n\nThe ML hooks use `cwd:Opus-code-test` matcher to only activate when working in this specific project directory, but the configuration itself lives in your home directory.\n\nTo verify the config is there:\n\n```bash\ncat ~/.claude/settings.json\n```\n\nIf you wanted project-specific hook configuration tracked in git, you could use `.claude/settings.local.json` in the project directory instead - but that file was the original problem (project-level hooks weren't being picked up properly).",
+  "files_referenced": [],
+  "files_modified": [],
+  "tools_used": [],
+  "tool_outputs": [],
+  "user_feedback": null,
+  "resulted_in_commit": false,
+  "related_commit": null,
+  "query_tokens": 10,
+  "response_tokens": 107,
+  "duration_seconds": null
+}

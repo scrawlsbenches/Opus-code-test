@@ -1,0 +1,20 @@
+{
+  "_checksum": "b5065ac60f39048c",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-03T09:00:18.717971+00:00",
+  "data": {
+    "created_at": "2026-01-03T08:59:59.925790+00:00",
+    "description": "Added ML hooks to global ~/.claude/settings.json with cwd:Opus-code-test matcher. This ensures SessionStart, PostToolUse, and Stop hooks run for this project to capture ML training data.",
+    "entity_type": "task",
+    "id": "T-20260103-085959-78e2d2d9",
+    "metadata": {},
+    "modified_at": "2026-01-03T08:59:59.925795+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "bugfix"
+    },
+    "status": "pending",
+    "title": "Fix ML hooks global configuration",
+    "version": 1
+  }
+}

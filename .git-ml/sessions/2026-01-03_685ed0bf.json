@@ -1,0 +1,14 @@
+{
+  "id": "685ed0bf",
+  "started_at": "2026-01-03T10:29:38.537831",
+  "chat_ids": [
+    "chat-20260103-103135-bd36e8",
+    "chat-20260103-103135-6cdb91",
+    "chat-20260103-103135-12d8ae",
+    "chat-20260103-103135-fea82e",
+    "chat-20260103-103135-bc96d6"
+  ],
+  "action_ids": [],
+  "ended_at": "2026-01-03T10:31:35.079756",
+  "summary": "Transcript: 5 exchanges, 2 tools"
+}
