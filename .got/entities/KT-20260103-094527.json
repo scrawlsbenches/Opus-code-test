@@ -6,7 +6,7 @@
     "entity_type": "knowledge_transfer",
     "version": 1,
     "created_at": "2026-01-03T09:45:27.629351",
-    "modified_at": "2026-01-03T09:45:27.629355",
+    "modified_at": "2026-01-03T09:45:41.998562",
     "title": "ML Hooks Configuration - Actually Fixed",
     "session_id": "",
     "session_date": "",
@@ -18,7 +18,7 @@
     "related_decisions": [],
     "source_file": null,
     "tags": [],
-    "status": "draft",
+    "status": "published",
     "properties": {}
   }
 }
