@@ -1,15 +1,16 @@
 {
-  "_checksum": "882b887f6ccdf103",
-  "_written_at": "2026-01-03T11:41:40.934306+00:00",
+  "_checksum": "aefe49882a4f65f6",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-03T11:42:10.183210+00:00",
   "data": {
     "affects": [],
     "created_at": "2026-01-03T11:41:40.920081+00:00",
     "entity_type": "decision",
     "id": "D-20260103-114140-e23d3dca",
-    "modified_at": "2026-01-03T11:41:40.934228+00:00",
+    "modified_at": "2026-01-03T11:41:40.920089+00:00",
     "properties": {},
     "rationale": "Testing fix",
     "title": "Test decision",
-    "version": 2
+    "version": 1
   }
 }
