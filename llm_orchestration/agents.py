@@ -28,6 +28,7 @@ from .recovery import (
     ConfusionSignal,
     ConfusionDiagnosis,
     SeverityLevel,
+    SynapticConfusionDetector,
 )
 from .escalation import (
     EscalationLevel,
@@ -77,6 +78,22 @@ except ImportError:
     WovenMindConfig = None
     WovenMindResult = None
     ThinkingMode = None
+
+# Import PRISM Synaptic Memory with graceful fallback
+try:
+    from cortical.reasoning.prism_got import SynapticMemoryGraph
+    PRISM_AVAILABLE = True
+except ImportError:
+    PRISM_AVAILABLE = False
+    SynapticMemoryGraph = None
+
+# Import GoT Learning Bridge with graceful fallback
+try:
+    from cortical.got.learning_integration import GoTLearningBridge
+    GOT_LEARNING_AVAILABLE = True
+except ImportError:
+    GOT_LEARNING_AVAILABLE = False
+    GoTLearningBridge = None
 
 
 # =============================================================================
@@ -833,6 +850,9 @@ class Worker(Agent):
         self._recovery_coordinator: Optional[RecoveryCoordinator] = None
         self._confusion_signals: List[ConfusionSignal] = []
 
+        # PRISM Synaptic memory for confusion detection
+        self._synaptic_graph: Optional['SynapticMemoryGraph'] = None
+
         # Initialize recovery coordinator if we have a storage location
         try:
             storage_dir = Path.home() / ".llm_orchestration" / "recovery" / agent_id
@@ -840,6 +860,23 @@ class Worker(Agent):
         except Exception:
             # Recovery coordinator is optional
             pass
+
+        # Initialize PRISM synaptic detection if available
+        if PRISM_AVAILABLE and self._recovery_coordinator:
+            try:
+                self._synaptic_graph = SynapticMemoryGraph(
+                    agent_id=agent_id,
+                    max_nodes=1000,
+                    decay_factor=0.95
+                )
+                self._recovery_coordinator.enable_synaptic_detection(self._synaptic_graph)
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.debug(f"Worker {agent_id}: PRISM synaptic detection enabled")
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Failed to initialize PRISM: {e}")
 
         # Learning cycle for retrieving lessons
         self._learning_cycle: Optional[Any] = None  # LearningCycle when available
@@ -851,6 +888,22 @@ class Worker(Agent):
             except Exception:
                 # Learning cycle initialization failed, proceed without it
                 pass
+
+        # GoT Learning Bridge for persistent experience capture
+        self._got_learning_bridge: Optional['GoTLearningBridge'] = None
+        if GOT_LEARNING_AVAILABLE:
+            try:
+                from pathlib import Path
+                got_dir = Path(".got")
+                if got_dir.exists():
+                    self._got_learning_bridge = GoTLearningBridge(got_dir)
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.debug(f"Worker {agent_id}: GoT Learning Bridge enabled")
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Failed to initialize GoT Learning Bridge: {e}")
 
         # Tool executor for managing tool invocations
         self._tool_executor = ToolExecutor()
@@ -1113,6 +1166,17 @@ class Worker(Agent):
             question_duration = (datetime.now() - question_start).total_seconds()
             phase_durations["question"] = question_duration
 
+            # Record synaptic activation for PRISM
+            if self._synaptic_graph:
+                try:
+                    self._synaptic_graph.record_activation(
+                        concept="QAPV_QUESTION",
+                        strength=1.0,
+                        context={'task_id': task_context.get('task_id', 'unknown'), 'phase': 'QUESTION'}
+                    )
+                except Exception as e:
+                    logger.debug(f"Failed to record PRISM activation: {e}")
+
             # ===================================================================
             # PHASE 2: ANSWER - Determine approach
             # ===================================================================
@@ -1157,6 +1221,17 @@ class Worker(Agent):
             answer_duration = (datetime.now() - answer_start).total_seconds()
             phase_durations["answer"] = answer_duration
 
+            # Record synaptic activation for PRISM
+            if self._synaptic_graph:
+                try:
+                    self._synaptic_graph.record_activation(
+                        concept="QAPV_ANSWER",
+                        strength=1.0,
+                        context={'task_id': task_context.get('task_id', 'unknown'), 'phase': 'ANSWER'}
+                    )
+                except Exception as e:
+                    logger.debug(f"Failed to record PRISM activation: {e}")
+
             # Advance to PRODUCE phase
             pattern.advance()
 
@@ -1199,6 +1274,17 @@ class Worker(Agent):
 
             produce_duration = (datetime.now() - produce_start).total_seconds()
             phase_durations["produce"] = produce_duration
+
+            # Record synaptic activation for PRISM
+            if self._synaptic_graph:
+                try:
+                    self._synaptic_graph.record_activation(
+                        concept="QAPV_PRODUCE",
+                        strength=1.0,
+                        context={'task_id': task_context.get('task_id', 'unknown'), 'phase': 'PRODUCE'}
+                    )
+                except Exception as e:
+                    logger.debug(f"Failed to record PRISM activation: {e}")
 
             # Advance to VERIFY phase
             pattern.advance()
@@ -1246,6 +1332,17 @@ class Worker(Agent):
 
             verify_duration = (datetime.now() - verify_start).total_seconds()
             phase_durations["verify"] = verify_duration
+
+            # Record synaptic activation for PRISM
+            if self._synaptic_graph:
+                try:
+                    self._synaptic_graph.record_activation(
+                        concept="QAPV_VERIFY",
+                        strength=1.0 if verify_passed else 0.5,
+                        context={'task_id': task_context.get('task_id', 'unknown'), 'phase': 'VERIFY', 'passed': verify_passed}
+                    )
+                except Exception as e:
+                    logger.debug(f"Failed to record PRISM activation: {e}")
 
             # Advance to COMPLETE if verification passed
             if verify_passed:
@@ -1514,6 +1611,19 @@ class Worker(Agent):
         lessons = self._get_lessons_for_task(task_context)
         logger.info(f"Retrieved {len(lessons)} lessons for guidance")
 
+        # Retrieve relevant lessons from GoT Learning Bridge before execution
+        got_lessons = []
+        if self._got_learning_bridge:
+            try:
+                got_lessons = self._got_learning_bridge.get_relevant_lessons(
+                    task_description=self.context.task,
+                    limit=5
+                )
+                if got_lessons:
+                    logger.info(f"Worker {self.agent_id}: Retrieved {len(got_lessons)} relevant lessons from GoT")
+            except Exception as e:
+                logger.warning(f"Failed to retrieve GoT lessons: {e}")
+
         # =====================================================================
         # RUN QAPV COGNITIVE CYCLE
         # =====================================================================
@@ -1741,6 +1851,18 @@ class Worker(Agent):
                         "different": []
                     }
                 )
+
+            # Capture experience to GoT Learning Bridge
+            if self._got_learning_bridge:
+                try:
+                    self._got_learning_bridge.capture_task_completion(
+                        task_id=self.agent_id,
+                        outcome='success',
+                        execution_time=duration_ms / 1000.0,  # Convert to seconds
+                        metrics=self._metrics.get_summary()
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to capture GoT learning experience: {e}")
 
             # Add cognitive metrics summary to result
             result["cognitive_metrics"] = self._metrics.get_summary()

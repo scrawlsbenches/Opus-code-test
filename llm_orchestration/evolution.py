@@ -17,6 +17,7 @@ The "genetic material" is cognitive strategies, not weights:
 from __future__ import annotations
 
 import random
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Callable, Iterator, Literal
@@ -181,33 +182,39 @@ class StrategyPool:
         self._genomes: dict[str, StrategyGenome] = {}
         self._fitness: dict[str, float] = {}
         self._generation = 0
+        self._lock = threading.RLock()  # Reentrant lock for nested calls
 
     def add(self, genome: StrategyGenome) -> None:
         """Add a genome to the pool."""
-        self._genomes[genome.genome_id] = genome
+        with self._lock:
+            self._genomes[genome.genome_id] = genome
 
     def get(self, genome_id: str) -> StrategyGenome | None:
         """Get a genome by ID."""
-        return self._genomes.get(genome_id)
+        with self._lock:
+            return self._genomes.get(genome_id)
 
     def get_random(self) -> StrategyGenome | None:
         """Get a random genome."""
-        if not self._genomes:
-            return None
-        return random.choice(list(self._genomes.values()))
+        with self._lock:
+            if not self._genomes:
+                return None
+            return random.choice(list(self._genomes.values()))
 
     def get_best_for(self, goal_type: str) -> StrategyGenome | None:
         """Get the best genome for a goal type."""
-        if not self._genomes:
-            return None
+        with self._lock:
+            if not self._genomes:
+                return None
 
-        # Return highest fitness
-        best_id = max(self._fitness.keys(), key=lambda k: self._fitness[k])
-        return self._genomes.get(best_id)
+            # Return highest fitness
+            best_id = max(self._fitness.keys(), key=lambda k: self._fitness[k])
+            return self._genomes.get(best_id)
 
     def get_current_generation(self) -> list[StrategyGenome]:
         """Get all genomes in current generation."""
-        return list(self._genomes.values())
+        with self._lock:
+            return list(self._genomes.values())
 
     def update(
         self,
@@ -216,21 +223,23 @@ class StrategyPool:
         fitness_scores: dict[str, float],
     ) -> list[StrategyGenome]:
         """Update pool with new generation."""
-        self._generation += 1
+        with self._lock:
+            self._generation += 1
 
-        # Clear and repopulate
-        self._genomes.clear()
-        for genome in survivors + offspring:
-            self._genomes[genome.genome_id] = genome
+            # Clear and repopulate
+            self._genomes.clear()
+            for genome in survivors + offspring:
+                self._genomes[genome.genome_id] = genome
 
-        self._fitness = fitness_scores
-        return list(self._genomes.values())
+            self._fitness = fitness_scores
+            return list(self._genomes.values())
 
     def update_fitness(self, genome_id: str, fitness: float) -> None:
         """Update fitness for a genome."""
-        self._fitness[genome_id] = fitness
-        if genome_id in self._genomes:
-            self._genomes[genome_id].fitness_history.append(fitness)
+        with self._lock:
+            self._fitness[genome_id] = fitness
+            if genome_id in self._genomes:
+                self._genomes[genome_id].fitness_history.append(fitness)
 
 
 # =============================================================================

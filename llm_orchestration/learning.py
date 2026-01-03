@@ -31,6 +31,7 @@ from typing import (
 from pathlib import Path
 import json
 import hashlib
+import threading
 
 
 # =============================================================================
@@ -342,6 +343,7 @@ class ExperienceStore:
         self.storage_dir = Path(storage_dir)
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         self._index: Dict[str, Experience] = {}
+        self._lock = threading.RLock()  # Reentrant lock for nested calls
         self._load_index()
 
     def _load_index(self):
@@ -351,14 +353,16 @@ class ExperienceStore:
                 with open(exp_file, 'r') as f:
                     data = json.load(f)
                     experience = Experience.from_dict(data)
-                    self._index[experience.id] = experience
+                    with self._lock:
+                        self._index[experience.id] = experience
             except (json.JSONDecodeError, KeyError) as e:
                 # Log but don't fail on corrupt files
                 print(f"Warning: Could not load {exp_file}: {e}")
 
     def save(self, experience: Experience):
         """Save an experience to persistent storage."""
-        self._index[experience.id] = experience
+        with self._lock:
+            self._index[experience.id] = experience
 
         filepath = self.storage_dir / f"{experience.id}.json"
         with open(filepath, 'w') as f:
@@ -366,7 +370,8 @@ class ExperienceStore:
 
     def get(self, experience_id: str) -> Optional[Experience]:
         """Retrieve an experience by ID."""
-        return self._index.get(experience_id)
+        with self._lock:
+            return self._index.get(experience_id)
 
     def find_similar_context(
         self,
@@ -379,8 +384,11 @@ class ExperienceStore:
 
         Returns list of (experience, similarity_score) tuples.
         """
+        with self._lock:
+            experiences = list(self._index.values())
+
         scored = []
-        for experience in self._index.values():
+        for experience in experiences:
             similarity = context.similarity_to(experience.context)
             if similarity >= min_similarity:
                 scored.append((experience, similarity))
@@ -394,8 +402,11 @@ class ExperienceStore:
         match_all: bool = False
     ) -> List[Experience]:
         """Find experiences by tags."""
+        with self._lock:
+            experiences = list(self._index.values())
+
         results = []
-        for experience in self._index.values():
+        for experience in experiences:
             if match_all:
                 if tags.issubset(experience.tags):
                     results.append(experience)
@@ -409,8 +420,11 @@ class ExperienceStore:
         outcome_type: OutcomeType
     ) -> List[Experience]:
         """Find experiences by outcome type."""
+        with self._lock:
+            experiences = list(self._index.values())
+
         return [
-            exp for exp in self._index.values()
+            exp for exp in experiences
             if exp.outcome and exp.outcome.outcome_type == outcome_type
         ]
 
@@ -451,11 +465,13 @@ class ExperienceStore:
 
     def all_experiences(self) -> Iterator[Experience]:
         """Iterate over all stored experiences."""
-        return iter(self._index.values())
+        with self._lock:
+            return iter(list(self._index.values()))
 
     def count(self) -> int:
         """Total number of stored experiences."""
-        return len(self._index)
+        with self._lock:
+            return len(self._index)
 
 
 # =============================================================================
@@ -518,6 +534,7 @@ class PatternExtractor:
     def __init__(self, store: ExperienceStore):
         self.store = store
         self.patterns: Dict[str, Pattern] = {}
+        self._lock = threading.RLock()  # Reentrant lock for nested calls
 
     def extract_sequence_patterns(
         self,
@@ -568,7 +585,8 @@ class PatternExtractor:
                     pattern.add_evidence(exp_id, was_successful)
 
                 patterns.append(pattern)
-                self.patterns[pattern.id] = pattern
+                with self._lock:
+                    self.patterns[pattern.id] = pattern
 
         return patterns
 
@@ -613,7 +631,8 @@ class PatternExtractor:
                     pattern.add_evidence(exp_id, was_successful)
 
                 patterns.append(pattern)
-                self.patterns[pattern.id] = pattern
+                with self._lock:
+                    self.patterns[pattern.id] = pattern
 
         return patterns
 
@@ -661,13 +680,15 @@ class PatternExtractor:
                 pattern.occurrence_count = count
                 pattern.success_rate = 0.0
                 patterns.append(pattern)
-                self.patterns[pattern.id] = pattern
+                with self._lock:
+                    self.patterns[pattern.id] = pattern
 
         return patterns
 
     def get_pattern(self, pattern_id: str) -> Optional[Pattern]:
         """Retrieve a specific pattern."""
-        return self.patterns.get(pattern_id)
+        with self._lock:
+            return self.patterns.get(pattern_id)
 
     def get_patterns_for_context(
         self,
@@ -675,9 +696,12 @@ class PatternExtractor:
         pattern_type: Optional[str] = None
     ) -> List[Pattern]:
         """Get patterns applicable to a given context."""
+        with self._lock:
+            all_patterns = list(self.patterns.values())
+
         applicable = []
 
-        for pattern in self.patterns.values():
+        for pattern in all_patterns:
             if pattern_type and pattern.pattern_type != pattern_type:
                 continue
 
@@ -839,6 +863,7 @@ class LessonDistiller:
         self.extractor = extractor
         self.store = store
         self.lessons: Dict[str, Lesson] = {}
+        self._lock = threading.RLock()  # Reentrant lock for nested calls
 
     def distill_from_pattern(self, pattern: Pattern) -> Optional[Lesson]:
         """
@@ -889,7 +914,8 @@ class LessonDistiller:
                 confidence=pattern.confidence * (1 - pattern.success_rate)
             )
 
-        self.lessons[lesson.id] = lesson
+        with self._lock:
+            self.lessons[lesson.id] = lesson
         return lesson
 
     def _distill_strategy_lesson(self, pattern: Pattern) -> Lesson:
@@ -924,7 +950,8 @@ class LessonDistiller:
                 confidence=pattern.confidence * (1 - pattern.success_rate)
             )
 
-        self.lessons[lesson.id] = lesson
+        with self._lock:
+            self.lessons[lesson.id] = lesson
         return lesson
 
     def _distill_antipattern_lesson(self, pattern: Pattern) -> Lesson:
@@ -940,7 +967,8 @@ class LessonDistiller:
             confidence=pattern.confidence
         )
 
-        self.lessons[lesson.id] = lesson
+        with self._lock:
+            self.lessons[lesson.id] = lesson
         return lesson
 
     def get_lessons_for_context(
@@ -949,9 +977,12 @@ class LessonDistiller:
         min_confidence: float = 0.3
     ) -> List[Lesson]:
         """Get all applicable lessons for a context."""
+        with self._lock:
+            all_lessons = list(self.lessons.values())
+
         applicable = []
 
-        for lesson in self.lessons.values():
+        for lesson in all_lessons:
             if lesson.confidence < min_confidence:
                 continue
             if lesson.superseded_by:
@@ -1437,7 +1468,8 @@ class LearningCycle:
 
     def validate_lesson(self, lesson_id: str, was_helpful: bool):
         """Record whether a lesson was helpful when applied."""
-        lesson = self.distiller.lessons.get(lesson_id)
+        with self.distiller._lock:
+            lesson = self.distiller.lessons.get(lesson_id)
         if lesson:
             lesson.validate(was_helpful)
 

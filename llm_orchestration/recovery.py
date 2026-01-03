@@ -33,6 +33,7 @@ from typing import (
 from pathlib import Path
 import hashlib
 import json
+import threading
 
 if TYPE_CHECKING:
     from cortical.reasoning.prism_got import SynapticMemoryGraph
@@ -1456,6 +1457,7 @@ class RecoveryCoordinator:
         self.strategies: Dict[str, RecoveryStrategy] = {}
         self.recovery_history: List[RecoveryAttempt] = []
         self.storage_dir = storage_dir
+        self._lock = threading.RLock()  # Reentrant lock for nested calls
 
         # Set up default detectors
         self._setup_default_detectors()
@@ -1535,13 +1537,14 @@ class RecoveryCoordinator:
             contradiction_threshold: Threshold for detecting contradictions
             stagnation_threshold: Minimum activation rate (per minute)
         """
-        self.synaptic_detector = SynapticConfusionDetector(
-            memory_graph=memory_graph,
-            loop_window=loop_window,
-            contradiction_threshold=contradiction_threshold,
-            stagnation_threshold=stagnation_threshold
-        )
-        self.diagnoser.add_detector(self.synaptic_detector)
+        with self._lock:
+            self.synaptic_detector = SynapticConfusionDetector(
+                memory_graph=memory_graph,
+                loop_window=loop_window,
+                contradiction_threshold=contradiction_threshold,
+                stagnation_threshold=stagnation_threshold
+            )
+            self.diagnoser.add_detector(self.synaptic_detector)
 
     def record_synaptic_activation(self, node_id: str):
         """
@@ -1550,8 +1553,9 @@ class RecoveryCoordinator:
         Args:
             node_id: ID of the activated node
         """
-        if self.synaptic_detector:
-            self.synaptic_detector.record_activation(node_id)
+        with self._lock:
+            if self.synaptic_detector:
+                self.synaptic_detector.record_activation(node_id)
 
     def check_confusion(
         self,
@@ -1593,11 +1597,12 @@ class RecoveryCoordinator:
         context['recovery_attempt'] = attempt
 
         # Add synaptic detector to context if available
-        if self.synaptic_detector:
-            context['synaptic_detector'] = self.synaptic_detector
-            # Also add the memory graph if not already present
-            if 'memory_graph' not in context:
-                context['memory_graph'] = self.synaptic_detector._memory
+        with self._lock:
+            if self.synaptic_detector:
+                context['synaptic_detector'] = self.synaptic_detector
+                # Also add the memory graph if not already present
+                if 'memory_graph' not in context:
+                    context['memory_graph'] = self.synaptic_detector._memory
 
         # Try each strategy
         for strategy in applicable:
@@ -1618,7 +1623,8 @@ class RecoveryCoordinator:
         if not attempt.completed_at:
             attempt.complete(False)
 
-        self.recovery_history.append(attempt)
+        with self._lock:
+            self.recovery_history.append(attempt)
         self._save_attempt(attempt)
 
         return attempt
@@ -1656,21 +1662,25 @@ class RecoveryCoordinator:
 
     def get_recovery_stats(self) -> Dict[str, Any]:
         """Get statistics about recovery attempts."""
-        if not self.recovery_history:
-            return {
-                'total_attempts': 0,
-                'success_rate': 0.0,
-                'by_type': {},
-                'by_strategy': {}
-            }
+        with self._lock:
+            if not self.recovery_history:
+                return {
+                    'total_attempts': 0,
+                    'success_rate': 0.0,
+                    'by_type': {},
+                    'by_strategy': {}
+                }
 
-        total = len(self.recovery_history)
-        successes = sum(1 for a in self.recovery_history if a.success)
+            # Make a copy to avoid holding lock during iteration
+            history_copy = list(self.recovery_history)
+
+        total = len(history_copy)
+        successes = sum(1 for a in history_copy if a.success)
 
         by_type: Dict[str, Dict[str, int]] = {}
         by_strategy: Dict[str, Dict[str, int]] = {}
 
-        for attempt in self.recovery_history:
+        for attempt in history_copy:
             type_name = attempt.diagnosis.confusion_type.name
             if type_name not in by_type:
                 by_type[type_name] = {'total': 0, 'success': 0}
