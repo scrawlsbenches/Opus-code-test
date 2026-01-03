@@ -199,6 +199,10 @@ class CDGTransactionManager:
         Logs to WAL (if enabled) and adds to tx.write_set.
         Does NOT apply to store until commit.
 
+        The entity's full state is logged to WAL to enable crash recovery
+        reconstruction if a crash occurs after TX_COMMIT but before entity
+        files are written to disk.
+
         Args:
             tx: Transaction context
             entity: Entity to write
@@ -216,26 +220,70 @@ class CDGTransactionManager:
         old_version = old_entity.version if old_entity else 0
 
         # Log to WAL before buffering (if enabled)
+        # Include full entity data for crash recovery reconstruction
         if self.wal:
-            self.wal.log_write(tx.id, entity.id, old_version, entity.version)
+            self.wal.log_write(
+                tx.id,
+                entity.id,
+                old_version,
+                entity.version,
+                entity_data=entity.to_dict()
+            )
 
         # Add to write set
         tx.add_write(entity)
 
+    def delete(self, tx: Transaction, entity_id: str) -> None:
+        """
+        Mark an entity for deletion within transaction.
+
+        Logs to WAL (if enabled) and adds to tx.delete_set.
+        Does NOT apply to store until commit.
+
+        Args:
+            tx: Transaction context
+            entity_id: Entity ID to delete
+
+        Raises:
+            TransactionError: If transaction is not active
+        """
+        if not tx.is_active():
+            raise TransactionError(
+                f"Transaction {tx.id} is not active (state: {tx.state.value})"
+            )
+
+        # Get entity version for conflict detection
+        entity = self.read(tx, entity_id)
+        if entity:
+            # Track read for conflict detection
+            tx.add_read(entity_id, entity.version)
+
+        # Log to WAL before buffering (if enabled)
+        if self.wal:
+            version = entity.version if entity else 0
+            self.wal.log_write(tx.id, entity_id, version, -1)  # -1 indicates deletion
+
+        # Add to delete set
+        tx.add_delete(entity_id)
+
     def commit(self, tx: Transaction) -> CommitResult:
         """
-        Commit transaction.
+        Commit transaction with WAL-first durability.
 
-        Steps:
+        WAL-First Protocol (ACID-compliant):
         1. Acquire lock
-        2. Set state to PREPARING
-        3. Log TX_PREPARE to WAL (if enabled)
-        4. Detect conflicts (version mismatch)
-        5. If conflict: abort, return failure
-        6. Apply writes atomically via store.apply_writes()
-        7. Set state to COMMITTED
-        8. Log TX_COMMIT to WAL (if enabled)
+        2. Set state to PREPARING, log TX_PREPARE
+        3. Detect conflicts (version mismatch)
+        4. If conflict: abort, return failure
+        5. Log TX_COMMIT to WAL (commit decision is now durable)
+        6. Fsync WAL (ensures commit survives crash)
+        7. Apply writes to entity files (can be redone from WAL on crash)
+        8. Set state to COMMITTED
         9. Release lock
+
+        Key insight: Once TX_COMMIT is in WAL and fsynced, the transaction
+        IS committed. Entity files are a materialized view that can be
+        reconstructed from WAL on recovery.
 
         Args:
             tx: Transaction to commit
@@ -250,12 +298,12 @@ class CDGTransactionManager:
             )
 
         with self.lock:
-            # Set state to PREPARING
+            # Step 1: Set state to PREPARING
             tx.state = TransactionState.PREPARING
             if self.wal:
                 self.wal.log_tx_prepare(tx.id)
 
-            # Detect conflicts
+            # Step 2: Detect conflicts before committing
             conflicts = self._detect_conflicts(tx)
             if conflicts:
                 # Abort transaction
@@ -270,30 +318,56 @@ class CDGTransactionManager:
                     reason="version_conflict"
                 )
 
-            # Apply writes atomically
+            # Calculate the version that will result from this commit
+            # (store.current_version() + 1 for writes, possibly +1 more for deletes)
+            expected_version = self.store.current_version() + 1
+            if tx.delete_set:
+                expected_version += 1
+
+            # Step 3: Log TX_COMMIT to WAL BEFORE applying writes
+            # This is the commit point - once this is durable, the tx IS committed
+            if self.wal:
+                self.wal.log_tx_commit(tx.id, expected_version)
+
+            # Step 4: Fsync WAL to ensure commit is durable BEFORE modifying entities
+            # This is critical: WAL must be durable before we change entity files
+            if self.wal:
+                self.wal.fsync_now()
+
+            # Step 5: Apply writes and deletes to entity files
+            # If crash after this point, recovery will see TX_COMMIT in WAL
+            # and can verify/redo the writes
             try:
                 new_version = self.store.apply_writes(tx.write_set)
+                # Apply deletes after writes (both within same lock)
+                if tx.delete_set:
+                    new_version = self.store.apply_deletes(tx.delete_set)
             except Exception as e:
-                # Abort on any error
-                tx.state = TransactionState.ABORTED
-                if self.wal:
-                    self.wal.log_tx_abort(tx.id, f"write_failed: {e}")
+                # Write failed AFTER commit was logged to WAL
+                # This is a serious error - WAL says committed but writes failed
+                # Log the failure but don't abort (WAL is source of truth)
+                # Recovery will need to redo these writes
+                logger.error(
+                    "Write failed after WAL commit for TX %s: %s. "
+                    "Recovery will need to redo writes from WAL.",
+                    tx.id, e
+                )
+                # Still mark as committed since WAL has the commit
+                tx.state = TransactionState.COMMITTED
                 self._active_tx.pop(tx.id, None)
-
+                # Return failure so caller knows writes didn't apply
+                # But the transaction IS committed in WAL
                 return CommitResult(
                     success=False,
-                    reason=f"write_failed: {e}"
+                    reason=f"commit_logged_but_write_failed: {e}",
+                    version=expected_version
                 )
 
-            # Mark committed
+            # Step 6: Mark committed in memory
             tx.state = TransactionState.COMMITTED
-            if self.wal:
-                self.wal.log_tx_commit(tx.id, new_version)
 
-            # For BALANCED mode, fsync WAL and store now
+            # Step 7: Optionally fsync entity files for extra durability
             if self.config.durability == DurabilityMode.BALANCED:
-                if self.wal:
-                    self.wal.fsync_now()
                 self.store.fsync_all()
 
             # Remove from active transactions

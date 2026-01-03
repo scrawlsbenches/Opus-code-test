@@ -192,6 +192,26 @@ class TransactionManager:
             # Re-raise as GoT TransactionError for API compatibility
             raise GoTTransactionError(str(e)) from e
 
+    def delete(self, tx: Transaction, entity_id: str) -> None:
+        """
+        Mark an entity for deletion within transaction.
+
+        Logs to WAL and adds to tx.delete_set.
+        Does NOT apply to store until commit.
+
+        Args:
+            tx: Transaction context
+            entity_id: Entity ID to delete
+
+        Raises:
+            TransactionError: If transaction is not active
+        """
+        try:
+            self._cdg_tx.delete(tx, entity_id)
+        except CDGTransactionError as e:
+            # Re-raise as GoT TransactionError for API compatibility
+            raise GoTTransactionError(str(e)) from e
+
     def commit(self, tx: Transaction) -> CommitResult:
         """
         Commit transaction.

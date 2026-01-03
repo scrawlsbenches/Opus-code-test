@@ -1,0 +1,23 @@
+{
+  "_checksum": "b4ce0d1da81e377e",
+  "_written_at": "2026-01-03T00:05:28.598542+00:00",
+  "data": {
+    "created_at": "2026-01-02T23:21:11.441752+00:00",
+    "description": "After WAL is fixed, make it default-on. Consider renaming to consistency_level=STRICT for clarity.",
+    "entity_type": "task",
+    "id": "T-20260102-232111-c7614bf0",
+    "metadata": {
+      "completed_at": "2026-01-03T00:05:28.576240+00:00",
+      "updated_at": "2026-01-03T00:05:28.576249+00:00"
+    },
+    "modified_at": "2026-01-03T00:05:28.598446+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature",
+      "retrospective": "Changed CDGConfig defaults: transactions_enabled=True, enable_wal=True, recovery_mode=FULL. Now ACID-safe by default. Presets still available for simple_storage (fast, no WAL) and high_performance (maximum speed)."
+    },
+    "status": "completed",
+    "title": "Change default: enable_wal=True, transactions_enabled=True",
+    "version": 3
+  }
+}

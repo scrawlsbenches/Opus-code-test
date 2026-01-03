@@ -1,0 +1,19 @@
+{
+  "_checksum": "672b887f9b401e98",
+  "_written_at": "2026-01-02T17:07:05.386210+00:00",
+  "data": {
+    "created_at": "2026-01-02T17:07:05.382464+00:00",
+    "description": "api.py:2157-2159. Cache invalidation after commit allows stale reads. Fix: Invalidate before commit or use versioned cache keys.",
+    "entity_type": "task",
+    "id": "T-20260102-170705-28229965",
+    "metadata": {},
+    "modified_at": "2026-01-02T17:07:05.386151+00:00",
+    "priority": "critical",
+    "properties": {
+      "category": "bugfix"
+    },
+    "status": "pending",
+    "title": "CRITICAL: Fix cache invalidation race condition in TransactionContext",
+    "version": 2
+  }
+}

@@ -123,11 +123,45 @@ class TestCDGWALManager:
             data = json.load(f)
         assert data['seq'] == 100
 
-    def test_next_seq_increments(self, wal_manager):
-        """Test that _next_seq increments and persists."""
+    def test_next_seq_peeks_without_incrementing(self, wal_manager):
+        """Test that _next_seq returns next value without incrementing."""
+        # _next_seq now peeks at next value WITHOUT incrementing
+        # This is intentional for crash safety - sequence only commits after write
         seq1 = wal_manager._next_seq()
         seq2 = wal_manager._next_seq()
         seq3 = wal_manager._next_seq()
+
+        # All should return same value since we're only peeking
+        assert seq1 == 1
+        assert seq2 == 1
+        assert seq3 == 1
+
+    def test_commit_seq_increments_and_persists(self, wal_manager):
+        """Test that _commit_seq increments and persists sequence."""
+        # Get next sequence (peek)
+        seq = wal_manager._next_seq()
+        assert seq == 1
+
+        # Commit it (this increments internal counter)
+        wal_manager._commit_seq(seq)
+
+        # Now next should be 2
+        seq2 = wal_manager._next_seq()
+        assert seq2 == 2
+
+        # Commit again
+        wal_manager._commit_seq(seq2)
+
+        # Next should be 3
+        seq3 = wal_manager._next_seq()
+        assert seq3 == 3
+
+    def test_log_properly_increments_sequence(self, wal_manager):
+        """Test that log() properly increments sequence via commit."""
+        # log() should use _next_seq() and _commit_seq() internally
+        seq1 = wal_manager.log("TX-001", "TEST_OP1", {})
+        seq2 = wal_manager.log("TX-001", "TEST_OP2", {})
+        seq3 = wal_manager.log("TX-001", "TEST_OP3", {})
 
         assert seq1 == 1
         assert seq2 == 2

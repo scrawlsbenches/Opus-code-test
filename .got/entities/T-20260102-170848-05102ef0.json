@@ -1,0 +1,19 @@
+{
+  "_checksum": "3bda8912cc5e6cea",
+  "_written_at": "2026-01-02T17:08:48.203631+00:00",
+  "data": {
+    "created_at": "2026-01-02T17:08:48.199587+00:00",
+    "description": "recovery.py:543-590. File existence checked then operated on. Concurrent deletion causes crash. Fix: Wrap operations in try-except FileNotFoundError.",
+    "entity_type": "task",
+    "id": "T-20260102-170848-05102ef0",
+    "metadata": {},
+    "modified_at": "2026-01-02T17:08:48.203552+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "bugfix"
+    },
+    "status": "pending",
+    "title": "HIGH: CDG TOCTOU race in history recovery",
+    "version": 2
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "_checksum": "6aab0394b83118f3",
+  "_written_at": "2026-01-02T23:28:45.767472+00:00",
+  "data": {
+    "accepted_at": "",
+    "artifacts": [],
+    "completed_at": "",
+    "context": {
+      "task_priority": "critical",
+      "task_status": "pending",
+      "task_title": "Fix WAL commit order: log COMMIT before applying writes"
+    },
+    "created_at": "2026-01-02T23:28:45.764187+00:00",
+    "entity_type": "handoff",
+    "id": "H-20260102-232845-8e262ced",
+    "initiated_at": "2026-01-02T23:28:45.764198+00:00",
+    "instructions": "# CDG ACID Guarantees - Handoff\n\n## Context\nWe discovered critical bugs in CDG's WAL implementation that undermine ACID guarantees.\nThe user wants WAL-on-by-default, but current WAL gives false security.\n\n## What Was Done This Session\n\n### 1. Fixed History Persistence (COMPLETED)\n- History entries now use pending file pattern (crash-safe)\n- Commits: de176359, 1b611124\n- Tests: tests/behavioral/test_cdg_history_integrity.py (6 tests)\n\n### 2. Analyzed Lock Architecture (COMPLETED)\n- Lock ordering is correct: write_lock \u2192 write_process_lock \u2192 history_lock\n- No deadlock risk in current design\n- Future concern: partition-level locks when partitions added\n\n### 3. Discovered WAL Bugs (NOT YET FIXED)\nThese are the critical issues you need to fix:\n\n**Bug 1: Commit Order Wrong (CRITICAL)**\n- File: cortical/cdg/transaction_manager.py:306-327\n- Current: apply_writes() THEN log_tx_commit()\n- Correct: log_tx_commit() THEN fsync THEN apply_writes()\n- Impact: Crash after writes but before commit log = data applied but not logged\n\n**Bug 2: Fsync Timing Wrong (CRITICAL)**\n- File: cortical/cdg/transaction_manager.py:330-333\n- Current: fsync happens AFTER everything\n- Correct: fsync WAL BEFORE applying writes\n- Impact: Commit \"in memory\" not durable before writes\n\n**Bug 3: Delete Operations Use Old Pattern (HIGH)**\n- Files: cortical/cdg/storage.py delete() and apply_deletes()\n- They still use _save_to_history() not crash-safe pending pattern\n- See write() for correct pattern\n\n## Sprint and Tasks\n\nSprint: S-20260102-231925-80abadeb (CDG ACID Guarantees)\n\nTasks in priority order:\n1. T-20260102-232018-620564ef: Fix WAL commit order [critical]\n2. T-20260102-232032-5216f763: Fix BALANCED fsync timing [critical]\n3. T-20260102-232044-b5e40053: Update delete operations [high]\n4. T-20260102-232057-831c14aa: Add crash recovery tests [high]\n5. T-20260102-232111-c7614bf0: Change default to WAL-on [high] (depends on 1,2)\n\n## Key Decisions Made\n\n- D-20260102-231952-62e237a5: WAL-first architecture\n- D-20260102-232125-ba458873: Crash-safe history via pending files\n- D-20260102-232140-491c3cbf: Core data consistency > history integrity\n\n## Correct WAL Commit Flow\n\n```\n1. Log TX_PREPARE to WAL\n2. Log all WRITE operations to WAL\n3. Log TX_COMMIT to WAL\n4. Fsync WAL \u2190 CRITICAL: Must happen BEFORE step 5\n5. Apply writes to entity files\n6. (Optional) Fsync entity files based on durability mode\n```\n\n## Files to Modify\n\n1. cortical/cdg/transaction_manager.py - Fix commit()\n2. cortical/cdg/wal.py - Possibly add fsync helper\n3. cortical/cdg/storage.py - Fix delete(), apply_deletes()\n4. tests/behavioral/ - Add crash recovery tests\n\n## Testing Approach\n\nRun existing tests to ensure no regressions:\n```bash\npython -m pytest tests/behavioral/test_cdg_history_integrity.py -v\npython -m pytest tests/behavioral/test_got_delete_atomicity.py -v\npython -m pytest tests/smoke/ -v\n```\n\n## User's Intent\n\n\"We're building this for us and what we do now matters in the future\"\n- Priority: correctness over performance\n- Make WAL-on default AFTER fixes are complete\n- Keep GoT updated with progress",
+    "modified_at": "2026-01-02T23:28:45.767417+00:00",
+    "properties": {},
+    "reject_reason": "",
+    "rejected_at": "",
+    "result": {},
+    "source_agent": "current-agent",
+    "status": "initiated",
+    "target_agent": "next-agent",
+    "task_id": "T-20260102-232018-620564ef",
+    "version": 2
+  }
+}

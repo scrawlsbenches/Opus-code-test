@@ -1,0 +1,19 @@
+{
+  "_checksum": "43a5ae3b484bf4b0",
+  "_written_at": "2026-01-02T17:08:25.130645+00:00",
+  "data": {
+    "created_at": "2026-01-02T17:08:25.126727+00:00",
+    "description": "api.py:211-214. index_manager property triggers full rebuild on first access. Each query before init suffers full scan. Fix: Defer to explicit init().",
+    "entity_type": "task",
+    "id": "T-20260102-170825-4563bf18",
+    "metadata": {},
+    "modified_at": "2026-01-02T17:08:25.130575+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "performance"
+    },
+    "status": "pending",
+    "title": "HIGH: GoT index rebuild on first access is O(n^2)",
+    "version": 2
+  }
+}

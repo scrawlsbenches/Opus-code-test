@@ -1,0 +1,20 @@
+{
+  "_checksum": "4b3fc5f4e71f8cb3",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-03T01:35:12.968673+00:00",
+  "data": {
+    "created_at": "2026-01-02T17:07:19.464864+00:00",
+    "description": "tx_manager.py:345-364. Catch-all exception during write-after-commit. The main concern (writes failing after TX_COMMIT logged) is now addressed by WAL entity rollback feature: if crash happens after TX_COMMIT, recovery reconstructs entities from WAL. Remaining work: Add more specific exception types and error chaining for better diagnostics.",
+    "entity_type": "task",
+    "id": "T-20260102-170719-b7d5a506",
+    "metadata": {},
+    "modified_at": "2026-01-02T17:07:19.469068+00:00",
+    "priority": "critical",
+    "properties": {
+      "category": "bugfix"
+    },
+    "status": "pending",
+    "title": "CRITICAL: Fix transaction rollback failure leaves unknown state",
+    "version": 2
+  }
+}

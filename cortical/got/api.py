@@ -677,53 +677,31 @@ class GoTManager:
 
     def delete_decision(self, decision_id: str, force: bool = False) -> None:
         """
-        Delete a decision and all its connected edges.
+        Delete a decision and all its connected edges atomically.
+
+        Uses transaction to ensure all-or-nothing deletion semantics.
+        If any deletion fails, the entire operation is rolled back.
 
         Args:
             decision_id: Decision identifier to delete (D-...)
-            force: If False, raise error if decision has edges (default: True behavior)
+            force: If False, raise error if decision has edges
 
         Raises:
-            TransactionError: If decision not found
+            TransactionError: If decision not found or has edges (and force=False)
         """
-        # Check if decision exists
-        decision = self.get_decision(decision_id)
-        if decision is None:
-            raise TransactionError(f"Decision not found: {decision_id}")
-
-        # Find all edges connected to this decision
+        # Find all edges connected to this decision for cache invalidation
         all_edges = self.list_edges()
         connected_edges = [
             e for e in all_edges
             if e.source_id == decision_id or e.target_id == decision_id
         ]
-
-        # Check for connected edges unless force is True
-        if not force and connected_edges:
-            edge_ids = [e.id for e in connected_edges]
-            raise TransactionError(
-                f"Cannot delete decision {decision_id}: has connected edges {edge_ids}. "
-                "Use force=True to override."
-            )
-
-        # Collect IDs for cache invalidation
         ids_to_invalidate = [decision_id] + [edge.id for edge in connected_edges]
 
-        # Delete decision and all connected edges
-        entities_dir = self.got_dir / "entities"
-        decision_file = entities_dir / f"{decision_id}.json"
+        # Delete atomically within a transaction
+        with self.transaction() as tx:
+            tx.delete_decision(decision_id, force=force)
 
-        # Delete the decision entity file
-        if decision_file.exists():
-            decision_file.unlink()
-
-        # Delete all connected edge files
-        for edge in connected_edges:
-            edge_file = entities_dir / f"{edge.id}.json"
-            if edge_file.exists():
-                edge_file.unlink()
-
-        # Invalidate cache for deleted entities
+        # Invalidate cache for deleted entities (after successful commit)
         self._cache_invalidate_many(ids_to_invalidate)
 
     def add_edge(
@@ -826,7 +804,10 @@ class GoTManager:
 
     def delete_task(self, task_id: str, force: bool = False) -> None:
         """
-        Delete a task and all its connected edges.
+        Delete a task and all its connected edges atomically.
+
+        Uses transaction to ensure all-or-nothing deletion semantics.
+        If any deletion fails, the entire operation is rolled back.
 
         Args:
             task_id: Task identifier to delete
@@ -835,43 +816,16 @@ class GoTManager:
         Raises:
             TransactionError: If task has dependents (and force=False) or task not found
         """
-        # Check if task exists
-        task = self.get_task(task_id)
-        if task is None:
-            raise TransactionError(f"Task not found: {task_id}")
-
-        # Check for dependents unless force is True
-        if not force:
-            dependents = self.get_dependents(task_id)
-            if dependents:
-                dependent_ids = [dep.id for dep in dependents]
-                raise TransactionError(
-                    f"Cannot delete task {task_id}: has dependents {dependent_ids}. "
-                    "Use force=True to override."
-                )
-
-        # Get all edges connected to this task
+        # Get all edges connected to this task for cache invalidation
         outgoing, incoming = self.get_edges_for_task(task_id)
         all_edges = outgoing + incoming
-
-        # Collect IDs for cache invalidation
         ids_to_invalidate = [task_id] + [edge.id for edge in all_edges]
 
-        # Delete task and all connected edges in a transaction
-        entities_dir = self.got_dir / "entities"
-        task_file = entities_dir / f"{task_id}.json"
+        # Delete atomically within a transaction
+        with self.transaction() as tx:
+            tx.delete_task(task_id, force=force)
 
-        # Delete the task entity file
-        if task_file.exists():
-            task_file.unlink()
-
-        # Delete all connected edge files
-        for edge in all_edges:
-            edge_file = entities_dir / f"{edge.id}.json"
-            if edge_file.exists():
-                edge_file.unlink()
-
-        # Invalidate cache for deleted entities
+        # Invalidate cache for deleted entities (after successful commit)
         self._cache_invalidate_many(ids_to_invalidate)
 
         # Remove task from index
@@ -2170,6 +2124,11 @@ class TransactionContext:
             return
 
         for task_id, changes in self._task_changes.items():
+            if changes.get('is_delete'):
+                # Task was deleted - remove from index
+                self._got_manager._index_manager.remove_task(task_id)
+                continue
+
             task = self.tx.write_set.get(task_id)
             if task is None or not isinstance(task, Task):
                 continue
@@ -2260,18 +2219,169 @@ class TransactionContext:
 
     def get_task(self, task_id: str) -> Optional[Task]:
         """
-        Get task within transaction (sees own writes).
+        Get task within transaction (sees own writes and deletes).
 
         Args:
             task_id: Task identifier
 
         Returns:
-            Task object or None if not found
+            Task object or None if not found or marked for deletion
         """
+        # Check if marked for deletion
+        if self.tx.has_delete(task_id):
+            return None
         entity = self.tx_manager.read(self.tx, task_id)
         if entity is None:
             return None
         if not isinstance(entity, Task):
+            return None
+        return entity
+
+    def delete_task(self, task_id: str, force: bool = False) -> None:
+        """
+        Delete task and all connected edges within transaction.
+
+        Args:
+            task_id: Task identifier to delete
+            force: If False, raise error if task has dependents
+
+        Raises:
+            TransactionError: If task has dependents (and force=False) or task not found
+        """
+        task = self.get_task(task_id)
+        if task is None:
+            raise TransactionError(f"Task not found: {task_id}")
+
+        # Check for dependents unless force is True
+        if not force:
+            dependents = self._get_dependents(task_id)
+            if dependents:
+                dependent_ids = [dep.id for dep in dependents]
+                raise TransactionError(
+                    f"Cannot delete task {task_id}: has dependents {dependent_ids}. "
+                    "Use force=True to override."
+                )
+
+        # Get all edges connected to this task
+        outgoing, incoming = self._get_edges_for_task(task_id)
+        all_edges = outgoing + incoming
+
+        # Mark task for deletion
+        self.tx_manager.delete(self.tx, task_id)
+
+        # Mark all connected edges for deletion
+        for edge in all_edges:
+            self.tx_manager.delete(self.tx, edge.id)
+
+        # Track for index removal after commit
+        if task_id not in self._task_changes:
+            self._task_changes[task_id] = {'is_delete': True}
+
+    def delete_decision(self, decision_id: str, force: bool = False) -> None:
+        """
+        Delete decision and all connected edges within transaction.
+
+        Args:
+            decision_id: Decision identifier to delete
+            force: If False, raise error if decision has connected edges
+
+        Raises:
+            TransactionError: If decision has edges (and force=False) or not found
+        """
+        decision = self.get_decision(decision_id)
+        if decision is None:
+            raise TransactionError(f"Decision not found: {decision_id}")
+
+        # Get all edges connected to this decision
+        connected_edges = self._get_edges_for_entity(decision_id)
+
+        if not force and connected_edges:
+            raise TransactionError(
+                f"Cannot delete decision {decision_id}: has {len(connected_edges)} "
+                "connected edges. Use force=True to override."
+            )
+
+        # Mark decision for deletion
+        self.tx_manager.delete(self.tx, decision_id)
+
+        # Mark all connected edges for deletion
+        for edge in connected_edges:
+            self.tx_manager.delete(self.tx, edge.id)
+
+    def _get_dependents(self, task_id: str) -> list:
+        """Get tasks that depend on this task."""
+        dependents = []
+        # Read all edges to find DEPENDS_ON edges targeting this task
+        for entity_id, entity in self.tx.write_set.items():
+            if isinstance(entity, Edge):
+                if entity.edge_type == "DEPENDS_ON" and entity.target_id == task_id:
+                    source = self.get_task(entity.source_id)
+                    if source:
+                        dependents.append(source)
+        # Also check store for edges not in write_set
+        if self._got_manager:
+            for edge in self._got_manager.list_edges():
+                if edge.id not in self.tx.write_set and not self.tx.has_delete(edge.id):
+                    if edge.edge_type == "DEPENDS_ON" and edge.target_id == task_id:
+                        source = self.get_task(edge.source_id)
+                        if source and source.id not in [d.id for d in dependents]:
+                            dependents.append(source)
+        return dependents
+
+    def _get_edges_for_task(self, task_id: str) -> tuple:
+        """Get outgoing and incoming edges for a task."""
+        outgoing = []
+        incoming = []
+        # Check write_set first
+        for entity_id, entity in self.tx.write_set.items():
+            if isinstance(entity, Edge) and not self.tx.has_delete(entity.id):
+                if entity.source_id == task_id:
+                    outgoing.append(entity)
+                elif entity.target_id == task_id:
+                    incoming.append(entity)
+        # Also check store
+        if self._got_manager:
+            for edge in self._got_manager.list_edges():
+                if edge.id not in self.tx.write_set and not self.tx.has_delete(edge.id):
+                    if edge.source_id == task_id:
+                        outgoing.append(edge)
+                    elif edge.target_id == task_id:
+                        incoming.append(edge)
+        return outgoing, incoming
+
+    def _get_edges_for_entity(self, entity_id: str) -> list:
+        """Get all edges connected to an entity."""
+        edges = []
+        # Check write_set first
+        for eid, entity in self.tx.write_set.items():
+            if isinstance(entity, Edge) and not self.tx.has_delete(entity.id):
+                if entity.source_id == entity_id or entity.target_id == entity_id:
+                    edges.append(entity)
+        # Also check store
+        if self._got_manager:
+            for edge in self._got_manager.list_edges():
+                if edge.id not in self.tx.write_set and not self.tx.has_delete(edge.id):
+                    if edge.source_id == entity_id or edge.target_id == entity_id:
+                        edges.append(edge)
+        return edges
+
+    def get_decision(self, decision_id: str) -> Optional[Decision]:
+        """
+        Get decision within transaction (sees own writes).
+
+        Args:
+            decision_id: Decision identifier
+
+        Returns:
+            Decision object or None if not found
+        """
+        # Check if marked for deletion
+        if self.tx.has_delete(decision_id):
+            return None
+        entity = self.tx_manager.read(self.tx, decision_id)
+        if entity is None:
+            return None
+        if not isinstance(entity, Decision):
             return None
         return entity
 

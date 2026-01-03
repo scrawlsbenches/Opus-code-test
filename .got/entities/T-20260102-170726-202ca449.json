@@ -1,0 +1,24 @@
+{
+  "_checksum": "9930ad677a7cd283",
+  "_written_at": "2026-01-03T08:09:08.066487+00:00",
+  "data": {
+    "created_at": "2026-01-02T17:07:26.007274+00:00",
+    "description": "api.py:2161-2195. Index save fails after commit leaves permanent inconsistency. Fix: Atomic index+store writes or pre-update indexes.",
+    "entity_type": "task",
+    "id": "T-20260102-170726-202ca449",
+    "metadata": {
+      "completed_at": "2026-01-03T08:09:08.049526+00:00",
+      "started_at": "2026-01-03T08:00:51.932663+00:00",
+      "updated_at": "2026-01-03T08:09:08.049534+00:00"
+    },
+    "modified_at": "2026-01-03T08:09:08.066426+00:00",
+    "priority": "critical",
+    "properties": {
+      "category": "bugfix",
+      "retrospective": "## What worked\n- Clear analysis of the bug: _dirty flag cleared even on save failure\n- Minimal, focused fix: return bool from save methods, only clear dirty on success\n- Good test coverage with 9 new tests for save failure scenarios\n\n## What didn't work\n- Initial test for permission error failed in containerized environment (root user)\n- Had to switch to mock-based testing for IOError simulation\n\n## Root cause\n_atomic_write_json() silently swallowed IOError and _save_indexes() unconditionally\nset _dirty = False. This prevented retry of failed saves and left index stale.\n\n## Would have helped\n- The existing self-healing mechanism (_rebuild_indexes on lazy init) already provides\n  eventual consistency on restart, but the fix enables in-session retry without restart."
+    },
+    "status": "completed",
+    "title": "CRITICAL: Fix index-store inconsistency on index save failure",
+    "version": 4
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "_checksum": "0055cc5d06cbcefe",
+  "_written_at": "2026-01-02T17:49:42.876766+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-02T17:49:42.873782+00:00",
+    "entity_type": "decision",
+    "id": "D-20260102-174942-90ccaf64",
+    "modified_at": "2026-01-02T17:49:42.876726+00:00",
+    "properties": {},
+    "rationale": "Verified: (1) Transaction-unsafe delete CONFIRMED in api.py:678-728,827-880. (2) CDG history-before-write CONFIRMED in storage.py:260-273,312-316. (3) CDG history missing fsync CONFIRMED in storage.py:576-579. STALE: Deadlock in versioned_store - file now wraps CDGStore with consistent lock ordering. REDUCED: Cache race condition affects non-transactional reads only, not TransactionContext.read().",
+    "title": "Verification of critical bugs complete - found stale information",
+    "version": 2
+  }
+}

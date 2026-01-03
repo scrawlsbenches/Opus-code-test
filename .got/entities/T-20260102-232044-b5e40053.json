@@ -1,0 +1,23 @@
+{
+  "_checksum": "4dba8629ba80bde8",
+  "_written_at": "2026-01-02T23:58:23.430893+00:00",
+  "data": {
+    "created_at": "2026-01-02T23:20:44.826183+00:00",
+    "description": "delete() and apply_deletes() use old _save_to_history pattern. Must use pending file pattern like write() for consistency.",
+    "entity_type": "task",
+    "id": "T-20260102-232044-b5e40053",
+    "metadata": {
+      "completed_at": "2026-01-02T23:58:23.414023+00:00",
+      "updated_at": "2026-01-02T23:58:23.414029+00:00"
+    },
+    "modified_at": "2026-01-02T23:58:23.430840+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "bugfix",
+      "retrospective": "Fixed delete operations - now uses crash-safe pending history pattern same as write(). Updated recovery to handle expected_entity_version=0 for deletes."
+    },
+    "status": "completed",
+    "title": "Update delete operations to use crash-safe pattern",
+    "version": 3
+  }
+}

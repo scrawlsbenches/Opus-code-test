@@ -1,0 +1,19 @@
+{
+  "_checksum": "37cf3580d57b4fa7",
+  "_written_at": "2026-01-02T17:08:42.933341+00:00",
+  "data": {
+    "created_at": "2026-01-02T17:08:42.929545+00:00",
+    "description": "recovery.py:410-433. rollback_incomplete_transactions only logs rollback, doesn't delete written entities. Fix: Delete entities from incomplete transactions.",
+    "entity_type": "task",
+    "id": "T-20260102-170842-f10383f5",
+    "metadata": {},
+    "modified_at": "2026-01-02T17:08:42.933257+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "bugfix"
+    },
+    "status": "pending",
+    "title": "HIGH: CDG incomplete transaction recovery doesn't undo writes",
+    "version": 2
+  }
+}

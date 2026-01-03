@@ -1,0 +1,24 @@
+{
+  "_checksum": "e51358c066cfb494",
+  "_written_at": "2026-01-03T00:26:18.745866+00:00",
+  "data": {
+    "created_at": "2026-01-03T00:15:07.488052+00:00",
+    "description": "Store full entity state in WAL WRITE entries to enable entity reconstruction from WAL alone. Currently, if crash happens after TX_COMMIT but before entity write completes, recovery knows the transaction committed but cannot reconstruct the entity data. This feature enables complete crash recovery by replaying committed writes from WAL.",
+    "entity_type": "task",
+    "id": "T-20260103-001507-4d3ad2bb",
+    "metadata": {
+      "completed_at": "2026-01-03T00:26:18.726918+00:00",
+      "started_at": "2026-01-03T00:19:44.646114+00:00",
+      "updated_at": "2026-01-03T00:26:18.726927+00:00"
+    },
+    "modified_at": "2026-01-03T00:26:18.745782+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature",
+      "retrospective": "Implemented WAL entity rollback feature. Full entity state is now stored in WAL WRITE entries, enabling recovery to reconstruct missing/corrupted entities after crash. Added 5 new behavioral tests covering: missing entity reconstruction, corrupted entity reconstruction, multi-entity recovery, uncommitted tx rejection, and end-to-end transaction manager integration. All 75 CDG behavioral tests pass."
+    },
+    "status": "completed",
+    "title": "Implement WAL entity rollback for crash recovery",
+    "version": 4
+  }
+}
