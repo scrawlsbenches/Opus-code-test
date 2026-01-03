@@ -1,0 +1,19 @@
+{
+  "_checksum": "d9af785ddae57b0f",
+  "_written_at": "2026-01-03T16:35:30.222433+00:00",
+  "data": {
+    "created_at": "2026-01-03T16:35:30.208012+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260103-163530-a6782ead",
+    "metadata": {},
+    "modified_at": "2026-01-03T16:35:30.222381+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Complete stubbed methods in agents.py",
+    "version": 2
+  }
+}
