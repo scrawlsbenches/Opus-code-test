@@ -1,1 +1,3 @@
 {"ts":"2026-01-03T10:17:35Z","tool":"Bash","input":{"command":"git status --short","description":"Check untracked files"},"output":{}}
+{"ts":"2026-01-03T10:17:45Z","tool":"Bash","input":{"command":"git add .git-ml/ && git commit -m \"ml: Capture session data\" && git push","description":"Commit and push ML data"},"output":{}}
+{"ts":"2026-01-03T10:17:52Z","tool":"Bash","input":{"command":"git status --short","description":"Check remaining files"},"output":{}}
