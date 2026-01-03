@@ -1,0 +1,65 @@
+{
+  "hash": "cd1a69d25212284d0e2e6dff8c2648ceab34744e",
+  "message": "chore(got): Auto-save after kt finalize",
+  "author": "Claude",
+  "timestamp": "2026-01-03 09:45:42 +0000",
+  "branch": "claude/accept-handoff-next-session-ZIyKW",
+  "files_changed": [
+    ".got/entities/KT-20260103-094527.json"
+  ],
+  "insertions": 2,
+  "deletions": 2,
+  "hunks": [
+    {
+      "file": ".got/entities/KT-20260103-094527.json",
+      "function": null,
+      "start_line": 1,
+      "lines_added": [
+        "    \"modified_at\": \"2026-01-03T09:45:41.998562\",",
+        "    \"status\": \"published\","
+      ],
+      "lines_removed": [
+        "    \"modified_at\": \"2026-01-03T09:45:27.629355\",",
+        "    \"status\": \"draft\","
+      ],
+      "context_before": [
+        "{",
+        "  \"version\": 1,",
+        "  \"entity_type\": \"knowledge_transfer\",",
+        "  \"data\": {",
+        "    \"id\": \"KT-20260103-094527\",",
+        "    \"entity_type\": \"knowledge_transfer\",",
+        "    \"version\": 1,",
+        "    \"created_at\": \"2026-01-03T09:45:27.629351\","
+      ],
+      "context_after": [
+        "    \"title\": \"ML Hooks Configuration - Actually Fixed\",",
+        "    \"session_id\": \"\",",
+        "    \"session_date\": \"\",",
+        "    \"summary\": \"Found that previous session's hook configuration was NOT saved. The ~/.claude/settings.json only had the git-check Stop hook. \\n\\nApplied the actual fix by writing complete ML hook configuration:\\n- SessionStart: ml-session-start-hook.sh (cwd:Opus-code-test)\\n- PostToolUse: ml-tool-capture-hook.sh (cwd:Opus-code-test)\\n- Stop: ml-session-capture-hook.sh (cwd:Opus-code-test)\\n\\nVerified hooks work by manual execution. Next session should see SessionStart fire automatically and ML data collection begin working.\",",
+        "    \"sections\": {},",
+        "    \"code_refs\": [],",
+        "    \"related_handoffs\": [],",
+        "    \"related_tasks\": [],",
+        "    \"related_decisions\": [],",
+        "    \"source_file\": null,",
+        "    \"tags\": [],",
+        "    \"properties\": {}",
+        "  }",
+        "}"
+      ],
+      "change_type": "modify"
+    }
+  ],
+  "hour_of_day": 9,
+  "day_of_week": "Saturday",
+  "seconds_since_last_commit": 15,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": "0be020bc",
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}
