@@ -1,0 +1,23 @@
+{
+  "_checksum": "cdb880c14978bdb6",
+  "_written_at": "2026-01-03T00:15:20.530093+00:00",
+  "data": {
+    "created_at": "2026-01-03T00:15:20.518174+00:00",
+    "entity_type": "sprint",
+    "epic_id": "",
+    "goals": [],
+    "id": "S-20260103-001520-48a813bb",
+    "isolation": [],
+    "metadata": {},
+    "modified_at": "2026-01-03T00:15:20.530013+00:00",
+    "notes": [
+      "Implement full entity state storage in WAL for crash recovery reconstruction"
+    ],
+    "number": null,
+    "properties": {},
+    "session_id": "",
+    "status": "available",
+    "title": "WAL Entity Rollback",
+    "version": 2
+  }
+}
