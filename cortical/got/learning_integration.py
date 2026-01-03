@@ -587,12 +587,65 @@ class GoTLearningBridge:
                     if warning not in guidance['warnings']:
                         guidance['warnings'].append(warning)
 
+            # ================================================================
+            # FILE RISK ASSESSMENT
+            # ================================================================
+            # If files_to_modify was provided, assess risk for each file.
+            # This warns agents about files with high failure rates.
+            #
+            # From Agent Survey (Worker Agent):
+            # > "If src/auth.py has broken 3 times in the last week,
+            # > I want to know that before I start."
+
+            guidance['file_risks'] = {}
+            if files_to_modify:
+                for file_path in files_to_modify:
+                    history = self.cycle.get_file_history(file_path)
+
+                    is_risky = (
+                        history["total_experiences"] >= 2 and
+                        history["success_rate"] < 0.6
+                    )
+
+                    guidance['file_risks'][file_path] = {
+                        "is_risky": is_risky,
+                        "success_rate": history["success_rate"],
+                        "failure_count": history["failure_count"],
+                        "total_experiences": history["total_experiences"],
+                        "error_patterns": history.get("error_patterns", {}),
+                    }
+
+                    # Add warning for risky files
+                    if is_risky:
+                        warning = (
+                            f"⚠️ Risky file: {file_path} has "
+                            f"{history['failure_count']} recent failures "
+                            f"({history['success_rate']:.0%} success rate)"
+                        )
+                        if warning not in guidance['warnings']:
+                            guidance['warnings'].append(warning)
+
+                        # Add specific error pattern warnings
+                        for error_type, count in history.get("error_patterns", {}).items():
+                            if count >= 2:
+                                pattern_warning = (
+                                    f"Common error in {file_path}: {error_type} "
+                                    f"({count} occurrences)"
+                                )
+                                if pattern_warning not in guidance['warnings']:
+                                    guidance['warnings'].append(pattern_warning)
+
+            risky_file_count = sum(
+                1 for f in guidance['file_risks'].values() if f.get('is_risky')
+            )
+
             logger.info(
                 f"Retrieved guidance for '{task_title}': "
                 f"{len(guidance['lessons'])} lessons, "
                 f"{len(guidance['relevant_successes'])} successes, "
                 f"{len(guidance['relevant_failures'])} failures, "
-                f"{len(semantic_matches)} semantic matches"
+                f"{len(semantic_matches)} semantic matches, "
+                f"{risky_file_count} risky files"
             )
 
             return guidance
