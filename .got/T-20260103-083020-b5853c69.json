@@ -1,0 +1,20 @@
+{
+  "_checksum": "7d7d26c9f2198202",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-03T08:30:32.018936+00:00",
+  "data": {
+    "created_at": "2026-01-03T08:30:20.043891+00:00",
+    "description": "Deep investigation of .git-ml/metrics/metrics.jsonl collection:\n- Fixed test isolation bug in temp_experiments_dir fixture\n- Cleaned 25 polluted test entries from metrics.jsonl\n- Identified 99.6% data gap in ML training data (19/5000 chats)\n- Found GoT and ML systems not integrated\n- CLAUDE.md lacks ML documentation\nNext: Debug SessionStart hooks, integrate GoT with ML, update CLAUDE.md",
+    "entity_type": "task",
+    "id": "T-20260103-083020-b5853c69",
+    "metadata": {},
+    "modified_at": "2026-01-03T08:30:20.043900+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "research"
+    },
+    "status": "pending",
+    "title": "Investigate and fix ML metrics collection",
+    "version": 1
+  }
+}
