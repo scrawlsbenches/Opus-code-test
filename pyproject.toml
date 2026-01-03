@@ -108,6 +108,8 @@ markers = [
     "optional: Tests requiring optional dependencies (hypothesis)",
     "fuzz: Property-based fuzzing tests (requires hypothesis)",
     "slow: Tests that take >5 seconds to run",
+    "behavioral: Behavioral tests for user stories and workflows",
+    "cognitive: Tests for cognitive framework integration (learning, QAPV, state management)",
 ]
 
 # Default: skip optional and slow tests during development

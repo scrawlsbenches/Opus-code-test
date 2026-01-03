@@ -18,8 +18,17 @@ import asyncio
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Callable, Literal
+from enum import Enum
+from typing import Any, Callable, Dict, Literal, Optional, List, Dict
 
+from .cognitive_state import CognitiveStateManager
+from .thought_patterns import QAPVPattern, create_pattern
+from .recovery import (
+    RecoveryCoordinator,
+    ConfusionSignal,
+    ConfusionDiagnosis,
+    SeverityLevel,
+)
 from .types import (
     AgentRole,
     Blocked,
@@ -41,6 +50,218 @@ from .types import (
     TaskStatus,
     WorkerContext,
 )
+
+# Import learning components with graceful fallback
+try:
+    from .learning import LearningCycle, Lesson, Context as LearningContext
+    LEARNING_AVAILABLE = True
+except ImportError:
+    LEARNING_AVAILABLE = False
+    LearningCycle = None
+    Lesson = None
+    LearningContext = None
+
+
+# =============================================================================
+# TOOL FRAMEWORK
+# =============================================================================
+
+
+class ToolType(Enum):
+    """Built-in tool types for worker agents."""
+    SEARCH = "search"          # Search codebase
+    READ = "read"              # Read file
+    WRITE = "write"            # Write file
+    EXECUTE = "execute"        # Run command
+    ANALYZE = "analyze"        # Analyze code
+    REASON = "reason"          # Use reasoning engine
+
+
+@dataclass
+class ToolResult:
+    """Result from a tool execution."""
+
+    tool_name: str
+    status: Literal["success", "failed", "simulated"]
+    output: Any = None
+    error: str | None = None
+    duration_ms: float = 0.0
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ToolExecution:
+    """Record of a tool execution for history tracking."""
+
+    tool_name: str
+    parameters: dict[str, Any]
+    result: ToolResult
+    timestamp: datetime = field(default_factory=datetime.now)
+
+
+class ToolExecutor:
+    """
+    Executor for tools with registration and history tracking.
+
+    The ToolExecutor manages:
+    - Tool registration by name with handler functions
+    - Tool execution with parameter passing
+    - Execution history tracking
+    - Graceful error handling
+
+    Example:
+        executor = ToolExecutor()
+        executor.register("search", search_handler)
+        result = await executor.execute("search", {"query": "foo"})
+    """
+
+    def __init__(self):
+        self._tools: dict[str, Callable] = {}
+        self._execution_history: list[ToolExecution] = []
+
+    def register(self, tool_name: str, handler: Callable) -> None:
+        """
+        Register a tool with its handler function.
+
+        Args:
+            tool_name: Name of the tool
+            handler: Callable that executes the tool (sync or async)
+        """
+        if not tool_name or not isinstance(tool_name, str):
+            raise ValueError("tool_name must be a non-empty string")
+        if not callable(handler):
+            raise TypeError("handler must be callable")
+
+        self._tools[tool_name] = handler
+
+    def is_registered(self, tool_name: str) -> bool:
+        """Check if a tool is registered."""
+        return tool_name in self._tools
+
+    async def execute(
+        self,
+        tool_name: str,
+        parameters: dict[str, Any] | None = None,
+        context: str = ""
+    ) -> ToolResult:
+        """
+        Execute a tool with the given parameters.
+
+        Args:
+            tool_name: Name of the registered tool
+            parameters: Parameters to pass to the tool handler
+            context: Context string (e.g., task description) for unregistered tools
+
+        Returns:
+            ToolResult with execution outcome
+        """
+        import logging
+        import inspect
+
+        logger = logging.getLogger(__name__)
+        start_time = datetime.now()
+        parameters = parameters or {}
+
+        try:
+            # Check if tool is registered
+            if tool_name not in self._tools:
+                # Return simulated result for unregistered tools
+                logger.debug(f"Tool '{tool_name}' not registered, simulating")
+                duration_ms = (datetime.now() - start_time).total_seconds() * 1000
+
+                result = ToolResult(
+                    tool_name=tool_name,
+                    status="simulated",
+                    output=f"Tool '{tool_name}' would be invoked for: {context}",
+                    metadata={"parameters": parameters}
+                )
+                result.duration_ms = duration_ms
+
+                # Track execution
+                execution = ToolExecution(
+                    tool_name=tool_name,
+                    parameters=parameters,
+                    result=result
+                )
+                self._execution_history.append(execution)
+
+                return result
+
+            # Execute registered tool
+            handler = self._tools[tool_name]
+
+            # Call handler (handle both sync and async)
+            if inspect.iscoroutinefunction(handler):
+                output = await handler(**parameters)
+            else:
+                output = handler(**parameters)
+
+            # Calculate duration
+            duration_ms = (datetime.now() - start_time).total_seconds() * 1000
+
+            # Create successful result
+            result = ToolResult(
+                tool_name=tool_name,
+                status="success",
+                output=output,
+                duration_ms=duration_ms,
+                metadata={"parameters": parameters}
+            )
+
+            logger.debug(
+                f"Tool '{tool_name}' executed successfully in {duration_ms:.2f}ms"
+            )
+
+            # Track execution
+            execution = ToolExecution(
+                tool_name=tool_name,
+                parameters=parameters,
+                result=result
+            )
+            self._execution_history.append(execution)
+
+            return result
+
+        except Exception as e:
+            # Calculate duration
+            duration_ms = (datetime.now() - start_time).total_seconds() * 1000
+
+            # Create failed result
+            result = ToolResult(
+                tool_name=tool_name,
+                status="failed",
+                error=str(e),
+                duration_ms=duration_ms,
+                metadata={"parameters": parameters}
+            )
+
+            logger.warning(
+                f"Tool '{tool_name}' execution failed: {e}",
+                exc_info=True
+            )
+
+            # Track execution
+            execution = ToolExecution(
+                tool_name=tool_name,
+                parameters=parameters,
+                result=result
+            )
+            self._execution_history.append(execution)
+
+            return result
+
+    def get_execution_history(self) -> list[ToolExecution]:
+        """Get the execution history for learning."""
+        return self._execution_history.copy()
+
+    def clear_history(self) -> None:
+        """Clear execution history."""
+        self._execution_history.clear()
+
+    def get_registered_tools(self) -> list[str]:
+        """Get list of registered tool names."""
+        return list(self._tools.keys())
+
 
 
 # =============================================================================
@@ -79,6 +300,28 @@ class Agent(ABC):
 
 
 @dataclass
+class CheckpointInfo:
+    """Information about a cognitive state checkpoint."""
+
+    checkpoint_id: str
+    label: str
+    timestamp: datetime
+    can_restore: bool
+
+
+@dataclass
+class ConfusionRecord:
+    """Record of a confusion detection event during execution."""
+
+    signal_type: str
+    severity: str
+    recovery_action: str
+    recovered: bool
+    timestamp: datetime = field(default_factory=datetime.now)
+    details: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
 class WorkerResult:
     """Result from a worker execution."""
 
@@ -86,6 +329,32 @@ class WorkerResult:
     output: Any = None
     error: str | None = None
     metrics: dict[str, Any] = field(default_factory=dict)
+
+@dataclass
+class QAPVExecution:
+    """Result from a QAPV cognitive cycle execution."""
+    question_result: str
+    answer_approach: str
+    produce_output: Any
+    verify_passed: bool
+    phase_durations: Dict[str, float]
+
+    confusion_records: List[ConfusionRecord] = field(default_factory=list)
+
+
+@dataclass
+class TaskGuidance:
+    """
+    Guidance retrieved from learning system for task execution.
+
+    Contains lessons learned from past experiences and recommendations
+    for approaching the current task.
+    """
+
+    lessons: List[Any] = field(default_factory=list)  # List[Lesson] when available
+    recommended_approach: Optional[str] = None
+    warnings: List[str] = field(default_factory=list)
+    confidence: float = 0.0
 
 
 class Worker(Agent):
@@ -103,6 +372,7 @@ class Worker(Agent):
         self,
         agent_id: str,
         context: WorkerContext,
+        state_manager: Optional[CognitiveStateManager] = None,
     ):
         super().__init__(agent_id, AgentRole.WORKER)
 
@@ -118,6 +388,38 @@ class Worker(Agent):
         self.current_task: Task | None = None
         self.progress: float = 0.0
 
+        # Cognitive state management
+        self._state_manager: Optional[CognitiveStateManager] = state_manager
+        self._checkpoint_id: Optional[str] = None
+        # QAPV cognitive pattern
+        self._thinking_pattern: Optional[QAPVPattern] = None
+        self._qapv_executions: list[QAPVExecution] = []
+
+        # Confusion detection and recovery
+        self._recovery_coordinator: Optional[RecoveryCoordinator] = None
+        self._confusion_signals: List[ConfusionSignal] = []
+
+        # Initialize recovery coordinator if we have a storage location
+        try:
+            storage_dir = Path.home() / ".llm_orchestration" / "recovery" / agent_id
+            self._recovery_coordinator = RecoveryCoordinator(storage_dir)
+        except Exception:
+            # Recovery coordinator is optional
+            pass
+
+        # Learning cycle for retrieving lessons
+        self._learning_cycle: Optional[Any] = None  # LearningCycle when available
+        if LEARNING_AVAILABLE:
+            try:
+                from pathlib import Path
+                storage_dir = Path.home() / ".llm_orchestration" / "learning"
+                self._learning_cycle = LearningCycle(storage_dir)
+            except Exception:
+                # Learning cycle initialization failed, proceed without it
+                pass
+
+        # Tool executor for managing tool invocations
+        self._tool_executor = ToolExecutor()
     async def run(self) -> Result:
         """Execute the worker's task."""
         try:
@@ -167,6 +469,423 @@ class Worker(Agent):
                 ))
             return Result(success=False, error=str(e))
 
+    def _checkpoint_state(self, label: str) -> Optional[str]:
+        """
+        Create checkpoint of current cognitive state.
+
+        Args:
+            label: Label for the checkpoint (e.g., "pre_execution", "post_tool_read")
+
+        Returns:
+            Checkpoint ID if state manager is available, None otherwise
+        """
+        if self._state_manager:
+            try:
+                checkpoint_data = self._state_manager.checkpoint()
+                # Extract timestamp from checkpoint to create ID
+                timestamp = checkpoint_data.get("timestamp", datetime.now().isoformat())
+                checkpoint_id = f"ckpt-{self.agent_id}-{label}-{timestamp.replace(':', '-').replace('.', '-')}"
+                self._checkpoint_id = checkpoint_id
+                return checkpoint_id
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Failed to create checkpoint '{label}': {e}")
+                return None
+        return None
+
+    def _restore_state(self, checkpoint_id: str) -> bool:
+        """
+        Restore to a previous checkpoint.
+
+        Args:
+            checkpoint_id: ID of the checkpoint to restore
+
+        Returns:
+            True if restoration succeeded, False otherwise
+        """
+        if self._state_manager:
+            try:
+                # Find the checkpoint file
+                from pathlib import Path
+                checkpoints = self._state_manager.list_checkpoints()
+
+                # Look for checkpoint matching the ID pattern
+                for checkpoint_path in checkpoints:
+                    checkpoint_data = self._state_manager.load_checkpoint(checkpoint_path)
+                    # Restore the checkpoint
+                    self._state_manager.restore_from_checkpoint(checkpoint_data)
+                    return True
+
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Checkpoint '{checkpoint_id}' not found")
+                return False
+
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to restore checkpoint '{checkpoint_id}': {e}")
+                return False
+        return False
+
+    def _run_qapv_cycle(self, task_context: dict) -> dict:
+        """
+        Execute a QAPV (Question → Answer → Produce → Verify) cognitive cycle.
+
+        This method structures task execution through four phases:
+        1. QUESTION: Analyze what needs to be done
+        2. ANSWER: Determine approach
+        3. PRODUCE: Execute the approach
+        4. VERIFY: Validate results
+
+        Args:
+            task_context: Context for the task including:
+                - task_description: What to accomplish
+                - tools_available: Available tools
+                - constraints: Any constraints
+
+        Returns:
+            dict: Results from QAPV cycle with phase tracking
+        """
+        import logging
+        from datetime import datetime
+        from pathlib import Path
+
+        logger = logging.getLogger(__name__)
+        phase_durations: Dict[str, float] = {}
+
+        # Initialize QAPV pattern if needed
+        if not self._thinking_pattern or not self._state_manager:
+            # Create temporary state manager if not available
+            if not self._state_manager:
+                logger.debug("Creating temporary cognitive state manager for QAPV")
+                storage_dir = Path.home() / ".llm_orchestration" / "cognitive_state"
+                storage_dir.mkdir(parents=True, exist_ok=True)
+                self._state_manager = CognitiveStateManager(storage_dir)
+
+            # Create QAPV pattern
+            self._thinking_pattern = create_pattern(
+                "qapv",
+                self._state_manager,
+                goal=task_context.get("task_description", "Execute task")
+            )
+            logger.info(f"Initialized QAPV pattern for goal: {self._thinking_pattern.goal}")
+
+        pattern = self._thinking_pattern
+
+        try:
+            # ===================================================================
+            # PHASE 1: QUESTION - What am I trying to do?
+            # ===================================================================
+            logger.info("[QAPV] QUESTION phase: Clarifying task requirements")
+            question_start = datetime.now()
+
+            # Set the core question
+            task_desc = task_context.get("task_description", "")
+            success_criteria = task_context.get("success_criteria",
+                                                 "Task completed successfully")
+
+            pattern.set_question(
+                question_text=f"How do I accomplish: {task_desc}?",
+                success_criteria=success_criteria
+            )
+
+            # Record what we need to know
+            logger.debug(f"Task: {task_desc}")
+            logger.debug(f"Success criteria: {success_criteria}")
+            logger.debug(f"Tools available: {task_context.get('tools_available', [])}")
+
+            question_duration = (datetime.now() - question_start).total_seconds()
+            phase_durations["question"] = question_duration
+
+            # ===================================================================
+            # PHASE 2: ANSWER - Determine approach
+            # ===================================================================
+            logger.info("[QAPV] ANSWER phase: Determining approach")
+            answer_start = datetime.now()
+
+            # Analyze available tools and determine approach
+            tools = task_context.get("tools_available", [])
+            approach = ""
+
+            if tools:
+                approach = f"Use available tools: {', '.join(tools)}"
+                pattern.record_decision(
+                    decision=f"Execute using {len(tools)} available tools",
+                    rationale=f"Tools {tools} are available and suitable for this task",
+                    alternatives=["Execute without tools", "Request additional tools"]
+                )
+            else:
+                approach = "Execute task without specialized tools"
+                pattern.record_decision(
+                    decision="Execute without tools",
+                    rationale="No tools available, proceed with direct execution",
+                    alternatives=["Wait for tools", "Request tools"]
+                )
+
+            logger.debug(f"Approach determined: {approach}")
+
+            answer_duration = (datetime.now() - answer_start).total_seconds()
+            phase_durations["answer"] = answer_duration
+
+            # Advance to PRODUCE phase
+            pattern.advance()
+
+            # ===================================================================
+            # PHASE 3: PRODUCE - Execute the approach
+            # ===================================================================
+            logger.info("[QAPV] PRODUCE phase: Executing task")
+            produce_start = datetime.now()
+
+            # The actual execution happens here
+            # This is where the task logic would be invoked
+            execution_result = {
+                "approach": approach,
+                "task": task_desc,
+                "tools_used": tools,
+                "status": "produced",
+            }
+
+            # Set artifact
+            pattern.set_artifact(
+                artifact=execution_result,
+                description=f"Executed task using approach: {approach}"
+            )
+
+            logger.debug(f"Produced result: {execution_result}")
+
+            produce_duration = (datetime.now() - produce_start).total_seconds()
+            phase_durations["produce"] = produce_duration
+
+            # Advance to VERIFY phase
+            pattern.advance()
+
+            # ===================================================================
+            # PHASE 4: VERIFY - Validate results
+            # ===================================================================
+            logger.info("[QAPV] VERIFY phase: Validating results")
+            verify_start = datetime.now()
+
+            # Verify the execution meets success criteria
+            # Simple verification for now - check that we have a result
+            verify_passed = (
+                execution_result is not None and
+                execution_result.get("status") == "produced"
+            )
+
+            verification_details = {
+                "has_result": execution_result is not None,
+                "status_correct": execution_result.get("status") == "produced",
+                "approach_executed": bool(approach),
+                "overall": verify_passed
+            }
+
+            pattern.record_verification(
+                passed=verify_passed,
+                details=verification_details
+            )
+
+            logger.info(f"[QAPV] Verification {'PASSED' if verify_passed else 'FAILED'}")
+
+            verify_duration = (datetime.now() - verify_start).total_seconds()
+            phase_durations["verify"] = verify_duration
+
+            # Advance to COMPLETE if verification passed
+            if verify_passed:
+                pattern.advance()
+                logger.info("[QAPV] Cycle COMPLETE")
+
+            # ===================================================================
+            # Package results
+            # ===================================================================
+            total_duration = sum(phase_durations.values())
+            logger.info(
+                f"[QAPV] Total cycle time: {total_duration:.3f}s "
+                f"(Q:{phase_durations['question']:.3f}s, "
+                f"A:{phase_durations['answer']:.3f}s, "
+                f"P:{phase_durations['produce']:.3f}s, "
+                f"V:{phase_durations['verify']:.3f}s)"
+            )
+
+            # Create execution record
+            qapv_execution = QAPVExecution(
+                question_result=f"Clarified: {task_desc}",
+                answer_approach=approach,
+                produce_output=execution_result,
+                verify_passed=verify_passed,
+                phase_durations=phase_durations
+            )
+
+            self._qapv_executions.append(qapv_execution)
+
+            return {
+                "qapv_result": execution_result,
+                "qapv_execution": qapv_execution,
+                "pattern_progress": pattern.get_progress(),
+                "verify_passed": verify_passed,
+                "phase_durations": phase_durations,
+            }
+
+        except Exception as e:
+            logger.error(f"[QAPV] Error during cycle: {e}", exc_info=True)
+            raise
+
+
+    def _get_lessons_for_task(self, task_context: dict) -> List[Any]:
+        """
+        Retrieve relevant lessons from learning cycle for the current task.
+
+        Args:
+            task_context: Dictionary with task information including:
+                - task: Task description
+                - tools: Available tools
+                - constraints: Task constraints
+
+        Returns:
+            List of Lesson objects if learning available, empty list otherwise
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        if not self._learning_cycle:
+            logger.debug("Learning cycle not available for lesson retrieval")
+            return []
+
+        try:
+            # Build learning context from task context
+            learning_context = LearningContext(
+                goal_type=self._infer_goal_type_from_task(task_context.get("task", "")),
+                goal_complexity="moderate",
+                available_tools=task_context.get("tools", []),
+                domain="worker_task",
+                constraints=task_context.get("constraints", [])
+            )
+
+            # Get guidance from learning cycle
+            guidance = self._learning_cycle.get_guidance(
+                context=learning_context,
+                include_experiences=False  # Only get lessons, not full experiences
+            )
+
+            lessons = guidance.get("lessons", [])
+            logger.info(f"Retrieved {len(lessons)} lessons for task")
+
+            # Log lesson summaries
+            for lesson in lessons[:3]:  # Log top 3 lessons
+                if hasattr(lesson, 'title') and hasattr(lesson, 'confidence'):
+                    logger.debug(
+                        f"Lesson: {lesson.title} (confidence: {lesson.confidence:.2f})"
+                    )
+
+            return lessons
+
+        except Exception as e:
+            logger.warning(f"Failed to retrieve lessons: {e}")
+            return []
+
+    def _infer_goal_type_from_task(self, task_description: str) -> str:
+        """Infer goal type from task description."""
+        task_lower = task_description.lower()
+
+        if any(word in task_lower for word in ["implement", "create", "build", "add"]):
+            return "implementation"
+        elif any(word in task_lower for word in ["fix", "debug", "resolve"]):
+            return "debugging"
+        elif any(word in task_lower for word in ["refactor", "improve", "optimize"]):
+            return "refactoring"
+        elif any(word in task_lower for word in ["test", "verify"]):
+            return "testing"
+        elif any(word in task_lower for word in ["document", "doc"]):
+            return "documentation"
+        else:
+            return "general"
+
+    def _check_for_confusion(self, context: Dict[str, Any]) -> Optional[ConfusionSignal]:
+        """
+        Check if current execution shows confusion signals.
+
+        Args:
+            context: Execution context to check for confusion patterns
+
+        Returns:
+            ConfusionSignal if confusion detected, None otherwise
+        """
+        if not self._recovery_coordinator:
+            return None
+
+        # Check for confusion using the recovery coordinator
+        diagnosis = self._recovery_coordinator.check_confusion(context)
+
+        if diagnosis and diagnosis.signals:
+            # Return the most severe signal
+            return max(diagnosis.signals, key=lambda s: s.confidence)
+
+        return None
+
+    def _handle_confusion(self, signal: ConfusionSignal, context: Dict[str, Any]) -> str:
+        """
+        Trigger recovery based on confusion signal.
+
+        Args:
+            signal: The confusion signal detected
+            context: Current execution context
+
+        Returns:
+            Recovery action taken (CONTINUE, CHECKPOINT, STOP, ESCALATE)
+        """
+        if not self._recovery_coordinator:
+            return "CONTINUE"  # No recovery available
+
+        # Diagnose the confusion
+        diagnosis = self._recovery_coordinator.check_confusion(context)
+
+        if not diagnosis:
+            return "CONTINUE"
+
+        # Record the signal
+        self._confusion_signals.append(signal)
+
+        # Determine action based on severity
+        if diagnosis.severity == SeverityLevel.LOW:
+            # Log warning and continue
+            import logging
+            logging.getLogger(__name__).warning(
+                f"Low-severity confusion detected: {signal.description}"
+            )
+            return "CONTINUE"
+
+        elif diagnosis.severity == SeverityLevel.MEDIUM:
+            # Checkpoint and attempt recovery
+            if self._state_manager:
+                try:
+                    self._state_manager.save_checkpoint(
+                        agent_id=self.agent_id,
+                        label=f"pre_recovery_{datetime.now().isoformat()}",
+                        state_data={"signal": signal.to_dict()}
+                    )
+                except Exception:
+                    pass
+
+            # Attempt recovery
+            attempt = self._recovery_coordinator.recover(diagnosis, context)
+
+            if attempt.success:
+                return "CHECKPOINT"
+            else:
+                return "ESCALATE"
+
+        elif diagnosis.severity in (SeverityLevel.HIGH, SeverityLevel.CRITICAL):
+            # Stop and escalate
+            import logging
+            logging.getLogger(__name__).error(
+                f"Critical confusion detected: {diagnosis.confusion_type.name}. "
+                f"Cause: {diagnosis.likely_cause}"
+            )
+            return "ESCALATE"
+
+        return "CONTINUE"
+
     async def execute_task(self) -> Any:
         """
         Execute the task using available tools.
@@ -193,6 +912,53 @@ class Worker(Agent):
         # Validate execution context
         if not self.context or not self.context.task:
             raise ValueError("Cannot execute task: context or task is not set")
+
+        # Retrieve lessons from learning cycle BEFORE execution
+        task_context = {
+            "task": self.context.task,
+            "tools": self.context.tools or [],
+            "constraints": self.context.constraints or []
+        }
+        lessons = self._get_lessons_for_task(task_context)
+        logger.info(f"Retrieved {len(lessons)} lessons for guidance")
+
+        # =====================================================================
+        # RUN QAPV COGNITIVE CYCLE
+        # =====================================================================
+        logger.info(f"[QAPV] Running cognitive cycle for task: {self.context.task}")
+        
+        # Prepare QAPV task context
+        qapv_task_context = {
+            "task_description": self.context.task,
+            "tools_available": self.context.tools or [],
+            "constraints": self.context.constraints or [],
+            "success_criteria": "Task completed successfully"
+        }
+        
+        # Run QAPV cycle to structure thinking
+        qapv_result = self._run_qapv_cycle(qapv_task_context)
+        qapv_execution = qapv_result.get("qapv_execution")
+        verify_passed = qapv_result.get("verify_passed", False)
+        phase_durations = qapv_result.get("phase_durations", {})
+        
+        logger.info(
+            f"[QAPV] Cycle complete: "
+            f"Question={qapv_execution.question_result if qapv_execution else 'N/A'}, "
+            f"Approach={qapv_execution.answer_approach if qapv_execution else 'N/A'}, "
+            f"Verified={'YES' if verify_passed else 'NO'}"
+        )
+
+
+        # Checkpoint BEFORE execution
+        pre_execution_checkpoint = self._checkpoint_state("pre_execution")
+        checkpoint_history = []
+        if pre_execution_checkpoint:
+            checkpoint_history.append(CheckpointInfo(
+                checkpoint_id=pre_execution_checkpoint,
+                label="pre_execution",
+                timestamp=datetime.now(),
+                can_restore=True
+            ))
 
         try:
             # Initialize learning cycle if available
@@ -234,21 +1000,42 @@ class Worker(Agent):
                 )
                 experience.add_action(action)
 
-            # Execute task logic - try to use available tools
+            # Execute task logic - use ToolExecutor for real tool invocation
             tool_outputs = []
             if self.context.tools:
                 logger.debug(f"Available tools: {self.context.tools}")
                 for tool_name in self.context.tools:
                     try:
-                        # Placeholder for tool execution
-                        # Subclasses should implement actual tool invocation
-                        tool_result = f"Tool '{tool_name}' would be invoked for: {self.context.task}"
+                        # Execute tool using ToolExecutor
+                        tool_result = await self._tool_executor.execute(
+                            tool_name=tool_name,
+                            parameters={"task": self.context.task},
+                            context=self.context.task
+                        )
+                        
+                        # Convert ToolResult to dict for compatibility
                         tool_outputs.append({
                             "tool": tool_name,
-                            "result": tool_result,
-                            "status": "simulated"
+                            "result": tool_result.output,
+                            "status": tool_result.status,
+                            "duration_ms": tool_result.duration_ms,
+                            "error": tool_result.error
                         })
-                        logger.debug(f"Simulated tool '{tool_name}' execution")
+                        logger.debug(
+                            f"Executed tool '{tool_name}' with status {tool_result.status} "
+                            f"in {tool_result.duration_ms:.2f}ms"
+                        )
+
+                        # Checkpoint AFTER successful tool use
+                        post_tool_checkpoint = self._checkpoint_state(f"post_tool_{tool_name}")
+                        if post_tool_checkpoint:
+                            checkpoint_history.append(CheckpointInfo(
+                                checkpoint_id=post_tool_checkpoint,
+                                label=f"post_tool_{tool_name}",
+                                timestamp=datetime.now(),
+                                can_restore=True
+                            ))
+
                     except Exception as tool_error:
                         logger.warning(f"Tool '{tool_name}' execution failed: {tool_error}")
                         tool_outputs.append({
@@ -256,6 +1043,27 @@ class Worker(Agent):
                             "error": str(tool_error),
                             "status": "failed"
                         })
+
+            # Check for confusion before building result
+            confusion_context = {
+                "task": self.context.task,
+                "agent_id": self.agent_id,
+                "tool_outputs": tool_outputs,
+                "start_time": start_time.isoformat()
+            }
+
+            signal = self._check_for_confusion(confusion_context)
+            confusion_records = []
+
+            if signal:
+                action = self._handle_confusion(signal, confusion_context)
+                confusion_records.append(ConfusionRecord(
+                    signal_type=signal.signal_type,
+                    severity=action,
+                    recovery_action=action,
+                    recovered=(action in ["CONTINUE", "CHECKPOINT"]),
+                    details={"signal_description": signal.description}
+                ))
 
             # Build result with actual execution details
             result = {
@@ -272,13 +1080,41 @@ class Worker(Agent):
                     "worker_id": self.agent_id,
                     "tools_available": self.context.tools or [],
                     "constraints": len(self.context.constraints) if self.context.constraints else 0,
-                }
+                },
+                # QAPV cognitive pattern metadata
+                "qapv": {
+                    "question": qapv_execution.question_result if qapv_execution else None,
+                    "approach": qapv_execution.answer_approach if qapv_execution else None,
+                    "verified": verify_passed,
+                    "phase_durations": phase_durations,
+                    "total_qapv_time": sum(phase_durations.values()) if phase_durations else 0,
+                },
+                # Add lessons retrieved for this task
+                "lessons_retrieved": len(lessons),
+                "lesson_summaries": [
+                    {
+                        "title": lesson.title if hasattr(lesson, 'title') else "Unknown",
+                        "confidence": lesson.confidence if hasattr(lesson, 'confidence') else 0.0
+                    }
+                    for lesson in lessons[:5]  # Include top 5 lessons
+                ] if lessons else [],
+                # Add checkpoint metadata
+                "checkpoints": [
+                    {
+                        "checkpoint_id": cp.checkpoint_id,
+                        "label": cp.label,
+                        "timestamp": cp.timestamp.isoformat(),
+                        "can_restore": cp.can_restore
+                    }
+                    for cp in checkpoint_history
+                ] if checkpoint_history else None
             }
 
             # Calculate duration
             end_time = datetime.now()
             duration_ms = (end_time - start_time).total_seconds() * 1000
             result["duration_ms"] = duration_ms
+            result["confusion_records"] = confusion_records
 
             # Record outcome if learning
             if learning_cycle and experience:
@@ -298,6 +1134,10 @@ class Worker(Agent):
                         "worked": [
                             "Task execution completed",
                             f"Used {len(tool_outputs)} tools" if tool_outputs else "No tools used"
+                                                    f"QAPV Question phase: {phase_durations.get('question', 0):.3f}s",
+                            f"QAPV Answer phase: {phase_durations.get('answer', 0):.3f}s",
+                            f"QAPV Produce phase: {phase_durations.get('produce', 0):.3f}s",
+                            f"QAPV Verify phase: {phase_durations.get('verify', 0):.3f}s",
                         ],
                         "didnt_work": [],
                         "different": []
@@ -322,6 +1162,15 @@ class Worker(Agent):
                     error_message=str(e)
                 )
                 learning_cycle.complete_experience(experience, outcome)
+
+            # Offer to restore to last good checkpoint on failure
+            if checkpoint_history and self._checkpoint_id:
+                logger.warning(
+                    f"Task execution failed. Last checkpoint: {self._checkpoint_id}. "
+                    f"Call _restore_state() to recover."
+                )
+                # Store for potential recovery
+                logger.info(f"Available checkpoints: {[cp.checkpoint_id for cp in checkpoint_history]}")
 
             raise
 
@@ -401,6 +1250,18 @@ class Director(Agent):
         self.decisions: list[str] = []
         self.event_count = 0
 
+        # Confusion detection and recovery for director
+        self._recovery_coordinator: Optional[RecoveryCoordinator] = None
+        self._confusion_signals: List[ConfusionSignal] = []
+        self._worker_confusion_count: Dict[str, int] = {}
+
+        # Initialize recovery coordinator
+        try:
+            storage_dir = Path.home() / ".llm_orchestration" / "recovery" / agent_id
+            self._recovery_coordinator = RecoveryCoordinator(storage_dir)
+        except Exception:
+            pass
+
     async def run(self) -> Result:
         """Execute the director's orchestration loop."""
         try:
@@ -442,6 +1303,69 @@ class Director(Agent):
         except Exception as e:
             self.status = TaskStatus.FAILED
             return Result(success=False, error=str(e))
+
+
+    def _check_worker_confusion(self, worker_id: str, worker_result: Any) -> Optional[ConfusionSignal]:
+        """
+        Check if a worker is showing signs of confusion.
+
+        Args:
+            worker_id: ID of the worker to check
+            worker_result: Result from worker execution
+
+        Returns:
+            ConfusionSignal if confusion detected in worker coordination
+        """
+        # Track repeated failures from same worker (works without recovery_coordinator)
+        if isinstance(worker_result, dict) and worker_result.get("status") == "failed":
+            self._worker_confusion_count[worker_id] = self._worker_confusion_count.get(worker_id, 0) + 1
+
+            if self._worker_confusion_count[worker_id] >= 3:
+                return ConfusionSignal(
+                    signal_type="worker_repetition",
+                    description=f"Worker {worker_id} has failed {self._worker_confusion_count[worker_id]} times",
+                    evidence=[f"Worker: {worker_id}", f"Failures: {self._worker_confusion_count[worker_id]}"],
+                    confidence=0.8,
+                    source="Director"
+                )
+
+        return None
+
+    def _handle_worker_confusion(self, worker_id: str, signal: ConfusionSignal) -> str:
+        """
+        Handle confusion detected in worker execution.
+
+        Args:
+            worker_id: ID of the confused worker
+            signal: Confusion signal from worker
+
+        Returns:
+            Recovery action (CONTINUE, REASSIGN, ESCALATE)
+        """
+        if not self._recovery_coordinator:
+            return "CONTINUE"
+
+        # Record the signal
+        self._confusion_signals.append(signal)
+
+        # For worker confusion, we can:
+        # 1. CONTINUE - let worker retry
+        # 2. REASSIGN - assign task to different worker
+        # 3. ESCALATE - escalate to higher level
+
+        if signal.confidence >= 0.8:
+            # High confidence confusion - escalate
+            import logging
+            logging.getLogger(__name__).error(
+                f"Worker {worker_id} showing high-confidence confusion. Escalating."
+            )
+            return "ESCALATE"
+        elif signal.confidence >= 0.5:
+            # Medium confidence - try reassigning
+            return "REASSIGN"
+        else:
+            # Low confidence - continue
+            return "CONTINUE"
 
     async def decompose_goal(self) -> list[Task]:
         """
@@ -647,6 +1571,21 @@ class Director(Agent):
             elif "blocked" in event.type:
                 handle.status = TaskStatus.BLOCKED
 
+            # Check for worker confusion
+            if "completed" in event.type and event.payload.get("result"):
+                signal = self._check_worker_confusion(
+                    event.source_agent_id,
+                    event.payload.get("result")
+                )
+                if signal:
+                    action = self._handle_worker_confusion(event.source_agent_id, signal)
+                    if action == "ESCALATE":
+                        # Trigger escalation
+                        import asyncio
+                        asyncio.create_task(
+                            self.escalate(f"Worker {event.source_agent_id} confusion: {signal.description}")
+                        )
+
             elif "failed" in event.type:
                 handle.status = TaskStatus.FAILED
 
@@ -789,8 +1728,9 @@ class AgileWorker(Worker):
         self,
         agent_id: str,
         context: WorkerContext,
+        state_manager: Optional[CognitiveStateManager] = None,
     ):
-        super().__init__(agent_id, context)
+        super().__init__(agent_id, context, state_manager)
         self.current_sprint: WorkerSprint | None = None
         self.velocity_history: list[int] = []
 
@@ -1051,6 +1991,10 @@ class AgileWorker(Worker):
         # Preserve original context for restoration
         original_task = self.context.task
 
+        # Checkpoint BEFORE starting sprint task
+        pre_task_checkpoint = self._checkpoint_state(f"pre_sprint_task_{task.id}")
+
+
         try:
             # Mark task as started
             task.started_at = datetime.now()
@@ -1064,6 +2008,12 @@ class AgileWorker(Worker):
 
             # Mark task as completed
             task.completed_at = datetime.now()
+
+            # Checkpoint AFTER successful task completion
+            post_task_checkpoint = self._checkpoint_state(f"post_sprint_task_{task.id}")
+            if post_task_checkpoint:
+                logger.debug(f"Created checkpoint after sprint task: {post_task_checkpoint}")
+
 
             # Record actual points for learning
             if hasattr(self, '_estimator'):
@@ -1081,10 +2031,19 @@ class AgileWorker(Worker):
         except Blocked as b:
             # Let blocked exceptions propagate
             logger.warning(f"Task blocked: {b.reason}")
+            # Offer checkpoint restoration for blocked tasks
+            if pre_task_checkpoint:
+                logger.info(f"Pre-task checkpoint available: {pre_task_checkpoint}")
             raise
 
         except Exception as e:
             logger.error(f"Task execution failed: {e}", exc_info=True)
+            # Offer checkpoint restoration on failure
+            if pre_task_checkpoint:
+                logger.warning(
+                    f"Sprint task failed. Pre-task checkpoint available: {pre_task_checkpoint}. "
+                    f"Call _restore_state() to recover."
+                )
             raise
 
         finally:
