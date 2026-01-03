@@ -1,19 +1,22 @@
 {
-  "_checksum": "3d59d3f9eaf2c527",
-  "_written_at": "2026-01-02T17:07:26.011093+00:00",
+  "_checksum": "2cc7772a2009af78",
+  "_written_at": "2026-01-03T08:00:51.951128+00:00",
   "data": {
     "created_at": "2026-01-02T17:07:26.007274+00:00",
     "description": "api.py:2161-2195. Index save fails after commit leaves permanent inconsistency. Fix: Atomic index+store writes or pre-update indexes.",
     "entity_type": "task",
     "id": "T-20260102-170726-202ca449",
-    "metadata": {},
-    "modified_at": "2026-01-02T17:07:26.011019+00:00",
+    "metadata": {
+      "started_at": "2026-01-03T08:00:51.932663+00:00",
+      "updated_at": "2026-01-03T08:00:51.932668+00:00"
+    },
+    "modified_at": "2026-01-03T08:00:51.951069+00:00",
     "priority": "critical",
     "properties": {
       "category": "bugfix"
     },
-    "status": "pending",
+    "status": "in_progress",
     "title": "CRITICAL: Fix index-store inconsistency on index save failure",
-    "version": 2
+    "version": 3
   }
 }
