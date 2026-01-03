@@ -12,6 +12,7 @@ This module can be integrated into got_utils.py CLI or used standalone.
 """
 
 import json
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -27,6 +28,16 @@ from .shared import (
 
 if TYPE_CHECKING:
     from scripts.got_utils import TransactionalGoTAdapter
+
+# Learning integration
+try:
+    from cortical.got.learning_integration import GoTLearningBridge
+    LEARNING_AVAILABLE = True
+except ImportError:
+    LEARNING_AVAILABLE = False
+    logging.warning("Learning integration not available - install llm_orchestration package")
+
+logger = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -146,6 +157,67 @@ def cmd_task_show(args, manager: "TransactionalGoTAdapter") -> int:
 
 def cmd_task_start(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got task start' command."""
+    # Get task details for guidance
+    task = manager.get_task(args.task_id)
+    if not task:
+        print(f"Task not found: {args.task_id}")
+        return 1
+
+    # Show learning guidance if requested
+    show_guidance = getattr(args, 'show_guidance', False)
+    if show_guidance and LEARNING_AVAILABLE:
+        try:
+            # Get GoT directory from manager
+            got_dir = getattr(manager, 'got_dir', Path('.got'))
+            bridge = GoTLearningBridge(got_dir)
+
+            # Extract task metadata
+            task_title = task.content
+            task_category = task.properties.get('category', 'general')
+            task_priority = task.properties.get('priority', 'medium')
+
+            # Get guidance
+            guidance = bridge.get_guidance_for_task(
+                task_title=task_title,
+                task_category=task_category,
+                task_priority=task_priority
+            )
+
+            # Display guidance
+            print("\n" + "="*70)
+            print("📚 LEARNING GUIDANCE")
+            print("="*70)
+
+            if guidance['lessons']:
+                print(f"\n✓ {len(guidance['lessons'])} Relevant Lessons:")
+                for lesson in guidance['lessons'][:5]:  # Show top 5
+                    print(f"  • {lesson.principle}")
+                    if lesson.context_tags:
+                        print(f"    Tags: {', '.join(list(lesson.context_tags)[:3])}")
+
+            if guidance['recommendations']:
+                print(f"\n💡 Recommendations:")
+                for rec in guidance['recommendations'][:3]:  # Show top 3
+                    print(f"  • {rec}")
+
+            if guidance['warnings']:
+                print(f"\n⚠️  Warnings:")
+                for warn in guidance['warnings'][:3]:  # Show top 3
+                    print(f"  • {warn}")
+
+            if guidance['relevant_successes']:
+                print(f"\n✅ {len(guidance['relevant_successes'])} Similar Successful Tasks")
+
+            if guidance['relevant_failures']:
+                print(f"\n❌ {len(guidance['relevant_failures'])} Similar Failed Tasks (avoid these approaches)")
+
+            print("="*70 + "\n")
+
+        except Exception as e:
+            logger.debug(f"Failed to retrieve learning guidance: {e}")
+            # Don't fail task start if learning fails
+
+    # Start the task
     if manager.start_task(args.task_id):
         manager.save()
         print(f"Started: {args.task_id}")
@@ -157,23 +229,118 @@ def cmd_task_start(args, manager: "TransactionalGoTAdapter") -> int:
 
 def cmd_task_complete(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got task complete' command."""
-    if manager.complete_task(args.task_id, getattr(args, 'retrospective', None)):
+    # Get task details before completing (for learning capture)
+    task = manager.get_task(args.task_id)
+    if not task:
+        print(f"Task not found: {args.task_id}")
+        return 1
+
+    # Complete the task
+    retrospective = getattr(args, 'retrospective', None)
+    if manager.complete_task(args.task_id, retrospective):
         manager.save()
         print(f"Completed: {args.task_id}")
+
+        # Capture learning experience (unless skipped)
+        skip_learning = getattr(args, 'skip_learning', False)
+        if not skip_learning and LEARNING_AVAILABLE:
+            try:
+                # Get GoT directory from manager
+                got_dir = getattr(manager, 'got_dir', Path('.got'))
+                bridge = GoTLearningBridge(got_dir)
+
+                # Extract task metadata
+                task_title = task.content
+                task_category = task.properties.get('category', 'general')
+                task_priority = task.properties.get('priority', 'medium')
+
+                # Try to infer approach from retrospective or category
+                approach = None
+                if retrospective:
+                    lower_retro = retrospective.lower()
+                    if 'tdd' in lower_retro or 'test-first' in lower_retro:
+                        approach = 'test-first'
+                    elif 'refactor' in lower_retro:
+                        approach = 'refactoring'
+                    elif 'debug' in lower_retro:
+                        approach = 'debugging'
+
+                # Capture the experience
+                experience = bridge.capture_task_completion(
+                    task_id=args.task_id,
+                    retrospective=retrospective or "",
+                    task_title=task_title,
+                    task_category=task_category,
+                    task_priority=task_priority,
+                    approach=approach,
+                )
+
+                logger.debug(f"Learning experience captured: {experience.id}")
+                print(f"📚 Learning experience captured: {experience.id}")
+
+            except Exception as e:
+                # Don't fail task completion if learning capture fails
+                logger.debug(f"Failed to capture learning experience: {e}")
+                print(f"⚠️  Warning: Could not capture learning experience: {e}")
+
         return 0
     else:
-        print(f"Task not found: {args.task_id}")
+        print(f"Failed to complete task: {args.task_id}")
         return 1
 
 
 def cmd_task_block(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got task block' command."""
+    # Get task details before blocking (for learning capture)
+    task = manager.get_task(args.task_id)
+    if not task:
+        print(f"Task not found: {args.task_id}")
+        return 1
+
+    # Block the task
     if manager.block_task(args.task_id, args.reason, getattr(args, 'blocker', None)):
         manager.save()
         print(f"Blocked: {args.task_id}")
+
+        # Capture learning experience for failure
+        skip_learning = getattr(args, 'skip_learning', False)
+        if not skip_learning and LEARNING_AVAILABLE:
+            try:
+                # Get GoT directory from manager
+                got_dir = getattr(manager, 'got_dir', Path('.got'))
+                bridge = GoTLearningBridge(got_dir)
+
+                # Extract task metadata
+                task_title = task.content
+                task_category = task.properties.get('category', 'general')
+                task_priority = task.properties.get('priority', 'medium')
+
+                # Build blockers list
+                blockers = [args.reason]
+                if getattr(args, 'blocker', None):
+                    blockers.append(f"Blocked by: {args.blocker}")
+
+                # Capture the failure experience
+                experience = bridge.capture_task_failure(
+                    task_id=args.task_id,
+                    error_message=args.reason,
+                    task_title=task_title,
+                    task_category=task_category,
+                    task_priority=task_priority,
+                    blockers=blockers,
+                )
+
+                logger.debug(f"Learning experience (failure) captured: {experience.id}")
+                print(f"📚 Learning experience (failure) captured: {experience.id}")
+
+            except Exception as e:
+                # Don't fail task blocking if learning capture fails
+                logger.debug(f"Failed to capture learning experience: {e}")
+                print(f"⚠️  Warning: Could not capture learning experience: {e}")
+
         return 0
     else:
-        print(f"Task not found: {args.task_id}")
+        print(f"Failed to block task: {args.task_id}")
         return 1
 
 
@@ -601,6 +768,11 @@ def setup_task_parser(subparsers) -> None:
     # task start
     start_parser = task_subparsers.add_parser("start", help="Start a task")
     start_parser.add_argument("task_id", help="Task ID")
+    start_parser.add_argument(
+        "--show-guidance", "-g",
+        action="store_true",
+        help="Show relevant learning guidance before starting"
+    )
 
     # task complete
     complete_parser = task_subparsers.add_parser("complete", help="Complete a task")
@@ -610,12 +782,22 @@ def setup_task_parser(subparsers) -> None:
         dest="retrospective",
         help="Retrospective notes"
     )
+    complete_parser.add_argument(
+        "--skip-learning",
+        action="store_true",
+        help="Skip capturing learning experience (not recommended)"
+    )
 
     # task block
     block_parser = task_subparsers.add_parser("block", help="Block a task")
     block_parser.add_argument("task_id", help="Task ID")
     block_parser.add_argument("--reason", "-r", required=True, help="Block reason")
     block_parser.add_argument("--blocker", "-b", help="Blocking task ID")
+    block_parser.add_argument(
+        "--skip-learning",
+        action="store_true",
+        help="Skip capturing learning experience (not recommended)"
+    )
 
     # task update
     update_parser = task_subparsers.add_parser("update", help="Update a task's properties")

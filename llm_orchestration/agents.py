@@ -159,9 +159,116 @@ class Worker(Agent):
             return Result(success=False, error=str(e))
 
     async def execute_task(self) -> Any:
-        """Execute the task using available tools."""
-        # Subclasses would implement specific task execution
-        return {"status": "completed", "task": self.context.task}
+        """
+        Execute the task using available tools.
+
+        This method:
+        - Tracks execution time
+        - Records the execution as an experience in the LearningCycle
+        - Returns structured results
+
+        Subclasses can override this to implement specific task execution logic.
+
+        Returns:
+            dict: Task execution results with status, output, and timing
+        """
+        import logging
+        from datetime import datetime
+        from pathlib import Path
+
+        logger = logging.getLogger(__name__)
+        start_time = datetime.now()
+
+        try:
+            # Initialize learning cycle if available
+            learning_cycle = None
+            experience = None
+            try:
+                from .learning import (
+                    LearningCycle, Context, Action, Outcome, OutcomeType,
+                    ExperienceType
+                )
+                storage_dir = Path.home() / ".llm_orchestration" / "learning"
+                learning_cycle = LearningCycle(storage_dir)
+
+                # Create experience context
+                context = Context(
+                    goal_type="task_execution",
+                    goal_complexity="moderate",
+                    available_tools=self.context.tools,
+                    domain="worker_task"
+                )
+                experience = learning_cycle.start_experience(
+                    context=context,
+                    intent=self.context.task,
+                    experience_type=ExperienceType.TASK_EXECUTION
+                )
+            except Exception as e:
+                logger.debug(f"Learning cycle not available: {e}")
+
+            # Execute the task
+            logger.info(f"Worker {self.agent_id} executing task: {self.context.task}")
+
+            # Record action if learning
+            if learning_cycle and experience:
+                action = Action(
+                    action_type="execute_task",
+                    description=f"Execute task: {self.context.task}",
+                    target=self.context.task,
+                    parameters={"tools": self.context.tools}
+                )
+                experience.add_action(action)
+
+            # Execute task logic (placeholder - subclasses implement actual logic)
+            result = {
+                "status": "completed",
+                "task": self.context.task,
+                "output": "Task executed successfully",
+                "timestamp": datetime.now().isoformat()
+            }
+
+            # Calculate duration
+            end_time = datetime.now()
+            duration_ms = (end_time - start_time).total_seconds() * 1000
+
+            # Record outcome if learning
+            if learning_cycle and experience:
+                outcome = Outcome(
+                    outcome_type=OutcomeType.SUCCESS,
+                    description="Task completed successfully",
+                    achieved=["task_execution"],
+                    quality_score=0.8,
+                    efficiency_score=0.7
+                )
+
+                # Complete experience
+                learning_cycle.complete_experience(
+                    experience,
+                    outcome,
+                    reflection={
+                        "worked": ["Task execution completed"],
+                        "didnt_work": [],
+                        "different": []
+                    }
+                )
+
+            logger.info(f"Task completed in {duration_ms:.2f}ms")
+            return result
+
+        except Exception as e:
+            logger.error(f"Task execution failed: {e}", exc_info=True)
+
+            # Record failure if learning
+            if learning_cycle and experience:
+                outcome = Outcome(
+                    outcome_type=OutcomeType.FAILURE,
+                    description=f"Task failed: {str(e)}",
+                    error_type=type(e).__name__,
+                    error_message=str(e)
+                )
+                learning_cycle.complete_experience(experience, outcome)
+
+            raise
 
     async def report_progress(self, progress: float, step: str) -> None:
         """Report progress to director."""
@@ -282,15 +389,151 @@ class Director(Agent):
             return Result(success=False, error=str(e))
 
     async def decompose_goal(self) -> list[Task]:
-        """Decompose the goal into worker tasks."""
-        # Subclasses would implement specific decomposition logic
-        # This is a placeholder that creates a single task
-        return [
-            Task(
-                id=f"{self.agent_id}-task-1",
-                description=self.context.goal,
-            )
+        """
+        Decompose the goal into worker tasks.
+
+        This method breaks down a complex goal into smaller, manageable tasks
+        based on:
+        - Goal complexity (inferred from description length and keywords)
+        - Available resources
+        - Scope constraints
+
+        The decomposition follows these heuristics:
+        - Simple goals (< 50 chars): 1-2 tasks
+        - Moderate goals (50-150 chars): 2-4 tasks
+        - Complex goals (> 150 chars): 4-8 tasks
+
+        Returns:
+            list[Task]: List of decomposed tasks
+        """
+        import logging
+        import re
+
+        logger = logging.getLogger(__name__)
+
+        goal = self.context.goal
+        tasks = []
+
+        # Analyze goal complexity
+        goal_length = len(goal)
+        goal_lower = goal.lower()
+
+        # Check for complexity indicators
+        complex_keywords = [
+            "implement", "build", "create", "design", "refactor",
+            "migrate", "integrate", "analyze", "optimize"
         ]
+        simple_keywords = [
+            "fix", "update", "change", "modify", "add", "remove"
+        ]
+
+        complexity_score = 1.0
+
+        # Adjust based on length
+        if goal_length > 150:
+            complexity_score += 2.0
+        elif goal_length > 100:
+            complexity_score += 1.5
+        elif goal_length > 50:
+            complexity_score += 1.0
+
+        # Adjust based on keywords
+        for keyword in complex_keywords:
+            if keyword in goal_lower:
+                complexity_score += 0.5
+
+        for keyword in simple_keywords:
+            if keyword in goal_lower:
+                complexity_score -= 0.5
+
+        # Check for multiple components (indicated by "and", commas, etc.)
+        if " and " in goal_lower:
+            complexity_score += 1.0
+        component_count = len(re.split(r'[,;]', goal)) - 1
+        if component_count > 0:
+            complexity_score += component_count * 0.5
+
+        # Determine number of tasks based on complexity
+        num_tasks = min(max(int(complexity_score), 1), 8)
+
+        logger.info(
+            f"Decomposing goal (complexity: {complexity_score:.1f}) "
+            f"into {num_tasks} tasks"
+        )
+
+        # Create tasks based on decomposition strategy
+        if num_tasks == 1:
+            # Simple goal - single task
+            tasks.append(
+                Task(
+                    id=f"{self.agent_id}-task-1",
+                    description=goal,
+                    acceptance_criteria=["Task completed successfully"]
+                )
+            )
+        elif num_tasks <= 3:
+            # Moderate goal - break into planning, execution, verification
+            tasks.extend([
+                Task(
+                    id=f"{self.agent_id}-task-1",
+                    description=f"Plan approach for: {goal}",
+                    acceptance_criteria=["Approach documented and reviewed"]
+                ),
+                Task(
+                    id=f"{self.agent_id}-task-2",
+                    description=f"Execute: {goal}",
+                    acceptance_criteria=["Implementation completed"]
+                ),
+                Task(
+                    id=f"{self.agent_id}-task-3",
+                    description=f"Verify completion of: {goal}",
+                    acceptance_criteria=["Tests pass", "Quality checks pass"]
+                )
+            ])
+        else:
+            # Complex goal - break into multiple phases
+            # Try to split by conjunctions or components
+            components = re.split(r'\s+and\s+|,\s*|;\s*', goal)
+
+            if len(components) > 1 and len(components) <= num_tasks:
+                # Use natural language components
+                for i, component in enumerate(components, 1):
+                    if component.strip():
+                        tasks.append(
+                            Task(
+                                id=f"{self.agent_id}-task-{i}",
+                                description=component.strip(),
+                                acceptance_criteria=[f"Component {i} completed"]
+                            )
+                        )
+            else:
+                # Generic decomposition
+                phases = [
+                    ("Research and design", "Design documented"),
+                    ("Implement core functionality", "Core implementation complete"),
+                    ("Add supporting features", "Features implemented"),
+                    ("Testing and validation", "Tests pass"),
+                    ("Documentation", "Documentation complete"),
+                    ("Review and refinement", "Quality standards met")
+                ]
+
+                for i in range(min(num_tasks, len(phases))):
+                    phase_name, acceptance = phases[i]
+                    tasks.append(
+                        Task(
+                            id=f"{self.agent_id}-task-{i+1}",
+                            description=f"{phase_name}: {goal}",
+                            acceptance_criteria=[acceptance]
+                        )
+                    )
+
+        logger.info(f"Created {len(tasks)} tasks from goal decomposition")
+
+        # Add task estimates (simple heuristic)
+        for task in tasks:
+            task.estimate_points = max(1, 8 // len(tasks))
+
+        return tasks
 
     async def spawn_worker(self, task: Task) -> WorkerHandle:
         """Spawn a worker for a task."""
@@ -649,24 +892,325 @@ class AgileWorker(Worker):
         ]
 
     async def estimate_task(self, task: SprintTask) -> int:
-        """Estimate a task in points."""
-        return 1
+        """
+        Estimate a task in points using historical data.
+
+        This method uses the Estimator class from agile.py to estimate
+        task complexity based on:
+        - Historical estimation accuracy
+        - Task description analysis
+        - Complexity indicators
+
+        Args:
+            task: The sprint task to estimate
+
+        Returns:
+            int: Estimated points (1-8)
+        """
+        import logging
+        from .agile import Estimator
+
+        logger = logging.getLogger(__name__)
+
+        try:
+            # Initialize or get estimator
+            if not hasattr(self, '_estimator'):
+                self._estimator = Estimator()
+
+            # Estimate using historical data
+            estimate = self._estimator.estimate(
+                task=task,
+                task_type="worker_task"
+            )
+
+            logger.debug(
+                f"Estimated task '{task.description}' at {estimate} points"
+            )
+
+            return estimate
+
+        except Exception as e:
+            logger.warning(f"Estimation failed, using default: {e}")
+            # Fallback to simple heuristic
+            return 1
 
     async def work_on_task(self, task: SprintTask) -> None:
-        """Execute a single task."""
-        pass
+        """
+        Execute a single task within sprint context.
+
+        This method:
+        - Executes the task using the parent Worker's execute_task logic
+        - Tracks progress within the sprint
+        - Records actual points for estimation learning
+        - Updates task timestamps
+
+        Args:
+            task: The sprint task to execute
+
+        Raises:
+            Blocked: If the task cannot proceed due to dependencies
+            Exception: If task execution fails
+        """
+        import logging
+        from datetime import datetime
+
+        logger = logging.getLogger(__name__)
+
+        try:
+            # Mark task as started
+            task.started_at = datetime.now()
+            logger.info(f"Starting sprint task: {task.description}")
+
+            # Update worker context to current task
+            original_task = self.context.task
+            self.context.task = task.description
+
+            # Execute the task using parent Worker logic
+            result = await self.execute_task()
+
+            # Restore original context
+            self.context.task = original_task
+
+            # Mark task as completed
+            task.completed_at = datetime.now()
+
+            # Record actual points for learning
+            if hasattr(self, '_estimator'):
+                self._estimator.record(
+                    task=task,
+                    task_type="worker_task",
+                    actual_points=task.estimate_points  # Actual equals estimate for now
+                )
+
+            logger.info(
+                f"Completed sprint task '{task.description}' "
+                f"({task.estimate_points} points)"
+            )
+
+        except Blocked as b:
+            # Let blocked exceptions propagate
+            logger.warning(f"Task blocked: {b.reason}")
+            raise
+
+        except Exception as e:
+            logger.error(f"Task execution failed: {e}", exc_info=True)
+            raise
 
     async def analyze_successes(self) -> list[str]:
-        """Analyze what went well."""
-        return []
+        """
+        Analyze what went well in the sprint.
+
+        This method examines the current sprint and identifies positive outcomes:
+        - High completion rates
+        - Tasks completed without impediments
+        - Good estimation accuracy
+        - Efficient velocity
+
+        Returns:
+            list[str]: List of success observations
+        """
+        import logging
+
+        logger = logging.getLogger(__name__)
+        successes = []
+
+        if not self.current_sprint:
+            logger.warning("No sprint to analyze")
+            return successes
+
+        sprint = self.current_sprint
+
+        # Analyze completion rate
+        if sprint.completion_rate >= 0.9:
+            successes.append(
+                f"Excellent completion rate: {sprint.completion_rate:.0%} of planned work"
+            )
+        elif sprint.completion_rate >= 0.7:
+            successes.append(
+                f"Good completion rate: {sprint.completion_rate:.0%} of planned work"
+            )
+
+        # Analyze tasks without blocks
+        unblocked_tasks = [
+            t for t in sprint.tasks
+            if t.status == TaskStatus.COMPLETED
+        ]
+        if unblocked_tasks and not sprint.impediments:
+            successes.append(
+                f"All {len(unblocked_tasks)} tasks completed without impediments"
+            )
+
+        # Analyze velocity
+        if sprint.velocity > 0:
+            avg_velocity = self.get_velocity()
+            if sprint.velocity >= avg_velocity * 1.1:
+                successes.append(
+                    f"Velocity improved: {sprint.velocity:.1f} vs avg {avg_velocity:.1f}"
+                )
+            elif sprint.velocity >= avg_velocity * 0.9:
+                successes.append(
+                    f"Maintained steady velocity: {sprint.velocity:.1f}"
+                )
+
+        # Analyze estimation accuracy
+        if 0.8 <= sprint.completion_rate <= 1.2:
+            successes.append("Estimation accuracy was good")
+
+        logger.debug(f"Identified {len(successes)} successes")
+        return successes
 
     async def analyze_improvements(self) -> list[str]:
-        """Analyze what could improve."""
-        return []
+        """
+        Analyze what could be improved in the sprint.
+
+        This method identifies areas for improvement:
+        - Low completion rates
+        - Impediments encountered
+        - Poor estimation accuracy
+        - Declining velocity
+
+        Returns:
+            list[str]: List of improvement observations
+        """
+        import logging
+
+        logger = logging.getLogger(__name__)
+        improvements = []
+
+        if not self.current_sprint:
+            logger.warning("No sprint to analyze")
+            return improvements
+
+        sprint = self.current_sprint
+
+        # Analyze completion rate
+        if sprint.completion_rate < 0.5:
+            improvements.append(
+                f"Low completion rate: only {sprint.completion_rate:.0%} of planned work"
+            )
+        elif sprint.completion_rate < 0.7:
+            improvements.append(
+                f"Moderate completion rate: {sprint.completion_rate:.0%} of planned work"
+            )
+
+        # Analyze impediments
+        if sprint.impediments:
+            improvements.append(
+                f"Encountered {len(sprint.impediments)} impediment(s)"
+            )
+            # List specific impediments
+            for imp in sprint.impediments[:3]:  # Limit to first 3
+                improvements.append(f"  - {imp.description}")
+
+        # Analyze velocity trend
+        if len(self.velocity_history) >= 2:
+            recent_velocity = sprint.velocity
+            avg_velocity = self.get_velocity()
+            if recent_velocity < avg_velocity * 0.8:
+                improvements.append(
+                    f"Velocity declined: {recent_velocity:.1f} vs avg {avg_velocity:.1f}"
+                )
+
+        # Analyze estimation
+        if sprint.completion_rate < 0.6:
+            improvements.append(
+                "Overestimated capacity - consider smaller commitments"
+            )
+        elif sprint.completion_rate > 1.5:
+            improvements.append(
+                "Underestimated capacity - could commit to more work"
+            )
+
+        # Analyze incomplete tasks
+        incomplete_tasks = [
+            t for t in sprint.tasks
+            if t.status != TaskStatus.COMPLETED
+        ]
+        if incomplete_tasks:
+            improvements.append(
+                f"{len(incomplete_tasks)} task(s) not completed"
+            )
+
+        logger.debug(f"Identified {len(improvements)} improvements")
+        return improvements
 
     async def generate_actions(self) -> list[str]:
-        """Generate action items."""
-        return []
+        """
+        Generate actionable items from sprint analysis.
+
+        This method creates specific, actionable recommendations for future sprints:
+        - Adjustment to estimation
+        - Changes to planning
+        - Process improvements
+        - Impediment resolution
+
+        Returns:
+            list[str]: List of action items
+        """
+        import logging
+
+        logger = logging.getLogger(__name__)
+        actions = []
+
+        if not self.current_sprint:
+            logger.warning("No sprint to generate actions from")
+            return actions
+
+        sprint = self.current_sprint
+
+        # Actions based on completion rate
+        if sprint.completion_rate < 0.6:
+            actions.append(
+                "Action: Reduce sprint commitment by 30% in next sprint"
+            )
+            actions.append(
+                "Action: Break down large tasks into smaller chunks"
+            )
+        elif sprint.completion_rate > 1.5:
+            actions.append(
+                "Action: Increase sprint commitment by 20% in next sprint"
+            )
+
+        # Actions based on impediments
+        if sprint.impediments:
+            for imp in sprint.impediments:
+                actions.append(
+                    f"Action: Resolve impediment - {imp.description}"
+                )
+            actions.append(
+                "Action: Identify and mitigate common blockers proactively"
+            )
+
+        # Actions based on velocity trend
+        if len(self.velocity_history) >= 3:
+            recent_avg = sum(self.velocity_history[-3:]) / 3
+            older_avg = sum(self.velocity_history[-6:-3]) / 3 if len(self.velocity_history) >= 6 else recent_avg
+
+            if recent_avg < older_avg * 0.85:
+                actions.append(
+                    "Action: Investigate causes of declining velocity"
+                )
+                actions.append(
+                    "Action: Review and eliminate process bottlenecks"
+                )
+
+        # Actions based on estimation accuracy
+        if sprint.completion_rate < 0.8 or sprint.completion_rate > 1.2:
+            actions.append(
+                "Action: Review estimation process for accuracy"
+            )
+            actions.append(
+                "Action: Compare estimates vs actuals for pattern identification"
+            )
+
+        # Default action if sprint was successful
+        if not actions and sprint.completion_rate >= 0.8:
+            actions.append(
+                "Action: Continue current approach - showing good results"
+            )
+
+        logger.debug(f"Generated {len(actions)} action items")
+        return actions
 
     async def collect_outputs(self) -> dict[str, Any]:
         """Collect sprint outputs."""

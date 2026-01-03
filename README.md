@@ -327,6 +327,180 @@ Memories are indexed by the same system that indexes code. Search finds both imp
 
 ---
 
+## The Learning Layer
+
+### A System That Learns From Its Own Work
+
+While GoT tracks what work is done, the Learning Layer captures *how* it was done and *what was learned*. Every completed task, failed attempt, and decision becomes training data for AI agents that will work on this codebase.
+
+The system implements a **dual-purpose philosophy**: GoT serves both as work management infrastructure and as a continuous data collection pipeline for machine learning.
+
+### GoT-LearningCycle Integration
+
+**Location:** `cortical/got/learning_integration.py`
+
+The `GoTLearningBridge` converts task completions into structured learning experiences:
+
+```python
+from cortical.got.learning_integration import GoTLearningBridge
+
+bridge = GoTLearningBridge(".got")
+
+# When task completes, capture as learning experience
+bridge.capture_task_completion(
+    task_id="T-20260103-123456",
+    retrospective="Used TDD. Tests passed first try. Key: write test before implementation.",
+    files_changed=["api.py", "test_api.py"],
+    approach="test-first",
+    task_category="feature"
+)
+
+# When planning new task, retrieve relevant lessons
+guidance = bridge.get_guidance_for_task(
+    task_title="Implement user authentication",
+    task_category="feature"
+)
+# Returns past successes, common pitfalls, recommended approaches
+```
+
+**Features:**
+- Automatically tags experiences based on task properties
+- Extracts patterns from multiple similar tasks
+- Provides context-aware guidance for new work
+- Stores experiences in `.got/learning/` subdirectory
+
+### Failure Tracking
+
+**CLI:** `python scripts/got_utils.py failure`
+
+Failed approaches are as valuable as successes—sometimes more so. The failure tracking system captures what *didn't* work:
+
+```bash
+# Log a failed attempt
+python scripts/got_utils.py failure log T-20260103-123456 \
+    --attempt "Tried using library X for authentication" \
+    --error "Library X conflicts with our zero-dependency policy" \
+    --lesson "Build auth ourselves or use stdlib only"
+
+# List recent failures
+python scripts/got_utils.py failure list --limit 10
+
+# Show failures for specific task
+python scripts/got_utils.py failure show T-20260103-123456
+```
+
+**How it works:**
+- Creates `FAILED_ATTEMPT` edges in the GoT graph
+- Links failures to the tasks they blocked
+- Prevents repeating the same failed approaches
+- Exported as negative examples for training
+
+### Commit-Task Linking
+
+**Location:** `scripts/commit_task_linker.py`
+
+Connects git commits to GoT tasks, creating a complete narrative from planning → decision → implementation → commit:
+
+```bash
+# Link commits to tasks (run after committing)
+python scripts/commit_task_linker.py link
+
+# Show commits for a task
+python scripts/commit_task_linker.py show T-20260103-123456
+
+# Export commit-task mappings
+python scripts/commit_task_linker.py export --output commit_links.json
+```
+
+**Linking strategies:**
+1. **Explicit references:** Searches commit messages for `T-XXXXX` patterns
+2. **Semantic similarity:** Compares commit message to task title/description
+3. **File overlap:** Matches files changed in commit to files mentioned in task
+
+**Value:**
+- Traces every line of code back to its motivating task
+- Enables "why was this changed?" queries at the git level
+- Provides code context for retrospective analysis
+- Training data shows how tasks translate to code changes
+
+### Training Data Export
+
+**Location:** `scripts/training_data_exporter.py`
+
+Exports GoT data as ML-ready datasets:
+
+```bash
+# Show what's available for export
+python scripts/training_data_exporter.py stats
+
+# Export all high-quality data
+python scripts/training_data_exporter.py export --output ./training_data/
+
+# Export specific types
+python scripts/training_data_exporter.py export-decisions
+python scripts/training_data_exporter.py export-retrospectives
+python scripts/training_data_exporter.py export-handoffs
+python scripts/training_data_exporter.py export-edges
+```
+
+**Output format (JSONL):**
+
+```json
+{"context": "Decision: Use JWT for auth", "decision": "Use JWT", "rationale": "Stateless, scales horizontally", "quality_score": 0.95}
+{"task": "Fix authentication bug", "approach": "bugfix", "retrospective": "Root cause was...", "success": true, "quality_score": 0.87}
+```
+
+**Quality scoring:**
+- Completeness (has rationale/retrospective?)
+- Length (too short is low-signal)
+- Specificity (concrete details vs vague statements)
+- Outcome clarity (success/failure explicitly stated?)
+
+**Exported types:**
+- **Decisions:** What was chosen and why
+- **Retrospectives:** What worked, what didn't, what was learned
+- **Handoffs:** Context transfers between agents
+- **Knowledge Transfers:** Session summaries
+- **Edges:** Relationships (BLOCKS, DEPENDS_ON, JUSTIFIES, etc.)
+
+### The Dual Purpose
+
+Every action in GoT serves two masters:
+
+| Action | Work Management Purpose | ML Training Purpose |
+|--------|------------------------|---------------------|
+| Create task | Track what needs doing | Example of task decomposition |
+| Log decision | Justify architecture choice | Decision-making training data |
+| Complete task | Mark progress | Success pattern + retrospective |
+| Log failure | Avoid repeating mistakes | Negative example for learning |
+| Create edge | Model dependencies | Relationship inference training |
+| Write retrospective | Knowledge transfer | Reflection and learning data |
+
+**The vision:** An AI that has read every task, decision, and retrospective in this repository will understand not just *what* the code does, but *why* it was written that way, *what alternatives were considered*, and *what approaches failed*.
+
+**The feedback loop:**
+
+```
+1. Developer/AI completes task
+   └─> GoT captures metadata, retrospective, files changed
+
+2. Exporter creates training examples
+   └─> JSONL files with quality scores
+
+3. ML pipeline trains project-specific model
+   └─> Model learns codebase patterns and reasoning
+
+4. Next AI agent loads trained model
+   └─> Benefits from accumulated knowledge
+
+5. Agent completes tasks more effectively
+   └─> Cycle continues, system gets smarter
+```
+
+This is **institutional memory as machine learning**. The codebase doesn't just preserve code—it preserves the reasoning behind the code.
+
+---
+
 ## The Persistence Philosophy
 
 ### Transactions and Durability
@@ -532,7 +706,8 @@ cortical/
 │   ├── query_builder.py # Fluent Query API
 │   ├── graph_walker.py  # Visitor pattern traversal
 │   ├── path_finder.py   # BFS/DFS algorithms
-│   └── pattern_matcher.py
+│   ├── pattern_matcher.py
+│   └── learning_integration.py  # Learning cycle bridge
 └── utils/               # Shared utilities
 
 tests/                   # 10,254+ tests
@@ -540,6 +715,13 @@ tests/                   # 10,254+ tests
 ├── unit/                # Fast isolated tests
 ├── integration/         # Component interaction
 └── performance/         # Timing regression
+
+scripts/                 # Development and learning tools
+├── got_utils.py         # GoT CLI (tasks, decisions, failures)
+├── training_data_exporter.py  # Export ML training data
+├── commit_task_linker.py      # Link commits to tasks
+├── index_codebase.py    # Self-indexing dog-fooding
+└── search_codebase.py   # Semantic code search
 
 docs/concepts/           # Philosophical explorations
 ├── codebase-as-prompt.md
