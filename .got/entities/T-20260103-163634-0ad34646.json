@@ -1,19 +1,22 @@
 {
-  "_checksum": "edf8776cb98347eb",
-  "_written_at": "2026-01-03T16:36:34.391391+00:00",
+  "_checksum": "fe072b4eed9a666c",
+  "_written_at": "2026-01-03T16:36:43.948710+00:00",
   "data": {
     "created_at": "2026-01-03T16:36:34.375375+00:00",
     "description": "",
     "entity_type": "task",
     "id": "T-20260103-163634-0ad34646",
-    "metadata": {},
-    "modified_at": "2026-01-03T16:36:34.391313+00:00",
+    "metadata": {
+      "started_at": "2026-01-03T16:36:43.930420+00:00",
+      "updated_at": "2026-01-03T16:36:43.930427+00:00"
+    },
+    "modified_at": "2026-01-03T16:36:43.948656+00:00",
     "priority": "medium",
     "properties": {
       "category": "test"
     },
-    "status": "pending",
+    "status": "in_progress",
     "title": "Another test task",
-    "version": 2
+    "version": 3
   }
 }
