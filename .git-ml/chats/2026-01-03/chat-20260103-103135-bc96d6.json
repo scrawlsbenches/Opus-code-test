@@ -1,0 +1,21 @@
+{
+  "id": "chat-20260103-103135-bc96d6",
+  "timestamp": "2026-01-03T10:29:43.737Z",
+  "session_id": "f74ba621-2798-4a4a-a4df-a576b1fbf374",
+  "query": "No that defeats the purpose of it, maybe you should read the model training code. \n\nAre we able to put special instructions in Claude.md that teaches you how to ignore the changes to .git-ml?",
+  "response": "You're right - let me read the training code first to understand what data is actually needed.",
+  "files_referenced": [
+    "*.py"
+  ],
+  "files_modified": [],
+  "tools_used": [
+    "Bash"
+  ],
+  "tool_outputs": [],
+  "user_feedback": null,
+  "resulted_in_commit": false,
+  "related_commit": null,
+  "query_tokens": 34,
+  "response_tokens": 17,
+  "duration_seconds": null
+}
