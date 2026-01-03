@@ -1,6 +1,7 @@
 {
-  "_checksum": "e51358c066cfb494",
-  "_written_at": "2026-01-03T00:26:18.745866+00:00",
+  "_checksum": "14b6a5b9b17af544",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-03T01:32:54.335171+00:00",
   "data": {
     "created_at": "2026-01-03T00:15:07.488052+00:00",
     "description": "Store full entity state in WAL WRITE entries to enable entity reconstruction from WAL alone. Currently, if crash happens after TX_COMMIT but before entity write completes, recovery knows the transaction committed but cannot reconstruct the entity data. This feature enables complete crash recovery by replaying committed writes from WAL.",
@@ -11,7 +12,7 @@
       "started_at": "2026-01-03T00:19:44.646114+00:00",
       "updated_at": "2026-01-03T00:26:18.726927+00:00"
     },
-    "modified_at": "2026-01-03T00:26:18.745782+00:00",
+    "modified_at": "2026-01-03T00:19:44.663911+00:00",
     "priority": "high",
     "properties": {
       "category": "feature",
@@ -19,6 +20,6 @@
     },
     "status": "completed",
     "title": "Implement WAL entity rollback for crash recovery",
-    "version": 4
+    "version": 3
   }
 }

@@ -379,3 +379,170 @@ class TestIndexManagerEdgeCases:
         assert isinstance(stats["indexes"], list)
         assert isinstance(stats["index_sizes"], dict)
         assert isinstance(stats["sprint_index_size"], int)
+
+
+class TestIndexSaveFailureResilience:
+    """
+    Tests for index save failure resilience.
+
+    These tests verify that:
+    1. save() returns False when save fails
+    2. _dirty flag remains True after partial save failure
+    3. Subsequent save() calls retry the save
+    4. Index remains consistent after recovery
+
+    Bug fixed: Index save failing after commit left permanent inconsistency
+    because _dirty was cleared unconditionally, preventing retries.
+    """
+
+    @pytest.fixture
+    def got_dir(self):
+        """Create a temporary GoT directory."""
+        with tempfile.TemporaryDirectory() as tmp:
+            yield Path(tmp)
+
+    @pytest.fixture
+    def index_manager(self, got_dir):
+        """Create a QueryIndexManager for testing."""
+        return QueryIndexManager(got_dir)
+
+    def test_save_returns_true_on_success(self, index_manager):
+        """save() should return True when all saves succeed."""
+        # Add a task to make the index dirty
+        index_manager.index_task("T-001", status="pending", priority="high")
+
+        # Save should succeed
+        result = index_manager.save()
+        assert result is True
+
+    def test_save_returns_true_when_not_dirty(self, index_manager):
+        """save() should return True when nothing to save (not dirty)."""
+        # Fresh index with no changes
+        result = index_manager.save()
+        assert result is True
+
+    def test_dirty_flag_cleared_on_successful_save(self, index_manager):
+        """_dirty flag should be False after successful save."""
+        # Add a task to make the index dirty
+        index_manager.index_task("T-001", status="pending", priority="high")
+        assert index_manager._dirty is True
+
+        # Save
+        index_manager.save()
+
+        # _dirty should be cleared
+        assert index_manager._dirty is False
+
+    def test_save_returns_false_on_write_failure(self, index_manager, monkeypatch):
+        """save() should return False when atomic write fails."""
+        # Add a task to make the index dirty
+        index_manager.index_task("T-001", status="pending", priority="high")
+
+        # Mock _atomic_write_json to fail
+        def mock_atomic_write_fail(filepath, data):
+            return False
+
+        monkeypatch.setattr(index_manager, "_atomic_write_json", mock_atomic_write_fail)
+
+        # Save should fail
+        result = index_manager.save()
+        assert result is False
+
+    def test_dirty_flag_remains_true_on_save_failure(self, index_manager, monkeypatch):
+        """_dirty flag should remain True when save fails, enabling retry."""
+        # Add a task to make the index dirty
+        index_manager.index_task("T-001", status="pending", priority="high")
+        assert index_manager._dirty is True
+
+        # Mock _atomic_write_json to fail
+        def mock_atomic_write_fail(filepath, data):
+            return False
+
+        monkeypatch.setattr(index_manager, "_atomic_write_json", mock_atomic_write_fail)
+
+        # Save fails
+        index_manager.save()
+
+        # _dirty should STILL be True (enables retry)
+        assert index_manager._dirty is True
+
+    def test_subsequent_save_retries_after_failure(self, index_manager, monkeypatch):
+        """After failed save, subsequent save() should retry."""
+        # Add a task to make the index dirty
+        index_manager.index_task("T-001", status="pending", priority="high")
+
+        call_count = [0]
+
+        def mock_atomic_write_track_calls(filepath, data):
+            call_count[0] += 1
+            return False  # Always fail
+
+        monkeypatch.setattr(index_manager, "_atomic_write_json", mock_atomic_write_track_calls)
+
+        # First save attempt
+        index_manager.save()
+        first_count = call_count[0]
+        assert first_count > 0
+
+        # Second save attempt should also try (because _dirty is still True)
+        index_manager.save()
+        second_count = call_count[0]
+        assert second_count > first_count, "Second save should have attempted writes"
+
+    def test_partial_save_failure_keeps_dirty_true(self, index_manager, monkeypatch):
+        """If only some index files fail to save, _dirty should remain True."""
+        # Add tasks with different statuses to create multiple index entries
+        index_manager.index_task("T-001", status="pending", priority="high")
+        index_manager.index_task("T-002", status="completed", priority="low")
+
+        # Track which files were attempted
+        original_atomic_write = index_manager._atomic_write_json
+        attempted_files = []
+
+        def mock_partial_failure(filepath, data):
+            attempted_files.append(filepath.name)
+            # Fail on status index, succeed on others
+            if "by_status" in str(filepath):
+                return False
+            return original_atomic_write(filepath, data)
+
+        monkeypatch.setattr(index_manager, "_atomic_write_json", mock_partial_failure)
+
+        # Save should report failure
+        result = index_manager.save()
+        assert result is False
+
+        # _dirty should remain True
+        assert index_manager._dirty is True
+
+        # Should have attempted multiple files
+        assert len(attempted_files) > 0
+
+    def test_atomic_write_returns_true_on_success(self, index_manager, got_dir):
+        """_atomic_write_json should return True on successful write."""
+        test_file = got_dir / "test.json"
+        test_data = {"key": "value"}
+
+        result = index_manager._atomic_write_json(test_file, test_data)
+
+        assert result is True
+        assert test_file.exists()
+
+    def test_atomic_write_returns_false_on_io_error(self, index_manager, got_dir, monkeypatch):
+        """_atomic_write_json should return False on IOError."""
+        test_file = got_dir / "test.json"
+        test_data = {"key": "value"}
+
+        # Mock open() to raise IOError
+        original_open = open
+
+        def mock_open_fail(*args, **kwargs):
+            if "test.json.tmp" in str(args[0]):
+                raise IOError("Simulated disk full error")
+            return original_open(*args, **kwargs)
+
+        monkeypatch.setattr("builtins.open", mock_open_fail)
+
+        result = index_manager._atomic_write_json(test_file, test_data)
+
+        assert result is False

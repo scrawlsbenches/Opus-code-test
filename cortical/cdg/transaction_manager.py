@@ -199,6 +199,10 @@ class CDGTransactionManager:
         Logs to WAL (if enabled) and adds to tx.write_set.
         Does NOT apply to store until commit.
 
+        The entity's full state is logged to WAL to enable crash recovery
+        reconstruction if a crash occurs after TX_COMMIT but before entity
+        files are written to disk.
+
         Args:
             tx: Transaction context
             entity: Entity to write
@@ -216,8 +220,15 @@ class CDGTransactionManager:
         old_version = old_entity.version if old_entity else 0
 
         # Log to WAL before buffering (if enabled)
+        # Include full entity data for crash recovery reconstruction
         if self.wal:
-            self.wal.log_write(tx.id, entity.id, old_version, entity.version)
+            self.wal.log_write(
+                tx.id,
+                entity.id,
+                old_version,
+                entity.version,
+                entity_data=entity.to_dict()
+            )
 
         # Add to write set
         tx.add_write(entity)
