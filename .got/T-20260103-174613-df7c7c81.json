@@ -1,0 +1,20 @@
+{
+  "_checksum": "17d42b986d764b7b",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-03T17:47:39.784498+00:00",
+  "data": {
+    "created_at": "2026-01-03T17:46:13.585768+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260103-174613-df7c7c81",
+    "metadata": {},
+    "modified_at": "2026-01-03T17:46:13.585772+00:00",
+    "priority": "critical",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Phase 0: Cognitive Framework Foundation",
+    "version": 1
+  }
+}
