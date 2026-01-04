@@ -2,8 +2,8 @@
 
 **Auditor:** Senior Principal Computer Scientist / Software Engineer
 **Date:** 2026-01-04
-**Status:** DRAFT - Pending Approval
-**Version:** 2.7
+**Status:** ✅ APPROVED WITH RECOMMENDATIONS (2026-01-04)
+**Version:** 2.8
 
 ---
 
@@ -20,6 +20,11 @@
 | 2.5 | 2026-01-04 | Auditor | Added T-001-A: Generic entity accessor for Query builder extensibility |
 | 2.6 | 2026-01-04 | Auditor | Added field validation scenarios to T-001-A (unknown field errors with suggestions) |
 | 2.7 | 2026-01-04 | Auditor | Added NOT/Negation grammar, transitive closure functions, no-magic-numbers principle, future enhancements doc |
+| 2.8 | 2026-01-04 | Reviewer | APPROVED WITH RECOMMENDATIONS: T-001-A string-based dispatch, in-memory test facade, security sprint gates, Sprint 1 decomposition |
+
+**Review Status:**
+- ✅ Approved by Senior Principal Engineer (2026-01-04)
+- Conditions documented in Part 8: Review Recommendations
 
 **Approval Required Before:**
 - Creating any GoT entities (Epic, Sprint, Task)
@@ -686,17 +691,57 @@ Unit_Test_Requirements: |
   - test_entities_works_for_all_registered_types
 
 Implementation_Hints: |
+  ⚠️ CRITICAL FINDING FROM DESIGN REVIEW (2026-01-04):
+
+  The existing EntityType enum only covers 5 of 12 registered entity types!
+  DO NOT use enum-based dispatch. Use STRING-BASED dispatch instead.
+
+  ```python
+  # ❌ WRONG - EntityType enum is incomplete
+  class EntityType(Enum):
+      TASK = 1      # Only 5 types covered
+      DECISION = 2
+      SPRINT = 3
+      EDGE = 4
+      HANDOFF = 5
+
+  # ✅ CORRECT - Use string with SchemaRegistry validation
+  def entities(self, entity_type: str) -> "Query[T]":
+      entity_type = entity_type.lower()
+      registry = get_registry()
+      if not registry.has_schema(entity_type):
+          available = sorted(registry._schemas.keys())
+          suggestions = difflib.get_close_matches(entity_type, available, n=1)
+          raise QueryValidationError(
+              f"Unknown entity type '{entity_type}'.\n"
+              f"  Did you mean: {suggestions[0] if suggestions else '?'}\n"
+              f"  Available: {', '.join(available)}"
+          )
+      self._entity_type_str = entity_type  # Store as STRING
+      return self
+  ```
+
+  Registered entity types (12 total):
+  - task, decision, sprint, edge, handoff, epic
+  - knowledge_transfer, document, claudemd_layer, claudemd_version
+  - team, persona_profile
+
+  ID prefix mapping (known):
+  - task→T, decision→D, sprint→S, edge→E, epic→EPIC
+  - handoff→H, knowledge_transfer→KT
+  - Some types may need generic file-based fallback
+
   1. The entities() method should:
-     - Accept entity type name as string
-     - Validate against SchemaRegistry
-     - Store entity type for later filtering
+     - Accept entity type name as string (NOT enum)
+     - Validate against SchemaRegistry (supports all 12 types)
+     - Store entity type as string for later filtering
      - Return self for chaining
 
   2. Use ID prefix convention for filtering:
      - 'task' → T-*
      - 'sprint' → S-*
      - 'decision' → D-*
-     - Or introspect from schema/storage layer
+     - Or implement generic file-based fallback for types without prefixes
 
   3. Reuse existing Query builder internals - this is a new entry point,
      not a new query system
@@ -1829,9 +1874,80 @@ class QueryError(Exception):
         return "\n".join(lines)
 ```
 
-### 7.3 Testing Strategy: Use Existing GoT Data
+### 7.3 Testing Strategy: Hybrid Approach (In-Memory + Real Data)
 
-**Do NOT create synthetic test data. Use the real GoT repository.**
+**Use a HYBRID testing strategy for speed AND realism.**
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    TESTING STRATEGY (UPDATED)                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  UNIT TESTS: In-Memory Facade API                                       │
+│  ─────────────────────────────────                                      │
+│  - Fast execution (no disk I/O)                                         │
+│  - Controlled, repeatable test data                                     │
+│  - Test isolation (no state bleed between tests)                        │
+│  - Suitable for CI/CD pipelines                                         │
+│                                                                          │
+│  INTEGRATION/BEHAVIORAL TESTS: Real GoT Data                            │
+│  ───────────────────────────────────────────                            │
+│  - Proves system works on real data (dog-fooding)                       │
+│  - Validates against actual edge cases                                  │
+│  - No schema divergence risk                                            │
+│  - Run less frequently (pre-commit, CI)                                 │
+│                                                                          │
+│  NOTE: Only developers have write access. Data is stable.               │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**In-Memory Facade Pattern:**
+
+```python
+# tests/conftest.py - Create in-memory test fixture
+
+from dataclasses import dataclass, field
+from typing import Dict, List, Any
+
+@dataclass
+class InMemoryGoTFacade:
+    """Fast in-memory facade for unit testing."""
+
+    tasks: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    sprints: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    edges: List[Dict[str, Any]] = field(default_factory=list)
+
+    def add_task(self, id: str, **kwargs) -> None:
+        self.tasks[id] = {'id': id, **kwargs}
+
+    def add_edge(self, from_id: str, to_id: str, edge_type: str) -> None:
+        self.edges.append({'from_id': from_id, 'to_id': to_id, 'type': edge_type})
+
+    def list_tasks(self, **filters) -> List[Dict]:
+        """Filter tasks by field values."""
+        return [t for t in self.tasks.values()
+                if all(t.get(k) == v for k, v in filters.items())]
+
+@pytest.fixture
+def memory_got():
+    """Fixture providing in-memory GoT for fast unit tests."""
+    facade = InMemoryGoTFacade()
+    # Pre-populate with controlled test data
+    facade.add_task('T-001', title='Test Task', status='pending', priority='high')
+    facade.add_task('T-002', title='Another Task', status='completed', priority='low')
+    facade.add_task('T-003', title='Blocked Task', status='blocked', priority='medium')
+    facade.add_edge('T-001', 'T-002', 'DEPENDS_ON')
+    return facade
+
+# Unit test uses in-memory facade (fast)
+def test_query_filters_by_status(memory_got):
+    results = memory_got.list_tasks(status='pending')
+    assert len(results) == 1
+    assert results[0]['id'] == 'T-001'
+```
+
+**Real Data for Integration Tests:**
 
 ```
 Available Test Data (verified 2026-01-04):
@@ -1842,43 +1958,20 @@ Available Test Data (verified 2026-01-04):
 ├── Edges: 434
 ├── Sprints: 46
 └── Epics: 14
-
-Sample entities for testing:
-├── Task: T-20251231-230615-b1e918b6 (pending)
-├── Task: T-20251222-204134-140ee2d3 (pending)
-├── Sprint: S-sprint-020-forensic-remediation
-└── Sprint: S-sprint-003
 ```
 
-**Why Use Real Data:**
-1. Tests reflect actual usage patterns
-2. No risk of divergence between test and production schemas
-3. Validates against real edge cases we've encountered
-4. Proves the system works on itself (dog-fooding)
-
-**How to Test Queries:**
-
 ```python
-# In tests, use the real .got directory
-def test_query_pending_tasks():
+# Integration test uses real GoT (slower, realistic)
+@pytest.mark.integration
+def test_query_works_on_real_data():
     manager = TransactionalGoTAdapter()
 
-    # Use real data, don't create test fixtures
-    results = manager.query("status = 'pending'")
-
     # Assert on structure, not specific counts (data changes)
+    results = manager.query("status = 'pending'")
     assert isinstance(results, list)
     for r in results:
         assert 'id' in r
         assert 'title' in r
-
-# For edge cases, find existing examples
-def test_query_blocked_task():
-    manager = TransactionalGoTAdapter()
-
-    # We know there's 1 blocked task from our survey
-    results = manager.query("status = 'blocked'")
-    assert len(results) >= 1
 ```
 
 ### 7.4 Task Sizing and Sub-Task Guidelines
@@ -2082,7 +2175,56 @@ optimized = optimizer.optimize(expression)
 
 ### 7.7 Security Review Protocol
 
-**Security concerns will be discovered during implementation.** Create review tasks as they're found:
+**Security is proactive, not reactive.** Create security review tasks at sprint START.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    SECURITY SPRINT GATE PATTERN                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  AT START OF EACH SPRINT:                                               │
+│  ────────────────────────                                               │
+│  Create task: "SECURITY: Sprint-N Security Review"                      │
+│  Purpose: Backlog for security issues discovered during sprint          │
+│                                                                          │
+│  DURING SPRINT:                                                         │
+│  ─────────────                                                          │
+│  Agents add security findings to the sprint's security task             │
+│  Track issues as they're discovered (don't wait until end)              │
+│                                                                          │
+│  AT END OF SPRINT:                                                      │
+│  ────────────────                                                       │
+│  Review accumulated security findings                                   │
+│  Prioritize for next sprint or immediate fix                            │
+│                                                                          │
+│  FINAL SPRINT:                                                          │
+│  ─────────────                                                          │
+│  Comprehensive security review before release                           │
+│  All backlogged issues must be addressed or documented                  │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Critical Security Requirement: No Code Execution**
+
+```python
+# ⚠️ MANDATORY: Filter dangerous constructs from query expressions
+
+FORBIDDEN_PATTERNS = ['eval', 'exec', '__import__', 'compile', 'open']
+
+def validate_query_safety(query_str: str) -> None:
+    """Reject queries containing code execution patterns."""
+    query_lower = query_str.lower()
+    for pattern in FORBIDDEN_PATTERNS:
+        if pattern in query_lower:
+            raise SecurityError(
+                f"Query contains forbidden pattern '{pattern}'. "
+                f"The query API is read-only and does not execute code."
+            )
+
+# Call this BEFORE any parsing or execution
+validate_query_safety(user_query)
+```
 
 ```yaml
 Security_Review_Protocol:
@@ -2124,10 +2266,159 @@ Security_Review_Protocol:
 | Area | Risk | Mitigation |
 |------|------|------------|
 | Expression parsing | ReDoS in regex | Use non-backtracking patterns |
-| Graph traversal | Infinite loops | Max depth limits |
+| Graph traversal | Infinite loops | Max depth limits (user-specified) |
 | Large results | Memory exhaustion | Default LIMIT, max LIMIT |
 | Error messages | Schema leakage | Sanitize in production mode |
-| Function registry | Code injection | No eval/exec, whitelist only |
+| Function registry | Code injection | **Filter eval/exec, whitelist functions only** |
+| Query strings | Injection via quotes | Proper escaping in lexer |
+
+**API Security Context:**
+
+The query API is:
+- **READ-ONLY** by design (no UPDATE/DELETE/INSERT)
+- **Internal use only** (alpha quality, team access)
+- **Single-user** (no concurrent access concerns currently)
+
+Security enhancements will be added when the query system is functional and data can be queried. Do not add security before basic functionality works.
+
+---
+
+## Part 8: Review Recommendations
+
+*Added 2026-01-04 following Senior Principal Engineer review.*
+
+### 8.1 Approved Items
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Generalized architecture (function registry pattern) | ✅ Approved | Correct abstraction for extensibility |
+| Epic/Sprint/Task structure | ✅ Approved | Well-organized, clear dependencies |
+| Agent workflow protocol | ✅ Approved | Handles context-loss scenarios |
+| Cleanup governance model | ✅ Approved | Prevents premature optimization |
+| Validation gates | ✅ Approved | Strong quality assurance |
+| Knowledge transfer requirements | ✅ Approved | Enables continuity |
+| API Discovery Protocol | ✅ Approved | Exemplary practice |
+| No hardcoded magic numbers | ✅ Approved | Bold and correct |
+| Read-only query design | ✅ Approved | Clean separation of concerns |
+
+### 8.2 Conditions (Must Address)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    CONDITIONS FOR APPROVAL                               │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  1. T-001-A: USE STRING-BASED DISPATCH                                  │
+│     The EntityType enum only covers 5 of 12 entity types.               │
+│     Implementation MUST use string-based dispatch with                  │
+│     SchemaRegistry validation, not enum-based.                          │
+│     → Updated in T-001-A Implementation_Hints ✓                         │
+│                                                                          │
+│  2. TESTING: HYBRID STRATEGY                                            │
+│     Use in-memory facade for unit tests (speed)                         │
+│     Use real GoT data for integration tests (realism)                   │
+│     → Updated in Section 7.3 ✓                                          │
+│                                                                          │
+│  3. SECURITY: SPRINT GATE PATTERN                                       │
+│     Create security review task at START of each sprint                 │
+│     Filter eval/exec patterns before parsing                            │
+│     → Updated in Section 7.7 ✓                                          │
+│                                                                          │
+│  4. SPRINT 1: DECOMPOSE FOR EASIER IMPLEMENTATION                       │
+│     T-001-A is substantial; consider splitting if velocity              │
+│     becomes a concern during implementation.                            │
+│     → See Section 8.3 for recommended decomposition                     │
+│                                                                          │
+│  5. ERROR MESSAGES: DEFER POLISH TO LATER SPRINT                        │
+│     High-quality debugging errors are important but can be              │
+│     added when query system is mostly functional.                       │
+│     → Move error polish to Sprint 4 (with optimization)                 │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 8.3 Sprint 1 Decomposition (Recommended)
+
+If Sprint 1 proves too aggressive, decompose T-001-A:
+
+```
+Original T-001-A (monolithic):
+  "Add generic entity accessor to Query builder for extensibility"
+
+Recommended decomposition:
+
+T-001-A1: Basic .entities() Method
+  - Accept string entity type
+  - Validate against SchemaRegistry
+  - Return self for chaining
+  - Works with .limit() and .execute()
+  Priority: Critical
+  Estimate: Small
+
+T-001-A2: Field Validation with Suggestions
+  - .where() validates field names against schema
+  - Unknown field raises helpful error
+  - "Did you mean?" suggestions using difflib
+  Priority: High
+  Estimate: Medium
+  Depends_On: T-001-A1
+
+T-001-A3: Full Query Builder Integration
+  - .entities() chains with all methods (.order_by, .count, etc.)
+  - Case-insensitivity
+  - Comprehensive test coverage
+  Priority: Medium
+  Estimate: Medium
+  Depends_On: T-001-A2
+
+This allows incremental progress and earlier validation.
+```
+
+### 8.4 got_utils.py API Status
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    API STATUS CLARIFICATION                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  got_utils.py query is ALPHA quality.                                   │
+│                                                                          │
+│  This means:                                                            │
+│  ✓ Used only by the development team                                   │
+│  ✓ Single-user access (one developer at a time)                        │
+│  ✓ We can change the interface freely                                  │
+│  ✓ We can break backwards compatibility                                │
+│  ✓ "If we break it, we fix it"                                         │
+│                                                                          │
+│  The existing CLI commands (task list, sprint list, etc.) are STABLE   │
+│  and use separate code paths that won't be affected.                   │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 8.5 Reviewer Notes
+
+**What makes this design strong:**
+
+1. **Key Insight Validated** - "The Query builder already provides all the power we need." This was verified through actual API execution, not just reading code.
+
+2. **Function Registry Pattern** - Correct abstraction for extensibility. New functions = new capabilities without parser changes.
+
+3. **No Hardcoded Magic Numbers** - Default depth=10 would silently truncate results. Unlimited traversal with user-specified limits is the right approach.
+
+4. **API Discovery Protocol** - The methodology of validating assumptions through Python execution prevents entire categories of integration failures.
+
+**What to watch for during implementation:**
+
+1. **EntityType enum trap** - Don't use it. Use string-based dispatch with SchemaRegistry.
+
+2. **Error message quality** - Get the happy path working first. Polish errors later.
+
+3. **Performance testing** - The "no magic numbers" principle means slow queries are possible. That's intentional—users should see and decide.
+
+4. **Security timing** - Don't add security before basic functionality. But DO filter eval/exec immediately.
+
+---
 
 ## Appendix A: Original Audit Findings
 
@@ -2206,29 +2497,45 @@ Security_Review_Protocol:
 
 ## Document Approval
 
-**This document must be approved before ANY GoT entities are created or code is written.**
+**✅ APPROVED WITH RECOMMENDATIONS — 2026-01-04**
+
+Reviewed and approved by Senior Principal Computer Scientist / Software Engineer.
 
 Approval signifies agreement with:
-- [ ] Generalized architecture (function registry pattern)
-- [ ] Epic/Sprint/Task structure
-- [ ] Agent workflow protocol
-- [ ] Cleanup governance model
-- [ ] Validation gates
-- [ ] Knowledge transfer requirements
-- [ ] API Discovery Protocol (Phase 2.5)
-- [ ] Operational considerations (Part 7)
-  - [ ] Debugging-style error messages
-  - [ ] Testing with existing GoT data
-  - [ ] Task sizing and sub-task guidelines
-  - [ ] Schema discovery system
-  - [ ] Query optimizer requirements
-  - [ ] Security review protocol
+- [x] Generalized architecture (function registry pattern)
+- [x] Epic/Sprint/Task structure
+- [x] Agent workflow protocol
+- [x] Cleanup governance model
+- [x] Validation gates
+- [x] Knowledge transfer requirements
+- [x] API Discovery Protocol (Phase 2.5)
+- [x] Operational considerations (Part 7)
+  - [x] Debugging-style error messages (deferred polish to Sprint 4)
+  - [x] Testing strategy (updated to hybrid in-memory + real data)
+  - [x] Task sizing and sub-task guidelines
+  - [x] Schema discovery system
+  - [x] Query optimizer requirements
+  - [x] Security review protocol (updated with sprint gates)
+
+**Conditions applied (see Part 8):**
+1. T-001-A must use string-based dispatch, not EntityType enum ✓
+2. Testing must use hybrid in-memory facade + real data strategy ✓
+3. Security review task created at START of each sprint ✓
+4. T-001-A decomposition available if Sprint 1 velocity is a concern ✓
+5. Error message polish deferred to Sprint 4 ✓
 
 ---
 
-*Document Version 2.7 - Awaiting Approval*
+*Document Version 2.8 - APPROVED*
 
-*Key additions in this version:*
+*Key changes in version 2.8:*
+- *Review approval with conditions documented in Part 8*
+- *T-001-A updated with critical finding: use string-based dispatch (EntityType enum incomplete)*
+- *Section 7.3 updated: hybrid testing strategy (in-memory facade + real data)*
+- *Section 7.7 updated: security sprint gate pattern, eval/exec filtering*
+- *Part 8 added: Review Recommendations including T-001-A decomposition*
+
+*Previous version (2.7) key additions:*
 - *Grammar updated with NOT/Negation support (`<not_expr>` production, `NOT IN`, `NOT LIKE`)*
 - *New design principle: NO HARDCODED MAGIC NUMBERS - depth/length limits are opt-in, not default*
 - *Transitive closure functions added: `ancestors()`, `descendants()`, `all_dependencies()`, `cycle_detect()`*

@@ -1,0 +1,310 @@
+═══════════════════════════════════════════════════════════════════════════
+  TASK T-001-A VALIDATION SUMMARY
+  Generic Entity Accessor for Query Builder
+  Date: 2026-01-04
+═══════════════════════════════════════════════════════════════════════════
+
+VERDICT: ✅ APPROVED WITH CONDITIONS
+
+The proposed .entities('type') method CAN be implemented correctly.
+The design is sound but requires addressing critical infrastructure gaps.
+
+───────────────────────────────────────────────────────────────────────────
+CRITICAL FINDINGS
+───────────────────────────────────────────────────────────────────────────
+
+1. ❌ BLOCKER: EntityType enum only covers 5 of 12 entity types
+
+   Current:  TASK, DECISION, SPRINT, EDGE, HANDOFF (5 types)
+   Missing:  epic, knowledge_transfer, document, claudemd_layer,
+             claudemd_version, team, persona_profile (7 types)
+
+   SOLUTION: Use string-based entity type with schema validation
+             instead of enum-based approach
+
+2. ⚠️  ISSUE: 4 entity types lack GoTManager list methods
+
+   Missing methods:
+   - list_knowledge_transfers()
+   - list_claudemd_versions()
+   - list_teams()
+   - list_persona_profiles()
+
+   WORKAROUND: Implement generic file-based fallback (slower)
+   LONG-TERM: Create tasks to implement missing methods
+
+───────────────────────────────────────────────────────────────────────────
+VALIDATED ASSUMPTIONS
+───────────────────────────────────────────────────────────────────────────
+
+✅ SchemaRegistry provides field introspection
+   - Field names, types, ENUM choices all available
+   - Required/optional flags present
+   - Field descriptions available
+   - difflib.get_close_matches() works for suggestions
+
+✅ ID prefix patterns exist for 7 entity types
+   - task → T-*
+   - decision → D-*
+   - sprint → S-*
+   - edge → E-*
+   - epic → EPIC-*
+   - handoff → H-*
+   - knowledge_transfer → KT-*
+
+   Unknown: claudemd_layer, claudemd_version, document, team, persona_profile
+
+✅ Field validation infrastructure is ready
+   - Schema has all metadata needed
+   - Validation can happen at query build time
+   - Error messages can be highly detailed
+
+───────────────────────────────────────────────────────────────────────────
+IMPLEMENTATION CODE STRUCTURE
+───────────────────────────────────────────────────────────────────────────
+
+Query.entities(entity_type: str) -> Query
+│
+├─> Validate entity_type against SchemaRegistry
+│   └─> Raise helpful error if unknown (with suggestions)
+│
+├─> Store as self._entity_type_str (string, not enum)
+│
+└─> Return self for chaining
+
+Query._get_base_entities() -> List[Entity]
+│
+├─> If self._entity_type_str is set:
+│   │
+│   ├─> Look up in METHOD_MAP: entity_type → 'list_X' method
+│   │
+│   ├─> If method exists: call manager.list_X()
+│   │
+│   └─> If method missing: use _get_base_entities_generic()
+│       │
+│       └─> Scan .got/entities/*.json files
+│           Filter by entity_type field
+│           Slower but functional
+│
+└─> Else: use legacy EntityType enum dispatch (backward compat)
+
+Query.where(**conditions) -> Query
+│
+├─> If self._entity_type_str is set:
+│   │
+│   ├─> Get schema from registry
+│   │
+│   ├─> For each field in conditions:
+│   │   │
+│   │   ├─> Check if field exists in schema.fields
+│   │   │
+│   │   ├─> If not: generate helpful error
+│   │   │   │
+│   │   │   ├─> Use difflib for "Did you mean?" suggestion
+│   │   │   │
+│   │   │   └─> List all valid fields with types
+│   │   │
+│   │   └─> If valid: proceed
+│   │
+│   └─> Add WhereClause
+│
+└─> Else: add conditions without validation (legacy)
+
+───────────────────────────────────────────────────────────────────────────
+ERROR MESSAGE EXAMPLES
+───────────────────────────────────────────────────────────────────────────
+
+Unknown entity type:
+
+  QueryValidationError: Unknown entity type 'tak'.
+    Did you mean: task
+
+  Available entity types:
+    - claudemd_layer
+    - decision
+    - document
+    - edge
+    - epic
+    - handoff
+    - knowledge_transfer
+    - persona_profile
+    - sprint
+    - task
+    - team
+
+Unknown field with suggestion:
+
+  QueryValidationError: Unknown field 'statsu' for entity type 'task'
+    Did you mean: status
+
+  Valid fields for 'task':
+    created_at: DATETIME
+    description: STRING
+    id: STRING
+    priority: ENUM (choices: ['low', 'medium', 'high', 'critical'])
+    status: ENUM (choices: ['pending', 'in_progress', 'completed', 'blocked'])
+    title: STRING
+    ...
+
+Wrong entity type field:
+
+  QueryValidationError: Unknown field 'priority' for entity type 'sprint'
+    Did you mean: [no suggestions]
+
+  Valid fields for 'sprint':
+    created_at: DATETIME
+    epic_id: STRING
+    goals: LIST
+    id: STRING
+    notes: LIST
+    number: INTEGER
+    status: ENUM
+    title: STRING
+    ...
+
+───────────────────────────────────────────────────────────────────────────
+BACKWARD COMPATIBILITY
+───────────────────────────────────────────────────────────────────────────
+
+✅ No breaking changes
+
+- Query(manager).tasks() continues to work (uses EntityType.TASK internally)
+- Query(manager).sprints() continues to work (uses EntityType.SPRINT internally)
+- Query(manager).decisions() continues to work
+- All existing code unaffected
+
+New capability:
+- Query(manager).entities('epic') now works
+- Query(manager).entities('knowledge_transfer') now works
+- Query(manager).entities('document') now works
+
+───────────────────────────────────────────────────────────────────────────
+RECOMMENDED IMPLEMENTATION PHASES
+───────────────────────────────────────────────────────────────────────────
+
+Phase 1: Core .entities() method (T-001-A)
+  - Implement .entities() with schema validation
+  - Implement string-based dispatch in _get_base_entities()
+  - Implement field validation in .where()
+  - Use generic fallback for entity types without list methods
+  - Write comprehensive tests
+
+Phase 2: Missing list methods (separate tasks)
+  - T-001-A-1: Implement GoTManager.list_knowledge_transfers()
+  - T-001-A-2: Implement GoTManager.list_claudemd_versions()
+  - T-001-A-3: Implement GoTManager.list_teams()
+  - T-001-A-4: Implement GoTManager.list_persona_profiles()
+
+Phase 3: Documentation & optimization
+  - Document entity_type → list_method mapping
+  - Document ID prefix patterns
+  - Add caching if generic fallback is slow
+  - Update Query builder docstrings
+
+───────────────────────────────────────────────────────────────────────────
+GUARDRAILS TO IMPLEMENT
+───────────────────────────────────────────────────────────────────────────
+
+1. Entity type validation
+   - Validate against SchemaRegistry in .entities()
+   - Provide suggestions for typos
+   - List all available types in error
+
+2. Field name validation
+   - Validate in .where() if entity type is known
+   - Use difflib for "Did you mean?" suggestions
+   - List valid fields with types and choices
+
+3. Case-insensitive entity types
+   - .entities('TASK') == .entities('task')
+   - Normalize to lowercase internally
+
+4. Helpful error messages
+   - Include context (position, what was expected)
+   - Include suggestions (did you mean?)
+   - Include available options (valid types/fields)
+
+───────────────────────────────────────────────────────────────────────────
+TEST DATA AVAILABLE
+───────────────────────────────────────────────────────────────────────────
+
+Real GoT data in .got/ directory:
+  - 336 tasks
+  - 56 decisions
+  - 46 sprints
+  - 14 epics
+  - 41 handoffs
+  - 434 edges
+  - 32 knowledge transfers
+
+Use real data for behavioral tests (don't create synthetic fixtures).
+
+───────────────────────────────────────────────────────────────────────────
+RISKS & MITIGATIONS
+───────────────────────────────────────────────────────────────────────────
+
+RISK 1: EntityType enum bottleneck
+  SEVERITY: 🔴 Critical
+  MITIGATION: Use string-based dispatch, keep enum for backward compat
+
+RISK 2: Missing list methods for 4 entity types
+  SEVERITY: 🟡 High
+  MITIGATION: Generic fallback works, implement methods later
+
+RISK 3: Generic fallback performance
+  SEVERITY: 🟠 Medium
+  MITIGATION: Use ID prefixes when known, add caching, implement proper methods
+
+RISK 4: Schema-entity mismatch
+  SEVERITY: 🟢 Low
+  MITIGATION: Trust existing validation, add unit tests for edge cases
+
+───────────────────────────────────────────────────────────────────────────
+KEY INSIGHTS FROM VALIDATION
+───────────────────────────────────────────────────────────────────────────
+
+1. Schema infrastructure is MORE capable than expected
+   - Field introspection is complete
+   - ENUM choices available for validation
+   - Field descriptions available for help text
+
+2. EntityType enum is a LIMITING factor
+   - Only 5 of 12 types supported
+   - Adding new entity types requires code changes
+   - String-based approach is more extensible
+
+3. GoTManager has INCONSISTENT coverage
+   - 8 entity types have list methods
+   - 4 entity types missing list methods
+   - Pattern exists but not uniformly applied
+
+4. ID prefix patterns are PARTIALLY documented
+   - 7 types have clear prefixes
+   - 5 types have unknown/undocumented prefixes
+   - Edge type has special format (encodes relationship)
+
+5. Current Query builder does NO field validation
+   - .where(nonexistent_field='x') silently fails
+   - No schema checking at query build time
+   - Validation only happens at execution (or not at all)
+
+───────────────────────────────────────────────────────────────────────────
+CONCLUSION
+───────────────────────────────────────────────────────────────────────────
+
+The proposed .entities('type') method can be implemented successfully.
+
+The design is fundamentally sound, but must deviate from enum-based
+approach to string-based approach for extensibility.
+
+All required infrastructure exists:
+  ✅ SchemaRegistry has field introspection
+  ✅ Most entity types have list methods
+  ✅ ID prefixes known for common types
+  ✅ Error suggestion mechanism ready (difflib)
+
+Implementation can proceed with confidence.
+
+───────────────────────────────────────────────────────────────────────────
+FULL REPORT: /home/user/Opus-code-test/T-001-A-validation-report.md
+───────────────────────────────────────────────────────────────────────────
