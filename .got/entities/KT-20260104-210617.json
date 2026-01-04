@@ -6,13 +6,14 @@
     "entity_type": "knowledge_transfer",
     "version": 1,
     "created_at": "2026-01-04T21:06:17.208407",
-    "modified_at": "2026-01-04T21:06:33.123774",
+    "modified_at": "2026-01-04T21:06:49.193066",
     "title": "DI Container as First-Class Citizen Implementation",
     "session_id": "",
     "session_date": "",
     "summary": "Implemented dependency injection container as first-class citizen in cortical. Broke backward compatibility on TransactionManager and GoTManager to enforce container-based instantiation.",
     "sections": {
-      "Architecture": "## Container Location\n- **Entry point**: `cortical/core/bootstrap.py`\n- **Container class**: `cortical/common/container.py`\n- **Modules**: `cortical/core/modules/`\n\n## Key Components\n1. **Container** - Central registry with lifecycle management\n2. **ContainerModule** - Abstract base for organized registrations\n3. **CDGModule** - Registers CDGStore, WAL, CDGTransactionManager\n4. **GoTModule** - Registers TransactionManager, GoTManager, QueryIndexManager\n\n## Usage Pattern\n```python\nfrom cortical.core.bootstrap import create_container\n\ncontainer = create_container(got_dir=Path(\".got\"))\ntx_manager = container.resolve(TransactionManager)\ngot_manager = container.resolve(GoTManager)\n```"
+      "Architecture": "## Container Location\n- **Entry point**: `cortical/core/bootstrap.py`\n- **Container class**: `cortical/common/container.py`\n- **Modules**: `cortical/core/modules/`\n\n## Key Components\n1. **Container** - Central registry with lifecycle management\n2. **ContainerModule** - Abstract base for organized registrations\n3. **CDGModule** - Registers CDGStore, WAL, CDGTransactionManager\n4. **GoTModule** - Registers TransactionManager, GoTManager, QueryIndexManager\n\n## Usage Pattern\n```python\nfrom cortical.core.bootstrap import create_container\n\ncontainer = create_container(got_dir=Path(\".got\"))\ntx_manager = container.resolve(TransactionManager)\ngot_manager = container.resolve(GoTManager)\n```",
+      "Breaking Changes": "## TransactionManager\n**Before**: `TransactionManager(got_dir)` - created own dependencies\n**After**: Requires injected `store` and `lock` parameters\n\n## GoTManager  \n**Before**: `GoTManager(got_dir)` - created own TransactionManager\n**After**: Requires injected `tx_manager` parameter\n\n## Migration\nAll consumers must use the container:\n```python\n# OLD (no longer works)\nmanager = GoTManager(Path(\".got\"))\n\n# NEW (required)\ncontainer = create_container(got_dir=Path(\".got\"))\nmanager = container.resolve(GoTManager)\n```\n\n## Test Fixtures\nUpdated `tests/conftest.py` with `_create_got_manager()` helper.\nAll test fixtures now use container-based creation."
     },
     "code_refs": [],
     "related_handoffs": [],
