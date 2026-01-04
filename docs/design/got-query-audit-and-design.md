@@ -2,23 +2,63 @@
 
 **Auditor:** Senior Principal Computer Scientist / Software Engineer
 **Date:** 2026-01-04
-**Status:** Complete
+**Status:** DRAFT - Pending Approval
+**Version:** 2.0
+
+---
+
+## Document Control
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0 | 2026-01-04 | Auditor | Initial audit and design |
+| 2.0 | 2026-01-04 | Auditor | Generalized architecture, GoT workflow, agent protocols |
+
+**Approval Required Before:**
+- Creating any GoT entities (Epic, Sprint, Task)
+- Writing any implementation code
+- Creating any test files
 
 ---
 
 ## Executive Summary
 
-After conducting a comprehensive forensic audit of the Graph of Thought (GoT) implementation, I am pleased to report that this is a **well-architected, production-quality system** with clear separation of concerns, thoughtful design patterns, and excellent documentation. The codebase demonstrates mature engineering practices and is ready for the next evolution: **complex query expression support**.
+This document provides:
+1. **Forensic Audit** of the existing GoT query infrastructure
+2. **Generalized Design** for complex query expressions using extensible patterns
+3. **Project Management Structure** using GoT to manage GoT development (dog-fooding)
+4. **Agent Workflow Protocol** for context-limited AI agents
+5. **Quality Gates** with BDD/TDD requirements
 
-### Key Findings
+### Critical Design Principles
 
-| Aspect | Assessment | Notes |
-|--------|------------|-------|
-| Architecture | ★★★★★ | Clean layered design, excellent SoC |
-| Code Quality | ★★★★★ | Well-documented, type-hinted, consistent |
-| Query Infrastructure | ★★★★☆ | Strong foundation, ready for extension |
-| Indexing | ★★★★☆ | Good B-tree style indexes, room for expansion |
-| Test Coverage | ★★★★★ | 34/34 smoke tests passing |
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    DESIGN PRINCIPLES                                     │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  1. NO HARDCODED ENTITIES                                               │
+│     All graph functions use a registry pattern. No "inSprint" or        │
+│     "blocks" literals in core code. Everything is configurable.         │
+│                                                                          │
+│  2. DOG-FOOD OUR OWN SYSTEM                                             │
+│     This project is managed using GoT (got_utils.py). We prove          │
+│     the system works by using it to build itself.                       │
+│                                                                          │
+│  3. ASSUME CONTEXT LOSS                                                 │
+│     Every task is designed for an agent with no prior context.          │
+│     Knowledge transfers and handoffs bridge sessions.                   │
+│                                                                          │
+│  4. TEST BEFORE CODE                                                    │
+│     Behavioral tests define requirements. Unit tests verify             │
+│     implementation. No code without failing tests first.                │
+│                                                                          │
+│  5. CLEANUP REQUIRES APPROVAL                                           │
+│     All cleanup tasks are blocked by an approval task.                  │
+│     No automatic cleanup without human review.                          │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -51,8 +91,6 @@ GoT VALIDATION REPORT
 
 ### 1.2 Architecture Overview
 
-The GoT system exhibits a **clean layered architecture**:
-
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                        CLI Layer                             │
@@ -72,799 +110,1287 @@ The GoT system exhibits a **clean layered architecture**:
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 1.3 Query Infrastructure Analysis
+### 1.3 Current Query Capabilities
 
-#### Current Capabilities
+| Component | File | Purpose | Assessment |
+|-----------|------|---------|------------|
+| Query Builder | `query_builder.py` | Fluent SQL-like API | ★★★★★ |
+| Query API | `query_api.py` | Read-only operations | ★★★★★ |
+| Pattern Matcher | `pattern_matcher.py` | Subgraph isomorphism | ★★★★★ |
+| Graph Walker | `graph_walker.py` | BFS/DFS traversal | ★★★★★ |
+| Path Finder | `path_finder.py` | Shortest/all paths | ★★★★★ |
+| Indexer | `indexer.py` | Status/priority indexes | ★★★★☆ |
+| CLI Query | `got_utils.py:query()` | Natural language | ★★★☆☆ |
 
-| Component | File | Purpose | Status |
-|-----------|------|---------|--------|
-| Query Builder | `query_builder.py` | Fluent SQL-like API | ★★★★★ Excellent |
-| Query API | `query_api.py` | Read-only operations | ★★★★★ Excellent |
-| Pattern Matcher | `pattern_matcher.py` | Subgraph isomorphism | ★★★★★ Excellent |
-| Graph Walker | `graph_walker.py` | BFS/DFS traversal | ★★★★★ Excellent |
-| Path Finder | `path_finder.py` | Shortest/all paths | ★★★★★ Excellent |
-| Indexer | `indexer.py` | Status/priority indexes | ★★★★☆ Good |
-| CLI Query | `got_utils.py:query()` | Natural language | ★★★☆☆ Limited |
-
-#### Current Query Types Supported
-
-**1. Programmatic Fluent API (query_builder.py)**
-```python
-# Already supports complex chaining
-Query(manager).tasks()
-    .where(status="pending", priority="high")
-    .or_where(priority="critical")
-    .connected_to(sprint_id, via="CONTAINS")
-    .order_by("created_at", desc=True)
-    .limit(10)
-    .execute()
-```
-
-**2. Natural Language CLI (got_utils.py)**
-```
-"what blocks T-XXX"
-"blocked tasks"
-"high priority tasks"
-"tasks in sprint S-XXX"
-"recent tasks"
-```
-
-**3. Pattern Matching (pattern_matcher.py)**
-```python
-Pattern()
-    .node("a", type="task")
-    .outgoing("DEPENDS_ON")
-    .node("b", type="task", priority="high")
-```
-
-#### Current Limitations (Gap Analysis)
+### 1.4 Gap Analysis
 
 | Missing Feature | Impact | Priority |
 |-----------------|--------|----------|
 | Boolean expression parsing | Cannot combine AND/OR in CLI | Critical |
 | Comparison operators | No `priority > medium` | High |
+| Extensible function registry | Functions are hardcoded | Critical |
 | Field projections | No `SELECT field1, field2` | Medium |
-| Subqueries | No nested queries | Medium |
 | Aggregation in CLI | No `COUNT BY status` | High |
-| Full-text search | No content search | Medium |
 | Date range queries | Limited time filtering | High |
-| Graph pattern DSL | Complex patterns need code | Medium |
 
 ---
 
-## Part 2: Complex Query Expression Design
+## Part 2: Generalized Architecture
 
-### 2.1 Design Philosophy
+### 2.1 Function Registry Pattern
 
-Following the **Sovereignty Principle** documented in CLAUDE.md, this design builds on existing infrastructure without external dependencies:
+**Problem:** The original design hardcoded functions like `inSprint`, `blocks`, `dependsOn`.
+
+**Solution:** Use a **Function Registry** that allows runtime registration of query functions.
+
+```python
+# cortical/got/expression/registry.py
+
+from abc import ABC, abstractmethod
+from typing import Any, Callable, Dict, List, Optional, Type
+from dataclasses import dataclass
+
+@dataclass
+class FunctionSignature:
+    """Describes a registered function's interface."""
+    name: str
+    description: str
+    required_args: List[str]
+    optional_args: Dict[str, Any]  # name -> default
+    returns: str  # description of return type
+
+class QueryFunction(ABC):
+    """Base class for all query functions."""
+
+    @classmethod
+    @abstractmethod
+    def signature(cls) -> FunctionSignature:
+        """Return function signature for validation and help."""
+        pass
+
+    @abstractmethod
+    def execute(self, manager: "GoTManager", args: List[Any], kwargs: Dict[str, Any]) -> Any:
+        """Execute the function and return results."""
+        pass
+
+class FunctionRegistry:
+    """
+    Registry for query functions.
+
+    Functions are registered by name and can be looked up at runtime.
+    This allows new functions to be added without modifying core code.
+    """
+
+    _instance: Optional["FunctionRegistry"] = None
+    _functions: Dict[str, Type[QueryFunction]] = {}
+
+    @classmethod
+    def instance(cls) -> "FunctionRegistry":
+        """Get singleton instance."""
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    @classmethod
+    def register(cls, name: str) -> Callable[[Type[QueryFunction]], Type[QueryFunction]]:
+        """Decorator to register a function."""
+        def decorator(func_class: Type[QueryFunction]) -> Type[QueryFunction]:
+            cls._functions[name.lower()] = func_class
+            return func_class
+        return decorator
+
+    @classmethod
+    def get(cls, name: str) -> Optional[Type[QueryFunction]]:
+        """Look up a function by name."""
+        return cls._functions.get(name.lower())
+
+    @classmethod
+    def list_functions(cls) -> List[FunctionSignature]:
+        """List all registered functions."""
+        return [f.signature() for f in cls._functions.values()]
+```
+
+### 2.2 Example Function Implementations
+
+Functions are defined separately and registered - NOT hardcoded in the executor:
+
+```python
+# cortical/got/expression/functions/graph_functions.py
+
+from ..registry import QueryFunction, FunctionRegistry, FunctionSignature
+
+@FunctionRegistry.register("connected_to")
+class ConnectedToFunction(QueryFunction):
+    """Find entities connected to a given entity."""
+
+    @classmethod
+    def signature(cls) -> FunctionSignature:
+        return FunctionSignature(
+            name="connected_to",
+            description="Find entities connected to a given entity",
+            required_args=["entity_id"],
+            optional_args={"via": None, "direction": "both", "depth": 1},
+            returns="List of connected entities"
+        )
+
+    def execute(self, manager, args, kwargs):
+        entity_id = args[0]
+        edge_type = kwargs.get("via")
+        direction = kwargs.get("direction", "both")
+        depth = kwargs.get("depth", 1)
+
+        # Use existing GraphWalker infrastructure
+        from cortical.got.graph_walker import GraphWalker
+
+        walker = GraphWalker(manager).starting_from(entity_id).max_depth(depth)
+
+        if edge_type:
+            walker = walker.follow(edge_type)
+
+        if direction == "outgoing":
+            walker = walker.outgoing()
+        elif direction == "incoming":
+            walker = walker.incoming()
+        # else: both (default)
+
+        return list(walker.bfs().iter())
+
+
+@FunctionRegistry.register("path")
+class PathFunction(QueryFunction):
+    """Find path between two entities."""
+
+    @classmethod
+    def signature(cls) -> FunctionSignature:
+        return FunctionSignature(
+            name="path",
+            description="Find shortest path between two entities",
+            required_args=["from_id", "to_id"],
+            optional_args={"via": None, "max_length": 10},
+            returns="List of entity IDs in path, or empty if no path"
+        )
+
+    def execute(self, manager, args, kwargs):
+        from_id = args[0]
+        to_id = args[1]
+        edge_type = kwargs.get("via")
+        max_length = kwargs.get("max_length", 10)
+
+        from cortical.got.path_finder import PathFinder
+
+        finder = PathFinder(manager).max_length(max_length)
+
+        if edge_type:
+            finder = finder.via_edges(edge_type)
+
+        return finder.shortest_path(from_id, to_id) or []
+
+
+@FunctionRegistry.register("aggregate")
+class AggregateFunction(QueryFunction):
+    """Aggregate entities by a field."""
+
+    @classmethod
+    def signature(cls) -> FunctionSignature:
+        return FunctionSignature(
+            name="aggregate",
+            description="Count or group entities by a field",
+            required_args=["field"],
+            optional_args={"operation": "count"},
+            returns="Dict mapping field values to counts/results"
+        )
+
+    def execute(self, manager, args, kwargs):
+        field = args[0]
+        operation = kwargs.get("operation", "count")
+
+        from cortical.got.query_builder import Query
+
+        if operation == "count":
+            return Query(manager).tasks().group_by(field).count().execute()
+        # Add more operations as needed
+        return {}
+```
+
+### 2.3 Executor Using Registry
+
+The executor uses the registry - no hardcoded function names:
+
+```python
+# cortical/got/expression/executor.py
+
+from .registry import FunctionRegistry
+from .ast import FunctionCall, Expression
+
+class QueryExecutor:
+    """Execute AST against GoT storage using registered functions."""
+
+    def __init__(self, manager: "GoTManager"):
+        self.manager = manager
+        self.registry = FunctionRegistry.instance()
+
+    def _apply_function(self, func: FunctionCall):
+        """Execute a function call using the registry."""
+        func_class = self.registry.get(func.name)
+
+        if func_class is None:
+            available = [f.name for f in self.registry.list_functions()]
+            raise ValueError(
+                f"Unknown function '{func.name}'. "
+                f"Available functions: {', '.join(available)}"
+            )
+
+        # Extract arg values from AST
+        arg_values = [self._evaluate(arg) for arg in func.args]
+        kwarg_values = {k: self._evaluate(v) for k, v in func.kwargs.items()}
+
+        # Instantiate and execute
+        instance = func_class()
+        return instance.execute(self.manager, arg_values, kwarg_values)
+```
+
+### 2.4 Module Structure (Revised)
 
 ```
-We build. We maintain. We control.
+cortical/got/expression/
+├── __init__.py              # Public API: parse(), execute()
+├── lexer.py                 # Tokenization
+├── parser.py                # Recursive descent parser
+├── ast.py                   # AST node types
+├── optimizer.py             # Query optimization
+├── executor.py              # AST execution (uses registry)
+├── registry.py              # Function registry pattern
+├── errors.py                # Custom exceptions
+└── functions/               # Pluggable functions
+    ├── __init__.py          # Auto-registers all functions
+    ├── graph_functions.py   # connected_to, path, etc.
+    ├── filter_functions.py  # where, having, etc.
+    └── aggregate_functions.py # count, sum, avg, etc.
 ```
 
-### 2.2 Proposed Query Expression Grammar
+---
+
+## Part 3: Project Management Structure (GoT)
+
+This section documents the GoT entities that will be created AFTER this document is approved.
+
+### 3.1 Epic
+
+```yaml
+Epic:
+  title: "Complex Query Expression System"
+  description: |
+    Implement a generalized, extensible query expression parser for GoT
+    that compiles to existing Query builder infrastructure. Uses function
+    registry pattern for extensibility. Follows sovereignty principle.
+  priority: critical
+  success_criteria:
+    - All behavioral tests pass
+    - Unit test coverage >= 90%
+    - No hardcoded entity references in core code
+    - Function registry supports runtime extension
+    - CLI integration complete
+    - Performance within 2x of direct Query builder
+```
+
+### 3.2 Sprints
+
+```yaml
+Sprint-1:
+  title: "Foundation: Lexer, AST, and Test Infrastructure"
+  goal: "Establish parsing foundation with comprehensive test coverage"
+  tasks: [T-001 through T-006]
+
+Sprint-2:
+  title: "Parser and Basic Execution"
+  goal: "Parse expressions and execute simple queries"
+  tasks: [T-007 through T-012]
+
+Sprint-3:
+  title: "Function Registry and Graph Functions"
+  goal: "Extensible function system with graph operations"
+  tasks: [T-013 through T-018]
+
+Sprint-4:
+  title: "Optimization and CLI Integration"
+  goal: "Query optimization and CLI integration"
+  tasks: [T-019 through T-024]
+
+Sprint-5:
+  title: "Documentation and Cleanup"
+  goal: "Complete documentation and cleanup"
+  tasks: [T-025 through T-028]
+```
+
+### 3.3 Detailed Task Specifications
+
+Each task includes:
+- **Behavioral Test Requirement**: The BDD scenario to implement FIRST
+- **Affected Files**: Files the agent should examine/modify
+- **Validation Steps**: How to verify completion
+- **Cleanup Tasks**: What cleanup is needed (blocked by approval)
+
+---
+
+#### Sprint 1: Foundation
+
+##### T-001: Create Expression Module Skeleton
+
+```yaml
+Task: T-001
+Title: "Create expression module skeleton with __init__.py"
+Priority: critical
+Category: feature
+Sprint: Sprint-1
+
+Behavioral_Test_First: |
+  # tests/behavioral/test_expression_module.py
+
+  Feature: Expression Module Structure
+
+    Scenario: Module is importable
+      Given the expression module exists
+      When I import cortical.got.expression
+      Then no ImportError is raised
+      And parse function is available
+      And execute function is available
+
+    Scenario: Submodules are importable
+      Given the expression module exists
+      When I import cortical.got.expression.lexer
+      And I import cortical.got.expression.parser
+      And I import cortical.got.expression.ast
+      Then no ImportError is raised
+
+Affected_Files:
+  - cortical/got/expression/__init__.py (create)
+  - cortical/got/expression/lexer.py (create stub)
+  - cortical/got/expression/parser.py (create stub)
+  - cortical/got/expression/ast.py (create stub)
+  - cortical/got/expression/registry.py (create stub)
+  - cortical/got/expression/executor.py (create stub)
+  - cortical/got/expression/errors.py (create)
+  - tests/behavioral/test_expression_module.py (create)
+
+Validation_Steps:
+  1. Run: python -c "from cortical.got.expression import parse, execute"
+  2. Run: python -m pytest tests/behavioral/test_expression_module.py -v
+  3. Verify all imports succeed
+
+Agent_Instructions: |
+  Before implementing:
+  1. Read cortical/got/__init__.py to understand existing module patterns
+  2. Read cortical/got/query_builder.py for API style reference
+  3. Challenge: Are there existing expression patterns in the codebase?
+  4. Write the behavioral test FIRST
+  5. Run test to see it fail
+  6. Implement minimal code to pass
+
+Cleanup_Tasks:
+  - Remove any debugging print statements
+  - Ensure all files have module docstrings
+  - Blocked by: T-CLEANUP-APPROVAL
+```
+
+##### T-002: Implement AST Node Types
+
+```yaml
+Task: T-002
+Title: "Implement AST node types with dataclasses"
+Priority: critical
+Category: feature
+Sprint: Sprint-1
+Depends_On: [T-001]
+
+Behavioral_Test_First: |
+  # tests/behavioral/test_ast_nodes.py
+
+  Feature: AST Node Types
+
+    Scenario: Create a literal node
+      Given I want to represent the value "pending"
+      When I create a Literal node with value "pending"
+      Then the node.value equals "pending"
+      And the node is an instance of Expression
+
+    Scenario: Create a comparison node
+      Given I want to represent "status = 'pending'"
+      When I create a Comparison with field "status", op EQ, value "pending"
+      Then the node.field.name equals "status"
+      And the node.op equals Op.EQ
+      And the node.value.value equals "pending"
+
+    Scenario: Create a boolean AND expression
+      Given I have two comparison nodes
+      When I create an AndExpr with both as children
+      Then the node has 2 children
+      And both children are Comparison nodes
+
+    Scenario: Create a function call node
+      Given I want to represent "connected_to('T-123', via='DEPENDS_ON')"
+      When I create a FunctionCall with name "connected_to"
+      And I add positional arg "T-123"
+      And I add keyword arg via="DEPENDS_ON"
+      Then the node.name equals "connected_to"
+      And the node has 1 positional arg
+      And the node has 1 keyword arg
+
+Affected_Files:
+  - cortical/got/expression/ast.py (implement)
+  - tests/behavioral/test_ast_nodes.py (create)
+  - tests/unit/test_ast.py (create)
+
+Unit_Test_Requirements: |
+  # tests/unit/test_ast.py
+
+  - test_literal_string_value
+  - test_literal_number_value
+  - test_literal_list_value
+  - test_field_name_validation
+  - test_comparison_all_operators
+  - test_and_expr_flattening
+  - test_or_expr_flattening
+  - test_function_call_args
+  - test_function_call_kwargs
+  - test_query_with_order_by
+  - test_query_with_limit_offset
+  - test_expression_equality
+  - test_expression_repr
+
+Validation_Steps:
+  1. Run: python -m pytest tests/behavioral/test_ast_nodes.py -v
+  2. Run: python -m pytest tests/unit/test_ast.py -v
+  3. Run: python -m coverage run -m pytest tests/unit/test_ast.py
+  4. Verify coverage >= 95% for ast.py
+
+Agent_Instructions: |
+  Before implementing:
+  1. Read cortical/got/types.py for dataclass patterns used in this project
+  2. Read cortical/got/pattern_matcher.py for NodeConstraint/EdgeConstraint patterns
+  3. Challenge: Should Expression be a Protocol or ABC?
+  4. Challenge: Should nodes be frozen dataclasses?
+  5. Write behavioral test FIRST
+  6. Write unit tests
+  7. Implement to make tests pass
+
+Cleanup_Tasks:
+  - Ensure all dataclasses have __repr__ and __eq__
+  - Add type hints to all fields
+  - Blocked by: T-CLEANUP-APPROVAL
+```
+
+##### T-003: Implement Lexer (Tokenization)
+
+```yaml
+Task: T-003
+Title: "Implement lexer for tokenizing query expressions"
+Priority: critical
+Category: feature
+Sprint: Sprint-1
+Depends_On: [T-001]
+
+Behavioral_Test_First: |
+  # tests/behavioral/test_lexer.py
+
+  Feature: Query Expression Tokenization
+
+    Scenario: Tokenize simple comparison
+      Given the query string "status = 'pending'"
+      When I tokenize the string
+      Then I get tokens: IDENTIFIER("status"), EQ, STRING("pending"), EOF
+
+    Scenario: Tokenize boolean expression
+      Given the query string "status = 'pending' AND priority = 'high'"
+      When I tokenize the string
+      Then I get tokens including AND keyword
+      And I get 2 IDENTIFIER tokens
+      And I get 2 STRING tokens
+
+    Scenario: Tokenize comparison operators
+      Given the query string "count > 5 AND count <= 10"
+      When I tokenize the string
+      Then I get GT and LTE operator tokens
+
+    Scenario: Tokenize function call
+      Given the query string "connected_to('T-123', via='DEPENDS_ON')"
+      When I tokenize the string
+      Then I get IDENTIFIER("connected_to")
+      And I get LPAREN and RPAREN
+      And I get STRING tokens for arguments
+
+    Scenario: Handle whitespace correctly
+      Given the query string "  status   =   'pending'  "
+      When I tokenize the string
+      Then whitespace is ignored
+      And I get the same tokens as without extra whitespace
+
+    Scenario: Error on invalid character
+      Given the query string "status @ 'pending'"
+      When I tokenize the string
+      Then a LexerError is raised
+      And the error includes position information
+
+Affected_Files:
+  - cortical/got/expression/lexer.py (implement)
+  - cortical/got/expression/errors.py (add LexerError)
+  - tests/behavioral/test_lexer.py (create)
+  - tests/unit/test_lexer.py (create)
+
+Unit_Test_Requirements: |
+  - test_tokenize_string_single_quotes
+  - test_tokenize_string_double_quotes
+  - test_tokenize_string_with_escapes
+  - test_tokenize_integer
+  - test_tokenize_float
+  - test_tokenize_date_iso_format
+  - test_tokenize_identifier_simple
+  - test_tokenize_identifier_with_underscore
+  - test_tokenize_identifier_with_hyphen (for entity IDs like T-123)
+  - test_tokenize_all_operators
+  - test_tokenize_all_keywords
+  - test_tokenize_list_literal
+  - test_tokenize_nested_parens
+  - test_error_unclosed_string
+  - test_error_invalid_character
+  - test_error_includes_position
+  - test_token_position_tracking
+
+Validation_Steps:
+  1. Run: python -m pytest tests/behavioral/test_lexer.py -v
+  2. Run: python -m pytest tests/unit/test_lexer.py -v
+  3. Verify coverage >= 95% for lexer.py
+
+Agent_Instructions: |
+  Before implementing:
+  1. Research: Are there existing tokenizers in this codebase? Check cortical/utils/
+  2. Read: Python's tokenize module for patterns (but don't use it - sovereignty)
+  3. Challenge: How to handle entity IDs with hyphens (T-123) vs subtraction?
+  4. Challenge: Should keywords be case-sensitive?
+  5. Write behavioral tests FIRST
+  6. Implement incrementally, one token type at a time
+
+Cleanup_Tasks:
+  - Ensure error messages are user-friendly
+  - Add position tracking for error reporting
+  - Blocked by: T-CLEANUP-APPROVAL
+```
+
+##### T-004: Implement Error Types
+
+```yaml
+Task: T-004
+Title: "Implement custom exception types with position tracking"
+Priority: high
+Category: feature
+Sprint: Sprint-1
+Depends_On: [T-001]
+
+Behavioral_Test_First: |
+  Feature: Expression Error Handling
+
+    Scenario: LexerError includes position
+      Given an invalid query "status @ pending"
+      When lexer encounters '@' at position 7
+      Then LexerError is raised
+      And error.position equals 7
+      And error.message includes "Unexpected character '@'"
+
+    Scenario: ParseError includes context
+      Given a malformed query "status = AND"
+      When parser encounters unexpected AND
+      Then ParseError is raised
+      And error includes expected token types
+      And error includes what was found
+
+    Scenario: ExecutionError for unknown function
+      Given a query "unknown_func('T-123')"
+      When executor cannot find function
+      Then ExecutionError is raised
+      And error lists available functions
+
+Affected_Files:
+  - cortical/got/expression/errors.py (implement fully)
+  - tests/unit/test_errors.py (create)
+
+Validation_Steps:
+  1. Run: python -m pytest tests/unit/test_errors.py -v
+  2. Verify all errors have helpful messages
+```
+
+##### T-005: Implement Function Registry
+
+```yaml
+Task: T-005
+Title: "Implement function registry with decorator-based registration"
+Priority: critical
+Category: feature
+Sprint: Sprint-1
+Depends_On: [T-001, T-002]
+
+Behavioral_Test_First: |
+  Feature: Function Registry
+
+    Scenario: Register a function
+      Given I have a QueryFunction subclass
+      When I decorate it with @FunctionRegistry.register("my_func")
+      Then the function is retrievable via FunctionRegistry.get("my_func")
+
+    Scenario: List all registered functions
+      Given multiple functions are registered
+      When I call FunctionRegistry.list_functions()
+      Then I get signatures for all registered functions
+
+    Scenario: Function signature describes interface
+      Given a registered function with required and optional args
+      When I get its signature
+      Then signature.required_args lists required parameters
+      And signature.optional_args lists optional parameters with defaults
+
+    Scenario: Unknown function returns None
+      Given no function named "nonexistent"
+      When I call FunctionRegistry.get("nonexistent")
+      Then None is returned
+
+Affected_Files:
+  - cortical/got/expression/registry.py (implement)
+  - cortical/got/expression/functions/__init__.py (create)
+  - tests/behavioral/test_registry.py (create)
+  - tests/unit/test_registry.py (create)
+
+Unit_Test_Requirements: |
+  - test_register_function_decorator
+  - test_get_registered_function
+  - test_get_unregistered_returns_none
+  - test_list_functions_returns_signatures
+  - test_function_signature_validation
+  - test_case_insensitive_lookup
+  - test_registry_singleton_pattern
+  - test_cannot_register_same_name_twice (or can with warning?)
+
+Agent_Instructions: |
+  Before implementing:
+  1. Read: cortical/query/query_builder.py for existing patterns
+  2. Challenge: Should registry be a singleton or dependency-injected?
+  3. Challenge: What happens if same function registered twice?
+  4. Write behavioral test FIRST
+```
+
+##### T-006: Create Sprint-1 Validation Gate
+
+```yaml
+Task: T-006
+Title: "Sprint-1 validation gate: all foundation tests pass"
+Priority: critical
+Category: test
+Sprint: Sprint-1
+Depends_On: [T-001, T-002, T-003, T-004, T-005]
+
+Validation_Script: |
+  #!/bin/bash
+  # scripts/validate_sprint1.sh
+
+  set -e
+
+  echo "=== Sprint 1 Validation Gate ==="
+
+  # 1. Module imports
+  echo "Checking module imports..."
+  python -c "from cortical.got.expression import parse, execute" || exit 1
+
+  # 2. All behavioral tests
+  echo "Running behavioral tests..."
+  python -m pytest tests/behavioral/test_expression_module.py -v || exit 1
+  python -m pytest tests/behavioral/test_ast_nodes.py -v || exit 1
+  python -m pytest tests/behavioral/test_lexer.py -v || exit 1
+  python -m pytest tests/behavioral/test_registry.py -v || exit 1
+
+  # 3. All unit tests with coverage
+  echo "Running unit tests with coverage..."
+  python -m coverage run -m pytest tests/unit/test_ast.py tests/unit/test_lexer.py tests/unit/test_registry.py -v || exit 1
+
+  # 4. Coverage check
+  echo "Checking coverage..."
+  python -m coverage report --include="cortical/got/expression/*" --fail-under=90 || exit 1
+
+  # 5. Smoke tests still pass
+  echo "Verifying smoke tests..."
+  python -m pytest tests/smoke/ -v || exit 1
+
+  echo "=== Sprint 1 PASSED ==="
+
+Affected_Files:
+  - scripts/validate_sprint1.sh (create)
+
+Validation_Steps:
+  1. Run: bash scripts/validate_sprint1.sh
+  2. All checks must pass
+  3. Create knowledge transfer document
+```
+
+---
+
+#### Sprint 2: Parser and Basic Execution
+
+##### T-007: Implement Recursive Descent Parser
+
+```yaml
+Task: T-007
+Title: "Implement recursive descent parser for expressions"
+Priority: critical
+Category: feature
+Sprint: Sprint-2
+Depends_On: [T-003, T-002]
+
+Behavioral_Test_First: |
+  Feature: Expression Parsing
+
+    Scenario: Parse simple comparison
+      Given the query "status = 'pending'"
+      When I parse the query
+      Then I get a Query AST
+      And the expression is a Comparison
+      And field is "status" and value is "pending"
+
+    Scenario: Parse AND expression
+      Given the query "status = 'pending' AND priority = 'high'"
+      When I parse the query
+      Then the expression is an AndExpr
+      And it has 2 children
+
+    Scenario: Parse OR expression
+      Given the query "status = 'blocked' OR status = 'failed'"
+      When I parse the query
+      Then the expression is an OrExpr
+
+    Scenario: Parse mixed AND/OR with correct precedence
+      Given the query "a = 1 AND b = 2 OR c = 3"
+      When I parse the query
+      Then OR is the root (lower precedence)
+      And left child is AndExpr
+
+    Scenario: Parse parenthesized expression
+      Given the query "(a = 1 OR b = 2) AND c = 3"
+      When I parse the query
+      Then AND is the root
+      And left child is OrExpr (parentheses respected)
+
+    Scenario: Parse function call
+      Given the query "connected_to('T-123', via='DEPENDS_ON')"
+      When I parse the query
+      Then the expression is a FunctionCall
+      And function name is "connected_to"
+
+    Scenario: Parse ORDER BY clause
+      Given the query "status = 'pending' ORDER BY created_at DESC"
+      When I parse the query
+      Then query.order_by equals ("created_at", "DESC")
+
+    Scenario: Parse LIMIT and OFFSET
+      Given the query "status = 'pending' LIMIT 10 OFFSET 5"
+      When I parse the query
+      Then query.limit equals 10
+      And query.offset equals 5
+
+Affected_Files:
+  - cortical/got/expression/parser.py (implement)
+  - tests/behavioral/test_parser.py (create)
+  - tests/unit/test_parser.py (create)
+
+Unit_Test_Requirements: |
+  - test_parse_comparison_eq
+  - test_parse_comparison_ne
+  - test_parse_comparison_gt_lt_gte_lte
+  - test_parse_comparison_in_list
+  - test_parse_comparison_like
+  - test_parse_and_two_terms
+  - test_parse_and_three_terms
+  - test_parse_or_two_terms
+  - test_parse_mixed_precedence
+  - test_parse_parentheses_override
+  - test_parse_nested_parentheses
+  - test_parse_function_no_args
+  - test_parse_function_positional_args
+  - test_parse_function_keyword_args
+  - test_parse_function_mixed_args
+  - test_parse_order_by_asc
+  - test_parse_order_by_desc
+  - test_parse_order_by_default_asc
+  - test_parse_limit_only
+  - test_parse_limit_and_offset
+  - test_parse_error_unexpected_token
+  - test_parse_error_unclosed_paren
+  - test_parse_error_missing_value
+
+Agent_Instructions: |
+  Before implementing:
+  1. Read: parser.py patterns in this codebase (search for "parse" functions)
+  2. Study: The grammar in section 2.2 of this document
+  3. Challenge: Is recursive descent the right choice? Consider Pratt parsing.
+  4. Challenge: How to handle error recovery for better UX?
+  5. Write behavioral tests FIRST
+  6. Implement one grammar rule at a time
+```
+
+##### T-008 through T-012: [Additional Sprint 2 Tasks]
+
+*(Detailed specifications for executor, integration with Query builder, etc.)*
+
+---
+
+#### Sprint 3: Function Registry and Graph Functions
+
+##### T-013: Implement Core Graph Functions
+
+```yaml
+Task: T-013
+Title: "Implement core graph functions using registry"
+Priority: high
+Category: feature
+Sprint: Sprint-3
+Depends_On: [T-005, T-008]
+
+Behavioral_Test_First: |
+  Feature: Graph Query Functions
+
+    Scenario: connected_to finds connected entities
+      Given entity T-001 is connected to T-002 via DEPENDS_ON
+      When I execute "connected_to('T-001', via='DEPENDS_ON')"
+      Then T-002 is in the results
+
+    Scenario: path finds shortest path
+      Given T-001 -> T-002 -> T-003 path exists
+      When I execute "path('T-001', 'T-003')"
+      Then result is ['T-001', 'T-002', 'T-003']
+
+    Scenario: aggregate counts by field
+      Given tasks with various statuses
+      When I execute "aggregate('status')"
+      Then result is a dict with status counts
+
+Functions_To_Implement:
+  - connected_to(entity_id, via=None, direction="both", depth=1)
+  - path(from_id, to_id, via=None, max_length=10)
+  - aggregate(field, operation="count")
+  - exists(entity_id)
+  - type_of(entity_id)
+
+Affected_Files:
+  - cortical/got/expression/functions/graph_functions.py (create)
+  - cortical/got/expression/functions/aggregate_functions.py (create)
+  - cortical/got/expression/functions/__init__.py (update)
+  - tests/behavioral/test_graph_functions.py (create)
+  - tests/unit/test_graph_functions.py (create)
+
+Agent_Instructions: |
+  Before implementing:
+  1. Read: cortical/got/graph_walker.py for traversal patterns
+  2. Read: cortical/got/path_finder.py for path algorithms
+  3. Read: cortical/got/query_builder.py for aggregation patterns
+  4. Challenge: What edge types exist? Don't hardcode them.
+  5. Challenge: What entity types exist? Use introspection.
+  6. Write behavioral tests FIRST with real GoT data
+```
+
+---
+
+### 3.4 Cleanup Approval Task
+
+```yaml
+Task: T-CLEANUP-APPROVAL
+Title: "Cleanup Approval Gate"
+Priority: critical
+Category: governance
+Sprint: Sprint-5
+
+Description: |
+  This task BLOCKS all cleanup tasks. Cleanup tasks include:
+  - Removing debug code
+  - Removing TODO comments
+  - Removing unused imports
+  - Reformatting code
+  - Deleting temporary files
+
+  Cleanup tasks may only proceed AFTER this task is marked complete
+  by a human reviewer who has verified:
+  1. All implementation is complete
+  2. All tests pass
+  3. Coverage requirements met
+  4. No functionality will be lost
+
+Approval_Checklist:
+  - [ ] All Sprint validation gates passed
+  - [ ] Code review completed
+  - [ ] No pending implementation tasks
+  - [ ] Documentation complete
+  - [ ] Human approval granted
+
+Blocks:
+  - T-CLEANUP-001: Remove debug statements
+  - T-CLEANUP-002: Clean up TODOs
+  - T-CLEANUP-003: Format code
+  - T-CLEANUP-004: Remove unused imports
+```
+
+---
+
+## Part 4: Agent Workflow Protocol
+
+### 4.1 Task Execution Workflow
+
+Every agent MUST follow this workflow when assigned a task:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    AGENT TASK EXECUTION WORKFLOW                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  PHASE 1: RESEARCH (Before writing ANY code)                            │
+│  ───────────────────────────────────────────                            │
+│  1. Read the task specification completely                              │
+│  2. Read ALL files listed in Affected_Files                             │
+│  3. Search codebase for related patterns                                │
+│  4. Check for existing implementations that might conflict              │
+│  5. Verify dependencies are complete (check Depends_On tasks)           │
+│                                                                          │
+│  PHASE 2: VERIFY (Challenge assumptions)                                │
+│  ───────────────────────────────────────                                │
+│  1. Question: Is the task specification complete?                       │
+│  2. Question: Are there edge cases not mentioned?                       │
+│  3. Question: Does this conflict with existing code?                    │
+│  4. Question: Are the affected files correct?                           │
+│  5. If answers unclear: Create clarification request, DO NOT PROCEED   │
+│                                                                          │
+│  PHASE 3: TEST FIRST (BDD/TDD)                                          │
+│  ─────────────────────────────                                          │
+│  1. Create behavioral test file from Behavioral_Test_First spec         │
+│  2. Run behavioral tests - they MUST FAIL                               │
+│  3. Create unit test file from Unit_Test_Requirements                   │
+│  4. Run unit tests - they MUST FAIL                                     │
+│  5. If tests pass before implementation: STOP - something is wrong      │
+│                                                                          │
+│  PHASE 4: IMPLEMENT (Minimal code to pass tests)                        │
+│  ─────────────────────────────────────────────                          │
+│  1. Write minimal code to pass ONE test                                 │
+│  2. Run that test to verify it passes                                   │
+│  3. Repeat for next test                                                │
+│  4. Do NOT add code beyond what tests require                           │
+│                                                                          │
+│  PHASE 5: VALIDATE (Verify all requirements met)                        │
+│  ─────────────────────────────────────────────                          │
+│  1. Run ALL tests in Validation_Steps                                   │
+│  2. Check coverage meets requirements                                   │
+│  3. Run smoke tests to verify no regressions                            │
+│  4. Verify GoT system still healthy: python scripts/got_utils.py validate│
+│                                                                          │
+│  PHASE 6: CLEANUP TASK CREATION (If needed)                             │
+│  ──────────────────────────────────────────                             │
+│  1. Identify any cleanup needed (debug code, TODOs, etc.)               │
+│  2. Create cleanup task in GoT                                          │
+│  3. Add edge: cleanup_task BLOCKED_BY T-CLEANUP-APPROVAL                │
+│  4. DO NOT perform cleanup - only document it                           │
+│                                                                          │
+│  PHASE 7: KNOWLEDGE TRANSFER (Preserve context)                         │
+│  ─────────────────────────────────────────────                          │
+│  1. Create KT document with discoveries                                 │
+│  2. Document any decisions made                                         │
+│  3. Document any challenges encountered                                 │
+│  4. Mark task complete with retrospective                               │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 4.2 Research Checklist
+
+Before ANY implementation, agent MUST verify:
+
+```yaml
+Research_Checklist:
+  Task_Understanding:
+    - [ ] I can state the task goal in one sentence
+    - [ ] I understand what "done" looks like
+    - [ ] I know which files I will modify
+    - [ ] I know which tests I will create
+
+  Codebase_Research:
+    - [ ] I have read all Affected_Files
+    - [ ] I have searched for similar patterns
+    - [ ] I understand the existing architecture
+    - [ ] I know where new code should go
+
+  Dependency_Verification:
+    - [ ] All Depends_On tasks are complete
+    - [ ] Required modules exist and are importable
+    - [ ] No conflicting changes in progress
+
+  Challenge_Questions:
+    - [ ] Is the specification complete?
+    - [ ] Are there unstated requirements?
+    - [ ] Could this break existing functionality?
+    - [ ] Is this the right approach?
+```
+
+### 4.3 Knowledge Transfer Template
+
+```yaml
+# Created via: python scripts/got_utils.py kt create "Session: [TOPIC]"
+
+Knowledge_Transfer:
+  session_id: KT-XXXX
+  created: [TIMESTAMP]
+  author: [AGENT_ID]
+
+  Context:
+    task_completed: [T-XXXX]
+    sprint: [Sprint-N]
+    epic: "Complex Query Expression System"
+
+  Summary: |
+    [2-3 sentence summary of what was accomplished]
+
+  Key_Decisions:
+    - decision: "[What was decided]"
+      rationale: "[Why this choice]"
+      alternatives_considered: "[What else was considered]"
+
+  Discoveries:
+    - "[Something learned about the codebase]"
+    - "[A pattern that should be followed]"
+    - "[A gotcha to watch out for]"
+
+  Challenges_Encountered:
+    - challenge: "[What was difficult]"
+      resolution: "[How it was resolved]"
+
+  Files_Modified:
+    - path: "[file path]"
+      changes: "[summary of changes]"
+
+  Tests_Created:
+    - path: "[test file path]"
+      coverage: "[what it tests]"
+
+  Next_Steps:
+    - "[What the next agent should do]"
+    - "[What to watch out for]"
+
+  Handoff_Notes: |
+    [Anything the next agent needs to know that doesn't fit above]
+```
+
+### 4.4 Handoff Protocol
+
+When context must be preserved across sessions:
+
+```yaml
+# Created via: python scripts/got_utils.py handoff initiate [TASK_ID]
+
+Handoff:
+  id: H-XXXX
+  from_session: [SESSION_ID]
+  status: pending
+
+  Current_State:
+    task: [T-XXXX]
+    progress: "[What has been done]"
+    blockers: "[What is blocking progress]"
+
+  Files_In_Progress:
+    - path: "[file path]"
+      state: "[complete|partial|not_started]"
+      notes: "[current state of changes]"
+
+  Tests_Status:
+    behavioral: "[passing|failing|not_created]"
+    unit: "[passing|failing|not_created]"
+    coverage: "[percentage]"
+
+  Instructions_For_Next_Agent: |
+    1. [First thing to do]
+    2. [Second thing to do]
+    3. [Third thing to do]
+
+  Warnings: |
+    - [Things to be careful of]
+    - [Mistakes to avoid]
+
+  Required_Reading:
+    - [File or doc that must be read first]
+    - [Another important reference]
+```
+
+---
+
+## Part 5: Validation Gates
+
+### 5.1 Per-Task Validation
+
+Every task must pass:
+
+```bash
+# Minimum validation for any task
+python scripts/got_utils.py validate                    # GoT healthy
+python -m pytest tests/smoke/ -v                        # No regressions
+python -m pytest tests/behavioral/test_[FEATURE].py -v  # Behavioral pass
+python -m pytest tests/unit/test_[FEATURE].py -v        # Unit pass
+python -m coverage report --include="[FILES]" --fail-under=90
+```
+
+### 5.2 Sprint Validation Gates
+
+Each sprint has a validation script:
+
+| Sprint | Script | Checks |
+|--------|--------|--------|
+| Sprint-1 | `scripts/validate_sprint1.sh` | Module structure, AST, Lexer, Registry |
+| Sprint-2 | `scripts/validate_sprint2.sh` | Parser, Basic execution |
+| Sprint-3 | `scripts/validate_sprint3.sh` | Functions, Graph operations |
+| Sprint-4 | `scripts/validate_sprint4.sh` | Optimization, CLI integration |
+| Sprint-5 | `scripts/validate_sprint5.sh` | Full integration, Documentation |
+
+### 5.3 Final Validation Gate
+
+Before epic completion:
+
+```bash
+#!/bin/bash
+# scripts/validate_epic.sh
+
+set -e
+
+echo "=== Epic Validation Gate ==="
+
+# All sprint gates
+for i in 1 2 3 4 5; do
+    bash scripts/validate_sprint${i}.sh
+done
+
+# Full test suite
+python -m pytest tests/ -v
+
+# Coverage
+python -m coverage run -m pytest tests/
+python -m coverage report --include="cortical/got/expression/*" --fail-under=90
+
+# Performance benchmark
+python scripts/benchmark_expression.py
+
+# GoT health
+python scripts/got_utils.py validate
+
+echo "=== Epic COMPLETE ==="
+```
+
+---
+
+## Part 6: GoT Commands Reference
+
+### 6.1 Creating Entities
+
+```bash
+# Epic
+python scripts/got_utils.py epic create "Title" --description "..."
+
+# Sprint
+python scripts/got_utils.py sprint create "Title" --goal "..."
+
+# Task
+python scripts/got_utils.py task create "Title" \
+    --priority [critical|high|medium|low] \
+    --category [feature|bugfix|refactor|docs|test]
+
+# Edge (dependency)
+python scripts/got_utils.py edge add T-001 T-002 DEPENDS_ON
+python scripts/got_utils.py edge add T-003 T-CLEANUP-APPROVAL BLOCKED_BY
+
+# Decision
+python scripts/got_utils.py decision log "Decision title" \
+    --rationale "Why this decision was made"
+```
+
+### 6.2 Managing Work
+
+```bash
+# Start task
+python scripts/got_utils.py task start T-XXXX
+
+# Complete task
+python scripts/got_utils.py task complete T-XXXX \
+    --retrospective "What worked, what didn't, what was learned"
+
+# Create knowledge transfer
+python scripts/got_utils.py kt create "Session: Topic" \
+    --summary "Key outcomes..."
+
+# Initiate handoff
+python scripts/got_utils.py handoff initiate T-XXXX \
+    --target agent \
+    --instructions "What to do next..."
+
+# Accept handoff
+python scripts/got_utils.py handoff accept H-XXXX
+```
+
+### 6.3 Querying State
+
+```bash
+# Current state
+python scripts/got_utils.py task list --status in_progress
+python scripts/got_utils.py blocked
+python scripts/got_utils.py validate
+
+# Pending handoffs
+python scripts/got_utils.py handoff list --status pending
+
+# Knowledge transfers
+python scripts/got_utils.py kt list --status draft
+```
+
+---
+
+## Appendix A: Original Audit Findings
+
+*(Preserved from version 1.0 - see sections 1.1-1.4 of original document)*
+
+---
+
+## Appendix B: Grammar Specification
 
 ```
 <query>           ::= <expression> [<order_clause>] [<limit_clause>]
 
 <expression>      ::= <and_expr> ( 'OR' <and_expr> )*
 <and_expr>        ::= <primary> ( 'AND' <primary> )*
-<primary>         ::= <comparison> | <function_call> | '(' <expression> ')' | <keyword_query>
+<primary>         ::= <comparison> | <function_call> | '(' <expression> ')'
 
 <comparison>      ::= <field> <operator> <value>
-<operator>        ::= '=' | '!=' | '>' | '<' | '>=' | '<=' | 'IN' | 'LIKE' | 'CONTAINS'
+<operator>        ::= '=' | '!=' | '>' | '<' | '>=' | '<=' | 'IN' | 'LIKE'
 
-<function_call>   ::= <function_name> '(' <args> ')'
-<function_name>   ::= 'blocks' | 'dependsOn' | 'connectedTo' | 'inSprint' | 'count' | 'path'
+<function_call>   ::= <identifier> '(' [<arg_list>] ')'
+<arg_list>        ::= <arg> ( ',' <arg> )*
+<arg>             ::= <value> | <identifier> '=' <value>
 
-<field>           ::= 'status' | 'priority' | 'title' | 'created_at' | 'updated_at' | ...
+<field>           ::= <identifier>
 <value>           ::= <string> | <number> | <date> | <list>
+<list>            ::= '[' [<value> (',' <value>)*] ']'
 
-<order_clause>    ::= 'ORDER BY' <field> ['ASC'|'DESC']
+<order_clause>    ::= 'ORDER' 'BY' <field> ['ASC'|'DESC']
 <limit_clause>    ::= 'LIMIT' <number> ['OFFSET' <number>]
-
-<keyword_query>   ::= 'tasks' | 'blocked' | 'active' | 'pending' | 'completed' | 'orphans'
-```
-
-### 2.3 Example Queries
-
-**Simple expressions:**
-```
-status = 'pending'
-priority IN ['high', 'critical']
-status = 'pending' AND priority = 'high'
-```
-
-**Complex expressions:**
-```
-(status = 'pending' AND priority = 'high') OR (status = 'blocked')
-status = 'in_progress' AND created_at > '2025-12-01'
-```
-
-**Graph queries:**
-```
-blocks(T-XXX)                        # What blocks T-XXX
-dependsOn(T-XXX)                     # What T-XXX depends on
-connectedTo(T-XXX, via='DEPENDS_ON') # Connected via edge type
-inSprint(S-XXX)                      # Tasks in sprint
-path(T-001, T-002)                   # Path between tasks
-```
-
-**Aggregation:**
-```
-count(status)                        # Count by status
-count(priority) WHERE status = 'pending'
-```
-
-### 2.4 Implementation Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Query Expression                         │
-│                    (New: expression.py)                      │
-├─────────────────────────────────────────────────────────────┤
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐   │
-│  │    Lexer     │→ │    Parser    │→ │   AST Builder    │   │
-│  │ (tokenize)   │  │ (recursive)  │  │  (expression)    │   │
-│  └──────────────┘  └──────────────┘  └──────────────────┘   │
-├─────────────────────────────────────────────────────────────┤
-│                    AST Optimizer                             │
-│           (reorder for index use, simplify)                  │
-├─────────────────────────────────────────────────────────────┤
-│                   Execution Planner                          │
-│     (convert AST to Query/PatternMatcher/GraphWalker)        │
-├─────────────────────────────────────────────────────────────┤
-│                   Existing Infrastructure                    │
-│     (query_builder.py, pattern_matcher.py, indexer.py)       │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 2.5 Module Structure
-
-```
-cortical/got/
-├── expression/
-│   ├── __init__.py          # Public API
-│   ├── lexer.py             # Tokenization
-│   ├── parser.py            # Recursive descent parser
-│   ├── ast.py               # AST node types
-│   ├── optimizer.py         # Query optimization
-│   ├── executor.py          # AST to execution plan
-│   └── functions.py         # Built-in functions
-└── ...existing modules...
-```
-
-### 2.6 AST Node Types
-
-```python
-# ast.py
-
-from dataclasses import dataclass
-from typing import List, Any, Optional
-from enum import Enum, auto
-
-class Op(Enum):
-    EQ = auto()
-    NE = auto()
-    GT = auto()
-    LT = auto()
-    GTE = auto()
-    LTE = auto()
-    IN = auto()
-    LIKE = auto()
-    CONTAINS = auto()
-
-@dataclass
-class Expression:
-    """Base class for all AST nodes."""
-    pass
-
-@dataclass
-class Literal(Expression):
-    """Literal value: string, number, date, list."""
-    value: Any
-
-@dataclass
-class Field(Expression):
-    """Field reference: status, priority, etc."""
-    name: str
-
-@dataclass
-class Comparison(Expression):
-    """Comparison: field op value."""
-    field: Field
-    op: Op
-    value: Literal
-
-@dataclass
-class AndExpr(Expression):
-    """AND of multiple expressions."""
-    children: List[Expression]
-
-@dataclass
-class OrExpr(Expression):
-    """OR of multiple expressions."""
-    children: List[Expression]
-
-@dataclass
-class FunctionCall(Expression):
-    """Function call: blocks(T-XXX), count(status)."""
-    name: str
-    args: List[Expression]
-    kwargs: dict
-
-@dataclass
-class Query(Expression):
-    """Complete query with optional ordering/limits."""
-    expression: Expression
-    order_by: Optional[tuple] = None
-    limit: Optional[int] = None
-    offset: Optional[int] = None
-```
-
-### 2.7 Lexer Implementation
-
-```python
-# lexer.py
-
-import re
-from dataclasses import dataclass
-from enum import Enum, auto
-from typing import List, Iterator
-
-class TokenType(Enum):
-    # Literals
-    STRING = auto()
-    NUMBER = auto()
-    DATE = auto()
-    IDENTIFIER = auto()
-
-    # Operators
-    EQ = auto()       # =
-    NE = auto()       # !=
-    GT = auto()       # >
-    LT = auto()       # <
-    GTE = auto()      # >=
-    LTE = auto()      # <=
-
-    # Keywords
-    AND = auto()
-    OR = auto()
-    NOT = auto()
-    IN = auto()
-    LIKE = auto()
-    CONTAINS = auto()
-    ORDER = auto()
-    BY = auto()
-    ASC = auto()
-    DESC = auto()
-    LIMIT = auto()
-    OFFSET = auto()
-
-    # Punctuation
-    LPAREN = auto()
-    RPAREN = auto()
-    LBRACKET = auto()
-    RBRACKET = auto()
-    COMMA = auto()
-
-    # Special
-    EOF = auto()
-
-@dataclass
-class Token:
-    type: TokenType
-    value: str
-    position: int
-
-class Lexer:
-    """Tokenize query expressions."""
-
-    KEYWORDS = {
-        'and': TokenType.AND,
-        'or': TokenType.OR,
-        'not': TokenType.NOT,
-        'in': TokenType.IN,
-        'like': TokenType.LIKE,
-        'contains': TokenType.CONTAINS,
-        'order': TokenType.ORDER,
-        'by': TokenType.BY,
-        'asc': TokenType.ASC,
-        'desc': TokenType.DESC,
-        'limit': TokenType.LIMIT,
-        'offset': TokenType.OFFSET,
-    }
-
-    def __init__(self, text: str):
-        self.text = text
-        self.pos = 0
-
-    def tokenize(self) -> Iterator[Token]:
-        while self.pos < len(self.text):
-            # Skip whitespace
-            if self.text[self.pos].isspace():
-                self.pos += 1
-                continue
-
-            # String literals
-            if self.text[self.pos] in '"\'':
-                yield self._string()
-
-            # Numbers
-            elif self.text[self.pos].isdigit():
-                yield self._number()
-
-            # Operators
-            elif self.text[self.pos:self.pos+2] in ('!=', '>=', '<='):
-                yield self._two_char_op()
-            elif self.text[self.pos] in '=><':
-                yield self._one_char_op()
-
-            # Punctuation
-            elif self.text[self.pos] == '(':
-                yield Token(TokenType.LPAREN, '(', self.pos)
-                self.pos += 1
-            elif self.text[self.pos] == ')':
-                yield Token(TokenType.RPAREN, ')', self.pos)
-                self.pos += 1
-            elif self.text[self.pos] == '[':
-                yield Token(TokenType.LBRACKET, '[', self.pos)
-                self.pos += 1
-            elif self.text[self.pos] == ']':
-                yield Token(TokenType.RBRACKET, ']', self.pos)
-                self.pos += 1
-            elif self.text[self.pos] == ',':
-                yield Token(TokenType.COMMA, ',', self.pos)
-                self.pos += 1
-
-            # Identifiers and keywords
-            elif self.text[self.pos].isalpha() or self.text[self.pos] == '_':
-                yield self._identifier()
-
-            else:
-                raise ValueError(f"Unexpected character at position {self.pos}: {self.text[self.pos]}")
-
-        yield Token(TokenType.EOF, '', self.pos)
-```
-
-### 2.8 Parser Implementation
-
-```python
-# parser.py
-
-from typing import Optional, List
-from .lexer import Lexer, Token, TokenType
-from .ast import *
-
-class Parser:
-    """Recursive descent parser for query expressions."""
-
-    def __init__(self, text: str):
-        self.lexer = Lexer(text)
-        self.tokens = list(self.lexer.tokenize())
-        self.pos = 0
-
-    def parse(self) -> Query:
-        """Parse complete query with optional ORDER BY and LIMIT."""
-        expr = self._expression()
-
-        order_by = None
-        if self._check(TokenType.ORDER):
-            self._advance()
-            self._expect(TokenType.BY)
-            field = self._expect(TokenType.IDENTIFIER)
-            direction = 'ASC'
-            if self._check(TokenType.DESC):
-                direction = 'DESC'
-                self._advance()
-            elif self._check(TokenType.ASC):
-                self._advance()
-            order_by = (field.value, direction)
-
-        limit = None
-        offset = None
-        if self._check(TokenType.LIMIT):
-            self._advance()
-            limit = int(self._expect(TokenType.NUMBER).value)
-            if self._check(TokenType.OFFSET):
-                self._advance()
-                offset = int(self._expect(TokenType.NUMBER).value)
-
-        return Query(expression=expr, order_by=order_by, limit=limit, offset=offset)
-
-    def _expression(self) -> Expression:
-        """expression ::= and_expr ( 'OR' and_expr )*"""
-        left = self._and_expr()
-
-        while self._check(TokenType.OR):
-            self._advance()
-            right = self._and_expr()
-            if isinstance(left, OrExpr):
-                left.children.append(right)
-            else:
-                left = OrExpr(children=[left, right])
-
-        return left
-
-    def _and_expr(self) -> Expression:
-        """and_expr ::= primary ( 'AND' primary )*"""
-        left = self._primary()
-
-        while self._check(TokenType.AND):
-            self._advance()
-            right = self._primary()
-            if isinstance(left, AndExpr):
-                left.children.append(right)
-            else:
-                left = AndExpr(children=[left, right])
-
-        return left
-
-    def _primary(self) -> Expression:
-        """primary ::= comparison | function_call | '(' expression ')'"""
-        if self._check(TokenType.LPAREN):
-            self._advance()
-            expr = self._expression()
-            self._expect(TokenType.RPAREN)
-            return expr
-
-        # Check for function call
-        if self._check(TokenType.IDENTIFIER) and self._peek_next(TokenType.LPAREN):
-            return self._function_call()
-
-        # Comparison
-        return self._comparison()
-
-    def _comparison(self) -> Comparison:
-        """comparison ::= field operator value"""
-        field = Field(name=self._expect(TokenType.IDENTIFIER).value)
-        op = self._operator()
-        value = self._value()
-        return Comparison(field=field, op=op, value=value)
-
-    def _operator(self) -> Op:
-        token = self._advance()
-        return {
-            TokenType.EQ: Op.EQ,
-            TokenType.NE: Op.NE,
-            TokenType.GT: Op.GT,
-            TokenType.LT: Op.LT,
-            TokenType.GTE: Op.GTE,
-            TokenType.LTE: Op.LTE,
-            TokenType.IN: Op.IN,
-            TokenType.LIKE: Op.LIKE,
-            TokenType.CONTAINS: Op.CONTAINS,
-        }[token.type]
-
-    def _function_call(self) -> FunctionCall:
-        """function_call ::= identifier '(' args ')'"""
-        name = self._expect(TokenType.IDENTIFIER).value
-        self._expect(TokenType.LPAREN)
-
-        args = []
-        kwargs = {}
-
-        while not self._check(TokenType.RPAREN):
-            if self._check(TokenType.IDENTIFIER) and self._peek_next(TokenType.EQ):
-                # Keyword argument: via='DEPENDS_ON'
-                key = self._advance().value
-                self._advance()  # skip =
-                kwargs[key] = self._value().value
-            else:
-                args.append(self._value())
-
-            if self._check(TokenType.COMMA):
-                self._advance()
-
-        self._expect(TokenType.RPAREN)
-        return FunctionCall(name=name, args=args, kwargs=kwargs)
-
-    # ... helper methods ...
-```
-
-### 2.9 Query Optimizer
-
-```python
-# optimizer.py
-
-from .ast import *
-from typing import Set
-
-class QueryOptimizer:
-    """Optimize AST for efficient execution."""
-
-    def __init__(self, indexed_fields: Set[str]):
-        self.indexed_fields = indexed_fields
-
-    def optimize(self, query: Query) -> Query:
-        """Apply optimization passes."""
-        expr = query.expression
-        expr = self._flatten_nested(expr)
-        expr = self._reorder_for_indexes(expr)
-        expr = self._simplify(expr)
-        return Query(
-            expression=expr,
-            order_by=query.order_by,
-            limit=query.limit,
-            offset=query.offset
-        )
-
-    def _reorder_for_indexes(self, expr: Expression) -> Expression:
-        """
-        Reorder AND clauses to put indexed fields first.
-        This allows early filtering using indexes.
-        """
-        if isinstance(expr, AndExpr):
-            # Partition into indexed and non-indexed
-            indexed = []
-            non_indexed = []
-            for child in expr.children:
-                if isinstance(child, Comparison) and child.field.name in self.indexed_fields:
-                    indexed.append(child)
-                else:
-                    non_indexed.append(child)
-            # Indexed fields first for early filtering
-            expr.children = indexed + non_indexed
-        return expr
-
-    def _flatten_nested(self, expr: Expression) -> Expression:
-        """Flatten nested AND/OR with single children."""
-        if isinstance(expr, (AndExpr, OrExpr)):
-            if len(expr.children) == 1:
-                return expr.children[0]
-        return expr
-
-    def _simplify(self, expr: Expression) -> Expression:
-        """Apply simplification rules."""
-        # TODO: Constant folding, tautology elimination, etc.
-        return expr
-```
-
-### 2.10 Executor
-
-```python
-# executor.py
-
-from .ast import *
-from ..query_builder import Query as FluentQuery
-from ..pattern_matcher import Pattern, PatternMatcher
-from ..graph_walker import GraphWalker
-from ..path_finder import PathFinder
-from ..api import GoTManager
-
-class QueryExecutor:
-    """Execute AST against GoT storage."""
-
-    def __init__(self, manager: GoTManager):
-        self.manager = manager
-
-    def execute(self, query: Query) -> list:
-        """Execute parsed query and return results."""
-        # Build fluent query from AST
-        fluent = FluentQuery(self.manager).tasks()
-        fluent = self._apply_expression(fluent, query.expression)
-
-        if query.order_by:
-            field, direction = query.order_by
-            fluent = fluent.order_by(field, desc=(direction == 'DESC'))
-
-        if query.limit:
-            fluent = fluent.limit(query.limit)
-        if query.offset:
-            fluent = fluent.offset(query.offset)
-
-        return fluent.execute()
-
-    def _apply_expression(self, fluent: FluentQuery, expr: Expression) -> FluentQuery:
-        if isinstance(expr, Comparison):
-            return self._apply_comparison(fluent, expr)
-        elif isinstance(expr, AndExpr):
-            for child in expr.children:
-                fluent = self._apply_expression(fluent, child)
-            return fluent
-        elif isinstance(expr, OrExpr):
-            # Use or_where for OR expressions
-            for child in expr.children:
-                if isinstance(child, Comparison):
-                    fluent = fluent.or_where(**{child.field.name: child.value.value})
-            return fluent
-        elif isinstance(expr, FunctionCall):
-            return self._apply_function(fluent, expr)
-        return fluent
-
-    def _apply_comparison(self, fluent: FluentQuery, comp: Comparison) -> FluentQuery:
-        field = comp.field.name
-        value = comp.value.value
-
-        if comp.op == Op.EQ:
-            return fluent.where(**{field: value})
-        elif comp.op == Op.IN:
-            # Multiple OR conditions
-            for v in value:
-                fluent = fluent.or_where(**{field: v})
-            return fluent
-        # TODO: Handle other operators via custom filter
-        return fluent
-
-    def _apply_function(self, fluent: FluentQuery, func: FunctionCall) -> FluentQuery:
-        if func.name == 'blocks':
-            task_id = func.args[0].value
-            return fluent.connected_to(task_id, via='BLOCKS', direction='incoming')
-        elif func.name == 'dependsOn':
-            task_id = func.args[0].value
-            return fluent.connected_to(task_id, via='DEPENDS_ON')
-        elif func.name == 'inSprint':
-            sprint_id = func.args[0].value
-            return fluent.connected_to(sprint_id, via='CONTAINS', direction='incoming')
-        return fluent
-```
-
-### 2.11 Integration with CLI
-
-```python
-# In got_utils.py, update query() method
-
-def query(self, query_str: str) -> List[Dict[str, Any]]:
-    """Query language for the graph with complex expression support."""
-
-    # Try complex expression parser first
-    try:
-        from cortical.got.expression import parse_and_execute
-        return parse_and_execute(self._manager, query_str)
-    except SyntaxError:
-        pass  # Fall back to legacy patterns
-
-    # ... existing legacy query handling ...
 ```
 
 ---
 
-## Part 3: Implementation Roadmap
+## Document Approval
 
-### Phase 1: Core Expression Parser (2-3 days)
-- [ ] Implement lexer.py with tokenization
-- [ ] Implement parser.py with recursive descent
-- [ ] Implement ast.py with node types
-- [ ] Unit tests for lexer and parser
+**This document must be approved before ANY GoT entities are created or code is written.**
 
-### Phase 2: Basic Execution (2-3 days)
-- [ ] Implement executor.py for simple comparisons
-- [ ] Integrate with existing Query builder
-- [ ] Support AND/OR boolean logic
-- [ ] Integration tests with real GoT data
-
-### Phase 3: Graph Functions (2-3 days)
-- [ ] Implement blocks(), dependsOn() functions
-- [ ] Implement inSprint(), connectedTo() functions
-- [ ] Implement path() function using PathFinder
-- [ ] Add function registry for extensibility
-
-### Phase 4: Optimization & CLI (2 days)
-- [ ] Implement optimizer.py for index use
-- [ ] Integrate with CLI query command
-- [ ] Add explain() for query plans
-- [ ] Performance benchmarks
-
-### Phase 5: Advanced Features (ongoing)
-- [ ] Date range comparisons
-- [ ] Aggregation functions
-- [ ] Full-text search integration
-- [ ] Pattern DSL for complex graph patterns
+Approval signifies agreement with:
+- [ ] Generalized architecture (function registry pattern)
+- [ ] Epic/Sprint/Task structure
+- [ ] Agent workflow protocol
+- [ ] Cleanup governance model
+- [ ] Validation gates
+- [ ] Knowledge transfer requirements
 
 ---
 
-## Part 4: Recommendations
-
-### 4.1 Immediate Actions
-
-1. **Create expression module skeleton** - Set up the module structure
-2. **Start with lexer** - Tokenization is foundational
-3. **Test incrementally** - Each component should have unit tests
-
-### 4.2 Architecture Decisions
-
-| Decision | Recommendation | Rationale |
-|----------|----------------|-----------|
-| Parser type | Recursive descent | Simpler, sufficient for this grammar |
-| AST structure | Dataclasses | Pythonic, type-safe, immutable |
-| Execution strategy | Compile to Query builder | Reuse existing optimization |
-| Error handling | Position-aware errors | Good DX for CLI users |
-
-### 4.3 Testing Strategy
-
-```python
-# Example test cases for parser
-def test_simple_comparison():
-    result = parse("status = 'pending'")
-    assert isinstance(result.expression, Comparison)
-    assert result.expression.field.name == "status"
-    assert result.expression.value.value == "pending"
-
-def test_and_expression():
-    result = parse("status = 'pending' AND priority = 'high'")
-    assert isinstance(result.expression, AndExpr)
-    assert len(result.expression.children) == 2
-
-def test_or_expression():
-    result = parse("status = 'blocked' OR priority = 'critical'")
-    assert isinstance(result.expression, OrExpr)
-
-def test_function_call():
-    result = parse("blocks(T-123)")
-    assert isinstance(result.expression, FunctionCall)
-    assert result.expression.name == "blocks"
-```
-
----
-
-## Appendix A: Current Query System Strengths
-
-### A.1 Query Builder Excellence
-
-The existing `query_builder.py` is a masterclass in fluent API design:
-
-- **Method chaining** with proper `Self` return types
-- **Lazy evaluation** via generators
-- **Query validation** preventing invalid chains
-- **Explain support** for debugging
-- **Aggregation framework** with pluggable functions
-
-### A.2 Pattern Matcher Sophistication
-
-The `pattern_matcher.py` implements proper subgraph isomorphism:
-
-- **Backtracking search** with constraint propagation
-- **Direction-aware** edge matching
-- **Truncation transparency** with `PatternSearchResult`
-- **Fluent builder** for pattern construction
-
-### A.3 Index Manager Reliability
-
-The `indexer.py` shows mature engineering:
-
-- **Atomic writes** with temp-file-rename pattern
-- **Thread safety** with proper locking
-- **Dirty flag** semantics for save reliability
-- **Statistics tracking** for monitoring
-
----
-
-## Appendix B: Code Quality Observations
-
-### B.1 Documentation Excellence
-
-Every module has:
-- Clear docstrings with examples
-- Type hints throughout
-- Usage examples in module headers
-- Performance notes where relevant
-
-### B.2 Error Handling
-
-- Custom exception types (`QueryValidationError`, `CorruptionError`)
-- Graceful degradation with logging
-- Clear error messages with context
-
-### B.3 Design Patterns Used
-
-| Pattern | Location | Purpose |
-|---------|----------|---------|
-| Builder | QueryBuilder, Pattern | Fluent construction |
-| Strategy | AggregateFunction | Pluggable aggregation |
-| Visitor | GraphWalker | Traversal accumulation |
-| Iterator | Query.iter() | Memory-efficient streaming |
-| Factory | ID generation | Consistent entity creation |
-
----
-
-## Conclusion
-
-The Graph of Thought implementation is **production-ready and well-designed**. The proposed complex query expression system builds naturally on top of this solid foundation, adding expressive power while maintaining the system's architectural integrity.
-
-The implementation can proceed incrementally, with each phase delivering testable, usable functionality. The modular design allows the expression parser to be developed in isolation and integrated when ready.
-
-**My recommendation: Proceed with Phase 1 implementation immediately.**
-
----
-
-*Document prepared with confidence, style, and grace.*
+*Document Version 2.0 - Awaiting Approval*
