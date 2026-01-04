@@ -11,6 +11,7 @@ So that I can keep our custom-built task graph well-organized.
 import pytest
 from cortical.got.api import GoTManager
 from cortical.got.orphan import OrphanDetector
+from tests.conftest import _create_tx_manager, _create_got_manager
 
 
 class TestDeveloperIdentifiesOrphanTasks:
@@ -30,7 +31,7 @@ class TestDeveloperIdentifiesOrphanTasks:
         Then it's identified as orphaned
         """
         # Given a task with no edges
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         detector = OrphanDetector(manager)
         orphan = manager.create_task(title="Disconnected task")
         connected = manager.create_task(title="Connected task")
@@ -54,7 +55,7 @@ class TestDeveloperIdentifiesOrphanTasks:
         Then I get accurate counts and statistics
         """
         # Given a mix of connected and orphaned tasks
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         detector = OrphanDetector(manager)
 
         orphan1 = manager.create_task(title="Orphan 1")
@@ -83,7 +84,7 @@ class TestDeveloperIdentifiesOrphanTasks:
         Then I get all orphaned task IDs
         """
         # Given several orphaned tasks
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         detector = OrphanDetector(manager)
 
         orphan1 = manager.create_task(title="Build feature without planning")
@@ -119,7 +120,7 @@ class TestDeveloperGetsSuggestionsForOrphans:
         With high confidence
         """
         # Given an orphaned task and an active sprint
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         detector = OrphanDetector(manager)
 
         orphan = manager.create_task(
@@ -156,7 +157,7 @@ class TestDeveloperGetsSuggestionsForOrphans:
         Based on content similarity
         """
         # Given an orphaned task and similar tasks
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         detector = OrphanDetector(manager)
 
         orphan = manager.create_task(
@@ -192,7 +193,7 @@ class TestDeveloperGetsSuggestionsForOrphans:
         To help me connect it properly
         """
         # Given I just created a new task
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         detector = OrphanDetector(manager)
         current_sprint = manager.create_sprint(
             title="Current work",
@@ -230,7 +231,7 @@ class TestDeveloperAutoLinksOrphansToSprints:
         And they're no longer orphaned
         """
         # Given multiple orphaned tasks and a current sprint
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         detector = OrphanDetector(manager)
 
         current_sprint = manager.create_sprint(
@@ -263,7 +264,7 @@ class TestDeveloperAutoLinksOrphansToSprints:
         Because it's already organized
         """
         # Given a task already in a sprint
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         detector = OrphanDetector(manager)
 
         sprint1 = manager.create_sprint(title="Sprint 1", status="in_progress")
@@ -299,7 +300,7 @@ class TestDeveloperGetsOrphanSummary:
         With counts and recommendations
         """
         # Given a system with some orphans
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         detector = OrphanDetector(manager)
 
         orphan1 = manager.create_task(title="Orphan task 1")

@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from scripts.got_utils import TransactionalGoTAdapter, STATUS_PENDING, STATUS_COMPLETED, STATUS_IN_PROGRESS
 from cortical.got import GoTManager
+from cortical.core.bootstrap import create_container
 
 
 class TestQueryLanguageBasics:
@@ -417,7 +418,9 @@ class TestListMethods:
 
     @pytest.fixture
     def manager(self, got_dir):
-        return GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        return container.resolve(GoTManager)
 
     def test_list_tasks(self, manager):
         """list_tasks returns all tasks."""

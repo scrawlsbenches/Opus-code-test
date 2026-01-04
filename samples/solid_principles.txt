@@ -1,0 +1,101 @@
+SOLID Principles: Foundations of Maintainable Object-Oriented Design
+
+The SOLID principles guide object-oriented design toward maintainability and
+flexibility. These five principles, when applied judiciously, produce code that
+accommodates change without requiring extensive modification. They form the
+conceptual foundation for many design patterns and architectural approaches.
+
+Single Responsibility Principle states that a class should have only one reason
+to change. When a class handles multiple concerns, changes to one concern risk
+breaking another. A class that formats reports and sends emails has two reasons
+to change: formatting requirements and email protocols. Separating these concerns
+isolates change, making modifications safer and more focused.
+
+Identifying responsibilities requires judgment. Too broad: everything becomes one
+reason. Too narrow: trivial classes proliferate. The useful heuristic asks who
+would request changes. If different stakeholders drive different changes, those
+changes represent different responsibilities that belong in different classes.
+
+Open-Closed Principle advises that software entities should be open for extension
+but closed for modification. New behavior should not require changing existing
+code. This sounds paradoxical until you consider abstraction. A function that
+accepts an interface can gain new behaviors by receiving new implementations
+without any modification to itself.
+
+Achieving openness requires anticipating variation. Design abstractions at points
+where behavior might vary. However, premature abstraction wastes effort and
+complicates design. The practical approach: write concrete code first, then
+refactor toward abstractions when actual variation appears.
+
+Liskov Substitution Principle requires that subtypes be substitutable for their
+base types. If code works correctly with a base type, it must work correctly
+with any derived type. Violations occur when subclasses strengthen preconditions,
+weaken postconditions, or throw unexpected exceptions. A square that fails when
+its width and height are set independently violates substitutability for
+rectangle.
+
+Substitutability enables polymorphism. When client code depends on abstractions,
+it receives specific implementations at runtime. If those implementations do not
+honor the contract that the abstraction implies, runtime failures or subtle bugs
+result. Design inheritance hierarchies that preserve behavioral compatibility.
+
+Interface Segregation Principle states that clients should not depend on methods
+they do not use. Large interfaces force implementers to provide methods they
+cannot meaningfully support. They also force clients to couple to methods they
+never call. Smaller, focused interfaces allow precise dependencies.
+
+Role interfaces capture what clients need rather than what implementers provide.
+A printer interface might split into printable, scannable, and faxable. Clients
+that only print depend only on printable. Devices that only print implement only
+printable. No unnecessary coupling, no stub methods throwing "not supported"
+exceptions.
+
+Dependency Inversion Principle prescribes that high-level modules should not
+depend on low-level modules; both should depend on abstractions. Furthermore,
+abstractions should not depend on details; details should depend on abstractions.
+This inverts the traditional dependency direction where high-level policy depends
+on low-level implementation.
+
+Dependency injection implements the dependency inversion principle. Rather than
+creating dependencies directly, classes receive them through constructors or
+setters. The injector, operating at the composition root, wires concrete
+implementations to abstract dependencies. High-level code remains ignorant of
+low-level details.
+
+Consider a business logic class that needs database access. Traditional design
+has business logic creating or referencing a database connection directly.
+Dependency inversion has business logic depending on a repository interface.
+A concrete repository implementation depends on the same interface. Both depend
+on the abstraction; neither depends on the other.
+
+The principles interrelate. Single responsibility enables interface segregation
+by keeping classes focused. Interface segregation supports dependency inversion
+by providing narrow abstractions to depend upon. Open-closed relies on Liskov
+substitution to ensure extensions behave correctly. Together they guide toward
+loosely coupled, highly cohesive designs.
+
+Applying SOLID requires balance. Over-application fragments code into tiny
+classes and interfaces that obscure rather than clarify. Under-application
+leaves rigid code that resists change. Experience develops judgment about when
+principles apply and when simplicity trumps flexibility.
+
+SOLID principles describe goals, not rules. They orient thinking without
+prescribing specific solutions. A design that violates a principle is not
+automatically wrong; it simply warrants examination. Perhaps the violation is
+justified. Perhaps it reveals an improvement opportunity. The principles prompt
+questions more than answers.
+
+These principles emerged from decades of object-oriented practice. They capture
+hard-won insights about what makes code maintainable over time. Understanding
+them prepares you to recognize design smells, evaluate proposed changes, and
+communicate design rationale with other developers who share this vocabulary.
+
+Modern functional programming offers different approaches to similar goals.
+Immutability addresses some concerns that single responsibility addresses.
+Higher-order functions provide extension mechanisms that open-closed describes.
+The underlying forces persist across paradigms even as specific techniques vary.
+
+Learning SOLID principles represents a starting point, not a destination.
+Apply them thoughtfully, observe results, and refine your understanding. Code
+that embodies these principles tends toward maintainability. Code that ignores
+them tends toward rigidity. But judgment, not dogma, determines good design.

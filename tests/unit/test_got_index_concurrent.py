@@ -25,6 +25,7 @@ from typing import List, Tuple
 from cortical.got.api import GoTManager
 from cortical.got.indexer import QueryIndexManager
 from cortical.got.config import DurabilityMode
+from tests.conftest import _create_tx_manager, _create_got_manager
 
 
 
@@ -40,7 +41,7 @@ class TestConcurrentTaskCreation:
 
     def test_parallel_task_creation_all_indexed(self, got_dir):
         """All tasks created in parallel should be indexed."""
-        manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        manager = _create_got_manager(got_dir)
 
         results: List[Tuple[str, str, str]] = []  # (name, task_id, status)
         errors: List[Exception] = []
@@ -77,7 +78,7 @@ class TestConcurrentTaskCreation:
 
     def test_parallel_task_creation_index_counts_match(self, got_dir):
         """Index counts should match number of tasks created."""
-        manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        manager = _create_got_manager(got_dir)
 
         created_count = [0]  # Use list for mutable reference
         lock = threading.Lock()
@@ -117,7 +118,7 @@ class TestConcurrentTaskUpdates:
 
     def test_parallel_status_updates_indexed_correctly(self, got_dir):
         """Index should reflect final status after parallel updates."""
-        manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        manager = _create_got_manager(got_dir)
 
         # Create initial tasks
         tasks = [
@@ -155,7 +156,7 @@ class TestConcurrentTaskUpdates:
 
     def test_rapid_status_toggles(self, got_dir):
         """Index should handle rapid status changes on same task."""
-        manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        manager = _create_got_manager(got_dir)
 
         task = manager.create_task("Toggle Task", status="pending")
         errors: List[Exception] = []
@@ -199,7 +200,7 @@ class TestConcurrentMixedOperations:
 
     def test_create_update_delete_in_parallel(self, got_dir):
         """Index should handle create, update, delete all in parallel."""
-        manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        manager = _create_got_manager(got_dir)
 
         # Pre-create some tasks for updates and deletes
         update_tasks = [
@@ -292,7 +293,7 @@ class TestIndexThreadSafety:
 
     def test_parallel_index_reads_during_writes(self, got_dir):
         """Index reads should be consistent during concurrent writes."""
-        manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        manager = _create_got_manager(got_dir)
 
         # Pre-create some tasks
         for i in range(10):

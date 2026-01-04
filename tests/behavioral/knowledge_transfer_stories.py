@@ -21,6 +21,7 @@ from cortical.got.tx_manager import TransactionManager
 from cortical.got.types import KnowledgeTransfer, Task, Decision, Handoff
 from cortical.got.config import DurabilityMode
 from cortical.got.errors import TransactionError
+from tests.conftest import _create_tx_manager
 
 
 # ============================================================================
@@ -42,7 +43,7 @@ def tx_manager(temp_got_dir):
 
     Uses BALANCED durability mode for reliable testing.
     """
-    manager = TransactionManager(temp_got_dir, durability=DurabilityMode.BALANCED)
+    manager = _create_tx_manager(temp_got_dir)
     return manager
 
 
@@ -978,7 +979,7 @@ class TestSystemMaintainsKnowledgeIntegrity:
         And all fields are preserved correctly
         """
         # Given a knowledge transfer created in one session
-        manager1 = TransactionManager(temp_got_dir, durability=DurabilityMode.BALANCED)
+        manager1 = _create_tx_manager(temp_got_dir)
         kt = manager1.create_knowledge_transfer(
             title="Critical System Knowledge",
             summary="Must not be lost on restart",
@@ -994,7 +995,7 @@ class TestSystemMaintainsKnowledgeIntegrity:
         kt_id = kt.id
 
         # When the system restarts with a new transaction manager
-        manager2 = TransactionManager(temp_got_dir, durability=DurabilityMode.BALANCED)
+        manager2 = _create_tx_manager(temp_got_dir)
 
         # Then the knowledge transfer is still accessible
         retrieved = manager2.get_knowledge_transfer(kt_id)

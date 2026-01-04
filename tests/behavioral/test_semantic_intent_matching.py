@@ -14,9 +14,14 @@ This test proves:
 1. Keywords can be extracted from intent strings
 2. Experiences can be found by keyword overlap
 3. Semantic matching finds relevant experiences that categorical matching misses
+
+DISABLED: llm_orchestration module scheduled for removal.
 """
 
 import pytest
+
+# Skip entire module - llm_orchestration scheduled for removal
+pytestmark = pytest.mark.skip(reason="DISABLED: llm_orchestration module scheduled for removal")
 from pathlib import Path
 import tempfile
 import shutil

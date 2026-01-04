@@ -1,0 +1,107 @@
+Inversion of Control: The Hollywood Principle in Software Design
+
+Inversion of control reverses the traditional flow of program execution. In
+conventional programming, your code calls library code. With inversion of
+control, library code calls your code. This reversal, sometimes called the
+Hollywood Principle ("don't call us, we'll call you"), fundamentally changes
+how components interact.
+
+Consider a simple console application that reads input, processes it, and
+displays output. The application controls everything: when to read, what to
+process, when to display. Now consider a GUI application. The framework controls
+when events occur. Your code responds to button clicks, key presses, and timer
+events. The framework calls your handlers. Control has been inverted.
+
+Event-driven programming exemplifies inversion of control. Register handlers for
+events of interest. When events occur, the framework invokes your handlers. Your
+code does not poll for events or manage the event loop. The framework handles
+these concerns and calls your code at appropriate moments.
+
+Template methods define algorithm skeletons with customizable steps. The base
+class implements the overall algorithm, calling abstract methods at specific
+points. Subclasses override these methods to customize behavior without
+changing the algorithm structure. The framework controls execution order;
+subclasses provide specific implementations.
+
+Dependency injection represents inversion of control over object creation. In
+traditional code, components create their dependencies directly. With injection,
+an external mechanism creates dependencies and provides them to components.
+Components no longer control how or when dependencies are created.
+
+Plugin architectures invert control over feature availability. The core system
+defines extension points. Plugins implement these extensions. The core system
+discovers and loads plugins, calling them when needed. Plugin authors write code
+without modifying the core system. The core controls when plugins execute.
+
+Callbacks invert control over completion notification. Rather than blocking until
+an operation completes, pass a callback function. The operation calls your
+function when finished. Your code continues immediately; the library controls
+when the callback executes. Asynchronous programming relies heavily on this
+pattern.
+
+Frameworks differ from libraries in their use of inversion of control. A library
+provides functions you call. A framework provides structure you fill in. When
+using a library, your code is in control. When using a framework, the framework
+is in control. This distinction, sometimes called the "inversion of control
+container," defines frameworks.
+
+Configuration files invert control over behavior specification. Rather than
+hardcoding behavior in source code, read it from configuration. External tools
+or administrators modify behavior without code changes. The running program
+obeys configuration; configuration controls behavior.
+
+Service locators invert control over dependency resolution. Rather than directly
+instantiating collaborators, ask a locator to find them. The locator controls
+how services are found and instantiated. Different locator implementations can
+provide different services without client code changes.
+
+Aspect-oriented programming inverts control over cross-cutting concerns. Define
+aspects that apply to code matching certain patterns. The framework weaves these
+aspects into your code, executing them at join points you specify. Your code
+does not explicitly call aspects; the framework controls when they run.
+
+Strategy patterns invert control over algorithm selection. Define a family of
+algorithms with a common interface. Context classes use strategies through the
+interface. The caller chooses which strategy to inject. The context controls
+when the algorithm runs; the caller controls which algorithm runs.
+
+Observer patterns invert control over notification. Subjects notify observers
+when state changes. Observers register interest but do not poll for changes.
+The subject controls when notifications occur. Observers respond to notifications
+they did not initiate.
+
+Benefits of inversion of control include modularity, testability, and
+flexibility. Modular code separates concerns clearly. Testable code accepts mock
+collaborators. Flexible code adapts to new requirements without modification.
+These benefits compound in large systems where rigid coupling creates maintenance
+burden.
+
+Costs of inversion of control include complexity, indirection, and learning
+curves. Understanding program flow requires understanding the framework.
+Debugging crosses boundaries between your code and framework code. New developers
+must learn framework conventions before becoming productive.
+
+Choosing when to invert control requires judgment. Small scripts need no
+framework. Large applications benefit from structure. Library code that others
+will extend should define extension points. Application code that you alone
+maintain may not need such flexibility.
+
+Inversion of control is not dependency injection. Dependency injection is one
+form of inversion of control, but not the only form. Event handling, template
+methods, plugins, and callbacks all invert control without necessarily involving
+dependency injection. The concept is broader than any single technique.
+
+The principle underlying inversion of control: separate configuration from use.
+Components should be configurable by external mechanisms. Behavior should be
+determinable without code changes. Structure should be flexible enough to adapt.
+Specific techniques serve this general principle.
+
+Inversion of control enables the open-closed principle. Systems become open for
+extension without modification. New behavior plugs in through defined extension
+points. Existing code remains unchanged. The framework anticipates variation
+and provides mechanisms to accommodate it.
+
+Understanding inversion of control prepares you for modern frameworks. Web
+frameworks, GUI toolkits, game engines, and testing frameworks all employ it.
+The concepts transfer across technologies. Learn the principle once, recognize
+it everywhere.

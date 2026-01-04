@@ -174,6 +174,7 @@ def event_collector():
 
 @pytest.mark.behavioral
 @pytest.mark.cognitive
+@pytest.mark.skip(reason="DISABLED: Tests should not create data files. Worker class hardcodes Path('.got') at llm_orchestration/agents.py:897-899, writing to real .got/learning/experiences/ instead of temp directory. Fix: Worker should accept got_dir as injectable parameter, not auto-discover.")
 class TestWorkerLearningIntegration:
     """
     Epic: Worker Learning Integration

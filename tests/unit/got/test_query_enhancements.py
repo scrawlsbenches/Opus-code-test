@@ -14,7 +14,9 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-from cortical.got import GoTManager, Query
+from cortical.got import GoTManager
+from cortical.got.query_builder import Query
+from cortical.core.bootstrap import create_container
 from cortical.got.query_builder import (
     QueryPlan,
     QueryLogLevel,
@@ -222,7 +224,9 @@ class TestQueryLogging:
     def test_query_logs_at_info_level(self, tmp_path):
         """Test that queries log at INFO level."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
         manager.create_task("Test Task", status="pending")
 
         set_query_log_level(QueryLogLevel.INFO)
@@ -237,7 +241,9 @@ class TestQueryLogging:
     def test_query_logs_plan_at_debug_level(self, tmp_path):
         """Test that queries log plan at DEBUG level."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
         manager.create_task("Test Task", status="pending")
 
         set_query_log_level(QueryLogLevel.DEBUG)
@@ -252,7 +258,9 @@ class TestQueryLogging:
     def test_query_logs_error_on_exception(self, tmp_path):
         """Test that failed queries log errors."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         set_query_log_level(QueryLogLevel.INFO)
         try:
@@ -287,7 +295,9 @@ class TestQueryValidation:
     def test_cannot_chain_after_execute(self, tmp_path):
         """Test that chaining after execute raises error."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
         manager.create_task("Test", status="pending")
 
         q = Query(manager).tasks()
@@ -300,7 +310,9 @@ class TestQueryValidation:
     def test_cannot_order_after_count_scalar(self, tmp_path):
         """Test that order_by after count (scalar) raises error."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
         manager.create_task("Test", status="pending")
 
         # count without group_by returns scalar, sets _count_mode
@@ -314,7 +326,9 @@ class TestQueryValidation:
     def test_cannot_group_after_pagination(self, tmp_path):
         """Test that group_by after limit raises error."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         q = Query(manager).tasks().limit(10)
 
@@ -325,7 +339,9 @@ class TestQueryValidation:
     def test_cannot_group_after_offset(self, tmp_path):
         """Test that group_by after offset raises error."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         q = Query(manager).tasks().offset(5)
 
@@ -336,7 +352,9 @@ class TestQueryValidation:
     def test_validation_disabled_allows_invalid_chains(self, tmp_path):
         """Test that disabled validation allows invalid chains."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
         manager.create_task("Test", status="pending")
 
         disable_syntax_validation()
@@ -351,7 +369,9 @@ class TestQueryValidation:
     def test_where_after_execute_raises(self, tmp_path):
         """Test where() after execute raises."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
         manager.create_task("Test", status="pending")
 
         q = Query(manager).tasks().execute()
@@ -364,7 +384,9 @@ class TestQueryValidation:
     def test_or_where_after_execute_raises(self, tmp_path):
         """Test or_where() after execute raises."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         q = Query(manager).tasks()
         q._executed = True
@@ -375,7 +397,9 @@ class TestQueryValidation:
     def test_connected_to_after_execute_raises(self, tmp_path):
         """Test connected_to() after execute raises."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         q = Query(manager).tasks()
         q._executed = True
@@ -386,7 +410,9 @@ class TestQueryValidation:
     def test_limit_after_execute_raises(self, tmp_path):
         """Test limit() after execute raises."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         q = Query(manager).tasks()
         q._executed = True
@@ -397,7 +423,9 @@ class TestQueryValidation:
     def test_offset_after_execute_raises(self, tmp_path):
         """Test offset() after execute raises."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         q = Query(manager).tasks()
         q._executed = True
@@ -408,7 +436,9 @@ class TestQueryValidation:
     def test_aggregate_after_execute_raises(self, tmp_path):
         """Test aggregate() after execute raises."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         q = Query(manager).tasks()
         q._executed = True

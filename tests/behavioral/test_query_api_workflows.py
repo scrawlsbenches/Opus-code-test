@@ -20,6 +20,7 @@ from cortical.got.query_builder import Query
 from cortical.got.graph_walker import GraphWalker
 from cortical.got.path_finder import PathFinder
 from cortical.got.pattern_matcher import Pattern, PatternMatcher
+from tests.conftest import _create_tx_manager, _create_got_manager
 
 
 class TestExplainDebugWorkflow:
@@ -30,7 +31,7 @@ class TestExplainDebugWorkflow:
         """Create a realistic project with tasks."""
         temp_dir = tempfile.mkdtemp()
         got_dir = Path(temp_dir) / ".got"
-        manager = GoTManager(got_dir)
+        manager = _create_got_manager(got_dir)
 
         # Create tasks for a realistic project
         task1 = manager.create_task("Setup CI/CD pipeline", priority="high")
@@ -102,7 +103,7 @@ class TestFindBlockersWorkflow:
         """Create tasks with dependencies."""
         temp_dir = tempfile.mkdtemp()
         got_dir = Path(temp_dir) / ".got"
-        manager = GoTManager(got_dir)
+        manager = _create_got_manager(got_dir)
 
         # Feature depends on API, which depends on Database
         db_task = manager.create_task("Setup database", priority="high")
@@ -165,7 +166,7 @@ class TestFindRelatedTasksWorkflow:
         """Create related tasks."""
         temp_dir = tempfile.mkdtemp()
         got_dir = Path(temp_dir) / ".got"
-        manager = GoTManager(got_dir)
+        manager = _create_got_manager(got_dir)
 
         # Create several pending high-priority tasks
         tasks = []
@@ -227,7 +228,7 @@ class TestTruncationAwarenessWorkflow:
         """Create many tasks to trigger truncation."""
         temp_dir = tempfile.mkdtemp()
         got_dir = Path(temp_dir) / ".got"
-        manager = GoTManager(got_dir)
+        manager = _create_got_manager(got_dir)
 
         # Create 50 tasks
         tasks = []
@@ -291,7 +292,7 @@ class TestPathFindingWorkflow:
         """Create a graph of related tasks."""
         temp_dir = tempfile.mkdtemp()
         got_dir = Path(temp_dir) / ".got"
-        manager = GoTManager(got_dir)
+        manager = _create_got_manager(got_dir)
 
         # Create a dependency chain
         tasks = []
@@ -353,7 +354,7 @@ class TestCombinedToolsWorkflow:
         """Create a complex project with multiple relationships."""
         temp_dir = tempfile.mkdtemp()
         got_dir = Path(temp_dir) / ".got"
-        manager = GoTManager(got_dir)
+        manager = _create_got_manager(got_dir)
 
         # Create tasks
         epic = manager.create_task("Implement Auth System", priority="critical")

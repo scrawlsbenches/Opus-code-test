@@ -9,6 +9,8 @@ Tests comprehensive validation of:
 """
 
 import pytest
+
+from tests.conftest import _create_got_manager
 from cortical.got.validation import (
     validate_entity_id,
     validate_edge_relationship,
@@ -928,7 +930,7 @@ class TestIntegrationWithGoTManager:
         got_dir.mkdir()
         (got_dir / "entities").mkdir()
 
-        manager = GoTManager(got_dir)
+        manager = _create_got_manager(got_dir)
 
         # Valid task IDs should work (with validate_refs=False since entities don't exist)
         # This test just verifies validation doesn't raise for valid IDs
@@ -956,7 +958,7 @@ class TestIntegrationWithGoTManager:
         got_dir.mkdir()
         (got_dir / "entities").mkdir()
 
-        manager = GoTManager(got_dir)
+        manager = _create_got_manager(got_dir)
 
         with pytest.raises(ValueError, match="Cannot use legacy ID|Legacy"):
             manager.add_edge(
@@ -974,7 +976,7 @@ class TestIntegrationWithGoTManager:
         got_dir.mkdir()
         (got_dir / "entities").mkdir()
 
-        manager = GoTManager(got_dir)
+        manager = _create_got_manager(got_dir)
 
         # Task cannot CONTAINS sprint
         with pytest.raises(ValueError, match="Invalid relationship"):
@@ -993,7 +995,7 @@ class TestIntegrationWithGoTManager:
         got_dir.mkdir()
         (got_dir / "entities").mkdir()
 
-        manager = GoTManager(got_dir)
+        manager = _create_got_manager(got_dir)
 
         with pytest.raises(ValueError, match="Self-reference"):
             manager.add_edge(

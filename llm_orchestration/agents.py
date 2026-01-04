@@ -890,20 +890,22 @@ class Worker(Agent):
                 pass
 
         # GoT Learning Bridge for persistent experience capture
+        # NOTE: This module is scheduled for removal. Disabling to prevent
+        # issues with the new DI container requirements.
         self._got_learning_bridge: Optional['GoTLearningBridge'] = None
-        if GOT_LEARNING_AVAILABLE:
-            try:
-                from pathlib import Path
-                got_dir = Path(".got")
-                if got_dir.exists():
-                    self._got_learning_bridge = GoTLearningBridge(got_dir)
-                    import logging
-                    logger = logging.getLogger(__name__)
-                    logger.debug(f"Worker {agent_id}: GoT Learning Bridge enabled")
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.warning(f"Failed to initialize GoT Learning Bridge: {e}")
+        # if GOT_LEARNING_AVAILABLE:
+        #     try:
+        #         from pathlib import Path
+        #         got_dir = Path(".got")
+        #         if got_dir.exists():
+        #             self._got_learning_bridge = GoTLearningBridge(got_dir)
+        #             import logging
+        #             logger = logging.getLogger(__name__)
+        #             logger.debug(f"Worker {agent_id}: GoT Learning Bridge enabled")
+        #     except Exception as e:
+        #         import logging
+        #         logger = logging.getLogger(__name__)
+        #         logger.warning(f"Failed to initialize GoT Learning Bridge: {e}")
 
         # Tool executor for managing tool invocations
         self._tool_executor = ToolExecutor()

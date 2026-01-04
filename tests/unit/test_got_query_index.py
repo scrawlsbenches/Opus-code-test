@@ -22,6 +22,7 @@ from cortical.got.api import GoTManager
 from cortical.got.types import Task, VALID_EDGE_TYPES
 from cortical.got.errors import ValidationError
 from cortical.got.config import DurabilityMode
+from tests.conftest import _create_tx_manager, _create_got_manager
 
 
 class TestStatusValidation:
@@ -36,7 +37,7 @@ class TestStatusValidation:
     @pytest.fixture
     def manager(self, got_dir):
         """Create a GoTManager for testing."""
-        return GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        return _create_got_manager(got_dir)
 
     @pytest.fixture
     def index_manager(self, got_dir):
@@ -101,7 +102,7 @@ class TestPriorityValidation:
     @pytest.fixture
     def manager(self, got_dir):
         """Create a GoTManager for testing."""
-        return GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        return _create_got_manager(got_dir)
 
     @pytest.fixture
     def index_manager(self, got_dir):
@@ -167,7 +168,7 @@ class TestRequiredFieldValidation:
     @pytest.fixture
     def manager(self, got_dir):
         """Create a GoTManager for testing."""
-        return GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        return _create_got_manager(got_dir)
 
     def test_task_requires_id(self):
         """Task creation should fail without an id."""

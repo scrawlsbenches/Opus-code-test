@@ -1,0 +1,141 @@
+Software Design Principles: A Connected Learning Path
+
+This collection of documents covers foundational software design principles that
+work together to produce maintainable, testable, and flexible code. The documents
+interconnect deliberately, with each concept reinforcing others.
+
+Start anywhere that interests you. Each document stands alone while pointing
+toward related concepts. Reading multiple documents reveals how principles
+combine in practice.
+
+
+THE CORE TRIO: Dependency Injection and Patterns
+
+Three documents form the conceptual center:
+
+  dependency_injection.txt
+    How components receive collaborators rather than creating them.
+    Enables testing, flexibility, and loose coupling.
+
+  inversion_of_control.txt
+    The Hollywood Principle: "Don't call us, we'll call you."
+    Frameworks call your code; your code configures behavior.
+
+  design_patterns_when_and_how.txt
+    Guidance on pattern selection. Start simple, let patterns emerge.
+    Recognize problems before reaching for solutions.
+
+
+SUPPORTING PRINCIPLES: Why These Techniques Work
+
+Five documents explain the underlying forces:
+
+  solid_principles.txt
+    Five principles guiding object-oriented design.
+    The "D" (Dependency Inversion) directly enables injection.
+
+  coupling_and_cohesion.txt
+    Fundamental forces in software structure.
+    DI reduces coupling; focused classes increase cohesion.
+
+  composition_over_inheritance.txt
+    Why assembling objects beats extending classes.
+    Composition enables the flexibility that injection provides.
+
+  testable_code_design.txt
+    Writing code that welcomes verification.
+    DI creates the seams that testing requires.
+
+  refactoring_toward_patterns.txt
+    How patterns emerge from evolving code.
+    Let pain points reveal where patterns help.
+
+
+CONCEPT RELATIONSHIPS
+
+                    ┌─────────────────────┐
+                    │ design_patterns_    │
+                    │ when_and_how.txt    │
+                    └──────────┬──────────┘
+                               │
+        ┌──────────────────────┼──────────────────────┐
+        │                      │                      │
+        ▼                      ▼                      ▼
+┌───────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│ solid_        │    │ refactoring_    │    │ composition_    │
+│ principles    │◄──►│ toward_patterns │◄──►│ over_inherit    │
+└───────┬───────┘    └────────┬────────┘    └────────┬────────┘
+        │                     │                      │
+        └──────────┬──────────┴──────────┬───────────┘
+                   │                     │
+                   ▼                     ▼
+          ┌────────────────┐    ┌────────────────┐
+          │ dependency_    │    │ coupling_and_  │
+          │ injection      │◄──►│ cohesion       │
+          └───────┬────────┘    └────────────────┘
+                  │
+                  ▼
+          ┌────────────────┐    ┌────────────────┐
+          │ inversion_of_  │    │ testable_code_ │
+          │ control        │◄──►│ design         │
+          └────────────────┘    └───────┬────────┘
+                                        │
+                        ┌───────────────┼───────────────┐
+                        ▼               ▼               ▼
+                ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+                │ test_driven │ │ behavior_   │ │ code_review │
+                │ _development│ │ driven_dev  │ │ _practices  │
+                └─────────────┘ └─────────────┘ └─────────────┘
+
+
+CONNECTIONS TO EXISTING DOCUMENTS
+
+These design principle documents connect to testing and review practices:
+
+  test_driven_development.txt
+    TDD requires testable code. Testable code requires DI.
+    The red-green-refactor cycle drives design improvement.
+
+  behavior_driven_development.txt
+    BDD scenarios describe observable behavior.
+    Well-designed code makes behaviors clear and testable.
+
+  code_review_practices.txt
+    Reviews evaluate coupling, cohesion, and pattern usage.
+    Shared vocabulary enables productive design discussions.
+
+
+SUGGESTED READING PATHS
+
+For testing focus:
+  testable_code_design → dependency_injection → test_driven_development
+
+For design improvement:
+  coupling_and_cohesion → solid_principles → refactoring_toward_patterns
+
+For pattern understanding:
+  design_patterns_when_and_how → composition_over_inheritance → refactoring_toward_patterns
+
+For architecture:
+  inversion_of_control → dependency_injection → solid_principles
+
+
+KEY THEMES ACROSS ALL DOCUMENTS
+
+  Start simple
+    Write straightforward code first. Let complexity emerge from real needs.
+
+  Make dependencies explicit
+    Hidden dependencies create hidden problems. Injection makes dependencies visible.
+
+  Prefer composition
+    Assembling objects beats extending classes. Composition enables flexibility.
+
+  Design for testing
+    Code that resists testing resists change. Testable code is maintainable code.
+
+  Refactor toward patterns
+    Patterns emerge from code. Let pain points guide pattern selection.
+
+  Judgment over dogma
+    Principles guide; they do not prescribe. Context determines appropriate design.

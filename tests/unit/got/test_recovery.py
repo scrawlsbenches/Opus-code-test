@@ -15,6 +15,7 @@ from cortical.got import (
 )
 from cortical.got.recovery import RecoveryManager, RecoveryResult
 from cortical.utils.checksums import compute_checksum
+from tests.conftest import _create_tx_manager
 
 
 class TestRecovery:
@@ -23,7 +24,7 @@ class TestRecovery:
     def test_startup_recovery_rolls_back_incomplete(self, tmp_path):
         """Test that incomplete transactions are rolled back on startup."""
         # Create a transaction manager
-        tm = TransactionManager(tmp_path)
+        tm = _create_tx_manager(tmp_path)
 
         # Start a transaction but don't commit it
         tx = tm.begin()
@@ -42,7 +43,7 @@ class TestRecovery:
     def test_corrupted_entity_detected(self, tmp_path):
         """Test that corrupted entities are detected during recovery."""
         # Create and commit a task
-        tm = TransactionManager(tmp_path)
+        tm = _create_tx_manager(tmp_path)
         tx = tm.begin()
         task = Task(id="T-corrupted", title="Will be corrupted")
         tm.write(tx, task)
@@ -71,7 +72,7 @@ class TestRecovery:
     def test_corrupted_wal_detected(self, tmp_path):
         """Test that corrupted WAL entries are detected."""
         # Create transaction manager to write some WAL entries
-        tm = TransactionManager(tmp_path)
+        tm = _create_tx_manager(tmp_path)
         tx = tm.begin()
         task = Task(id="T-test", title="Test task")
         tm.write(tx, task)
@@ -102,7 +103,7 @@ class TestRecovery:
     def test_recovery_from_clean_state(self, tmp_path):
         """Test that recovery is no-op when system is clean."""
         # Create a clean system
-        tm = TransactionManager(tmp_path)
+        tm = _create_tx_manager(tmp_path)
         tx = tm.begin()
         task = Task(id="T-clean", title="Clean task")
         tm.write(tx, task)
@@ -123,7 +124,7 @@ class TestRecovery:
     def test_needs_recovery_true_with_incomplete_tx(self, tmp_path):
         """Test that needs_recovery() detects incomplete transactions."""
         # Create incomplete transaction
-        tm = TransactionManager(tmp_path)
+        tm = _create_tx_manager(tmp_path)
         tx = tm.begin()
         task = Task(id="T-incomplete", title="Incomplete")
         tm.write(tx, task)
@@ -136,7 +137,7 @@ class TestRecovery:
     def test_needs_recovery_false_when_clean(self, tmp_path):
         """Test that needs_recovery() returns False for clean state."""
         # Create clean system
-        tm = TransactionManager(tmp_path)
+        tm = _create_tx_manager(tmp_path)
         tx = tm.begin()
         task = Task(id="T-clean", title="Clean")
         tm.write(tx, task)
@@ -149,7 +150,7 @@ class TestRecovery:
     def test_verify_store_integrity_returns_corrupted(self, tmp_path):
         """Test that verify_store_integrity() finds corrupted entities."""
         # Create entities
-        tm = TransactionManager(tmp_path)
+        tm = _create_tx_manager(tmp_path)
         tx = tm.begin()
         task1 = Task(id="T-good", title="Good task")
         task2 = Task(id="T-bad", title="Will be corrupted")
@@ -179,7 +180,7 @@ class TestRecovery:
     def test_recovery_result_contains_actions(self, tmp_path):
         """Test that RecoveryResult properly logs actions."""
         # Create incomplete transaction
-        tm = TransactionManager(tmp_path)
+        tm = _create_tx_manager(tmp_path)
         tx = tm.begin()
         task = Task(id="T-test", title="Test")
         tm.write(tx, task)
@@ -236,7 +237,7 @@ class TestOrphanRepair:
     def test_detect_orphaned_entities(self, tmp_path):
         """Test detection of orphaned entities."""
         # Create transaction manager and write a task
-        tm = TransactionManager(tmp_path)
+        tm = _create_tx_manager(tmp_path)
         tx = tm.begin()
         task = Task(id="T-normal", title="Normal task")
         tm.write(tx, task)
@@ -376,7 +377,7 @@ class TestOrphanRepair:
     def test_repair_orphans_no_orphans(self, tmp_path):
         """Test that repair with no orphans returns empty result."""
         # Create a normal committed task
-        tm = TransactionManager(tmp_path)
+        tm = _create_tx_manager(tmp_path)
         tx = tm.begin()
         task = Task(id="T-normal", title="Normal")
         tm.write(tx, task)
@@ -541,7 +542,7 @@ class TestOrphanRepairEdgeCases:
         be re-adopted on next recovery without data loss.
         """
         # First: Create a committed task through normal transaction
-        tm = TransactionManager(tmp_path)
+        tm = _create_tx_manager(tmp_path)
         tx = tm.begin()
         task = Task(id="T-committed", title="Committed Task")
         tm.write(tx, task)

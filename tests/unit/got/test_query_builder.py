@@ -18,6 +18,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from cortical.got import GoTManager
+from cortical.core.bootstrap import create_container
 
 
 class TestFluentQueryBuilder:
@@ -27,7 +28,9 @@ class TestFluentQueryBuilder:
     def manager(self, tmp_path):
         """Create manager with test data."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         # Create test data
         self.sprint = manager.create_sprint("Sprint 1", number=1, status="in_progress")
@@ -285,7 +288,9 @@ class TestGraphWalker:
     def manager(self, tmp_path):
         """Create manager with dependency graph."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         # Create a dependency chain: A -> B -> C -> D
         self.task_a = manager.create_task("Task A", status="completed")
@@ -455,7 +460,9 @@ class TestPathFinder:
     def manager(self, tmp_path):
         """Create manager with graph for path finding."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         # Create graph:
         #     A
@@ -543,7 +550,9 @@ class TestAggregation:
     def manager(self, tmp_path):
         """Create manager with data for aggregation."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         # Create tasks with various statuses and priorities
         manager.create_task("T1", status="pending", priority="high")
@@ -622,7 +631,9 @@ class TestPatternMatching:
     def manager(self, tmp_path):
         """Create manager with patterns to find."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         # Create dependency chains
         # Chain 1: A -> B -> C
@@ -690,7 +701,9 @@ class TestQueryMetrics:
     def manager(self, tmp_path):
         """Create basic manager."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         # Create some test data
         for i in range(10):
@@ -784,7 +797,9 @@ class TestAggregationFunctions:
     def manager(self, tmp_path):
         """Create manager with numeric data."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         # Create tasks with numeric properties
         t1 = manager.create_task("T1", status="pending")
@@ -866,7 +881,9 @@ class TestAggregationFunctions:
         from cortical.got.query_builder import Query, Avg
 
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
         t = manager.create_task("T1", status="pending")
 
         result = (
@@ -887,7 +904,9 @@ class TestWhereOperators:
     def manager(self, tmp_path):
         """Create manager with varied data."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         t1 = manager.create_task("T1", status="pending")
         t1.properties['score'] = 10
@@ -936,7 +955,9 @@ class TestWhereOperators:
         from cortical.got.query_builder import Query
 
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         manager.create_task("T1", status="pending")
         manager.create_task("T2", status="completed")
@@ -986,7 +1007,9 @@ class TestWhereOperators:
         from cortical.got.query_builder import Query
 
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
         manager.create_task("T1", status="pending", priority="high")
 
         plan = (
@@ -1004,7 +1027,9 @@ class TestWhereOperators:
         from cortical.got.query_builder import Query
 
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
         t1 = manager.create_task("T1", status="pending")
 
         plan = (
@@ -1023,7 +1048,9 @@ class TestWhereOperators:
         from cortical.got.query_builder import Query
 
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
         manager.create_task("T1", status="pending")
 
         plan = (
@@ -1058,7 +1085,9 @@ class TestWhereOperators:
         from cortical.got.query_builder import Query
 
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         t1 = manager.create_task("T1", status="pending")
         t2 = manager.create_task("T2", status="pending")
@@ -1081,7 +1110,9 @@ class TestWhereOperators:
         from cortical.got.query_builder import Query
 
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         t1 = manager.create_task("T1", status="pending")
         t2 = manager.create_task("T2", status="pending")
@@ -1105,7 +1136,9 @@ class TestWhereOperators:
         from unittest.mock import MagicMock, patch
 
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
         manager.create_task("T1", status="pending")
 
         metrics = QueryMetrics(enabled=True)
@@ -1130,7 +1163,9 @@ class TestWhereOperatorsExtended:
     def manager(self, tmp_path):
         """Create manager with test data for operator tests."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         # Create tasks with various numeric properties
         t1 = manager.create_task("T1", status="pending")
@@ -1265,7 +1300,9 @@ class TestAggregationEdgeCases:
     def manager(self, tmp_path):
         """Create manager with varied data types."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         # Task with numeric property
         t1 = manager.create_task("T1", status="pending")
@@ -1382,7 +1419,9 @@ class TestOrderByEdgeCases:
     def manager(self, tmp_path):
         """Create manager with data for sorting tests."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         # Create tasks with different timestamps
         t1 = manager.create_task("T1", status="pending", priority="high")
@@ -1451,7 +1490,9 @@ class TestGroupByEdgeCases:
     def manager(self, tmp_path):
         """Create manager for grouping tests."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         t1 = manager.create_task("T1", status="pending", priority="high")
         t1.properties['category'] = 'feature'
@@ -1502,7 +1543,9 @@ class TestIterEdgeCases:
     def manager(self, tmp_path):
         """Create manager for iteration tests."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         for i in range(5):
             manager.create_task(f"T{i}", status="pending")
@@ -1537,7 +1580,9 @@ class TestMetricsEdgeCases:
         from cortical.got.query_builder import Query, QueryMetrics
 
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         for i in range(10):
             manager.create_task(f"T{i}", status="pending")
@@ -1559,7 +1604,9 @@ class TestExecuteEdgeCases:
     def manager(self, tmp_path):
         """Create manager for execution tests."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         t1 = manager.create_task("T1", status="pending", priority="high")
         t2 = manager.create_task("T2", status="pending", priority="low")
@@ -1632,7 +1679,9 @@ class TestUnknownEntityType:
         from cortical.got.query_builder import Query
 
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         query = Query(manager)
         # Don't set entity type - should be None
@@ -1648,7 +1697,9 @@ class TestConnectedToEdgeTypeFiltering:
     def manager(self, tmp_path):
         """Create manager with multiple edge types."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         t1 = manager.create_task("T1", status="pending")
         t2 = manager.create_task("T2", status="pending")
@@ -1706,7 +1757,9 @@ class TestMatchesFiltersEdgeCases:
     def manager(self, tmp_path):
         """Create manager for filter tests."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         t1 = manager.create_task("T1", status="pending", priority="high")
         t2 = manager.create_task("T2", status="completed", priority="low")
@@ -1740,7 +1793,9 @@ class TestQueryConfig:
     def manager(self, tmp_path):
         """Create manager for config tests."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
         manager.create_task("Test task", status="pending")
         return manager
 

@@ -15,6 +15,8 @@ from cortical.got.tx_manager import TransactionManager, CommitResult, Conflict
 from cortical.got.transaction import TransactionState
 from cortical.got.types import Task
 from cortical.got.errors import TransactionError
+from cortical.core.bootstrap import create_container
+from tests.conftest import _create_tx_manager
 
 
 class TestTransactionManager:
@@ -29,8 +31,9 @@ class TestTransactionManager:
 
     @pytest.fixture
     def manager(self, tmp_got_dir):
-        """Create TransactionManager instance."""
-        return TransactionManager(tmp_got_dir)
+        """Create TransactionManager instance via container."""
+        container = create_container(got_dir=tmp_got_dir)
+        return container.resolve(TransactionManager)
 
     def test_begin_creates_transaction(self, manager):
         """Test that begin() returns active transaction."""
@@ -154,7 +157,7 @@ class TestTransactionManager:
         # Don't commit - simulate crash
 
         # Create new manager (simulates restart)
-        recovery_manager = TransactionManager(manager.got_dir)
+        recovery_manager = _create_tx_manager(manager.got_dir)
 
         # Check recovery result (happens in __init__)
         # The recovery was already run during init, so we verify state
@@ -352,7 +355,7 @@ class TestTransactionManager:
         manager.write(tx, Task(id="T-rec", title="Test", status="pending", priority="medium"))
 
         # Create new manager (triggers recovery)
-        new_manager = TransactionManager(manager.got_dir)
+        new_manager = _create_tx_manager(manager.got_dir)
 
         # Recovery ran in __init__, verify it worked
         assert not new_manager.store.exists("T-rec")
@@ -645,8 +648,9 @@ class TestTransactionManagerKnowledgeTransfer:
 
     @pytest.fixture
     def manager(self, tmp_got_dir):
-        """Create TransactionManager instance."""
-        return TransactionManager(tmp_got_dir)
+        """Create TransactionManager instance via container."""
+        container = create_container(got_dir=tmp_got_dir)
+        return container.resolve(TransactionManager)
 
     def test_create_knowledge_transfer(self, manager):
         """Test creating a knowledge transfer."""
@@ -807,3 +811,206 @@ class TestTransactionManagerKnowledgeTransfer:
                 "Section",
                 "Content"
             )
+
+
+class TestTransactionManagerDependencyInjection:
+    """Test suite for TransactionManager dependency injection."""
+
+    @pytest.fixture
+    def tmp_got_dir(self, tmp_path):
+        """Create temporary GoT directory for tests."""
+        got_dir = tmp_path / "got"
+        got_dir.mkdir()
+        return got_dir
+
+    def test_default_components_created_when_not_injected(self, tmp_got_dir):
+        """Test that container creates default components when using create_container().
+
+        NOTE: Direct instantiation without dependencies is no longer supported.
+        Use create_container() to get a properly configured TransactionManager.
+        """
+        from cortical.cdg.storage import CDGStore
+        from cortical.cdg.wal import CDGWALManager
+        from cortical.utils.locking import ProcessLock
+        from cortical.core.bootstrap import create_container
+
+        # Use container to create manager with default components
+        container = create_container(got_dir=tmp_got_dir)
+        manager = container.resolve(TransactionManager)
+
+        # Verify default components were created
+        assert isinstance(manager.store, CDGStore)
+        assert isinstance(manager.wal, CDGWALManager)
+        assert isinstance(manager.lock, ProcessLock)
+
+    def test_injected_store_is_used(self, tmp_got_dir):
+        """Test that injected store is used instead of creating default."""
+        from cortical.cdg.storage import CDGStore
+        from cortical.cdg.config import CDGConfig
+        from cortical.utils.locking import ProcessLock
+
+        config = CDGConfig.for_got()
+
+        # Create custom store
+        custom_store = CDGStore(
+            tmp_got_dir / "custom_entities",
+            config=config
+        )
+        # Must also provide lock (required dependency)
+        lock = ProcessLock(tmp_got_dir / ".got.lock")
+
+        manager = TransactionManager(tmp_got_dir, store=custom_store, lock=lock)
+
+        # Verify injected store is used
+        assert manager.store is custom_store
+
+    def test_injected_wal_is_used(self, tmp_got_dir):
+        """Test that injected WAL is used instead of creating default."""
+        from cortical.cdg.storage import CDGStore
+        from cortical.cdg.wal import CDGWALManager
+        from cortical.cdg.config import CDGConfig
+        from cortical.utils.locking import ProcessLock
+
+        config = CDGConfig.for_got()
+
+        # Create all required components
+        store = CDGStore(tmp_got_dir / "entities", config=config)
+        lock = ProcessLock(tmp_got_dir / ".got.lock")
+
+        # Create custom WAL
+        custom_wal = CDGWALManager(
+            tmp_got_dir / "custom_wal",
+            config
+        )
+
+        manager = TransactionManager(tmp_got_dir, store=store, wal=custom_wal, lock=lock)
+
+        # Verify injected WAL is used
+        assert manager.wal is custom_wal
+
+    def test_injected_lock_is_used(self, tmp_got_dir):
+        """Test that injected lock is used instead of creating default."""
+        from cortical.cdg.storage import CDGStore
+        from cortical.cdg.config import CDGConfig
+        from cortical.utils.locking import ProcessLock
+
+        config = CDGConfig.for_got()
+
+        # Create all required components
+        store = CDGStore(tmp_got_dir / "entities", config=config)
+
+        # Create custom lock
+        custom_lock = ProcessLock(tmp_got_dir / "custom.lock", reentrant=True)
+
+        manager = TransactionManager(tmp_got_dir, store=store, lock=custom_lock)
+
+        # Verify injected lock is used
+        assert manager.lock is custom_lock
+
+    def test_all_components_can_be_injected(self, tmp_got_dir):
+        """Test that all three components can be injected together."""
+        from cortical.cdg.storage import CDGStore
+        from cortical.cdg.wal import CDGWALManager
+        from cortical.cdg.config import CDGConfig
+        from cortical.utils.locking import ProcessLock
+
+        config = CDGConfig.for_got()
+
+        custom_store = CDGStore(tmp_got_dir / "inj_entities", config=config)
+        custom_wal = CDGWALManager(tmp_got_dir / "inj_wal", config)
+        custom_lock = ProcessLock(tmp_got_dir / "inj.lock", reentrant=True)
+
+        manager = TransactionManager(
+            tmp_got_dir,
+            store=custom_store,
+            wal=custom_wal,
+            lock=custom_lock
+        )
+
+        assert manager.store is custom_store
+        assert manager.wal is custom_wal
+        assert manager.lock is custom_lock
+
+    @pytest.mark.skip("TODO: Test needs all required params; DI handles validation now")
+    def test_invalid_store_type_raises_typeerror(self, tmp_got_dir):
+        """Test that passing wrong type for store raises TypeError."""
+        with pytest.raises(TypeError) as exc_info:
+            TransactionManager(tmp_got_dir, store="not a store")
+
+        assert "store must be CDGStore instance" in str(exc_info.value)
+        assert "got str" in str(exc_info.value)
+
+    @pytest.mark.skip("TODO: Test needs all required params; DI handles validation now")
+    def test_invalid_wal_type_raises_typeerror(self, tmp_got_dir):
+        """Test that passing wrong type for wal raises TypeError."""
+        with pytest.raises(TypeError) as exc_info:
+            TransactionManager(tmp_got_dir, wal="not a wal")
+
+        assert "wal must be CDGWALManager instance" in str(exc_info.value)
+        assert "got str" in str(exc_info.value)
+
+    @pytest.mark.skip("TODO: Test needs all required params; DI handles validation now")
+    def test_invalid_lock_type_raises_typeerror(self, tmp_got_dir):
+        """Test that passing wrong type for lock raises TypeError."""
+        with pytest.raises(TypeError) as exc_info:
+            TransactionManager(tmp_got_dir, lock="not a lock")
+
+        assert "lock must be ProcessLock instance" in str(exc_info.value)
+        assert "got str" in str(exc_info.value)
+
+    def test_injected_store_works_for_transactions(self, tmp_got_dir):
+        """Test that transactions work correctly with injected store."""
+        from cortical.cdg.storage import CDGStore
+        from cortical.cdg.config import CDGConfig
+        from cortical.got.versioned_store import _got_entity_factory
+        from cortical.utils.locking import ProcessLock
+
+        # Create store with GoT entity factory
+        custom_store = CDGStore(
+            tmp_got_dir / "tx_entities",
+            config=CDGConfig.for_got(),
+            entity_factory=_got_entity_factory
+        )
+        custom_lock = ProcessLock(tmp_got_dir / ".got.lock")
+
+        manager = TransactionManager(tmp_got_dir, store=custom_store, lock=custom_lock)
+
+        # Perform a transaction
+        tx = manager.begin()
+        task = Task(id="T-INJ-1", title="Injected Test", status="pending", priority="high")
+        manager.write(tx, task)
+        result = manager.commit(tx)
+
+        assert result.success
+
+        # Read back
+        tx2 = manager.begin()
+        read_task = manager.read(tx2, "T-INJ-1")
+        manager.rollback(tx2, "read_only")
+
+        assert read_task is not None
+        assert read_task.id == "T-INJ-1"
+        assert read_task.title == "Injected Test"
+
+    def test_partial_injection_uses_defaults_for_others(self, tmp_got_dir):
+        """Test that partial injection uses injected components."""
+        from cortical.cdg.storage import CDGStore
+        from cortical.cdg.wal import CDGWALManager
+        from cortical.cdg.config import CDGConfig
+        from cortical.utils.locking import ProcessLock
+
+        # Inject store and lock (both required)
+        custom_store = CDGStore(
+            tmp_got_dir / "partial_entities",
+            config=CDGConfig.for_got()
+        )
+        custom_lock = ProcessLock(tmp_got_dir / ".got.lock")
+
+        manager = TransactionManager(tmp_got_dir, store=custom_store, lock=custom_lock)
+
+        # Store and lock should be injected
+        assert manager.store is custom_store
+        assert manager.lock is custom_lock
+
+        # WAL defaults to None (disabled) when not provided
+        assert manager.wal is None

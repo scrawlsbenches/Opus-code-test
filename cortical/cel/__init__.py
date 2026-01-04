@@ -72,7 +72,7 @@ from .core.references import (
     CausalLink,
     MerkleRoot,
 )
-from .container import Container, create_lattice
+from .container import Container, Lifecycle, create_lattice
 
 __all__ = [
     # Protocols (interfaces)
@@ -93,8 +93,9 @@ __all__ = [
     'DeferredReference',
     'CausalLink',
     'MerkleRoot',
-    # Container
+    # Container & DI
     'Container',
+    'Lifecycle',
     'create_lattice',
 ]
 

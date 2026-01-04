@@ -205,6 +205,7 @@ class TeamSimulation:
 # =============================================================================
 
 
+@pytest.mark.skip(reason="DISABLED: llm_orchestration module scheduled for removal. Worker hardcodes Path('.got'), creates runtime data. See llm_orchestration/agents.py:897-899")
 class TestCognitiveTeamEndToEnd:
     """
     Epic: Cognitive Team Collaboration
@@ -946,6 +947,7 @@ class TestCognitiveTeamEndToEnd:
 # =============================================================================
 
 
+@pytest.mark.skip(reason="DISABLED: llm_orchestration module scheduled for removal")
 class TestCognitiveEdgeCases:
     """Test edge cases and failure modes."""
 

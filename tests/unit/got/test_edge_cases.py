@@ -16,6 +16,7 @@ from cortical.got import (
 )
 from cortical.got.recovery import RecoveryManager
 from cortical.got.transaction import generate_transaction_id
+from tests.conftest import _create_tx_manager, _create_got_manager
 
 
 class TestEdgeCases:
@@ -53,7 +54,7 @@ class TestEdgeCases:
     def test_power_loss_during_commit(self, tmp_path):
         """Test handling of crash during commit phase."""
         # Start transaction and write
-        tm = TransactionManager(tmp_path)
+        tm = _create_tx_manager(tmp_path)
         tx = tm.begin()
         task = Task(id="T-crash", title="Crash during commit")
         tm.write(tx, task)
@@ -63,7 +64,7 @@ class TestEdgeCases:
         tx.state = tm.wal.log_tx_prepare(tx.id)
 
         # Create new manager - should recover
-        tm2 = TransactionManager(tmp_path)
+        tm2 = _create_tx_manager(tmp_path)
 
         # Task should not exist (rollback occurred)
         tx2 = tm2.begin()
@@ -78,7 +79,7 @@ class TestEdgeCases:
 
         # Should be able to create new manager despite existing lock
         # (In real implementation, would check PID or use timeout)
-        tm = TransactionManager(tmp_path)
+        tm = _create_tx_manager(tmp_path)
         tx = tm.begin()
         task = Task(id="T-test", title="Test")
         tm.write(tx, task)
@@ -88,7 +89,7 @@ class TestEdgeCases:
 
     def test_concurrent_creates_different_ids(self, tmp_path):
         """Test that concurrent task creation produces unique IDs."""
-        tm = TransactionManager(tmp_path)
+        tm = _create_tx_manager(tmp_path)
 
         # Create multiple transactions concurrently
         ids = set()
@@ -115,7 +116,7 @@ class TestEdgeCases:
     def test_missing_entity_file_handled(self, tmp_path):
         """Test that missing entity files are detected properly."""
         # Create transaction manager
-        tm = TransactionManager(tmp_path)
+        tm = _create_tx_manager(tmp_path)
 
         # Try to read non-existent entity
         tx = tm.begin()
@@ -126,7 +127,7 @@ class TestEdgeCases:
     def test_corrupted_version_file_handled(self, tmp_path):
         """Test that corrupted _version.json file raises appropriate error."""
         # Create transaction manager
-        tm = TransactionManager(tmp_path)
+        tm = _create_tx_manager(tmp_path)
         tx = tm.begin()
         task = Task(id="T-test", title="Test")
         tm.write(tx, task)
@@ -147,7 +148,7 @@ class TestEdgeCases:
     def test_recovery_idempotent(self, tmp_path):
         """Test that running recovery multiple times is safe."""
         # Create incomplete transaction
-        tm = TransactionManager(tmp_path)
+        tm = _create_tx_manager(tmp_path)
         tx = tm.begin()
         task = Task(id="T-test", title="Test")
         tm.write(tx, task)

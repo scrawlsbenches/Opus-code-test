@@ -1,0 +1,118 @@
+Coupling and Cohesion: Fundamental Forces in Software Design
+
+Coupling and cohesion describe how software components relate to each other and
+how well their internal elements belong together. Low coupling and high cohesion
+characterize maintainable designs. Understanding these forces illuminates why
+certain design choices succeed and others fail.
+
+Coupling measures the degree of interdependence between modules. Highly coupled
+modules depend heavily on each other's internal details. Changes in one module
+ripple through coupled modules, requiring coordinated modifications. Testing
+coupled modules requires bringing their dependencies along. Reusing coupled
+modules means accepting their baggage.
+
+Content coupling, the tightest form, occurs when one module directly accesses
+another's internal data or implementation. Changing internal representations
+breaks dependent modules. This coupling often appears as direct field access
+across class boundaries or assumptions about internal data structures.
+
+Common coupling arises from shared global state. Multiple modules read and write
+shared variables, creating implicit dependencies. Changes to shared state affect
+all readers and writers. Debugging requires understanding all modules that touch
+the shared data. Global variables exemplify common coupling.
+
+Control coupling passes control information between modules. One module tells
+another what to do by passing flags or mode indicators. The receiving module
+contains conditional logic based on these flags. This coupling spreads decision
+logic across module boundaries, complicating both modules.
+
+Stamp coupling occurs when modules share composite data structures but use only
+parts of them. Passing entire objects when only certain fields matter creates
+unnecessary dependencies on the full structure. Changes to unused fields still
+affect interface compatibility.
+
+Data coupling, the loosest form, passes only necessary primitive data between
+modules. Each module receives exactly what it needs, nothing more. This minimal
+coupling allows modules to evolve independently as long as they honor their
+data contracts.
+
+Cohesion measures how strongly the elements within a module belong together.
+Highly cohesive modules focus on a single purpose. Their methods and data
+collaborate toward one goal. Low cohesion modules contain unrelated elements
+that happen to share a file or class.
+
+Coincidental cohesion, the weakest form, groups elements with no meaningful
+relationship. Utility classes containing unrelated helper methods exemplify
+this. The elements share a module only because someone had to put them somewhere.
+Such modules provide no conceptual guidance about what belongs inside.
+
+Logical cohesion groups elements that perform similar functions, selected by
+flags or parameters. A function that formats output as HTML, XML, or JSON based
+on a parameter exhibits logical cohesion. The functions relate categorically but
+not operationally. Users must understand the internal branching.
+
+Temporal cohesion groups elements that execute during the same phase.
+Initialization routines that set up unrelated subsystems exhibit temporal
+cohesion. The elements relate by timing rather than purpose. Changes to one
+initialization concern affect code for other concerns.
+
+Procedural cohesion groups elements that follow a sequence. One step follows
+another, but the steps serve different purposes. A function that validates
+input, processes it, and logs results exhibits procedural cohesion. The sequence
+binds them; purpose does not.
+
+Communicational cohesion groups elements that operate on the same data. Functions
+that read, transform, and write the same structure belong together because they
+share data, even if their purposes differ. This cohesion improves over procedural
+but still mixes concerns.
+
+Sequential cohesion groups elements where output from one serves as input to the
+next. Pipeline stages exhibit sequential cohesion. Each stage transforms data
+for the next. The flow connects them, though each stage might serve different
+purposes.
+
+Functional cohesion, the strongest form, groups elements that contribute to a
+single well-defined task. A module that calculates taxes contains everything
+needed to calculate taxes and nothing else. Changes to tax calculation affect
+only this module. Other modules remain untouched.
+
+Dependency injection reduces coupling by removing direct dependencies on concrete
+implementations. Instead of creating collaborators directly, modules receive them
+through constructors or setters. This shifts from content coupling toward data
+coupling, as modules depend only on interfaces rather than implementations.
+
+Interface segregation increases cohesion by ensuring that interfaces contain only
+related methods. Clients depend on focused interfaces that capture specific roles.
+Implementations satisfy interfaces that match their capabilities. Cohesive
+interfaces enable cohesive implementations.
+
+The relationship between coupling and cohesion proves important. Reducing coupling
+often increases cohesion, and vice versa. When modules stop depending on each
+other's internals, they must become more self-contained. When modules focus on
+single purposes, they need less from other modules.
+
+Identifying coupling requires examining dependencies. What does this module import?
+What objects does it create? What global state does it access? Each dependency
+represents coupling. Identifying cohesion requires examining purpose. Can you
+describe what this module does in one sentence? Do all elements contribute to
+that purpose?
+
+Refactoring addresses coupling and cohesion problems. Extract class improves
+cohesion by moving unrelated elements to new homes. Introduce parameter object
+reduces stamp coupling by defining focused data structures. Dependency injection
+reduces content coupling by abstracting collaborators.
+
+Metrics can measure coupling and cohesion, but judgment interprets them. High
+coupling metrics indicate examination opportunities, not automatic problems.
+Some coupling is necessary and appropriate. The question is whether the coupling
+serves purposes that justify its costs.
+
+Code reviews should consider coupling and cohesion. Does this change increase
+dependencies between modules? Does it add unrelated functionality to existing
+classes? These questions surface design issues before they propagate through
+the codebase.
+
+Understanding coupling and cohesion provides vocabulary for design discussions.
+Rather than vague feelings that something is wrong, you can identify specific
+coupling types and cohesion levels. This precision enables productive
+conversations about design tradeoffs and improvement opportunities.

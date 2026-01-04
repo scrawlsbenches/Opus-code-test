@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 
 from cortical.got import GoTManager, TransactionError
 from scripts.migrate_got import GoTMigrator, MigrationResult
+from tests.conftest import _create_tx_manager, _create_got_manager
 
 
 class TestMigrationFailures:
@@ -210,7 +211,7 @@ class TestMigrationFailures:
         assert result2.edges_migrated == 1
 
         # Verify all entities are present in target
-        manager = GoTManager(target_dir)
+        manager = _create_got_manager(target_dir)
         task = manager.get_task("T-ATOMIC-001")
         assert task is not None
         assert task.title == "Atomic test task"
@@ -326,7 +327,7 @@ class TestMigrationFailures:
         assert result.tasks_migrated == 2
 
         # Verify valid tasks were migrated correctly
-        manager = GoTManager(target_dir)
+        manager = _create_got_manager(target_dir)
 
         task1 = manager.get_task("T-VALID-001")
         assert task1 is not None
@@ -497,7 +498,7 @@ class TestMigrationFailures:
         assert result.tasks_migrated == 2
 
         # Verify tasks
-        manager = GoTManager(target_dir)
+        manager = _create_got_manager(target_dir)
 
         task1 = manager.get_task("T-WAL-001")
         assert task1 is not None
@@ -556,7 +557,7 @@ class TestMigrationFailures:
         assert len(result.errors) == 0
 
         # Verify WAL task was migrated
-        manager = GoTManager(target_dir)
+        manager = _create_got_manager(target_dir)
         task = manager.get_task("T-WAL-ONLY")
         assert task is not None
         assert task.title == "WAL only task"

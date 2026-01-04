@@ -14,6 +14,7 @@ import shutil
 from pathlib import Path
 
 from cortical.got import GoTManager
+from cortical.core.bootstrap import create_container
 from cortical.got.path_finder import PathFinder
 
 
@@ -37,7 +38,9 @@ class TestPathFinderLimits:
         """Create a manager with a test graph."""
         temp_dir = tempfile.mkdtemp()
         got_dir = Path(temp_dir) / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         # Create a linear chain: A -> B -> C -> D -> E
         tasks = []
@@ -57,7 +60,9 @@ class TestPathFinderLimits:
         """Create a manager with a densely connected graph (many paths)."""
         temp_dir = tempfile.mkdtemp()
         got_dir = Path(temp_dir) / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         # Create tasks in layers to generate many paths
         # Layer 0: 1 node (start)
@@ -233,7 +238,9 @@ class TestPathFinderSafety:
         """Create a graph that would explode without limits."""
         temp_dir = tempfile.mkdtemp()
         got_dir = Path(temp_dir) / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         # Create a complete graph with 6 nodes
         # This would have O(n!) paths without limits
@@ -288,7 +295,9 @@ class TestShortestPath:
         """Create a simple graph for testing."""
         temp_dir = tempfile.mkdtemp()
         got_dir = Path(temp_dir) / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         # Create linear chain: A -> B -> C -> D
         tasks = []
@@ -369,7 +378,9 @@ class TestPathExists:
         """Create a graph with branches."""
         temp_dir = tempfile.mkdtemp()
         got_dir = Path(temp_dir) / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         # Create: A -> B -> C
         #         A -> D -> E
@@ -418,7 +429,9 @@ class TestReachableFrom:
         """Create graph with multiple components."""
         temp_dir = tempfile.mkdtemp()
         got_dir = Path(temp_dir) / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         # Component 1: A -> B -> C
         comp1 = [manager.create_task(f"C1-{i}", priority="high") for i in range(3)]
@@ -490,7 +503,9 @@ class TestConnectedComponents:
         """Create graph with distinct components."""
         temp_dir = tempfile.mkdtemp()
         got_dir = Path(temp_dir) / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         # Component 1: 3 tasks in a chain
         comp1 = [manager.create_task(f"A{i}", priority="high") for i in range(3)]
@@ -545,7 +560,9 @@ class TestEdgeTypeFiltering:
         """Create graph with different edge types."""
         temp_dir = tempfile.mkdtemp()
         got_dir = Path(temp_dir) / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         # Create tasks
         tasks = [manager.create_task(f"Task {i}", priority="medium") for i in range(4)]
@@ -590,7 +607,9 @@ class TestAllNodeTypes:
         """Create manager with tasks, sprints, and decisions."""
         temp_dir = tempfile.mkdtemp()
         got_dir = Path(temp_dir) / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         # Create different entity types
         task = manager.create_task("Task", priority="high")
@@ -639,7 +658,9 @@ class TestPathFinderExplain:
     def manager(self, tmp_path):
         """Create manager for explain tests."""
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
         manager.create_task("T1", status="pending")
         manager.create_task("T2", status="pending")
         return manager

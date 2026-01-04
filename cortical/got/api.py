@@ -151,19 +151,42 @@ class GoTManager:
         self,
         got_dir: Path,
         durability: DurabilityMode = DurabilityMode.BALANCED,
-        cache_enabled: bool = True
+        cache_enabled: bool = True,
+        *,
+        tx_manager: TransactionManager,
     ):
         """
-        Initialize GoT manager with directory.
+        Initialize GoT manager with injected dependencies.
+
+        BREAKING CHANGE (2026-01-04):
+            TransactionManager must now be injected. Use create_container() from
+            cortical.core.bootstrap to get a properly configured GoTManager.
 
         Args:
             got_dir: Base directory for GoT storage
             durability: Durability mode controlling fsync behavior (default: BALANCED)
             cache_enabled: Enable in-memory entity caching for faster reads (default: True)
+            tx_manager: REQUIRED - Injected TransactionManager instance
+
+        Raises:
+            TypeError: If required dependencies are missing or wrong type
+
+        Example:
+            # The only supported way to get a GoTManager:
+            from cortical.core.bootstrap import create_container
+
+            container = create_container(got_dir=Path(".got"))
+            got_manager = container.resolve(GoTManager)
         """
+        # Validate required dependency
+        if not isinstance(tx_manager, TransactionManager):
+            raise TypeError(
+                f"tx_manager is required and must be TransactionManager instance, got {type(tx_manager).__name__}"
+            )
+
         self.got_dir = Path(got_dir)
         self.durability = durability
-        self.tx_manager = TransactionManager(self.got_dir, durability=durability)
+        self.tx_manager = tx_manager
         self._sync_manager = None  # Lazy initialization
         self._recovery_manager = None  # Lazy initialization
         self._index_manager = None  # Lazy initialization

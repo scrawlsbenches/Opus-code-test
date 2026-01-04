@@ -33,6 +33,7 @@ from typing import Dict, List, Optional, Any
 try:
     from cortical.got import GoTManager, Task, Decision, Edge
     from cortical.got.types import Entity
+    from cortical.core.bootstrap import create_container
 except ImportError:
     print("Error: cortical.got module not found. Run from project root.", file=sys.stderr)
     sys.exit(1)
@@ -174,7 +175,8 @@ class GoTMigrator:
         # Step 2: Write to new transactional store
         print(f"Writing to {self.target_dir}...")
         try:
-            manager = GoTManager(self.target_dir)
+            container = create_container(got_dir=self.target_dir)
+            manager = container.resolve(GoTManager)
 
             # Write in single transaction for atomicity
             with manager.transaction() as tx:
@@ -236,7 +238,8 @@ class GoTMigrator:
             return True
 
         print("Verifying migration...")
-        manager = GoTManager(self.target_dir)
+        container = create_container(got_dir=self.target_dir)
+        manager = container.resolve(GoTManager)
 
         # Get unique tasks by clean ID (deduplicate since we store by both prefixed and clean IDs)
         unique_tasks = {task.id: task for task in self.tasks.values()}

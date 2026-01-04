@@ -12,6 +12,7 @@ in a system built entirely from first principles.
 import pytest
 from cortical.got.api import GoTManager
 from cortical.got.pattern_matcher import Pattern, PatternMatcher
+from tests.conftest import _create_tx_manager, _create_got_manager
 
 
 class TestDeveloperFindsDependencyChains:
@@ -30,7 +31,7 @@ class TestDeveloperFindsDependencyChains:
         Then I find all matching pairs
         """
         # Given tasks with dependency relationships
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         task_a = manager.create_task(title="Build custom parser")
         task_b = manager.create_task(title="Design custom grammar")
         task_c = manager.create_task(title="Implement tokenizer")
@@ -63,7 +64,7 @@ class TestDeveloperFindsDependencyChains:
         Because our pattern matcher handles multi-node patterns
         """
         # Given a chain of three dependent tasks
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         task_a = manager.create_task(title="High-level feature")
         task_b = manager.create_task(title="Mid-level component")
         task_c = manager.create_task(title="Low-level primitive")
@@ -100,7 +101,7 @@ class TestDeveloperFindsDependencyChains:
         So I can focus on removing blockers
         """
         # Given tasks where some block high-priority work
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         blocker1 = manager.create_task(title="Blocker 1", priority="medium")
         blocker2 = manager.create_task(title="Blocker 2", priority="low")
         high_priority = manager.create_task(title="Critical feature", priority="high")
@@ -143,7 +144,7 @@ class TestDeveloperFindsPatternsWithLimitedResults:
         And I'm warned about truncation
         """
         # Given many tasks with similar patterns
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         base = manager.create_task(title="Base task")
         for i in range(20):
             dependent = manager.create_task(title=f"Dependent {i}")
@@ -176,7 +177,7 @@ class TestDeveloperFindsPatternsWithLimitedResults:
         And the search stops early for efficiency
         """
         # Given a graph with multiple matches
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         task_a = manager.create_task(title="Task A")
         task_b = manager.create_task(title="Task B")
         task_c = manager.create_task(title="Task C")
@@ -217,7 +218,7 @@ class TestDeveloperExplainsPatternExecutionPlan:
         And the plan shows node and edge constraints
         """
         # Given a pattern to search
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         pattern = (
             Pattern()
             .node("a", type="task", status="pending")

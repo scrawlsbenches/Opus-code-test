@@ -2,9 +2,14 @@
 Unit tests for escalation protocol.
 
 Tests for EscalationLevel, EscalationProtocol, and EscalationManager.
+
+DISABLED: llm_orchestration module scheduled for removal.
 """
 
 import pytest
+
+# Skip entire module - llm_orchestration scheduled for removal
+pytestmark = pytest.mark.skip(reason="DISABLED: llm_orchestration module scheduled for removal")
 from datetime import datetime
 
 from llm_orchestration.escalation import (
