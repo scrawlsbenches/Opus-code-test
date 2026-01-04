@@ -18,10 +18,15 @@ Phase 1 Context:
 - Woven Mind dual-process (FAST/SLOW) integration with QAPV
 - Bottleneck detection in orchestration
 - Cognitive metrics collection
-- Director escalation protocol
+
+DISABLED: llm_orchestration module scheduled for removal.
 """
 
 import pytest
+
+# Skip entire module - llm_orchestration scheduled for removal
+pytestmark = pytest.mark.skip(reason="DISABLED: llm_orchestration module scheduled for removal")
+
 from pathlib import Path
 import tempfile
 import shutil

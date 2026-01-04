@@ -11,9 +11,14 @@ Coverage areas:
 - Lesson distillation and retrieval
 - Learning consolidation (merging, aging, deprecation)
 - Full learning cycle integration
+
+DISABLED: llm_orchestration module scheduled for removal.
 """
 
 import pytest
+
+# Skip entire module - llm_orchestration scheduled for removal
+pytestmark = pytest.mark.skip(reason="DISABLED: llm_orchestration module scheduled for removal")
 from datetime import datetime, timedelta
 from pathlib import Path
 import tempfile

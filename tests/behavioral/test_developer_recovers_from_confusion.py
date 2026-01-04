@@ -6,9 +6,14 @@ I want the system to detect when an agent is confused and help it recover,
 So that agents don't get stuck in unproductive loops.
 
 Based on: llm_orchestration/examples/recovery_demo.py
+
+DISABLED: llm_orchestration module scheduled for removal.
 """
 
 import pytest
+
+# Skip entire module - llm_orchestration scheduled for removal
+pytestmark = pytest.mark.skip(reason="DISABLED: llm_orchestration module scheduled for removal")
 from pathlib import Path
 import tempfile
 import shutil

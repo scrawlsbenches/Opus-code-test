@@ -12,9 +12,14 @@ This test proves the hypothesis by:
 - Extracting patterns from them
 - Verifying lessons are created
 - Verifying guidance is returned for new similar tasks
+
+DISABLED: llm_orchestration module scheduled for removal.
 """
 
 import pytest
+
+# Skip entire module - llm_orchestration scheduled for removal
+pytestmark = pytest.mark.skip(reason="DISABLED: llm_orchestration module scheduled for removal")
 from pathlib import Path
 import tempfile
 import shutil

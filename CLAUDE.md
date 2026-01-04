@@ -1,6 +1,6 @@
 # CLAUDE.md — Team Lead & Repository Guardian
 
-*Last updated: 2026-01-03*
+*Last updated: 2026-01-04*
 
 ---
 
@@ -367,6 +367,90 @@ that you understand the tradeoff.
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Container: First-Class Citizen (MANDATORY)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    DEPENDENCY INJECTION IS REQUIRED                      │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  The Container is the SINGLE SOURCE OF TRUTH for component wiring.      │
+│                                                                          │
+│  ✓ DO: Receive dependencies through constructor injection               │
+│  ✓ DO: Register services in cortical/core/bootstrap.py                  │
+│  ✓ DO: Use create_child() for test isolation                            │
+│  ✓ DO: Use register_auto() for auto-wiring                              │
+│                                                                          │
+│  ✗ DON'T: Hardcode dependencies in constructors                         │
+│  ✗ DON'T: Use Path(".got") or other magic paths                         │
+│  ✗ DON'T: Create singletons outside the container                       │
+│  ✗ DON'T: Import and instantiate directly                               │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Bootstrap Location
+
+**Entry point:** `cortical/core/bootstrap.py`
+
+```python
+from cortical.core.bootstrap import create_container, get_container
+
+# Application startup
+container = create_container()
+
+# Resolve services
+tx_manager = container.resolve(TransactionManager)
+storage = container.resolve(StorageBackend)
+```
+
+### Testing with Child Containers
+
+```python
+# Create isolated test container
+test_container = container.create_child()
+test_container.register(StorageBackend, MockStorage)
+test_container.register_instance(Config, test_config)
+
+# Test uses mocks, production uses real implementations
+service = test_container.resolve(MyService)
+```
+
+### Module Registration Pattern
+
+```python
+from cortical.common import Container, ContainerModule
+
+class StorageModule(ContainerModule):
+    def __init__(self, config: StorageConfig):
+        self.config = config
+
+    def register(self, container: Container) -> None:
+        container.register_instance(StorageConfig, self.config)
+        container.register(StorageBackend, FileSystemStorage)
+        container.register_auto(StorageService)
+
+# Apply in bootstrap
+container.apply_module(StorageModule(config))
+```
+
+### Why Container-First?
+
+| Without DI | With DI |
+|------------|---------|
+| Hardcoded paths | Configurable paths |
+| Untestable singletons | Mockable services |
+| Tight coupling | Loose coupling |
+| Hidden dependencies | Explicit dependencies |
+| Manual wiring | Auto-wiring |
+
+**Key files:**
+- `cortical/common/container.py` — Container implementation
+- `cortical/core/bootstrap.py` — Application wiring
+- `tests/behavioral/test_container_di_stories.py` — Usage examples
 
 ---
 
