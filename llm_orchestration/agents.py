@@ -815,7 +815,7 @@ class Worker(Agent):
         WorkerContext: Configuration for worker execution
         ToolExecutor: Tool registration and execution
         CognitiveStateManager: State management and checkpointing
-        LearningCycle: Experience capture and lesson retrieval
+        GoTLearningBridge: Experience capture and lesson retrieval (consolidated)
         RecoveryCoordinator: Confusion detection and recovery
     """
 
@@ -878,18 +878,9 @@ class Worker(Agent):
                 logger = logging.getLogger(__name__)
                 logger.warning(f"Failed to initialize PRISM: {e}")
 
-        # Learning cycle for retrieving lessons
-        self._learning_cycle: Optional[Any] = None  # LearningCycle when available
-        if LEARNING_AVAILABLE:
-            try:
-                from pathlib import Path
-                storage_dir = Path.home() / ".llm_orchestration" / "learning"
-                self._learning_cycle = LearningCycle(storage_dir)
-            except Exception:
-                # Learning cycle initialization failed, proceed without it
-                pass
-
         # GoT Learning Bridge for persistent experience capture
+        # NOTE: Local LearningCycle removed during consolidation (2026-01-04)
+        # All learning now flows through GoTLearningBridge for single source of truth
         self._got_learning_bridge: Optional['GoTLearningBridge'] = None
         if GOT_LEARNING_AVAILABLE:
             try:
@@ -1405,78 +1396,8 @@ class Worker(Agent):
             raise
 
 
-    def _get_lessons_for_task(self, task_context: dict) -> List[Any]:
-        """
-        Retrieve relevant lessons from learning cycle for the current task.
-
-        Args:
-            task_context: Dictionary with task information including:
-                - task: Task description
-                - tools: Available tools
-                - constraints: Task constraints
-
-        Returns:
-            List of Lesson objects if learning available, empty list otherwise
-        """
-        import logging
-        logger = logging.getLogger(__name__)
-
-        if not self._learning_cycle:
-            logger.debug("Learning cycle not available for lesson retrieval")
-            return []
-
-        try:
-            # Build learning context from task context
-            learning_context = LearningContext(
-                goal_type=self._infer_goal_type_from_task(task_context.get("task", "")),
-                goal_complexity="moderate",
-                available_tools=task_context.get("tools", []),
-                domain="worker_task",
-                constraints=task_context.get("constraints", [])
-            )
-
-            # Get guidance from learning cycle
-            guidance = self._learning_cycle.get_guidance(
-                context=learning_context,
-                include_experiences=False  # Only get lessons, not full experiences
-            )
-
-            lessons = guidance.get("lessons", [])
-            logger.info(f"Retrieved {len(lessons)} lessons for task")
-
-            # Record lesson retrieval
-            if lessons:
-                self._metrics.record_lesson(retrieved=True)
-
-            # Log lesson summaries
-            for lesson in lessons[:3]:  # Log top 3 lessons
-                if hasattr(lesson, 'title') and hasattr(lesson, 'confidence'):
-                    logger.debug(
-                        f"Lesson: {lesson.title} (confidence: {lesson.confidence:.2f})"
-                    )
-
-            return lessons
-
-        except Exception as e:
-            logger.warning(f"Failed to retrieve lessons: {e}")
-            return []
-
-    def _infer_goal_type_from_task(self, task_description: str) -> str:
-        """Infer goal type from task description."""
-        task_lower = task_description.lower()
-
-        if any(word in task_lower for word in ["implement", "create", "build", "add"]):
-            return "implementation"
-        elif any(word in task_lower for word in ["fix", "debug", "resolve"]):
-            return "debugging"
-        elif any(word in task_lower for word in ["refactor", "improve", "optimize"]):
-            return "refactoring"
-        elif any(word in task_lower for word in ["test", "verify"]):
-            return "testing"
-        elif any(word in task_lower for word in ["document", "doc"]):
-            return "documentation"
-        else:
-            return "general"
+    # NOTE: _get_lessons_for_task and _infer_goal_type_from_task removed during consolidation
+    # All learning guidance now comes from GoTLearningBridge.get_guidance_for_task()
 
     def _check_for_confusion(self, context: Dict[str, Any]) -> Optional[ConfusionSignal]:
         """
@@ -1582,7 +1503,7 @@ class Worker(Agent):
         This method:
         - Validates task context
         - Tracks execution time
-        - Records the execution as an experience in the LearningCycle
+        - Records the execution as an experience via GoTLearningBridge
         - Executes using available tools
         - Returns structured results
 
@@ -1602,16 +1523,8 @@ class Worker(Agent):
         if not self.context or not self.context.task:
             raise ValueError("Cannot execute task: context or task is not set")
 
-        # Retrieve lessons from learning cycle BEFORE execution
-        task_context = {
-            "task": self.context.task,
-            "tools": self.context.tools or [],
-            "constraints": self.context.constraints or []
-        }
-        lessons = self._get_lessons_for_task(task_context)
-        logger.info(f"Retrieved {len(lessons)} lessons for guidance")
-
         # Retrieve guidance from GoT Learning Bridge before execution
+        # NOTE: Local learning cycle removed - all guidance from GoT bridge
         # This includes lessons, recommendations, warnings, and relevant experiences
         got_guidance = {
             "lessons": [],
@@ -1705,44 +1618,9 @@ class Worker(Agent):
             ))
 
         try:
-            # Initialize learning cycle if available
-            learning_cycle = None
-            experience = None
-            try:
-                from .learning import (
-                    LearningCycle, Context, Action, Outcome, OutcomeType,
-                    ExperienceType
-                )
-                storage_dir = Path.home() / ".llm_orchestration" / "learning"
-                learning_cycle = LearningCycle(storage_dir)
-
-                # Create experience context
-                context = Context(
-                    goal_type="task_execution",
-                    goal_complexity="moderate",
-                    available_tools=self.context.tools,
-                    domain="worker_task"
-                )
-                experience = learning_cycle.start_experience(
-                    context=context,
-                    intent=self.context.task,
-                    experience_type=ExperienceType.TASK_EXECUTION
-                )
-            except Exception as e:
-                logger.debug(f"Learning cycle not available: {e}")
-
             # Execute the task
+            # NOTE: Local learning_cycle removed - all experience capture via GoT bridge
             logger.info(f"Worker {self.agent_id} executing task: {self.context.task}")
-
-            # Record action if learning
-            if learning_cycle and experience:
-                action = Action(
-                    action_type="execute_task",
-                    description=f"Execute task: {self.context.task}",
-                    target=self.context.task,
-                    parameters={"tools": self.context.tools}
-                )
-                experience.add_action(action)
 
             # Execute task logic - use ToolExecutor for real tool invocation
             tool_outputs = []
@@ -1836,15 +1714,15 @@ class Worker(Agent):
                     "phase_durations": phase_durations,
                     "total_qapv_time": sum(phase_durations.values()) if phase_durations else 0,
                 },
-                # Add lessons retrieved for this task
-                "lessons_retrieved": len(lessons),
+                # Add lessons retrieved from GoT Learning Bridge
+                "lessons_retrieved": len(got_guidance.get("lessons", [])),
                 "lesson_summaries": [
                     {
                         "title": lesson.title if hasattr(lesson, 'title') else "Unknown",
                         "confidence": lesson.confidence if hasattr(lesson, 'confidence') else 0.0
                     }
-                    for lesson in lessons[:5]  # Include top 5 lessons
-                ] if lessons else [],
+                    for lesson in got_guidance.get("lessons", [])[:5]  # Include top 5 lessons
+                ],
                 # Add checkpoint metadata
                 "checkpoints": [
                     {
@@ -1863,39 +1741,9 @@ class Worker(Agent):
             result["duration_ms"] = duration_ms
             result["confusion_records"] = confusion_records
 
-            # Record outcome if learning
-            if learning_cycle and experience:
-                outcome = Outcome(
-                    outcome_type=OutcomeType.SUCCESS,
-                    description="Task completed successfully",
-                    achieved=["task_execution"],
-                    quality_score=0.8,
-                    efficiency_score=0.7
-                )
-
-                # Record experience capture
-                self._metrics.record_experience()
-
-                # Complete experience
-                learning_cycle.complete_experience(
-                    experience,
-                    outcome,
-                    reflection={
-                        "worked": [
-                            "Task execution completed",
-                            f"Used {len(tool_outputs)} tools" if tool_outputs else "No tools used"
-                                                    f"QAPV Question phase: {phase_durations.get('question', 0):.3f}s",
-                            f"QAPV Answer phase: {phase_durations.get('answer', 0):.3f}s",
-                            f"QAPV Produce phase: {phase_durations.get('produce', 0):.3f}s",
-                            f"QAPV Verify phase: {phase_durations.get('verify', 0):.3f}s",
-                        ],
-                        "didnt_work": [],
-                        "different": []
-                    }
-                )
-
             # =========================================================================
             # GOT LEARNING FEEDBACK LOOP - Close the loop!
+            # NOTE: Local learning_cycle completion removed - GoT bridge handles all capture
             # =========================================================================
             if self._got_learning_bridge:
                 # Step 1: Validate lessons that were used (feedback loop)
@@ -1947,18 +1795,9 @@ class Worker(Agent):
         except Exception as e:
             logger.error(f"Task execution failed: {e}", exc_info=True)
 
-            # Record failure if learning
-            if learning_cycle and experience:
-                outcome = Outcome(
-                    outcome_type=OutcomeType.FAILURE,
-                    description=f"Task failed: {str(e)}",
-                    error_type=type(e).__name__,
-                    error_message=str(e)
-                )
-                learning_cycle.complete_experience(experience, outcome)
-
             # =========================================================================
             # GOT LEARNING FEEDBACK LOOP - Negative feedback on failure
+            # NOTE: Local learning_cycle failure recording removed - GoT bridge handles it
             # =========================================================================
             if self._got_learning_bridge:
                 # Step 1: Validate lessons as unhelpful (task failed)
@@ -2501,44 +2340,8 @@ class Director(Agent):
 
             logger.error(f"  Failure record: {failure_record}")
 
-            # Trigger experience capture if learning available
-            if LEARNING_AVAILABLE:
-                try:
-                    from pathlib import Path
-                    from .learning import LearningCycle, Context, Outcome, OutcomeType
-
-                    storage_dir = Path.home() / ".llm_orchestration" / "learning"
-                    learning_cycle = LearningCycle(storage_dir)
-
-                    # Create learning context
-                    context = Context(
-                        goal_type="worker_task_execution",
-                        goal_complexity="complex",
-                        domain="worker_escalation_abort",
-                        prior_failures=len(protocol.confusion_history),
-                        notes=f"Worker {protocol.worker_id} aborted on task {protocol.task_id}: {protocol.reason}"
-                    )
-
-                    # Create failure outcome
-                    outcome = Outcome(
-                        outcome_type=OutcomeType.FAILURE,
-                        description=f"Worker {protocol.worker_id} aborted task {protocol.task_id}",
-                        not_achieved=[f"Complete task {protocol.task_id}"],
-                        error_type="worker_escalation_abort",
-                        error_message=protocol.reason
-                    )
-
-                    # Start and immediately complete experience to record the failure
-                    experience = learning_cycle.start_experience(
-                        context=context,
-                        intent=f"Worker {protocol.worker_id} task execution"
-                    )
-                    learning_cycle.complete_experience(experience, outcome)
-
-                    logger.error(f"  Failure captured in learning system")
-
-                except Exception as e:
-                    logger.error(f"  Failed to capture learning experience: {e}")
+            # NOTE: Local LearningCycle experience capture removed during consolidation
+            # Worker failures are captured via GoT Learning Bridge in Worker.execute_task()
 
             # Mark worker as aborted if it exists
             if protocol.worker_id in self.workers:
