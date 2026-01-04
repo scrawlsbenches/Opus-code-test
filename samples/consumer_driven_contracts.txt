@@ -1,0 +1,107 @@
+Consumer-Driven Contracts: Inverting the Integration Power Dynamic
+
+Consumer-driven contracts revolutionize service integration by shifting contract
+ownership from providers to consumers. Rather than providers defining interfaces
+that consumers must accept, consumers express what they need and providers
+verify they can deliver. This inversion prevents breaking changes and eliminates
+unused API surface.
+
+The traditional approach places providers in control. Providers design APIs
+based on their understanding of consumer needs. Providers document capabilities.
+Consumers adapt to whatever providers offer. When providers change, consumers
+scramble to update. This dynamic creates fragile integration and communication
+overhead.
+
+Consumer-driven contracts flip this relationship. Each consumer publishes
+contracts describing their actual usage: which endpoints they call, which
+fields they read, which error conditions they handle. Providers collect these
+contracts and verify compliance. A change that breaks any consumer contract
+fails verification before deployment.
+
+Contract scope narrows to actual usage. Providers often implement capabilities
+that no consumer uses. Traditional testing might verify unused features while
+missing used ones. Consumer contracts specify exactly what matters: only
+fields consumers read, only endpoints consumers call. This focus catches real
+breaking changes while allowing changes to unused features.
+
+The Pact framework pioneered consumer-driven contract testing. Consumers
+generate pact files during their test suites by recording interactions with
+mock providers. Provider builds verify these pact files against actual
+implementation. A central broker manages pact versions and tracks which
+consumers have verified against which providers.
+
+Consumer test generates the contract. During consumer testing, a mock provider
+records expected interactions. The consumer makes requests and asserts on
+responses. These recorded expectations become the contract. Critically, the
+contract reflects actual consumer behavior, not theoretical requirements.
+
+Provider verification replays consumer expectations. The provider runs each
+recorded interaction against its actual implementation. If the provider
+responds as the consumer expected, verification passes. Mismatches identify
+incompatibility: either the consumer expectation is wrong or the provider
+implementation is deficient.
+
+Provider states enable stateful testing. A consumer might expect different
+responses depending on provider state: "given a user exists" versus "given
+no users exist." Consumers reference named provider states in contracts.
+Providers implement setup for each state. This mechanism enables testing
+varied scenarios without coupling to provider internals.
+
+The contract broker coordinates distributed verification. In systems with
+many consumers and providers, tracking which versions are compatible becomes
+complex. The broker stores contract versions, records verification results,
+and indicates which combinations have proven compatible. Teams query the
+broker before deployment.
+
+Can-I-Deploy queries the broker for deployment safety. Before deploying a
+provider version, query whether it satisfies all consumer contracts. Before
+deploying a consumer version, query whether its contracts are satisfied by
+the current provider. This automated check gates deployment on verified
+compatibility.
+
+Pending pacts handle new consumer requirements gracefully. When a consumer
+needs new provider capabilities, they write contracts for features that don't
+exist yet. These pending pacts don't block provider builds. Once the provider
+implements the feature, verification starts passing and the pact becomes
+active.
+
+WIP pacts enable work-in-progress contracts. During development, consumers
+might create contracts for features still under design. WIP pacts verify
+but don't block. This status enables iterative development while maintaining
+visibility into upcoming requirements.
+
+Webhook integration triggers verification automatically. When consumers
+publish new contracts, webhooks trigger provider verification. When providers
+publish new versions, webhooks trigger consumer verification. This automation
+ensures compatibility checking happens without manual coordination.
+
+Semantic versioning signals compatibility. Provider versions following semver
+indicate breaking changes through major version increments. Consumer contracts
+might specify minimum provider version requirements. The broker can use
+versioning information to predict compatibility without explicit verification.
+
+Multiple consumers create a union contract. When many consumers depend on a
+provider, the provider must satisfy all contracts simultaneously. The union
+of consumer requirements defines the true contract. This aggregation reveals
+the actual API surface that matters across all consumers.
+
+Consumer contract granularity requires balance. Too coarse contracts miss
+breaking changes in details. Too fine contracts over-specify, blocking benign
+changes. Contract matchers specify constraints precisely: "status is a
+number" rather than "status equals 200" when any success status is acceptable.
+
+Loose matching enables flexible contracts. Rather than exact equality,
+matchers express constraints: field exists, field matches type, field matches
+regex pattern. Loose matching tolerates acceptable variation while catching
+structural violations. This flexibility reduces contract maintenance burden.
+
+Contract testing supplements but doesn't replace integration testing. Contracts
+verify interface compatibility. Integration tests verify correct behavior
+when components work together. Both are necessary: contracts ensure components
+can connect; integration tests ensure they work correctly together.
+
+Trust develops through consistent verification. When teams know that contract
+violations will be caught automatically, they develop confidence in independent
+deployment. This confidence accelerates delivery: changes can deploy without
+waiting for integration testing if contracts verify compatibility.
+
