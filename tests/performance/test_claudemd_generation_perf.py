@@ -24,6 +24,7 @@ from cortical.got.claudemd import (
     GenerationContext
 )
 from cortical.got.types import ClaudeMdLayer
+from tests.conftest import _create_tx_manager, _create_got_manager
 
 
 # =============================================================================
@@ -55,7 +56,7 @@ class TestClaudeMdGenerationPerformance:
     @pytest.fixture
     def got_manager(self, temp_got_dir):
         """Create a GoT manager with test layers."""
-        manager = GoTManager(temp_got_dir)
+        manager = _create_got_manager(temp_got_dir)
 
         # Create test layers
         # Valid layer_types: core, operational, contextual, persona, ephemeral
@@ -74,7 +75,7 @@ class TestClaudeMdGenerationPerformance:
     @pytest.fixture
     def got_manager_large(self, temp_got_dir):
         """Create a GoT manager with many layers for stress testing."""
-        manager = GoTManager(temp_got_dir)
+        manager = _create_got_manager(temp_got_dir)
 
         # Create 50 layers for stress test
         # Valid layer_types: core, operational, contextual, persona, ephemeral
@@ -322,7 +323,7 @@ class TestClaudeMdManagerPerformance:
     @pytest.fixture
     def manager_with_layers(self, temp_got_dir):
         """Create a ClaudeMdManager with test layers."""
-        got = GoTManager(temp_got_dir)
+        got = _create_got_manager(temp_got_dir)
 
         # Create layers (valid layer_types: core, operational, contextual, persona, ephemeral)
         # layer_number must be 0-4

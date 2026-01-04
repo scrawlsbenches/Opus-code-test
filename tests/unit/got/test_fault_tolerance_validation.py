@@ -21,6 +21,7 @@ from unittest.mock import MagicMock, patch, PropertyMock
 from cortical.got import TransactionManager, Task
 from cortical.got.recovery import RecoveryManager, RecoveryResult
 from cortical.utils.checksums import compute_checksum
+from tests.conftest import _create_tx_manager
 
 
 # =============================================================================
@@ -40,7 +41,7 @@ def got_dir(tmp_path):
 @pytest.fixture
 def populated_got(got_dir):
     """Create a populated GoT directory with some tasks."""
-    tm = TransactionManager(got_dir)
+    tm = _create_tx_manager(got_dir)
     tx = tm.begin()
 
     # Create some tasks
@@ -121,7 +122,7 @@ class TestGenerationFailureFallback:
         # TransactionManager should still initialize
         # Recovery happens but shouldn't prevent startup
         try:
-            tm = TransactionManager(got_dir)
+            tm = _create_tx_manager(got_dir)
             # Should be able to begin a new transaction
             tx = tm.begin()
             assert tx is not None
@@ -227,7 +228,7 @@ class TestRecoveryProcedures:
 
     def test_recovery_rolls_back_incomplete_transactions(self, got_dir):
         """Incomplete transactions should be rolled back."""
-        tm = TransactionManager(got_dir)
+        tm = _create_tx_manager(got_dir)
 
         # Start transaction but don't commit
         tx = tm.begin()
@@ -321,7 +322,7 @@ class TestSessionStartupWithFailedGeneration:
         empty_dir = tmp_path / "new_got"
         # Don't create the directory - let TransactionManager do it
 
-        tm = TransactionManager(empty_dir)
+        tm = _create_tx_manager(empty_dir)
 
         # Should create required directories
         assert (empty_dir / "entities").exists()
@@ -348,7 +349,7 @@ class TestSessionStartupWithFailedGeneration:
         got_dir.mkdir()  # Base dir OK, but subdirs will fail
 
         with pytest.raises(PermissionError):
-            TransactionManager(got_dir)
+            _create_tx_manager(got_dir)
 
     def test_can_read_entities_with_corrupted_wal(self, populated_got):
         """Should be able to read entities even if WAL is corrupted."""
@@ -357,7 +358,7 @@ class TestSessionStartupWithFailedGeneration:
         wal_file.write_text("corrupted\n" * 10)
 
         # Should still be able to read existing entities
-        tm = TransactionManager(populated_got)
+        tm = _create_tx_manager(populated_got)
 
         # Entities were committed before corruption, should be readable
         entity_file = populated_got / "entities" / "T-test-001.json"
@@ -374,7 +375,7 @@ class TestSessionStartupWithFailedGeneration:
         recovery.recover()
 
         # Create new transaction
-        tm = TransactionManager(populated_got)
+        tm = _create_tx_manager(populated_got)
         tx = tm.begin()
         task = Task(id="T-new", title="New task")
         tm.write(tx, task)
@@ -408,7 +409,7 @@ class TestEdgeCasesAndRegressions:
 
     def test_handles_unicode_in_entity_data(self, got_dir):
         """Should handle unicode characters in entity data."""
-        tm = TransactionManager(got_dir)
+        tm = _create_tx_manager(got_dir)
         tx = tm.begin()
 
         # Create task with unicode
@@ -425,7 +426,7 @@ class TestEdgeCasesAndRegressions:
 
     def test_handles_very_long_entity_content(self, got_dir):
         """Should handle entities with very long content."""
-        tm = TransactionManager(got_dir)
+        tm = _create_tx_manager(got_dir)
         tx = tm.begin()
 
         # Create task with long content
@@ -521,7 +522,7 @@ class TestRecoveryCoverageBranches:
 
     def test_needs_recovery_with_incomplete_transactions(self, got_dir):
         """needs_recovery should return True when incomplete transactions exist."""
-        tm = TransactionManager(got_dir)
+        tm = _create_tx_manager(got_dir)
         tx = tm.begin()
         task = Task(id="T-incomplete", title="Not committed")
         tm.write(tx, task)
@@ -533,7 +534,7 @@ class TestRecoveryCoverageBranches:
     def test_needs_recovery_with_corrupted_entities(self, got_dir):
         """needs_recovery should return True when corrupted entities exist."""
         # First create a valid entity
-        tm = TransactionManager(got_dir)
+        tm = _create_tx_manager(got_dir)
         tx = tm.begin()
         task = Task(id="T-corrupt", title="Will be corrupted")
         tm.write(tx, task)
@@ -984,7 +985,7 @@ class TestRecoveryEdgeCases:
 
     def test_detect_orphaned_entities_with_wal_containing_write_ops(self, got_dir):
         """detect_orphaned_entities should find entities tracked in WAL WRITE ops."""
-        tm = TransactionManager(got_dir)
+        tm = _create_tx_manager(got_dir)
         tx = tm.begin()
         task = Task(id="T-tracked", title="Tracked in WAL")
         tm.write(tx, task)
@@ -1035,7 +1036,7 @@ class TestRaceConditionCoverage:
     def test_verify_store_integrity_file_vanishes_during_read(self, got_dir, monkeypatch):
         """File deleted between glob and _read_and_verify."""
         # Create a valid entity
-        tm = TransactionManager(got_dir)
+        tm = _create_tx_manager(got_dir)
         tx = tm.begin()
         task = Task(id="T-vanish", title="Will vanish")
         tm.write(tx, task)

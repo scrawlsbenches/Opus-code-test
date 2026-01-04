@@ -10,6 +10,7 @@ So that I can track progress using our custom-built sprint system.
 
 import pytest
 from cortical.got.api import GoTManager
+from tests.conftest import _create_got_manager
 
 
 class TestDeveloperCreatesAndManagesSprints:
@@ -29,7 +30,7 @@ class TestDeveloperCreatesAndManagesSprints:
         And I can retrieve it
         """
         # Given a GoT manager
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
 
         # When I create a sprint with a title
         sprint = manager.create_sprint(
@@ -57,7 +58,7 @@ class TestDeveloperCreatesAndManagesSprints:
         Then the status change is persisted
         """
         # Given an available sprint
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         sprint = manager.create_sprint(
             title="Implement custom caching layer",
             status="available"
@@ -81,7 +82,7 @@ class TestDeveloperCreatesAndManagesSprints:
         Then I only get active sprints
         """
         # Given sprints in different states
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         active1 = manager.create_sprint(title="Sprint 1", status="in_progress")
         active2 = manager.create_sprint(title="Sprint 2", status="in_progress")
         completed = manager.create_sprint(title="Sprint 3", status="completed")
@@ -114,7 +115,7 @@ class TestDeveloperOrganizesTasksIntoSprints:
         And I can query sprint tasks
         """
         # Given a sprint and several tasks
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         sprint = manager.create_sprint(title="Sprint 1")
         task1 = manager.create_task(title="Build custom parser")
         task2 = manager.create_task(title="Implement tokenizer")
@@ -147,7 +148,7 @@ class TestDeveloperOrganizesTasksIntoSprints:
         Including completion rate
         """
         # Given a sprint with tasks in various states
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         sprint = manager.create_sprint(title="Sprint 1")
 
         completed1 = manager.create_task(title="Task 1", status="completed")
@@ -189,7 +190,7 @@ class TestDeveloperManagesCurrentSprint:
         Then I get the in_progress sprint
         """
         # Given multiple sprints with one in_progress
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         completed = manager.create_sprint(title="Old sprint", status="completed")
         current = manager.create_sprint(title="Current sprint", status="in_progress")
         future = manager.create_sprint(title="Future sprint", status="available")
@@ -211,7 +212,7 @@ class TestDeveloperManagesCurrentSprint:
         Then I get None
         """
         # Given no in_progress sprints
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         completed = manager.create_sprint(title="Old sprint", status="completed")
         available = manager.create_sprint(title="Future sprint", status="available")
 
@@ -239,7 +240,7 @@ class TestDeveloperDeletesSprintsWithSafety:
         And the sprint still exists
         """
         # Given a sprint with tasks
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         sprint = manager.create_sprint(title="Sprint with tasks")
         task = manager.create_task(title="Task in sprint")
         manager.add_task_to_sprint(task.id, sprint.id)
@@ -262,7 +263,7 @@ class TestDeveloperDeletesSprintsWithSafety:
         And all CONTAINS edges are removed
         """
         # Given a sprint with tasks
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         sprint = manager.create_sprint(title="Sprint to delete")
         task1 = manager.create_task(title="Task 1")
         task2 = manager.create_task(title="Task 2")
@@ -298,7 +299,7 @@ class TestDeveloperCapturesSprintContext:
         And I can retrieve them later
         """
         # Given a GoT manager
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
 
         # When I create a sprint with notes
         sprint = manager.create_sprint(
@@ -355,7 +356,7 @@ class TestDeveloperCapturesSprintContext:
         Then the notes field is an empty list (not None)
         """
         # Given a GoT manager
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
 
         # When I create a sprint without providing notes
         sprint = manager.create_sprint(title="Minimal sprint")

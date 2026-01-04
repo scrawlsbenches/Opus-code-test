@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from cortical.got.api import GoTManager
 from cortical.got.types import ClaudeMdLayer
 from cortical.got.claudemd import ClaudeMdManager, ClaudeMdGenerator
+from tests.conftest import _create_got_manager
 
 
 class TestClaudeMdLayerCRUD(unittest.TestCase):
@@ -30,7 +31,7 @@ class TestClaudeMdLayerCRUD(unittest.TestCase):
         self.got_dir.mkdir()
         (self.got_dir / "entities").mkdir()
 
-        self.manager = GoTManager(self.got_dir)
+        self.manager = _create_got_manager(self.got_dir)
 
     def tearDown(self):
         """Clean up test fixtures."""
@@ -155,7 +156,7 @@ class TestClaudeMdLayerCRUD(unittest.TestCase):
         layer_id = layer.id
 
         # Create new manager instance
-        new_manager = GoTManager(self.got_dir)
+        new_manager = _create_got_manager(self.got_dir)
 
         # Verify layer still exists
         fetched = new_manager.get_claudemd_layer(layer_id)
@@ -173,7 +174,7 @@ class TestClaudeMdGenerationPipeline(unittest.TestCase):
         self.got_dir.mkdir()
         (self.got_dir / "entities").mkdir()
 
-        self.got_manager = GoTManager(self.got_dir)
+        self.got_manager = _create_got_manager(self.got_dir)
         self.claudemd_manager = ClaudeMdManager(self.got_manager, self.got_dir)
 
         # Create fallback CLAUDE.md
@@ -344,7 +345,7 @@ class TestClaudeMdFaultTolerance(unittest.TestCase):
         self.got_dir.mkdir()
         (self.got_dir / "entities").mkdir()
 
-        self.got_manager = GoTManager(self.got_dir)
+        self.got_manager = _create_got_manager(self.got_dir)
         self.claudemd_manager = ClaudeMdManager(self.got_manager, self.got_dir)
 
         # Create fallback
@@ -444,7 +445,7 @@ class TestClaudeMdFreshnessManagement(unittest.TestCase):
         self.got_dir.mkdir()
         (self.got_dir / "entities").mkdir()
 
-        self.got_manager = GoTManager(self.got_dir)
+        self.got_manager = _create_got_manager(self.got_dir)
         self.claudemd_manager = ClaudeMdManager(self.got_manager, self.got_dir)
 
     def tearDown(self):

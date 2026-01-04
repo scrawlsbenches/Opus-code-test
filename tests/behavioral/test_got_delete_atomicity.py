@@ -16,6 +16,7 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 from cortical.got.api import GoTManager
 from cortical.got.errors import TransactionError
+from tests.conftest import _create_tx_manager, _create_got_manager
 
 
 class TestDeleteOperationsAreAtomic:
@@ -36,7 +37,7 @@ class TestDeleteOperationsAreAtomic:
         Because delete operations are now atomic.
         """
         # Given a task with multiple connected edges
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
 
         task_a = manager.create_task(title="Task A - will be deleted", priority="high")
         task_b = manager.create_task(title="Task B - dependent")
@@ -68,7 +69,7 @@ class TestDeleteOperationsAreAtomic:
         assert not (entities_dir / f"{edge_ac_id}.json").exists()
 
         # Verify no orphaned edges in a fresh manager
-        manager2 = GoTManager(tmp_path / ".got")
+        manager2 = _create_got_manager(tmp_path / ".got")
         orphaned_edges = []
         for edge in manager2.list_edges():
             if edge.source_id == task_a_id or edge.target_id == task_a_id:
@@ -89,7 +90,7 @@ class TestDeleteOperationsAreAtomic:
         Because delete operations are now atomic.
         """
         # Given a task with many edges
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
 
         central_task = manager.create_task(title="Central task", priority="critical")
 
@@ -115,7 +116,7 @@ class TestDeleteOperationsAreAtomic:
         assert not (entities_dir / f"{central_id}.json").exists()
 
         # And all edges connected to it are deleted
-        manager2 = GoTManager(tmp_path / ".got")
+        manager2 = _create_got_manager(tmp_path / ".got")
         orphaned = []
         for edge in manager2.list_edges():
             if edge.source_id == central_id or edge.target_id == central_id:
@@ -137,7 +138,7 @@ class TestDeleteOperationsAreAtomic:
         Because delete operations are atomic.
         """
         # Given a decision with edges
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
 
         task1 = manager.create_task(title="Task 1")
         task2 = manager.create_task(title="Task 2")
@@ -167,7 +168,7 @@ class TestDeleteOperationsAreAtomic:
         assert not (entities_dir / f"{decision_id}.json").exists()
 
         # And edges are deleted
-        manager2 = GoTManager(tmp_path / ".got")
+        manager2 = _create_got_manager(tmp_path / ".got")
         orphaned = []
         for edge in manager2.list_edges():
             if edge.source_id == decision_id:
@@ -196,7 +197,7 @@ class TestDeletePreservesUnrelatedEntities:
         Because delete only affects the target and connected edges.
         """
         # Given multiple independent tasks
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         task1 = manager.create_task(title="Task 1", priority="high")
         task2 = manager.create_task(title="Task 2", priority="medium")
         task3 = manager.create_task(title="Task 3", priority="low")
@@ -227,7 +228,7 @@ class TestDeletePreservesUnrelatedEntities:
         And other edges remain intact.
         """
         # Given multiple tasks with various edges
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
 
         task_a = manager.create_task(title="Task A")
         task_b = manager.create_task(title="Task B")
@@ -286,7 +287,7 @@ class TestDeleteErrorHandling:
         And the task remains intact
         Because we protect graph integrity by default.
         """
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
 
         foundation = manager.create_task(title="Foundation task")
         dependent = manager.create_task(title="Dependent task")

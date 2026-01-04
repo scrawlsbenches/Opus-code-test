@@ -31,6 +31,7 @@ from cortical.got import (
     TransactionError,
     ConflictError,
 )
+from tests.conftest import _create_tx_manager, _create_got_manager
 
 
 class TestFullTransactionLifecycle:
@@ -59,7 +60,7 @@ class TestFullTransactionLifecycle:
         7. Verify version incremented
         """
         # Create manager
-        manager = TransactionManager(tmp_path / "got")
+        manager = _create_tx_manager(tmp_path / "got")
 
         # Begin transaction
         tx1 = manager.begin()
@@ -125,7 +126,7 @@ class TestTransactionRollback:
         5. Begin new transaction
         6. Read Task (should NOT exist)
         """
-        manager = TransactionManager(tmp_path / "got")
+        manager = _create_tx_manager(tmp_path / "got")
 
         # Begin transaction
         tx1 = manager.begin()
@@ -179,7 +180,7 @@ class TestConcurrentTransactions:
         4. Modify and commit Task in tx2 (version increments)
         5. Try to modify and commit Task in tx1 → should fail with conflict
         """
-        manager = TransactionManager(tmp_path / "got")
+        manager = _create_tx_manager(tmp_path / "got")
 
         # Setup: Create initial task
         tx_setup = manager.begin()
@@ -261,7 +262,7 @@ class TestCrashRecovery:
         got_dir = tmp_path / "got"
 
         # First manager
-        manager1 = TransactionManager(got_dir)
+        manager1 = _create_tx_manager(got_dir)
 
         # Begin transaction but don't commit
         tx1 = manager1.begin()
@@ -278,7 +279,7 @@ class TestCrashRecovery:
         del manager1  # Destroy manager
 
         # Create new manager (triggers recovery)
-        manager2 = TransactionManager(got_dir)
+        manager2 = _create_tx_manager(got_dir)
 
         # Check recovery result from initial startup
         # (Note: recover() is called in __init__, so we need to call it again
@@ -320,7 +321,7 @@ class TestReadYourOwnWrites:
         5. Begin new transaction
         6. Read Task (should NOT exist)
         """
-        manager = TransactionManager(tmp_path / "got")
+        manager = _create_tx_manager(tmp_path / "got")
 
         # Begin transaction
         tx1 = manager.begin()
@@ -376,7 +377,7 @@ class TestSnapshotIsolation:
         4. Write Entity B in tx2, commit (version V+1)
         5. tx1 should NOT see Entity B (snapshot isolation)
         """
-        manager = TransactionManager(tmp_path / "got")
+        manager = _create_tx_manager(tmp_path / "got")
 
         # Setup: Create Entity A
         tx_setup = manager.begin()
@@ -458,7 +459,7 @@ class TestMultiEntityTransaction:
         5. Commit all in one transaction
         6. Verify all exist and are connected
         """
-        manager = TransactionManager(tmp_path / "got")
+        manager = _create_tx_manager(tmp_path / "got")
 
         # Begin transaction
         tx1 = manager.begin()
@@ -545,7 +546,7 @@ class TestWALRecovery:
         got_dir = tmp_path / "got"
 
         # First manager
-        manager1 = TransactionManager(got_dir)
+        manager1 = _create_tx_manager(got_dir)
 
         # Begin transaction and write
         tx1 = manager1.begin()
@@ -567,7 +568,7 @@ class TestWALRecovery:
         del manager1
 
         # Create new manager (triggers recovery)
-        manager2 = TransactionManager(got_dir)
+        manager2 = _create_tx_manager(got_dir)
 
         # Recovery should have rolled back the preparing transaction
         recovery = manager2.recover()
@@ -595,7 +596,7 @@ class TestTransactionStateValidation:
 
     def test_cannot_write_to_committed_transaction(self, tmp_path):
         """Test that writing to committed transaction raises error."""
-        manager = TransactionManager(tmp_path / "got")
+        manager = _create_tx_manager(tmp_path / "got")
 
         # Commit empty transaction
         tx1 = manager.begin()
@@ -609,7 +610,7 @@ class TestTransactionStateValidation:
 
     def test_cannot_commit_already_committed_transaction(self, tmp_path):
         """Test that committing already-committed transaction fails."""
-        manager = TransactionManager(tmp_path / "got")
+        manager = _create_tx_manager(tmp_path / "got")
 
         # Commit transaction
         tx1 = manager.begin()
@@ -626,7 +627,7 @@ class TestTransactionStateValidation:
 
     def test_cannot_rollback_committed_transaction(self, tmp_path):
         """Test that rolling back committed transaction raises error."""
-        manager = TransactionManager(tmp_path / "got")
+        manager = _create_tx_manager(tmp_path / "got")
 
         # Commit transaction
         tx1 = manager.begin()
@@ -649,7 +650,7 @@ class TestEntityVersioning:
 
     def test_entity_version_increments_on_update(self, tmp_path):
         """Test that entity version increments correctly."""
-        manager = TransactionManager(tmp_path / "got")
+        manager = _create_tx_manager(tmp_path / "got")
 
         # Create initial task
         tx1 = manager.begin()

@@ -12,6 +12,7 @@ import pytest
 from cortical.got.api import GoTManager
 from cortical.got.path_finder import PathFinder
 from cortical.got.graph_walker import GraphWalker
+from tests.conftest import _create_tx_manager, _create_got_manager
 
 
 class TestDeveloperFindsShortestPathsBetweenTasks:
@@ -30,7 +31,7 @@ class TestDeveloperFindsShortestPathsBetweenTasks:
         Then I get the direct dependency path
         """
         # Given a chain of dependent tasks
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         start = manager.create_task(title="Feature implementation")
         middle = manager.create_task(title="Core component")
         end = manager.create_task(title="Foundation module")
@@ -59,7 +60,7 @@ class TestDeveloperFindsShortestPathsBetweenTasks:
         Because our path finder correctly identifies disconnected components
         """
         # Given two unconnected tasks
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         task_a = manager.create_task(title="Task A")
         task_b = manager.create_task(title="Task B")
 
@@ -80,7 +81,7 @@ class TestDeveloperFindsShortestPathsBetweenTasks:
         Without computing the full path
         """
         # Given connected tasks
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         task_a = manager.create_task(title="Task A")
         task_b = manager.create_task(title="Task B")
         task_c = manager.create_task(title="Task C (disconnected)")
@@ -111,7 +112,7 @@ class TestDeveloperFindsAllPathsBetweenTasks:
         Then I get all possible routes
         """
         # Given tasks with multiple connection routes
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         start = manager.create_task(title="Start")
         path1_mid = manager.create_task(title="Path 1 middle")
         path2_mid = manager.create_task(title="Path 2 middle")
@@ -143,7 +144,7 @@ class TestDeveloperFindsAllPathsBetweenTasks:
         Because our path finder has safety limits
         """
         # Given a graph with many paths
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         start = manager.create_task(title="Start")
         end = manager.create_task(title="End")
 
@@ -183,7 +184,7 @@ class TestDeveloperTraversesGraphWithCustomLogic:
         Then I get the total count of connected tasks
         """
         # Given a connected subgraph
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         root = manager.create_task(title="Root")
         child1 = manager.create_task(title="Child 1")
         child2 = manager.create_task(title="Child 2")
@@ -219,7 +220,7 @@ class TestDeveloperTraversesGraphWithCustomLogic:
         In depth-first order
         """
         # Given a task tree
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         root = manager.create_task(title="Root")
         child1 = manager.create_task(title="Child 1")
         child2 = manager.create_task(title="Child 2")
@@ -256,7 +257,7 @@ class TestDeveloperTraversesGraphWithCustomLogic:
         Not via other edge types
         """
         # Given tasks with mixed relationship types
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         start = manager.create_task(title="Start")
         dep_child = manager.create_task(title="Dependency")
         block_child = manager.create_task(title="Blocker")
@@ -293,7 +294,7 @@ class TestDeveloperTraversesGraphWithCustomLogic:
         Then I only visit nodes within depth 2
         """
         # Given a deep chain of tasks
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         root = manager.create_task(title="Root")
         depth1 = manager.create_task(title="Depth 1")
         depth2 = manager.create_task(title="Depth 2")

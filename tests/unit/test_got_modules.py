@@ -24,6 +24,8 @@ from unittest.mock import MagicMock, Mock, patch, mock_open
 
 import pytest
 
+from tests.conftest import _create_tx_manager, _create_got_manager
+
 
 # =============================================================================
 # PROTOCOL TESTS
@@ -648,17 +650,17 @@ class TestGoTManagerAPI:
         """Create a GoTManager for testing."""
         from cortical.got.api import GoTManager
         from cortical.got.config import DurabilityMode
-        return GoTManager(temp_got_dir, durability=DurabilityMode.RELAXED)
+        return _create_got_manager(temp_got_dir)
 
     def test_got_manager_init(self, temp_got_dir):
         """GoTManager initializes correctly."""
         from cortical.got.api import GoTManager
         from cortical.got.config import DurabilityMode
 
-        manager = GoTManager(temp_got_dir, durability=DurabilityMode.RELAXED)
+        manager = _create_got_manager(temp_got_dir)
 
         assert manager.got_dir == temp_got_dir
-        assert manager.durability == DurabilityMode.RELAXED
+        assert manager.durability == DurabilityMode.BALANCED  # Container default
         assert manager.tx_manager is not None
 
     def test_got_manager_lazy_sync_manager(self, got_manager):
@@ -706,7 +708,7 @@ class TestGoTManagerAPI:
         if entities_dir.exists():
             shutil.rmtree(entities_dir)
 
-        manager = GoTManager(temp_got_dir, durability=DurabilityMode.RELAXED)
+        manager = _create_got_manager(temp_got_dir)
         tasks = manager.find_tasks()
 
         assert tasks == []
@@ -929,7 +931,7 @@ class TestGoTManagerAPIExtended:
         """Create a GoTManager for testing."""
         from cortical.got.api import GoTManager
         from cortical.got.config import DurabilityMode
-        return GoTManager(temp_got_dir, durability=DurabilityMode.RELAXED)
+        return _create_got_manager(temp_got_dir)
 
     def test_delete_task_with_dependents_raises_error(self, got_manager):
         """delete_task with dependents raises error without force."""
