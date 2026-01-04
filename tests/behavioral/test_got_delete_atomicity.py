@@ -272,7 +272,7 @@ class TestDeleteErrorHandling:
         Then a TransactionError is raised
         Because we can't delete what doesn't exist.
         """
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
 
         with pytest.raises(TransactionError, match="Task not found"):
             manager.delete_task("T-nonexistent-task", force=True)

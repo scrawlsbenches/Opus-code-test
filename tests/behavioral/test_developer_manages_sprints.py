@@ -326,7 +326,7 @@ class TestDeveloperCapturesSprintContext:
         """
         # Given a sprint with detailed notes
         got_path = tmp_path / ".got"
-        manager = GoTManager(got_path)
+        manager = _create_got_manager(got_path)
         sprint = manager.create_sprint(
             title="Implement custom IR algorithms",
             notes=[
@@ -338,7 +338,7 @@ class TestDeveloperCapturesSprintContext:
 
         # When I reload the manager from the same path
         # (transaction commits are auto-persisted)
-        manager2 = GoTManager(got_path)
+        manager2 = _create_got_manager(got_path)
 
         # Then the notes are preserved
         retrieved = manager2.get_sprint(sprint_id)

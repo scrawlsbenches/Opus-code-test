@@ -24,6 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from cortical.got import GoTManager
 from cortical.got.query_builder import Query
+from cortical.core.bootstrap import create_container
 from cortical.got.graph_walker import GraphWalker
 from cortical.got.path_finder import PathFinder
 from cortical.got.pattern_matcher import Pattern, PatternMatcher
@@ -467,7 +468,8 @@ def run_profiling(
         # Create isolated test environment
         import tempfile
         with tempfile.TemporaryDirectory() as tmpdir:
-            manager = GoTManager(got_dir=tmpdir)
+            container = create_container(got_dir=Path(tmpdir))
+            manager = container.resolve(GoTManager)
 
             # Generate test graph
             print("\nGenerating test graph...", end=" ", flush=True)

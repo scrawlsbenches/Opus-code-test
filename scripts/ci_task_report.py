@@ -40,6 +40,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from cortical.got.api import GoTManager
 from cortical.got.types import Task
+from cortical.core.bootstrap import create_container
 
 # Default GoT directory
 GOT_DIR = PROJECT_ROOT / ".got"
@@ -47,7 +48,8 @@ GOT_DIR = PROJECT_ROOT / ".got"
 
 def get_pending_tasks(got_dir: Path = GOT_DIR) -> List[Task]:
     """Load only pending and in_progress tasks from GoT."""
-    manager = GoTManager(got_dir)
+    container = create_container(got_dir=got_dir)
+    manager = container.resolve(GoTManager)
     pending = manager.list_tasks(status="pending")
     in_progress = manager.list_tasks(status="in_progress")
     return pending + in_progress

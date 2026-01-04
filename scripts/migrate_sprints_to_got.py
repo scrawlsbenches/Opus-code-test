@@ -23,6 +23,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from cortical.got.api import GoTManager
 from cortical.got.types import Sprint, Epic
 from cortical.utils.id_generation import generate_task_id
+from cortical.core.bootstrap import create_container
 
 
 def parse_sprint_file(filepath: Path) -> Dict[str, Any]:
@@ -475,7 +476,8 @@ Examples:
         print("="*70)
 
     # Initialize GoT manager
-    manager = GoTManager(got_dir)
+    container = create_container(got_dir=got_dir)
+    manager = container.resolve(GoTManager)
 
     # Migrate epics first
     print("\n" + "-"*70)
