@@ -3,7 +3,7 @@
 **Auditor:** Senior Principal Computer Scientist / Software Engineer
 **Date:** 2026-01-04
 **Status:** DRAFT - Pending Approval
-**Version:** 2.5
+**Version:** 2.6
 
 ---
 
@@ -18,6 +18,7 @@
 | 2.3 | 2026-01-04 | Auditor | Added Part 7: Operational Considerations & Risk Mitigations |
 | 2.4 | 2026-01-04 | Auditor | Replaced hardcoded schema with existing schema introspection |
 | 2.5 | 2026-01-04 | Auditor | Added T-001-A: Generic entity accessor for Query builder extensibility |
+| 2.6 | 2026-01-04 | Auditor | Added field validation scenarios to T-001-A (unknown field errors with suggestions) |
 
 **Approval Required Before:**
 - Creating any GoT entities (Epic, Sprint, Task)
@@ -631,6 +632,21 @@ Behavioral_Test_First: |
       Then the query executes successfully
       And results are ordered by priority descending
 
+    Scenario: Unknown field raises helpful error with suggestions
+      Given 'task' schema has fields including: id, title, status, priority
+      When I execute Query(manager).entities('task').where(statsu='pending').execute()
+      Then a QueryError is raised
+      And the error message says "Unknown field 'statsu' for entity type 'task'"
+      And the error suggests "Did you mean: status"
+      And the error lists valid fields for 'task'
+
+    Scenario: Field validation uses schema introspection
+      Given entity type 'sprint' has different fields than 'task'
+      When I execute Query(manager).entities('sprint').where(priority='high').execute()
+      Then a QueryError is raised
+      And the error message says "Unknown field 'priority' for entity type 'sprint'"
+      And the error lists valid fields for 'sprint' (not 'task' fields)
+
 Affected_Files:
   - cortical/got/query_builder.py (modify - add entities() method)
   - cortical/got/query_api.py (modify - add generic list_entities() if needed)
@@ -644,6 +660,10 @@ Unit_Test_Requirements: |
   - test_entities_unknown_type_raises_error
   - test_entities_error_includes_valid_types
   - test_entities_chains_with_where
+  - test_where_unknown_field_raises_error
+  - test_where_unknown_field_suggests_similar
+  - test_where_field_validation_uses_correct_schema
+  - test_where_valid_field_passes_validation
   - test_entities_chains_with_order_by
   - test_entities_chains_with_limit_offset
   - test_entities_chains_with_count
@@ -2111,10 +2131,9 @@ Approval signifies agreement with:
 
 ---
 
-*Document Version 2.5 - Awaiting Approval*
+*Document Version 2.6 - Awaiting Approval*
 
 *Key additions in this version:*
-- *T-001-A: Generic entity accessor (`Query.entities('type')`) for true extensibility*
-- *New entity types can be queried without modifying Query builder code*
-- *Foundation for expression system to compile to Query builder calls for any entity type*
-- *T-013 now depends on T-001-A for graph function extensibility*
+- *T-001-A: Field validation against schema with helpful error messages*
+- *Unknown field queries fail fast with "Did you mean" suggestions*
+- *Validation uses correct schema per entity type (not global field list)*
