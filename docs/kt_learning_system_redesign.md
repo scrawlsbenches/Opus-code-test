@@ -4,6 +4,7 @@
 **Session:** claude/senior-engineer-consultation-6zjbT
 **Author:** Claude (Opus 4.5)
 **Reviewer:** Senior Principal Computer Scientist
+**Status:** HANDOFF READY
 
 ---
 
@@ -11,11 +12,14 @@
 
 This session diagnosed "Integration Theater" in the learning system—components initialized but not influencing behavior—and implemented semantic intent matching and file risk tracking. We discovered PRISM-SLM is trained on this codebase (15,814 terms, 37,318 documents) and can provide codebase-specific guidance that generic LLMs cannot.
 
+**CRITICAL FINDING (End of Session):** We discovered a **duplicate learning system architecture** that must be consolidated BEFORE adding PRISM integration. Two separate learning systems are running in parallel, one orphaned.
+
 **Key Deliverables:**
 - Semantic intent matching (find similar tasks by meaning)
 - File outcome tracking (identify risky files)
 - Real GoT data demo proving the system works
 - Architecture plan for PRISM integration
+- **NEW:** Complete architectural analysis of duplicate learning systems
 
 ---
 
@@ -76,6 +80,87 @@ Sample knowledge:
 **Location:** `benchmarks/codebase_slm/models/prism_augmented.json` (13MB)
 
 **Implication:** PRISM-SLM can suggest codebase-specific paths that a generic LLM cannot.
+
+### 4. CRITICAL: Duplicate Learning Systems (Session End Discovery)
+
+We traced the complete execution flow in `agents.py` and discovered TWO parallel learning systems:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     DUPLICATE LEARNING SYSTEMS ANALYSIS                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  SYSTEM 1: LOCAL USER CYCLE                                                 │
+│  ────────────────────────────                                               │
+│  Path:      ~/.llm_orchestration/learning/                                  │
+│  Scope:     User-level (persists across all projects)                       │
+│  Variable:  self._learning_cycle (Worker.__init__ line 887)                 │
+│                                                                              │
+│  Usage:                                                                      │
+│  • Line 1611: lessons = self._get_lessons_for_task(task_context)            │
+│  • Line 1717: learning_cycle = LearningCycle(storage_dir)                   │
+│  • Line 1726: experience = learning_cycle.start_experience(...)             │
+│  • Line 1958: learning_cycle.complete_experience(experience, outcome)       │
+│                                                                              │
+│  Feedback:   ❌ NONE - Lessons retrieved but never validated                │
+│  Status:     ORPHANED - Writes data that is never read by GoT              │
+│                                                                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  SYSTEM 2: GOT PROJECT CYCLE (OUR WORK)                                     │
+│  ───────────────────────────────────────                                    │
+│  Path:      .got/learning/                                                  │
+│  Scope:     Project-level (persists within this codebase)                   │
+│  Variable:  self._got_learning_bridge (Worker.__init__ line 899)            │
+│                                                                              │
+│  Usage:                                                                      │
+│  • Line 1627: got_guidance = self._got_learning_bridge.get_guidance_for_task│
+│  • Line 1907: self._got_learning_bridge.cycle.validate_lesson(was_helpful)  │
+│  • Line 1920: self._got_learning_bridge.capture_task_completion(...)        │
+│  • Line 1981: self._got_learning_bridge.capture_task_failure(...)           │
+│                                                                              │
+│  Feedback:   ✅ COMPLETE - Lessons validated on success/failure             │
+│  Status:     ACTIVE - Full semantic matching + file tracking                │
+│                                                                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  DATA FLOW (CURRENT):                                                       │
+│                                                                              │
+│       execute_task()                                                        │
+│            │                                                                 │
+│            ├──► Line 1611: OLD lessons retrieved (no feedback) ──► metrics │
+│            │                                                                 │
+│            ├──► Line 1627: GOT guidance retrieved ──┬──► QAPV context      │
+│            │                                        └──► has feedback loop  │
+│            │                                                                 │
+│            ├──► Line 1726: LOCAL experience started                         │
+│            │                                                                 │
+│            ├──► [task executes]                                              │
+│            │                                                                 │
+│            ├──► Line 1958: LOCAL experience completed ──► ~/.llm_orch/     │
+│            │                                                                 │
+│            └──► Line 1920: GOT experience captured ──► .got/learning/       │
+│                                                                              │
+│  RESULT: Same task recorded in TWO places, only ONE has feedback           │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Why this matters:** If we wire PRISM-GoT confusion detection, which learning system's data should PRISM learn from? Duplicate experiences create confused training data.
+
+**Confirmed via grep:**
+```bash
+# Three instantiation points for LearningCycle in agents.py:
+llm_orchestration/agents.py:887:  self._learning_cycle = LearningCycle(storage_dir)
+llm_orchestration/agents.py:1717: learning_cycle = LearningCycle(storage_dir)
+llm_orchestration/agents.py:2511: learning_cycle = LearningCycle(storage_dir)
+
+# GoTLearningBridge uses .got/learning/:
+cortical/got/learning_integration.py:206: self.learning_dir = self.got_dir / "learning"
+cortical/got/learning_integration.py:220: self.cycle = LearningCycle(self.learning_dir)
+```
+
+**DESIGN.md confirms:** "Cross-project learning" is listed as an OPEN QUESTION (line 478), not an implemented feature. The two storage locations are accidental complexity.
 
 ---
 
@@ -219,9 +304,32 @@ guidance = cycle.get_guidance_for_files(
 
 ---
 
-## Next Steps (Agreed Plan)
+## Next Steps (Revised Plan)
 
-### Step 2: Wire PRISM-GoT Confusion Detection
+### ⚠️ STEP 0: Consolidate Learning Systems (BLOCKING)
+
+**MUST DO FIRST.** Before wiring PRISM, consolidate to a single learning system.
+
+**Proposed Resolution:**
+
+| Current State | Proposed Change |
+|---------------|-----------------|
+| `~/.llm_orchestration/learning/` (user home) | **DELETE** - Not project-aware, no feedback loop |
+| `.got/learning/` (project root) | **KEEP** - Our semantic + file tracking lives here |
+| `self._learning_cycle` (line 887) | Remove or rewire to GoT |
+| `learning_cycle` (line 1717) | Remove - duplicates GoT capture |
+| Lines 1611 (old guidance) | Remove - GoT has better guidance |
+| Lines 1627 (new guidance) | Keep - This is our semantic matching |
+
+**Approach:**
+1. Write behavioral test proving "single source of truth for experiences"
+2. Remove local learning cycle instantiations
+3. Rewire metrics at line 1840 to use `got_guidance` instead of `lessons`
+4. Verify tests pass
+
+**Confirmation point:** Tests pass, only one learning system remains.
+
+### Step 1: Wire PRISM-GoT Confusion Detection
 
 **Goal:** Use PRISM-GoT's prediction capability to detect cognitive confusion.
 
@@ -235,9 +343,11 @@ guidance = cycle.get_guidance_for_files(
 - If confidence < threshold, trigger confusion signal
 - If actual next thought differs from prediction, update learning
 
+**Current state:** `SynapticConfusionDetector` (recovery.py:397-540) does pattern matching but does NOT call `predict_next_thoughts()`.
+
 **Confirmation point:** Demo showing confusion detection during task execution.
 
-### Step 3: Wire PRISM-SLM Codebase Knowledge
+### Step 2: Wire PRISM-SLM Codebase Knowledge
 
 **Goal:** Use PRISM-SLM's codebase knowledge to suggest relevant files/patterns.
 
@@ -252,7 +362,7 @@ suggestions = prism_slm.suggest_for_context("working on indexer")
 
 **Confirmation point:** Demo showing PRISM-SLM suggesting codebase-specific paths.
 
-### Step 1+: Enrich with Git History
+### Step 3: Enrich with Git History
 
 **Goal:** Use actual git history to improve file risk assessment.
 
@@ -276,6 +386,42 @@ suggestions = prism_slm.suggest_for_context("working on indexer")
 | `llm_orchestration/agents.py` | 1614-1680 | Worker guidance integration |
 | `cortical/reasoning/prism_got.py` | 741-783 | PRISM prediction methods |
 | `benchmarks/codebase_slm/models/prism_augmented.json` | - | Trained PRISM-SLM model |
+
+### Critical Lines for Consolidation (agents.py)
+
+| Line | Code | Issue |
+|------|------|-------|
+| 887 | `self._learning_cycle = LearningCycle(...)` | Creates LOCAL cycle in `__init__` |
+| 899 | `self._got_learning_bridge = GoTLearningBridge(...)` | Creates GOT bridge (KEEP) |
+| 1611 | `lessons = self._get_lessons_for_task(...)` | Uses LOCAL cycle, no feedback |
+| 1627 | `got_guidance = self._got_learning_bridge.get_guidance_for_task(...)` | Uses GOT bridge (KEEP) |
+| 1717 | `learning_cycle = LearningCycle(storage_dir)` | Creates ANOTHER local cycle |
+| 1726 | `experience = learning_cycle.start_experience(...)` | Records to LOCAL |
+| 1840 | `"lessons_retrieved": len(lessons)` | Uses LOCAL lessons for metrics |
+| 1907 | `self._got_learning_bridge.cycle.validate_lesson(...)` | GOT feedback (KEEP) |
+| 1920 | `self._got_learning_bridge.capture_task_completion(...)` | GOT capture (KEEP) |
+| 1958 | `learning_cycle.complete_experience(...)` | Records to LOCAL (duplicate!) |
+| 1981 | `self._got_learning_bridge.capture_task_failure(...)` | GOT capture (KEEP) |
+
+### SynapticConfusionDetector Analysis
+
+**Location:** `llm_orchestration/recovery.py:397-540`
+
+The current confusion detector does pattern matching but does NOT use PRISM predictions:
+
+```python
+def detect(self, context: Optional[Dict[str, Any]] = None) -> List[ConfusionSignal]:
+    """Detect confusion from synaptic patterns."""
+    signals = []
+    loop_signal = self._detect_activation_loop()           # Pattern matching
+    contradiction_signals = self._detect_contradictory_activations()  # Pattern matching
+    stagnation_signal = self._detect_stagnation()          # Pattern matching
+    oscillation_signal = self._detect_oscillation()        # Pattern matching
+    # NOTE: Does NOT call predict_next_thoughts()!
+    return signals
+```
+
+**For PRISM-GoT integration:** This is where `predict_next_thoughts()` should be wired.
 
 ### Test Files
 
@@ -371,7 +517,52 @@ efb4a9ff - feat(learning): Add file outcome tracking for risk assessment
 3. **Commit immediately:** Pushed after every save
 4. **Real data:** Proved system works on actual GoT data
 5. **Explain reasoning:** Documented why, not just what
+6. **Understand before building:** Traced full execution flow before adding complexity
 
 ---
 
-*This knowledge transfer captures the state as of session end. Continue with Step 2 (PRISM-GoT confusion detection) with confirmation demos between each step.*
+## Handoff Instructions
+
+### For the Next Session
+
+1. **Read this document first** - especially the "Duplicate Learning Systems" section
+
+2. **The blocking task is STEP 0** - Consolidate learning systems before PRISM work
+
+3. **Start with:**
+   ```bash
+   # Verify system state
+   python scripts/got_utils.py validate
+   python -m pytest tests/smoke/ -v
+
+   # Run the demos to understand current state
+   python3 demo_real_got_data.py
+   python3 demo_learning_system.py
+   ```
+
+4. **Key decision needed:** Confirm the consolidation approach (remove local, keep GoT)
+
+5. **Working constraints from this session:**
+   - No sub-agents - work through issues together directly
+   - Commit and push immediately after saves
+   - TDD approach - write behavioral tests first
+   - Confirmation demos between each step
+
+### User Context
+
+The reviewer is a **Senior Principal Computer Scientist** who:
+- Caught my dismissal of PRISM-SLM (I was wrong - it knows the codebase)
+- Asked to "take things slow" and "understand before building"
+- Prefers Option B (understand full execution flow) over Option A (just run tests)
+- Values confirmation examples between each step
+
+### Current Todo List
+
+1. **[in_progress]** Consolidate duplicate learning systems before adding PRISM
+2. **[pending]** Wire PRISM-GoT confusion detection into Worker
+3. **[pending]** Enrich Layer 1 with git history data
+4. **[pending]** Wire PRISM-SLM codebase knowledge into guidance
+
+---
+
+*This knowledge transfer captures the state as of session end. Continue with STEP 0 (consolidate learning systems) before any PRISM work.*
