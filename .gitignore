@@ -144,6 +144,7 @@ corpus_dev/
 .got/wal/
 .got/chunks/
 .got/entities/_version.json
+.got/learning/experiences/
 
 # Ensure git-tracked directories are not ignored
 !.got/
