@@ -51,6 +51,7 @@ from pathlib import Path
 from typing import Optional
 
 from cortical.common import Container
+from cortical.core.modules import CDGModule, GoTModule
 
 
 # Global container instance (lazy-initialized)
@@ -60,6 +61,7 @@ _default_container: Optional[Container] = None
 def create_container(
     got_dir: Optional[Path] = None,
     config: Optional[dict] = None,
+    apply_modules: bool = True,
 ) -> Container:
     """
     Create and configure the application container.
@@ -70,6 +72,7 @@ def create_container(
     Args:
         got_dir: Optional GoT directory path (defaults to .got in cwd)
         config: Optional configuration dictionary
+        apply_modules: If True, apply CDG and GoT modules (default: True)
 
     Returns:
         Fully configured container
@@ -80,21 +83,26 @@ def create_container(
 
         # With custom paths
         container = create_container(got_dir=Path("/data/.got"))
+
+        # Empty container for testing (no modules)
+        container = create_container(apply_modules=False)
     """
     container = Container()
+
+    # Default got_dir
+    effective_got_dir = got_dir or Path(".got")
 
     # Store configuration
     if config is not None:
         container.register_instance(dict, config)
 
     # Store paths
-    if got_dir is not None:
-        container.register_instance(Path, got_dir)
+    container.register_instance(Path, effective_got_dir)
 
-    # TODO: Apply subsystem modules as they are created
-    # container.apply_module(CDGModule(config))
-    # container.apply_module(GoTModule(config))
-    # container.apply_module(CELModule(config))
+    # Apply subsystem modules
+    if apply_modules:
+        container.apply_module(CDGModule(got_dir=effective_got_dir))
+        container.apply_module(GoTModule(got_dir=effective_got_dir))
 
     return container
 

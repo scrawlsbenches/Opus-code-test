@@ -467,11 +467,63 @@ class TestDeveloperBootstrapsCortical:
         """
         from cortical.core.bootstrap import create_container
 
-        container = create_container()
+        container = create_container(apply_modules=False)
         test_container = container.create_child()
 
         # Test container can be customized
         assert test_container is not None
+
+    def test_scenario_bootstrap_resolves_real_services(self):
+        """
+        Scenario: Bootstrap container resolves real CDG and GoT services
+
+        Given a bootstrap container with modules applied
+        When I resolve CDGStore, TransactionManager, GoTManager
+        Then I get real working instances
+        Because the modules wire up the full dependency graph
+        """
+        import tempfile
+        from pathlib import Path
+        from cortical.core.bootstrap import create_container
+        from cortical.cdg.storage import CDGStore
+        from cortical.cdg.wal import CDGWALManager
+        from cortical.cdg.transaction_manager import CDGTransactionManager
+        from cortical.got.tx_manager import TransactionManager
+        from cortical.got.api import GoTManager
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            got_dir = Path(tmpdir)
+
+            container = create_container(got_dir=got_dir)
+
+            # Resolve CDG services
+            store = container.resolve(CDGStore)
+            assert store is not None
+            assert isinstance(store, CDGStore)
+
+            wal = container.resolve(CDGWALManager)
+            assert wal is not None
+            assert isinstance(wal, CDGWALManager)
+
+            cdg_tx = container.resolve(CDGTransactionManager)
+            assert cdg_tx is not None
+            assert isinstance(cdg_tx, CDGTransactionManager)
+
+            # Resolve GoT services
+            tx_manager = container.resolve(TransactionManager)
+            assert tx_manager is not None
+            assert isinstance(tx_manager, TransactionManager)
+
+            got_manager = container.resolve(GoTManager)
+            assert got_manager is not None
+            assert isinstance(got_manager, GoTManager)
+
+            # Verify singletons are shared
+            store2 = container.resolve(CDGStore)
+            assert store is store2
+
+            tx_manager2 = container.resolve(TransactionManager)
+            assert tx_manager is tx_manager2
 
 
 # =============================================================================
