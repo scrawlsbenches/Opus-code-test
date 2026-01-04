@@ -1,0 +1,106 @@
+Composition Over Inheritance: Building Flexible Systems from Parts
+
+Inheritance and composition both enable code reuse, but they differ fundamentally
+in how they achieve it. Inheritance creates "is-a" relationships through class
+hierarchies. Composition creates "has-a" relationships by assembling objects.
+The principle of favoring composition over inheritance recognizes that assembly
+often proves more flexible than hierarchy.
+
+Inheritance couples subclasses tightly to their parent classes. Subclasses depend
+on parent implementation details, not just interfaces. Changes to parent methods
+affect all descendants. Protected members expose internal state across the
+inheritance boundary. The coupling extends throughout the hierarchy.
+
+The fragile base class problem illustrates inheritance dangers. A parent class
+change that seems safe breaks subclasses that depended on subtle behaviors. The
+parent class author cannot anticipate all subclass assumptions. The subclass
+author cannot predict all parent class changes. This invisible coupling creates
+maintenance hazards.
+
+Composition assembles behavior from separate objects. A class that needs logging
+capability contains a logger rather than inheriting from a logger base class.
+The logger implementation can change independently. Different loggers can be
+substituted. The containing class depends only on the logger interface.
+
+Delegation implements composition by forwarding method calls to contained objects.
+The container implements an interface by delegating to an implementer it holds.
+From outside, the container appears to provide the capability. Inside, it
+coordinates with its delegate. This pattern enables runtime flexibility that
+inheritance cannot match.
+
+Inheritance hierarchies grow rigid as they deepen. Each level adds constraints
+that subsequent levels must honor. Deep hierarchies become difficult to understand
+and modify. Composition hierarchies remain shallow because composed objects need
+not form trees. Objects can participate in multiple compositions simultaneously.
+
+Multiple inheritance, where available, attempts to combine capabilities from
+several parent classes. However, it introduces the diamond problem when parents
+share ancestors, and it combines the coupling problems of all parent classes.
+Composition avoids these issues by keeping combined objects separate.
+
+Mixins and traits offer middle ground between inheritance and composition. They
+provide reusable behavior that classes can include without deep hierarchies.
+However, they still create coupling to the mixin implementation. Composition
+through delegation provides cleaner boundaries.
+
+Design patterns frequently employ composition. Strategy injects algorithms as
+composed objects. Decorator wraps objects with additional behavior. State
+delegates to objects representing current state. These patterns achieve
+flexibility that inheritance-based alternatives cannot match.
+
+Dependency injection supports composition by providing the objects to compose.
+Rather than hardcoding composed objects, receive them from outside. This enables
+testing with mock compositions and runtime configuration of object graphs.
+Injection and composition reinforce each other.
+
+When does inheritance remain appropriate? When a true "is-a" relationship exists
+and the subclass genuinely specializes the parent without altering fundamental
+behavior. When the parent class was designed for inheritance with clear extension
+points. When polymorphism through a class hierarchy serves the design better than
+interface-based polymorphism.
+
+Framework extension often requires inheritance because frameworks define base
+classes for users to extend. Accept this inheritance where frameworks require it,
+but prefer composition for your own designs. Use inheritance at framework
+boundaries; use composition internally.
+
+Interface inheritance differs from implementation inheritance. Implementing an
+interface creates no coupling to other implementations. Multiple interface
+implementation causes no diamond problems. Design with interface inheritance
+freely while limiting implementation inheritance.
+
+The expression problem illustrates tradeoffs between data types and operations.
+Inheritance makes adding new types easy but adding new operations hard.
+Composition patterns like visitor make adding operations easier but adding types
+harder. Neither approach wins universally; context determines the better choice.
+
+Testing benefits from composition. Composed objects can be mocked independently.
+Tests inject test doubles for specific collaborators while using real objects
+for others. Inheritance hierarchies force testing through the entire hierarchy
+or mocking at the base class level.
+
+Composition requires more explicit code than inheritance. Where inheritance
+automatically provides parent methods to subclasses, composition requires
+explicit delegation. This verbosity is not waste; it makes dependencies visible.
+Explicit code is easier to understand and modify than implicit behavior.
+
+Refactoring from inheritance to composition improves design incrementally.
+Extract a collaborator object from inherited behavior. Hold it as a field.
+Delegate to it rather than relying on inheritance. Inject it through the
+constructor. The inheritance relationship dissolves into composition.
+
+Prefer composition as a default stance. Reach for inheritance only when its
+specific characteristics serve your needs better than composition. This
+preference keeps designs flexible, testable, and maintainable. It makes
+dependencies explicit and change safe.
+
+Languages influence the balance. Languages with first-class functions often
+eliminate patterns that required composition in object-oriented languages.
+Languages with protocols or traits change how capabilities combine. The
+principle adapts to language features while maintaining its essential wisdom.
+
+Understanding this principle clarifies design decisions throughout your career.
+When evaluating designs, ask: does this inheritance relationship serve a purpose
+that composition could not? When planning new code, start with composition and
+introduce inheritance only for specific reasons. This discipline produces more
+maintainable code over time.

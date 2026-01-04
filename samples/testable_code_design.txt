@@ -1,0 +1,114 @@
+Testable Code Design: Writing Code That Welcomes Verification
+
+Testable code invites testing through its structure. Some code fights tests at
+every turn: hidden dependencies, global state, tight coupling, and impure
+functions create friction. Other code embraces tests: explicit dependencies,
+isolated components, and deterministic behavior make testing natural. Design
+choices determine which experience you have.
+
+Dependency injection forms the foundation of testable design. When code creates
+its own dependencies, tests cannot substitute alternatives. When code receives
+dependencies through constructors, tests inject mocks, stubs, or fakes. This
+substitutability enables isolation testing where only the unit under test runs
+real code.
+
+Pure functions offer inherent testability. Given the same inputs, they produce
+the same outputs. They modify no external state. They depend on no external
+state beyond their parameters. Testing pure functions requires only calling them
+with test inputs and verifying outputs. No setup, no teardown, no environment
+concerns.
+
+Separating pure logic from impure operations improves testability. Push I/O,
+network calls, and database access to the system's edges. Keep core logic pure.
+The pure core becomes trivially testable. The impure edges require integration
+tests but comprise a smaller fraction of the codebase.
+
+The test pyramid suggests proportions: many unit tests, fewer integration tests,
+few end-to-end tests. Unit tests require testable units. When units tangle
+together, unit testing becomes impossible, forcing reliance on slower, broader
+tests. Testable design keeps the pyramid properly proportioned.
+
+Constructor injection signals dependencies explicitly. A class with five
+constructor parameters visibly depends on five collaborators. This visibility
+prompts questions: does this class do too much? Can dependencies be reduced?
+Tests benefit from explicit dependencies, and so does design comprehension.
+
+Avoid hidden dependencies that code reaches for internally. Static method calls,
+service locators accessed from within methods, and ambient context all hide
+dependencies from tests and readers. Make every dependency visible at
+construction time.
+
+Interface-based dependencies enable test doubles. Depend on abstractions rather
+than concrete classes. Tests provide mock implementations of interfaces. The
+code under test cannot distinguish real from fake implementations. This
+substitution enables isolated testing.
+
+Single responsibility supports testability by keeping units small. A class that
+does one thing has one thing to test. A class that does many things requires
+tests for many concerns, with interactions between them creating combinatorial
+complexity. Small, focused classes yield small, focused tests.
+
+Avoid global state that persists between tests. Global variables, static mutable
+fields, and singleton instances carry state from test to test. One test's
+modifications affect another test's starting conditions. Test isolation requires
+clean slate initialization, which global state prevents.
+
+Time and randomness undermine deterministic testing. Code that calls DateTime.Now
+or Random.Next produces different results on different runs. Inject time and
+randomness providers that tests can control. Production uses real providers;
+tests use deterministic fakes.
+
+File systems, networks, and databases introduce environmental dependencies.
+Tests that require external resources run slowly, fail intermittently, and
+require complex setup. Abstract these resources behind interfaces. Tests
+provide in-memory implementations. Production provides real implementations.
+
+Behavior-driven scenarios describe testable behaviors. Given-When-Then structure
+clarifies what each test verifies. A scenario that cannot be expressed clearly
+often indicates unclear design. If you cannot describe the expected behavior
+precisely, the implementation probably lacks precision too.
+
+Test-driven development produces testable code by construction. Writing tests
+first forces design decisions that support testing. Code that emerges from TDD
+has the injection points, interfaces, and separations that testability requires.
+The tests drive design toward testability.
+
+Extract method refactoring improves testability by isolating logic. A long method
+mixing decisions with actions resists testing. Extracting decision logic into
+separate methods enables testing decisions without performing actions. Smaller
+methods serving single purposes invite unit testing.
+
+Avoid logic in constructors. Constructors that perform complex operations force
+that complexity into every test that instantiates the class. Keep constructors
+simple: store parameters, perhaps validate them. Move complex initialization to
+factory methods that tests can bypass.
+
+Design for composition enables testing of parts. When objects assemble from
+smaller objects, tests can verify parts independently before verifying assemblies.
+Deep inheritance hierarchies force testing entire hierarchies at once.
+Composition enables incremental testing.
+
+Side effects complicate testing. Functions that modify state beyond their return
+values require verification of that state. Pure functions that return values
+without side effects require only return value verification. Minimize side
+effects; isolate them where necessary.
+
+Logging and metrics instrumentation should not impede testing. Design
+instrumentation as injected dependencies or use test-friendly patterns that
+disable instrumentation in test contexts. Tests that produce log output create
+noise. Tests that fail due to metric backends create brittleness.
+
+Mock objects verify interactions. When code should call certain methods on
+collaborators, mocks verify those calls occurred with expected arguments. This
+verification complements return value testing. Some behaviors manifest only
+through interactions, not return values.
+
+The seam concept identifies places where behavior can be altered without modifying
+code. Object seams allow dependency injection. Preprocessor seams enable
+conditional compilation. Link seams substitute libraries. Designing with seams
+creates places where tests can intervene.
+
+Testability correlates with maintainability. Code that resists testing often
+resists change for the same reasons: tight coupling, hidden dependencies, and
+mixed concerns. Improving testability improves design quality generally.
+Tests both verify behavior and improve the code they test.
