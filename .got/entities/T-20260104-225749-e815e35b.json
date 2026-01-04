@@ -1,0 +1,19 @@
+{
+  "_checksum": "9d7f23fccc1e32d8",
+  "_written_at": "2026-01-04T22:57:49.344007+00:00",
+  "data": {
+    "created_at": "2026-01-04T22:57:49.331931+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260104-225749-e815e35b",
+    "metadata": {},
+    "modified_at": "2026-01-04T22:57:49.343950+00:00",
+    "priority": "low",
+    "properties": {
+      "category": "test"
+    },
+    "status": "pending",
+    "title": "DI Functional Test Task",
+    "version": 2
+  }
+}
