@@ -3,7 +3,7 @@
 **Auditor:** Senior Principal Computer Scientist / Software Engineer
 **Date:** 2026-01-04
 **Status:** DRAFT - Pending Approval
-**Version:** 2.0
+**Version:** 2.1
 
 ---
 
@@ -13,6 +13,7 @@
 |---------|------|--------|---------|
 | 1.0 | 2026-01-04 | Auditor | Initial audit and design |
 | 2.0 | 2026-01-04 | Auditor | Generalized architecture, GoT workflow, agent protocols |
+| 2.1 | 2026-01-04 | Auditor | Added validated internal API structure from Python testing |
 
 **Approval Required Before:**
 - Creating any GoT entities (Epic, Sprint, Task)
@@ -122,7 +123,84 @@ GoT VALIDATION REPORT
 | Indexer | `indexer.py` | Status/priority indexes | ★★★★☆ |
 | CLI Query | `got_utils.py:query()` | Natural language | ★★★☆☆ |
 
-### 1.4 Gap Analysis
+### 1.4 Validated Internal API Structure
+
+**Verified through direct Python API testing on 2026-01-04:**
+
+#### TransactionalGoTAdapter (scripts/got_utils.py)
+High-level facade used by CLI. Returns `ThoughtNode` objects.
+
+```python
+# Instantiation
+manager = TransactionalGoTAdapter()  # defaults to Path('.got')
+
+# Entity creation (returns entity ID string)
+task_id = manager.create_task(title, priority='medium', category='feature',
+                               description='', sprint_id=None,
+                               depends_on=None, blocks=None)
+sprint_id = manager.create_sprint(name, number=None, epic_id=None, description=None)
+epic_id = manager.create_epic(name, epic_id=None, properties=None)
+decision_id = manager.create_decision(content, rationale='', task_id=None, alternatives=None)
+kt_id = manager.create_knowledge_transfer(title, session_id='', summary='', ...)
+
+# Relationships
+manager.add_dependency(task_id, depends_on_id)  # T-A depends on T-B
+manager.add_blocks(task_id, blocks_id)          # T-A blocks T-B
+manager.link_task_to_sprint(sprint_id, task_id)
+manager.add_edge(source_id, target_id, edge_type, weight=1.0, reason='')
+```
+
+#### Query Builder (cortical/got/query_builder.py)
+**Fluent SQL-like API that already exists and is powerful:**
+
+```python
+from cortical.got.api import GoTManager
+from cortical.got.query_builder import Query
+
+manager = GoTManager(Path('.got'))
+
+# Validated working examples:
+Query(manager).tasks().where(status='pending').limit(3).execute()
+Query(manager).tasks().where(priority='high').or_where(priority='critical').limit(5).execute()
+Query(manager).tasks().where(status='pending').order_by('priority', desc=True).limit(5).execute()
+Query(manager).tasks().where(status='completed').count()  # Returns int: 238
+Query(manager).tasks().where(status='blocked').exists()   # Returns bool: True
+Query(manager).tasks().connected_to('S-019', via='CONTAINS').execute()  # 11 tasks
+Query(manager).sprints().limit(3).execute()
+Query(manager).decisions().limit(3).execute()
+Query(manager).edges().limit(5).execute()
+Query(manager).tasks().where(status='pending').explain()  # Returns QueryPlan
+```
+
+#### Current CLI query() Method (got_utils.py:2388-2685)
+**Uses hardcoded pattern matching, does NOT use Query builder:**
+
+```python
+# Current implementation uses string matching:
+if query_str.startswith("what blocks "):
+    task_id = original_query[12:].strip()
+    # ...
+elif query_str == "blocked tasks":
+    # ...
+elif query_str.startswith("tasks in sprint "):
+    # ...
+```
+
+### 1.5 Key Insight: The Gap
+
+**The Query builder already provides all the power we need. The gap is an expression parser that compiles DSL expressions to Query builder calls.**
+
+```
+Current State:
+  CLI query string → Hardcoded pattern matching → Direct API calls
+  (Limited, not extensible, duplicates Query builder logic)
+
+Target State:
+  CLI query string → Expression Parser → Query Builder → Execute
+  (Extensible, reuses existing infrastructure, DRY)
+```
+
+### 1.6 Gap Analysis
 
 | Missing Feature | Impact | Priority |
 |-----------------|--------|----------|
@@ -132,6 +210,7 @@ GoT VALIDATION REPORT
 | Field projections | No `SELECT field1, field2` | Medium |
 | Aggregation in CLI | No `COUNT BY status` | High |
 | Date range queries | Limited time filtering | High |
+| **Expression→QueryBuilder bridge** | **CLI doesn't use existing power** | **Critical** |
 
 ---
 
@@ -1393,4 +1472,6 @@ Approval signifies agreement with:
 
 ---
 
-*Document Version 2.0 - Awaiting Approval*
+*Document Version 2.1 - Awaiting Approval*
+
+*Validated internal Python API through direct testing. Key finding: Query builder already provides extensive capabilities; gap is connecting CLI expressions to it.*
