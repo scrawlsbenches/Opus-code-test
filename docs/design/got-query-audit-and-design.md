@@ -3,7 +3,7 @@
 **Auditor:** Senior Principal Computer Scientist / Software Engineer
 **Date:** 2026-01-04
 **Status:** DRAFT - Pending Approval
-**Version:** 2.4
+**Version:** 2.5
 
 ---
 
@@ -17,6 +17,7 @@
 | 2.2 | 2026-01-04 | Auditor | Added API Discovery Protocol for agent assumption validation |
 | 2.3 | 2026-01-04 | Auditor | Added Part 7: Operational Considerations & Risk Mitigations |
 | 2.4 | 2026-01-04 | Auditor | Replaced hardcoded schema with existing schema introspection |
+| 2.5 | 2026-01-04 | Auditor | Added T-001-A: Generic entity accessor for Query builder extensibility |
 
 **Approval Required Before:**
 - Creating any GoT entities (Epic, Sprint, Task)
@@ -479,9 +480,9 @@ Epic:
 
 ```yaml
 Sprint-1:
-  title: "Foundation: Lexer, AST, and Test Infrastructure"
-  goal: "Establish parsing foundation with comprehensive test coverage"
-  tasks: [T-001 through T-006]
+  title: "Foundation: Lexer, AST, Query Infrastructure, and Tests"
+  goal: "Establish parsing foundation and generic query extensibility"
+  tasks: [T-001, T-001-A, T-002 through T-006]
 
 Sprint-2:
   title: "Parser and Basic Execution"
@@ -571,6 +572,119 @@ Agent_Instructions: |
 Cleanup_Tasks:
   - Remove any debugging print statements
   - Ensure all files have module docstrings
+  - Blocked by: T-CLEANUP-APPROVAL
+```
+
+##### T-001-A: Add Generic Entity Accessor to Query Builder
+
+```yaml
+Task: T-001-A
+Title: "Add generic entity accessor to Query builder for extensibility"
+Priority: critical
+Category: feature
+Sprint: Sprint-1
+Depends_On: [T-001]
+
+Rationale: |
+  Currently Query builder has entity-specific methods: .tasks(), .sprints(), .decisions()
+  Adding a new entity type (e.g., "cars") requires modifying Query builder code.
+
+  A generic accessor enables querying ANY registered entity type without code changes:
+    Query(manager).entities('car').where(status='available').execute()
+
+  This is foundational for true extensibility - the expression system will compile
+  to Query builder calls, and we need it to work for any entity type.
+
+Behavioral_Test_First: |
+  # tests/behavioral/test_generic_entity_accessor.py
+
+  Feature: Generic Entity Accessor
+
+    Scenario: Query tasks using generic accessor
+      Given the GoT system has tasks
+      When I execute Query(manager).entities('task').limit(3).execute()
+      Then I get a list of task entities
+      And each entity has 'id' and 'title' fields
+
+    Scenario: Query sprints using generic accessor
+      Given the GoT system has sprints
+      When I execute Query(manager).entities('sprint').limit(3).execute()
+      Then I get a list of sprint entities
+
+    Scenario: Filter entities using where clause
+      Given the GoT system has tasks with various statuses
+      When I execute Query(manager).entities('task').where(status='pending').execute()
+      Then all returned entities have status 'pending'
+
+    Scenario: Unknown entity type raises helpful error
+      Given 'nonexistent' is not a registered entity type
+      When I execute Query(manager).entities('nonexistent').execute()
+      Then a QueryError is raised
+      And the error message lists available entity types
+
+    Scenario: Entity type is case-insensitive
+      When I execute Query(manager).entities('TASK').limit(1).execute()
+      Then I get the same result as Query(manager).entities('task').limit(1).execute()
+
+    Scenario: Generic accessor works with all Query builder methods
+      When I execute Query(manager).entities('task').where(status='pending').order_by('priority', desc=True).limit(5).execute()
+      Then the query executes successfully
+      And results are ordered by priority descending
+
+Affected_Files:
+  - cortical/got/query_builder.py (modify - add entities() method)
+  - cortical/got/query_api.py (modify - add generic list_entities() if needed)
+  - tests/behavioral/test_generic_entity_accessor.py (create)
+  - tests/unit/test_query_builder_entities.py (create)
+
+Unit_Test_Requirements: |
+  - test_entities_returns_query_instance
+  - test_entities_accepts_string_type
+  - test_entities_case_insensitive
+  - test_entities_unknown_type_raises_error
+  - test_entities_error_includes_valid_types
+  - test_entities_chains_with_where
+  - test_entities_chains_with_order_by
+  - test_entities_chains_with_limit_offset
+  - test_entities_chains_with_count
+  - test_entities_chains_with_exists
+  - test_entities_uses_schema_registry
+  - test_entities_works_for_all_registered_types
+
+Implementation_Hints: |
+  1. The entities() method should:
+     - Accept entity type name as string
+     - Validate against SchemaRegistry
+     - Store entity type for later filtering
+     - Return self for chaining
+
+  2. Use ID prefix convention for filtering:
+     - 'task' → T-*
+     - 'sprint' → S-*
+     - 'decision' → D-*
+     - Or introspect from schema/storage layer
+
+  3. Reuse existing Query builder internals - this is a new entry point,
+     not a new query system
+
+Validation_Steps:
+  1. Run: python -m pytest tests/behavioral/test_generic_entity_accessor.py -v
+  2. Run: python -m pytest tests/unit/test_query_builder_entities.py -v
+  3. Verify existing .tasks()/.sprints() still work (no regressions)
+  4. Run: python -m pytest tests/smoke/ -v
+
+Agent_Instructions: |
+  Before implementing:
+  1. Read cortical/got/query_builder.py - understand how .tasks() is implemented
+  2. Read cortical/got/schema.py - understand SchemaRegistry
+  3. Check ID prefix conventions in storage layer
+  4. Challenge: Should we deprecate .tasks()/.sprints() eventually?
+  5. Challenge: How to handle entity types with no ID prefix convention?
+
+  Write behavioral test FIRST, then implement.
+
+Cleanup_Tasks:
+  - Ensure docstrings explain the extensibility benefit
   - Blocked by: T-CLEANUP-APPROVAL
 ```
 
@@ -1029,7 +1143,7 @@ Title: "Implement core graph functions using registry"
 Priority: high
 Category: feature
 Sprint: Sprint-3
-Depends_On: [T-005, T-008]
+Depends_On: [T-001-A, T-005, T-008]
 
 Behavioral_Test_First: |
   Feature: Graph Query Functions
@@ -1997,9 +2111,10 @@ Approval signifies agreement with:
 
 ---
 
-*Document Version 2.4 - Awaiting Approval*
+*Document Version 2.5 - Awaiting Approval*
 
 *Key additions in this version:*
-- *Section 7.5 now uses existing schema system (`cortical/got/schema.py`, `entity_schemas.py`) instead of proposing hardcoded schemas*
-- *Dynamic schema introspection enables future-proof query validation*
-- *No hardcoded field names, status values, or edge types - all discovered at runtime*
+- *T-001-A: Generic entity accessor (`Query.entities('type')`) for true extensibility*
+- *New entity types can be queried without modifying Query builder code*
+- *Foundation for expression system to compile to Query builder calls for any entity type*
+- *T-013 now depends on T-001-A for graph function extensibility*
