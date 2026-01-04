@@ -15,6 +15,7 @@ from cortical.got.tx_manager import TransactionManager, CommitResult, Conflict
 from cortical.got.transaction import TransactionState
 from cortical.got.types import Task
 from cortical.got.errors import TransactionError
+from cortical.core.bootstrap import create_container
 
 
 class TestTransactionManager:
@@ -29,8 +30,9 @@ class TestTransactionManager:
 
     @pytest.fixture
     def manager(self, tmp_got_dir):
-        """Create TransactionManager instance."""
-        return TransactionManager(tmp_got_dir)
+        """Create TransactionManager instance via container."""
+        container = create_container(got_dir=tmp_got_dir)
+        return container.resolve(TransactionManager)
 
     def test_begin_creates_transaction(self, manager):
         """Test that begin() returns active transaction."""
@@ -645,8 +647,9 @@ class TestTransactionManagerKnowledgeTransfer:
 
     @pytest.fixture
     def manager(self, tmp_got_dir):
-        """Create TransactionManager instance."""
-        return TransactionManager(tmp_got_dir)
+        """Create TransactionManager instance via container."""
+        container = create_container(got_dir=tmp_got_dir)
+        return container.resolve(TransactionManager)
 
     def test_create_knowledge_transfer(self, manager):
         """Test creating a knowledge transfer."""

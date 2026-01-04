@@ -11,6 +11,7 @@ from pathlib import Path
 from cortical.got.api import GoTManager, TransactionContext, generate_task_id, generate_decision_id
 from cortical.got.types import Task, Decision, Edge
 from cortical.got.errors import TransactionError
+from cortical.core.bootstrap import create_container
 
 
 class TestGoTManager:
@@ -23,8 +24,9 @@ class TestGoTManager:
 
     @pytest.fixture
     def manager(self, got_dir):
-        """Provide GoTManager instance."""
-        return GoTManager(got_dir)
+        """Provide GoTManager instance via container."""
+        container = create_container(got_dir=got_dir)
+        return container.resolve(GoTManager)
 
     def test_context_manager_commits_on_success(self, manager):
         """Context manager commits transaction on successful exit."""
@@ -223,8 +225,9 @@ class TestDecisionOperations:
 
     @pytest.fixture
     def manager(self, tmp_path):
-        """Provide GoTManager instance."""
-        return GoTManager(tmp_path / ".got")
+        """Provide GoTManager instance via container."""
+        container = create_container(got_dir=tmp_path / ".got")
+        return container.resolve(GoTManager)
 
     def test_create_decision(self, manager):
         """Decision creation works correctly."""
@@ -261,8 +264,9 @@ class TestErrorHandling:
 
     @pytest.fixture
     def manager(self, tmp_path):
-        """Provide GoTManager instance."""
-        return GoTManager(tmp_path / ".got")
+        """Provide GoTManager instance via container."""
+        container = create_container(got_dir=tmp_path / ".got")
+        return container.resolve(GoTManager)
 
     def test_update_missing_task_raises_error(self, manager):
         """Updating non-existent task raises TransactionError."""
@@ -283,8 +287,9 @@ class TestQueryAPI:
 
     @pytest.fixture
     def manager(self, tmp_path):
-        """Provide GoTManager instance."""
-        return GoTManager(tmp_path / ".got")
+        """Provide GoTManager instance via container."""
+        container = create_container(got_dir=tmp_path / ".got")
+        return container.resolve(GoTManager)
 
     def test_find_tasks_by_status(self, manager):
         """find_tasks filters by status correctly."""

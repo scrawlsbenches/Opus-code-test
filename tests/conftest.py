@@ -168,6 +168,9 @@ def pytest_collection_modifyitems(config, items):
 # These shared fixtures prevent the common anti-pattern of each test creating
 # its own GoTManager with expensive disk I/O (~5s per creation).
 #
+# IMPORTANT: All GoT fixtures now use the DI container (2026-01-04).
+# Direct instantiation of GoTManager is prohibited - use container.resolve().
+#
 # GUIDELINES:
 # - Use fresh_got_manager when your test MODIFIES state
 # - Use got_manager_with_sample_tasks for read-mostly tests (class-scoped)
@@ -176,6 +179,19 @@ def pytest_collection_modifyitems(config, items):
 import tempfile
 import shutil
 from pathlib import Path
+
+
+def _create_got_manager(got_dir: Path):
+    """
+    Helper function to create GoTManager via the DI container.
+
+    This is the ONLY way to create a GoTManager - direct instantiation
+    is no longer supported.
+    """
+    from cortical.core.bootstrap import create_container
+    from cortical.got import GoTManager
+    container = create_container(got_dir=got_dir)
+    return container.resolve(GoTManager)
 
 
 @pytest.fixture
@@ -191,9 +207,8 @@ def fresh_got_manager(tmp_path):
             task = fresh_got_manager.create_task("My task")
             assert task.title == "My task"
     """
-    from cortical.got import GoTManager
     got_dir = tmp_path / ".got"
-    return GoTManager(got_dir)
+    return _create_got_manager(got_dir)
 
 
 @pytest.fixture(scope="class")
@@ -216,11 +231,9 @@ def got_manager_with_sample_tasks(tmp_path_factory):
                 manager, tasks = got_manager_with_sample_tasks
                 results = Query(manager).tasks().where(status="pending").execute()
     """
-    from cortical.got import GoTManager
-
     temp_dir = tmp_path_factory.mktemp("got_sample")
     got_dir = temp_dir / ".got"
-    manager = GoTManager(got_dir)
+    manager = _create_got_manager(got_dir)
 
     # Create sample tasks with variety
     tasks = []
@@ -260,11 +273,9 @@ def got_manager_large(tmp_path_factory):
                 manager, tasks = got_manager_large
                 # Test with 100 tasks
     """
-    from cortical.got import GoTManager
-
     temp_dir = tmp_path_factory.mktemp("got_large")
     got_dir = temp_dir / ".got"
-    manager = GoTManager(got_dir)
+    manager = _create_got_manager(got_dir)
 
     tasks = []
     priorities = ["critical", "high", "medium", "low"]

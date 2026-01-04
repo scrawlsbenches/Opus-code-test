@@ -225,20 +225,24 @@ class TestGoTImports:
 
 
 class TestGoTBasicOperations:
-    """Verify GoT can create and query tasks."""
+    """Verify GoT can create and query tasks (via container)."""
 
     def test_create_manager(self, tmp_path):
-        """GoTManager can be instantiated."""
+        """GoTManager can be resolved from container."""
+        from cortical.core.bootstrap import create_container
         from cortical.got import GoTManager
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+        manager = container.resolve(GoTManager)
         assert manager is not None
 
     def test_create_task(self, tmp_path):
         """Task can be created."""
+        from cortical.core.bootstrap import create_container
         from cortical.got import GoTManager
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+        manager = container.resolve(GoTManager)
 
         task = manager.create_task("Smoke test task", priority="medium")
         assert task is not None
@@ -247,9 +251,11 @@ class TestGoTBasicOperations:
 
     def test_query_tasks(self, tmp_path):
         """Tasks can be queried."""
+        from cortical.core.bootstrap import create_container
         from cortical.got import GoTManager
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+        manager = container.resolve(GoTManager)
 
         manager.create_task("Task 1", priority="high")
         manager.create_task("Task 2", priority="low")
@@ -259,9 +265,11 @@ class TestGoTBasicOperations:
 
     def test_create_edge(self, tmp_path):
         """Edges can be created between tasks."""
+        from cortical.core.bootstrap import create_container
         from cortical.got import GoTManager
         got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+        manager = container.resolve(GoTManager)
 
         t1 = manager.create_task("Task A")
         t2 = manager.create_task("Task B")

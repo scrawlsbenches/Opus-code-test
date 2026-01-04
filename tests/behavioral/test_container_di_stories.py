@@ -549,19 +549,49 @@ class TestDeveloperMigratestoContainer:
         Then I get a clear error about required dependencies
         Because direct instantiation without DI is prohibited
         """
-        # This test documents the expected behavior after we break backward compat
-        # For now, we verify the DI path works
-
         from cortical.got.tx_manager import TransactionManager
         from cortical.cdg.storage import CDGStore
+        from cortical.cdg.wal import CDGWALManager
+        from cortical.cdg.config import CDGConfig
+        from cortical.utils.locking import ProcessLock
         import tempfile
         from pathlib import Path
 
         with tempfile.TemporaryDirectory() as tmpdir:
             got_dir = Path(tmpdir)
 
-            # Create with injection (the supported way)
-            tx_mgr = TransactionManager(got_dir)
+            # Direct instantiation without dependencies should raise TypeError
+            with pytest.raises(TypeError) as excinfo:
+                TransactionManager(got_dir)
+
+            # Error message should mention required dependencies
+            assert "store" in str(excinfo.value).lower() or "required" in str(excinfo.value).lower()
+
+    def test_scenario_got_transaction_manager_works_with_injection(self):
+        """
+        Scenario: TransactionManager works when dependencies are injected
+
+        Given the new TransactionManager with required injection
+        When I create it with proper dependencies from the container
+        Then it works correctly
+        Because container-first architecture is enforced
+        """
+        from cortical.core.bootstrap import create_container
+        from cortical.got.tx_manager import TransactionManager
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            got_dir = Path(tmpdir)
+
+            # Get TransactionManager through the container (the only supported way)
+            container = create_container(got_dir=got_dir)
+            tx_mgr = container.resolve(TransactionManager)
 
             # Should work
             assert tx_mgr is not None
+
+            # Verify it's functional
+            tx = tx_mgr.begin()
+            assert tx is not None
+            tx_mgr.rollback(tx)

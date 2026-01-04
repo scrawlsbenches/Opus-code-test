@@ -69,8 +69,10 @@ class GoTModule(ContainerModule):
         from cortical.got.api import GoTManager
         from cortical.got.indexer import QueryIndexManager
         from cortical.got.config import DurabilityMode
+        from cortical.got.versioned_store import _got_entity_factory
         from cortical.cdg.storage import CDGStore
         from cortical.cdg.wal import CDGWALManager
+        from cortical.cdg.config import CDGConfig
         from cortical.utils.locking import ProcessLock
 
         # Register configuration
@@ -78,9 +80,26 @@ class GoTModule(ContainerModule):
 
         # Register TransactionManager with injected dependencies
         def create_tx_manager() -> TransactionManager:
-            # Try to get CDG services from container (if CDGModule was applied)
-            store = container.resolve_optional(CDGStore)
-            wal = container.resolve_optional(CDGWALManager)
+            # Create GoT-specific CDG config
+            cdg_config = CDGConfig.for_got()
+
+            # Create GoT-specific CDGStore with entity factory for type dispatch
+            # This is separate from CDGModule's generic store
+            entities_dir = self.config.got_dir / "entities"
+            entities_dir.mkdir(parents=True, exist_ok=True)
+            store = CDGStore(
+                entities_dir,
+                config=cdg_config,
+                entity_factory=_got_entity_factory,
+            )
+
+            # Create WAL if enabled
+            if cdg_config.enable_wal:
+                wal_dir = self.config.got_dir / "wal"
+                wal_dir.mkdir(parents=True, exist_ok=True)
+                wal = CDGWALManager(wal_dir, cdg_config)
+            else:
+                wal = None
 
             # Create lock
             lock_path = self.config.got_dir / ".got.lock"
@@ -100,9 +119,13 @@ class GoTModule(ContainerModule):
             lifecycle=Lifecycle.SINGLETON,
         )
 
-        # Register GoTManager
+        # Register GoTManager with injected TransactionManager
         def create_got_manager() -> GoTManager:
-            return GoTManager(self.config.got_dir)
+            tx_manager = container.resolve(TransactionManager)
+            return GoTManager(
+                self.config.got_dir,
+                tx_manager=tx_manager,
+            )
 
         container.register(
             GoTManager,
