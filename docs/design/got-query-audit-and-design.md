@@ -3,7 +3,7 @@
 **Auditor:** Senior Principal Computer Scientist / Software Engineer
 **Date:** 2026-01-04
 **Status:** DRAFT - Pending Approval
-**Version:** 2.3
+**Version:** 2.4
 
 ---
 
@@ -16,6 +16,7 @@
 | 2.1 | 2026-01-04 | Auditor | Added validated internal API structure from Python testing |
 | 2.2 | 2026-01-04 | Auditor | Added API Discovery Protocol for agent assumption validation |
 | 2.3 | 2026-01-04 | Auditor | Added Part 7: Operational Considerations & Risk Mitigations |
+| 2.4 | 2026-01-04 | Auditor | Replaced hardcoded schema with existing schema introspection |
 
 **Approval Required Before:**
 - Creating any GoT entities (Epic, Sprint, Task)
@@ -1744,6 +1745,13 @@ Edges:
 
 **Users need to know the schema before querying, like a database.**
 
+**IMPORTANT: We already have a schema system. DO NOT create a new one.**
+
+The existing schema infrastructure is in:
+- `cortical/got/schema.py` - `SchemaRegistry`, `BaseSchema`, `Field`, `FieldType`
+- `cortical/got/entity_schemas.py` - All entity schemas registered
+- `cortical/got/types.py` - `VALID_EDGE_TYPES` (22 edge types)
+
 ```bash
 # Future CLI support (to be implemented)
 python scripts/got_utils.py query --help-syntax
@@ -1752,50 +1760,87 @@ python scripts/got_utils.py query --list-functions
 python scripts/got_utils.py query --explain "status = 'pending'"
 ```
 
-**Schema Information to Expose:**
+**How to Introspect the Schema Dynamically:**
 
 ```python
-# cortical/got/expression/schema.py
+from cortical.got.entity_schemas import ensure_schemas_registered
+from cortical.got.schema import get_registry
+from cortical.got.types import VALID_EDGE_TYPES
 
-ENTITY_SCHEMAS = {
-    "tasks": {
-        "fields": {
-            "id": {"type": "string", "description": "Task ID (T-XXXX)"},
-            "title": {"type": "string", "description": "Task title/content"},
-            "status": {"type": "enum", "values": ["pending", "in_progress", "completed", "blocked"]},
-            "priority": {"type": "enum", "values": ["critical", "high", "medium", "low"]},
-            "category": {"type": "string", "description": "Task category"},
-            "created_at": {"type": "datetime", "description": "Creation timestamp"},
-            "modified_at": {"type": "datetime", "description": "Last modification"},
-        },
-        "relationships": ["DEPENDS_ON", "BLOCKS", "CONTAINS", "IMPLEMENTS"],
-    },
-    "sprints": {
-        "fields": {
-            "id": {"type": "string", "description": "Sprint ID (S-XXXX)"},
-            "title": {"type": "string", "description": "Sprint name"},
-            "status": {"type": "enum", "values": ["planning", "in_progress", "completed"]},
-            "number": {"type": "integer", "description": "Sprint number"},
-        },
-        "relationships": ["CONTAINS"],
-    },
-    # ... etc
-}
+# Ensure schemas are loaded
+ensure_schemas_registered()
+registry = get_registry()
+
+# Get registered entity types dynamically
+entity_types = list(registry._schemas.keys())
+# Returns: ['task', 'decision', 'sprint', 'epic', 'edge', 'handoff', ...]
+
+# Get schema for an entity type
+task_schema = registry.get_schema('task')
+
+# Introspect fields
+for field_name, field in task_schema.fields.items():
+    print(f'{field_name}: {field.field_type.name}')
+    if field.choices:  # ENUM fields have valid values
+        print(f'  Valid values: {field.choices}')
+    if field.description:
+        print(f'  Description: {field.description}')
+
+# Get valid edge types
+edge_types = sorted(VALID_EDGE_TYPES)
+# Returns: ['BLOCKS', 'CAUSED_BY', 'CHILD_OF', 'CONTAINS', ...]
 ```
 
-**Error Messages Use Schema:**
+**What the Schema Provides (verified 2026-01-04):**
+
+```
+Registered Entity Types: 12
+  claudemd_layer, claudemd_version, decision, document, edge, epic,
+  handoff, knowledge_transfer, persona_profile, sprint, task, team
+
+Task Schema Fields:
+  id: STRING - Unique entity identifier
+  title: STRING - Task title
+  status: ENUM (choices: ['pending', 'in_progress', 'completed', 'blocked'])
+  priority: ENUM (choices: ['low', 'medium', 'high', 'critical'])
+  description: STRING - Detailed task description
+  properties: DICT - Arbitrary key-value properties
+  metadata: DICT - System metadata
+
+Valid Edge Types: 22
+  BLOCKS, CAUSED_BY, CHILD_OF, CONTAINS, CONTINUES, CONTRADICTS,
+  DEPENDS_ON, DERIVED_FROM, DOCUMENTED_BY, DOCUMENTS, FAILED_ATTEMPT,
+  IMPLEMENTS, JUSTIFIES, MOTIVATES, PARENT_OF, PART_OF, PRODUCES,
+  REFERENCES, RELATES_TO, REQUIRES, SUPERSEDES, TRANSFERS
+```
+
+**Benefits for Query Expressions:**
+
+| Benefit | How It Helps |
+|---------|--------------|
+| Dynamic field discovery | Query validator can check field names at parse time |
+| ENUM choices | Can validate values and suggest corrections |
+| Field descriptions | Can include in --help-syntax output |
+| Type information | Can validate comparison operators (no `status > 5`) |
+| Extensibility | New entity types/fields automatically available |
+
+**Error Messages Use Introspected Schema:**
 
 ```python
-# When user queries unknown field
-QueryError: Unknown field 'statsu' for entity type 'tasks'
+# When user queries unknown field, introspect to suggest
+from cortical.got.schema import get_registry
+import difflib
 
-  tasks().where(statsu = 'pending')
-                ^^^^^^
+def suggest_field(entity_type: str, typo: str) -> str:
+    schema = get_registry().get_schema(entity_type)
+    valid_fields = list(schema.fields.keys())
+    matches = difflib.get_close_matches(typo, valid_fields, n=1)
+    return matches[0] if matches else None
 
-  Did you mean: status
-
-  Valid fields for 'tasks':
-    id, title, status, priority, category, created_at, modified_at
+# Usage in error message:
+# QueryError: Unknown field 'statsu' for entity type 'task'
+#   Did you mean: status
+#   Valid fields: id, title, status, priority, description, ...
 ```
 
 ### 7.6 Query Optimizer Requirements
@@ -1952,9 +1997,9 @@ Approval signifies agreement with:
 
 ---
 
-*Document Version 2.3 - Awaiting Approval*
+*Document Version 2.4 - Awaiting Approval*
 
 *Key additions in this version:*
-- *Part 7: Operational Considerations covering API status, debugging errors, testing strategy, task sizing, schema discovery, optimizer requirements, and security review protocol*
-- *API Discovery Protocol (Section 4.3) for validating assumptions through direct Python execution*
-- *Validated internal API structure showing Query builder already has extensive capabilities*
+- *Section 7.5 now uses existing schema system (`cortical/got/schema.py`, `entity_schemas.py`) instead of proposing hardcoded schemas*
+- *Dynamic schema introspection enables future-proof query validation*
+- *No hardcoded field names, status values, or edge types - all discovered at runtime*
