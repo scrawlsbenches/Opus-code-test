@@ -3,7 +3,7 @@
 **Auditor:** Senior Principal Computer Scientist / Software Engineer
 **Date:** 2026-01-04
 **Status:** DRAFT - Pending Approval
-**Version:** 2.2
+**Version:** 2.3
 
 ---
 
@@ -15,6 +15,7 @@
 | 2.0 | 2026-01-04 | Auditor | Generalized architecture, GoT workflow, agent protocols |
 | 2.1 | 2026-01-04 | Auditor | Added validated internal API structure from Python testing |
 | 2.2 | 2026-01-04 | Auditor | Added API Discovery Protocol for agent assumption validation |
+| 2.3 | 2026-01-04 | Auditor | Added Part 7: Operational Considerations & Risk Mitigations |
 
 **Approval Required Before:**
 - Creating any GoT entities (Epic, Sprint, Task)
@@ -1552,6 +1553,351 @@ python scripts/got_utils.py kt list --status draft
 
 ---
 
+## Part 7: Operational Considerations & Risk Mitigations
+
+### 7.1 API Status and Freedom to Change
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    API STATUS: ALPHA (Internal Only)                     │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  got_utils.py query is ALPHA and used only by the development team.    │
+│                                                                          │
+│  This means:                                                            │
+│  ✓ We can change the interface freely                                  │
+│  ✓ We can break backwards compatibility                                │
+│  ✓ We don't need deprecation periods                                   │
+│                                                                          │
+│  BUT we must:                                                           │
+│  ✗ NOT break working functionality carelessly                          │
+│  ✗ NOT make changes that block ongoing work                            │
+│  ✗ Always maintain a path toward the working solution                  │
+│                                                                          │
+│  The existing CLI commands (task list, sprint list, etc.) are STABLE   │
+│  and use separate code paths that won't be affected by query changes.  │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 7.2 Debugging-Style Error Messages
+
+Query errors must be helpful like a debugger, not cryptic like a compiler:
+
+```python
+# BAD: Unhelpful error
+ParseError: Unexpected token at position 15
+
+# GOOD: Debugging-style error
+ParseError: Unexpected token 'AND' at position 15
+
+  status = pending AND
+                   ^^^
+
+  Expected: value (string, number, or identifier)
+
+  Did you mean:
+    status = 'pending' AND ...   (quote the string)
+    status = pending_status AND ...   (use a field name)
+
+  Hint: String values must be quoted: 'pending' or "pending"
+```
+
+**Error Message Requirements:**
+
+| Error Type | Must Include |
+|------------|--------------|
+| Lexer error | Position, invalid character, suggestion |
+| Parser error | Position, expected tokens, what was found, did-you-mean |
+| Executor error | Function name, available functions, argument mismatch |
+| Schema error | Field name, valid fields for entity type |
+| Type error | Expected type, actual type, conversion hint |
+
+**Implementation Pattern:**
+
+```python
+class QueryError(Exception):
+    """Base class with debugging context."""
+
+    def __init__(self, message: str, position: int = None,
+                 source: str = None, suggestions: List[str] = None):
+        self.message = message
+        self.position = position
+        self.source = source
+        self.suggestions = suggestions or []
+
+    def format_with_context(self) -> str:
+        """Format error with source context and suggestions."""
+        lines = [f"QueryError: {self.message}"]
+
+        if self.source and self.position is not None:
+            lines.append(f"\n  {self.source}")
+            lines.append(f"  {' ' * self.position}^^^")
+
+        if self.suggestions:
+            lines.append("\n  Did you mean:")
+            for s in self.suggestions:
+                lines.append(f"    {s}")
+
+        return "\n".join(lines)
+```
+
+### 7.3 Testing Strategy: Use Existing GoT Data
+
+**Do NOT create synthetic test data. Use the real GoT repository.**
+
+```
+Available Test Data (verified 2026-01-04):
+├── Tasks: 336
+│   ├── completed: 238
+│   ├── pending: 97
+│   └── blocked: 1
+├── Edges: 434
+├── Sprints: 46
+└── Epics: 14
+
+Sample entities for testing:
+├── Task: T-20251231-230615-b1e918b6 (pending)
+├── Task: T-20251222-204134-140ee2d3 (pending)
+├── Sprint: S-sprint-020-forensic-remediation
+└── Sprint: S-sprint-003
+```
+
+**Why Use Real Data:**
+1. Tests reflect actual usage patterns
+2. No risk of divergence between test and production schemas
+3. Validates against real edge cases we've encountered
+4. Proves the system works on itself (dog-fooding)
+
+**How to Test Queries:**
+
+```python
+# In tests, use the real .got directory
+def test_query_pending_tasks():
+    manager = TransactionalGoTAdapter()
+
+    # Use real data, don't create test fixtures
+    results = manager.query("status = 'pending'")
+
+    # Assert on structure, not specific counts (data changes)
+    assert isinstance(results, list)
+    for r in results:
+        assert 'id' in r
+        assert 'title' in r
+
+# For edge cases, find existing examples
+def test_query_blocked_task():
+    manager = TransactionalGoTAdapter()
+
+    # We know there's 1 blocked task from our survey
+    results = manager.query("status = 'blocked'")
+    assert len(results) >= 1
+```
+
+### 7.4 Task Sizing and Sub-Task Guidelines
+
+**Problem:** Complex tasks may exceed agent context windows.
+
+**Solution:** Use schema limits and explicit sub-task decomposition.
+
+```yaml
+Task_Size_Limits:
+  Maximum_Lines_Changed: 300  # Per task
+  Maximum_Files_Modified: 5   # Per task
+  Maximum_Test_Cases: 20      # Per task
+
+  If_Exceeded:
+    1. Stop and decompose into sub-tasks
+    2. Create sub-tasks in GoT with DEPENDS_ON edges
+    3. Each sub-task must be completable in one session
+    4. Parent task becomes a coordination task only
+```
+
+**Example Decomposition:**
+
+```
+T-007: Implement recursive descent parser
+  ├── T-007-A: Implement expression parsing (primary, and_expr, or_expr)
+  ├── T-007-B: Implement comparison parsing (operators, values)
+  ├── T-007-C: Implement function call parsing
+  ├── T-007-D: Implement clause parsing (ORDER BY, LIMIT)
+  └── T-007-E: Integration and edge case handling
+
+Edges:
+  T-007-B DEPENDS_ON T-007-A
+  T-007-C DEPENDS_ON T-007-A
+  T-007-D DEPENDS_ON T-007-A
+  T-007-E DEPENDS_ON T-007-B, T-007-C, T-007-D
+```
+
+**When to Decompose:**
+
+| Signal | Action |
+|--------|--------|
+| Task description > 100 lines | Decompose |
+| Affected_Files > 5 | Decompose |
+| Multiple distinct features | Decompose |
+| "AND" in task title | Probably needs decomposition |
+| Estimated > 2 hours | Decompose |
+
+### 7.5 Schema Discovery and Help System
+
+**Users need to know the schema before querying, like a database.**
+
+```bash
+# Future CLI support (to be implemented)
+python scripts/got_utils.py query --help-syntax
+python scripts/got_utils.py query --list-fields tasks
+python scripts/got_utils.py query --list-functions
+python scripts/got_utils.py query --explain "status = 'pending'"
+```
+
+**Schema Information to Expose:**
+
+```python
+# cortical/got/expression/schema.py
+
+ENTITY_SCHEMAS = {
+    "tasks": {
+        "fields": {
+            "id": {"type": "string", "description": "Task ID (T-XXXX)"},
+            "title": {"type": "string", "description": "Task title/content"},
+            "status": {"type": "enum", "values": ["pending", "in_progress", "completed", "blocked"]},
+            "priority": {"type": "enum", "values": ["critical", "high", "medium", "low"]},
+            "category": {"type": "string", "description": "Task category"},
+            "created_at": {"type": "datetime", "description": "Creation timestamp"},
+            "modified_at": {"type": "datetime", "description": "Last modification"},
+        },
+        "relationships": ["DEPENDS_ON", "BLOCKS", "CONTAINS", "IMPLEMENTS"],
+    },
+    "sprints": {
+        "fields": {
+            "id": {"type": "string", "description": "Sprint ID (S-XXXX)"},
+            "title": {"type": "string", "description": "Sprint name"},
+            "status": {"type": "enum", "values": ["planning", "in_progress", "completed"]},
+            "number": {"type": "integer", "description": "Sprint number"},
+        },
+        "relationships": ["CONTAINS"],
+    },
+    # ... etc
+}
+```
+
+**Error Messages Use Schema:**
+
+```python
+# When user queries unknown field
+QueryError: Unknown field 'statsu' for entity type 'tasks'
+
+  tasks().where(statsu = 'pending')
+                ^^^^^^
+
+  Did you mean: status
+
+  Valid fields for 'tasks':
+    id, title, status, priority, category, created_at, modified_at
+```
+
+### 7.6 Query Optimizer Requirements
+
+The query optimizer must understand both the query language AND the schema:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    QUERY OPTIMIZER REQUIREMENTS                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  1. SCHEMA-AWARE OPTIMIZATION                                           │
+│     - Know which fields are indexed (status, priority)                  │
+│     - Know cardinality of enum fields                                   │
+│     - Know relationship types and their frequencies                     │
+│                                                                          │
+│  2. QUERY PLAN GENERATION                                               │
+│     - Choose index scan vs full scan based on selectivity               │
+│     - Order joins by estimated result size                              │
+│     - Push filters down before traversal                                │
+│                                                                          │
+│  3. COST ESTIMATION                                                     │
+│     - Estimate rows examined                                            │
+│     - Estimate memory usage                                             │
+│     - Warn on expensive queries                                         │
+│                                                                          │
+│  4. EXPLAIN SUPPORT                                                     │
+│     - Show query plan before execution                                  │
+│     - Show actual vs estimated costs after execution                    │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Integration with Query Builder:**
+
+```python
+# The optimizer compiles expressions to Query builder calls
+# and chooses the optimal execution strategy
+
+expression = parse("status = 'pending' AND priority = 'high'")
+
+# Optimizer sees:
+#   - status is indexed → use index
+#   - priority is indexed → use index
+#   - AND → intersect results
+
+optimized = optimizer.optimize(expression)
+# Result: use_index('status', 'pending').use_index('priority', 'high')
+
+# vs naive:
+# Result: full_scan().filter(status='pending').filter(priority='high')
+```
+
+### 7.7 Security Review Protocol
+
+**Security concerns will be discovered during implementation.** Create review tasks as they're found:
+
+```yaml
+Security_Review_Protocol:
+  When_To_Create_Review_Task:
+    - Parsing user input (injection risks)
+    - Graph traversal (DoS via deep recursion)
+    - Large result sets (memory exhaustion)
+    - Error messages (information leakage)
+    - Any code handling external data
+
+  Task_Template:
+    title: "SECURITY: Review [component] for [risk type]"
+    priority: high
+    category: security
+    description: |
+      ## Risk Identified
+      [Description of potential security issue]
+
+      ## Location
+      [File and line numbers]
+
+      ## Review Checklist
+      - [ ] Input validation sufficient
+      - [ ] No injection vectors
+      - [ ] Resource limits in place
+      - [ ] Error messages don't leak info
+      - [ ] Tested with malicious input
+
+  Process:
+    1. Developer notices potential security issue
+    2. Create security review task immediately
+    3. Link to implementation task via RELATED_TO edge
+    4. Security task blocks deployment, not development
+    5. Separate security-focused review session
+```
+
+**Known Security Considerations (Pre-Implementation):**
+
+| Area | Risk | Mitigation |
+|------|------|------------|
+| Expression parsing | ReDoS in regex | Use non-backtracking patterns |
+| Graph traversal | Infinite loops | Max depth limits |
+| Large results | Memory exhaustion | Default LIMIT, max LIMIT |
+| Error messages | Schema leakage | Sanitize in production mode |
+| Function registry | Code injection | No eval/exec, whitelist only |
+
 ## Appendix A: Original Audit Findings
 
 *(Preserved from version 1.0 - see sections 1.1-1.4 of original document)*
@@ -1595,11 +1941,20 @@ Approval signifies agreement with:
 - [ ] Cleanup governance model
 - [ ] Validation gates
 - [ ] Knowledge transfer requirements
+- [ ] API Discovery Protocol (Phase 2.5)
+- [ ] Operational considerations (Part 7)
+  - [ ] Debugging-style error messages
+  - [ ] Testing with existing GoT data
+  - [ ] Task sizing and sub-task guidelines
+  - [ ] Schema discovery system
+  - [ ] Query optimizer requirements
+  - [ ] Security review protocol
 
 ---
 
-*Document Version 2.2 - Awaiting Approval*
+*Document Version 2.3 - Awaiting Approval*
 
-*Validated internal Python API through direct testing. Key finding: Query builder already provides extensive capabilities; gap is connecting CLI expressions to it.*
-
-*Added API Discovery Protocol (Section 4.3) to ensure agents validate assumptions through direct execution before implementing.*
+*Key additions in this version:*
+- *Part 7: Operational Considerations covering API status, debugging errors, testing strategy, task sizing, schema discovery, optimizer requirements, and security review protocol*
+- *API Discovery Protocol (Section 4.3) for validating assumptions through direct Python execution*
+- *Validated internal API structure showing Query builder already has extensive capabilities*
