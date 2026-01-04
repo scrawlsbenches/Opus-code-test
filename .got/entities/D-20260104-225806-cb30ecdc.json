@@ -1,0 +1,15 @@
+{
+  "_checksum": "bc7740ddfc96a086",
+  "_written_at": "2026-01-04T22:58:06.363229+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-04T22:58:06.350958+00:00",
+    "entity_type": "decision",
+    "id": "D-20260104-225806-cb30ecdc",
+    "modified_at": "2026-01-04T22:58:06.363176+00:00",
+    "properties": {},
+    "rationale": "Testing that decision logging works with DI container",
+    "title": "DI Test Decision",
+    "version": 2
+  }
+}
