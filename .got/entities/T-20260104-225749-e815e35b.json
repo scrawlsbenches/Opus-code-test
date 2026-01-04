@@ -1,19 +1,23 @@
 {
-  "_checksum": "9d7f23fccc1e32d8",
-  "_written_at": "2026-01-04T22:57:49.344007+00:00",
+  "_checksum": "88abc5ef2566cb2e",
+  "_written_at": "2026-01-04T22:58:39.400551+00:00",
   "data": {
     "created_at": "2026-01-04T22:57:49.331931+00:00",
     "description": "",
     "entity_type": "task",
     "id": "T-20260104-225749-e815e35b",
-    "metadata": {},
-    "modified_at": "2026-01-04T22:57:49.343950+00:00",
+    "metadata": {
+      "completed_at": "2026-01-04T22:58:39.384861+00:00",
+      "updated_at": "2026-01-04T22:58:39.384868+00:00"
+    },
+    "modified_at": "2026-01-04T22:58:39.400490+00:00",
     "priority": "low",
     "properties": {
-      "category": "test"
+      "category": "test",
+      "retrospective": "DI functional test completed successfully"
     },
-    "status": "pending",
+    "status": "completed",
     "title": "DI Functional Test Task",
-    "version": 2
+    "version": 3
   }
 }
