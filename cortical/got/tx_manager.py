@@ -24,7 +24,7 @@ import secrets
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, TYPE_CHECKING
 
 from .types import Entity, KnowledgeTransfer, Edge
 from .transaction import Transaction
@@ -36,6 +36,8 @@ from .errors import TransactionError as GoTTransactionError
 from cortical.cdg.transaction_manager import CDGTransactionManager
 from cortical.cdg.config import CDGConfig, DurabilityMode as CDGDurabilityMode
 from cortical.cdg.errors import TransactionError as CDGTransactionError
+from cortical.cdg.storage import CDGStore
+from cortical.cdg.wal import CDGWALManager
 
 # Import ProcessLock for backward compatibility (re-exported by __init__.py)
 from cortical.utils.locking import ProcessLock
@@ -78,11 +80,19 @@ class TransactionManager:
         so that reads return Task, Decision, Sprint, etc., not base Entity.
     """
 
-    def __init__(self, got_dir: Path, durability: DurabilityMode = DurabilityMode.BALANCED):
+    def __init__(
+        self,
+        got_dir: Path,
+        durability: DurabilityMode = DurabilityMode.BALANCED,
+        *,
+        store: Optional[CDGStore] = None,
+        wal: Optional[CDGWALManager] = None,
+        lock: Optional[ProcessLock] = None,
+    ):
         """
         Initialize transaction manager.
 
-        Creates directories if needed:
+        Creates directories if needed (when using default components):
         - {got_dir}/entities/
         - {got_dir}/wal/
 
@@ -91,6 +101,12 @@ class TransactionManager:
         Args:
             got_dir: Base directory for GoT storage
             durability: Durability mode controlling fsync behavior
+            store: Optional injected CDGStore (for testing/custom backends)
+            wal: Optional injected CDGWALManager (for testing/custom backends)
+            lock: Optional injected ProcessLock (for testing/custom backends)
+
+        Raises:
+            TypeError: If injected dependencies are wrong type
         """
         self.got_dir = Path(got_dir)
         self.got_dir.mkdir(parents=True, exist_ok=True)
@@ -102,37 +118,53 @@ class TransactionManager:
         # Override durability mode from GoT config
         cdg_config.durability = _convert_durability(durability)
 
-        # Manually set up CDG components to match GoT's directory structure:
+        # Set up CDG components - use injected or create defaults
+        # Directory structure when using defaults:
         #   {got_dir}/entities/       # Entity storage
         #   {got_dir}/wal/            # Write-ahead log
-        # We can't use CDGTransactionManager.__init__ directly because it hardcodes
-        # wal_dir as store_dir/wal, which would create got_dir/entities/wal.
-        # Instead, we manually create the components.
 
-        from cortical.cdg.storage import CDGStore
-        from cortical.cdg.wal import CDGWALManager
+        # Store: use injected or create default
+        if store is not None:
+            if not isinstance(store, CDGStore):
+                raise TypeError(
+                    f"store must be CDGStore instance, got {type(store).__name__}"
+                )
+            self.store = store
+        else:
+            self.store = CDGStore(
+                self.got_dir / "entities",
+                config=cdg_config,
+                entity_factory=_got_entity_factory
+            )
 
-        # Create store in entities/ subdirectory
-        self.store = CDGStore(
-            self.got_dir / "entities",
-            config=cdg_config,
-            entity_factory=_got_entity_factory
-        )
-
-        # Create WAL at same level as entities/ (not inside it)
-        self.wal = None
-        if cdg_config.enable_wal:
+        # WAL: use injected or create default (None is valid for disabled WAL)
+        if wal is not None:
+            if not isinstance(wal, CDGWALManager):
+                raise TypeError(
+                    f"wal must be CDGWALManager instance, got {type(wal).__name__}"
+                )
+            self.wal = wal
+        elif cdg_config.enable_wal:
             self.wal = CDGWALManager(self.got_dir / "wal", cdg_config)
+        else:
+            self.wal = None
 
-        # Create lock
-        self.lock = ProcessLock(self.got_dir / ".got.lock", reentrant=True)
+        # Lock: use injected or create default
+        if lock is not None:
+            if not isinstance(lock, ProcessLock):
+                raise TypeError(
+                    f"lock must be ProcessLock instance, got {type(lock).__name__}"
+                )
+            self.lock = lock
+        else:
+            self.lock = ProcessLock(self.got_dir / ".got.lock", reentrant=True)
 
         # Active transactions (in-memory only)
         self._active_tx = {}
 
         # Create a minimal CDG transaction manager wrapper
         # We create a CDGTransactionManager but override its store, wal, and lock
-        # with our manually configured ones
+        # with our configured ones (either injected or default)
         self._cdg_tx = CDGTransactionManager.__new__(CDGTransactionManager)
         self._cdg_tx.store_dir = self.got_dir
         self._cdg_tx.config = cdg_config
