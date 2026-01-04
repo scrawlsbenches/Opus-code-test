@@ -3,7 +3,7 @@
 **Auditor:** Senior Principal Computer Scientist / Software Engineer
 **Date:** 2026-01-04
 **Status:** DRAFT - Pending Approval
-**Version:** 2.1
+**Version:** 2.2
 
 ---
 
@@ -14,6 +14,7 @@
 | 1.0 | 2026-01-04 | Auditor | Initial audit and design |
 | 2.0 | 2026-01-04 | Auditor | Generalized architecture, GoT workflow, agent protocols |
 | 2.1 | 2026-01-04 | Auditor | Added validated internal API structure from Python testing |
+| 2.2 | 2026-01-04 | Auditor | Added API Discovery Protocol for agent assumption validation |
 
 **Approval Required Before:**
 - Creating any GoT entities (Epic, Sprint, Task)
@@ -1139,6 +1140,14 @@ Every agent MUST follow this workflow when assigned a task:
 │  4. Question: Are the affected files correct?                           │
 │  5. If answers unclear: Create clarification request, DO NOT PROCEED   │
 │                                                                          │
+│  PHASE 2.5: API DISCOVERY (Validate through execution)                  │
+│  ─────────────────────────────────────────────────────                  │
+│  1. Don't trust your assumptions from reading code alone                │
+│  2. Execute Python directly to validate API behavior                    │
+│  3. Test actual method signatures, return types, and behavior           │
+│  4. Document discoveries - they inform your implementation              │
+│  5. Update your understanding before writing any code                   │
+│                                                                          │
 │  PHASE 3: TEST FIRST (BDD/TDD)                                          │
 │  ─────────────────────────────                                          │
 │  1. Create behavioral test file from Behavioral_Test_First spec         │
@@ -1208,7 +1217,124 @@ Research_Checklist:
     - [ ] Is this the right approach?
 ```
 
-### 4.3 Knowledge Transfer Template
+### 4.3 API Discovery Protocol
+
+**Why This Matters:**
+Reading code and documentation gives you a mental model. Executing Python directly
+validates that model and often reveals unexpected capabilities, gaps, or behaviors
+that change your approach. This is how understanding evolves from assumed to verified.
+
+**The Discovery Process:**
+
+```python
+# Step 1: Inspect class signatures and available methods
+python3 -c "
+import inspect
+from module import ClassName
+
+# Get __init__ signature
+sig = inspect.signature(ClassName.__init__)
+print(f'__init__{sig}')
+
+# List all public methods with signatures
+for name in dir(ClassName):
+    if not name.startswith('_'):
+        method = getattr(ClassName, name)
+        if callable(method):
+            try:
+                msig = inspect.signature(method)
+                print(f'{name}{msig}')
+            except (ValueError, TypeError):
+                print(f'{name}(...)')
+"
+
+# Step 2: Instantiate and test actual behavior
+python3 -c "
+from module import ClassName
+
+# Create instance with real data
+instance = ClassName(actual_path)
+
+# Test methods and observe return types
+result = instance.some_method(args)
+print(f'Type: {type(result)}')
+print(f'Value: {result}')
+
+# Check object attributes
+if hasattr(result, '__dict__'):
+    print(f'Attributes: {result.__dict__.keys()}')
+"
+
+# Step 3: Validate assumptions with edge cases
+python3 -c "
+# Test what happens with empty input
+# Test what happens with invalid input
+# Test boundary conditions
+# Document actual behavior vs expected
+"
+```
+
+**Example: How This Document's API Validation Was Performed**
+
+```bash
+# 1. Discovered TransactionalGoTAdapter signature
+python3 -c "
+from scripts.got_utils import TransactionalGoTAdapter
+import inspect
+sig = inspect.signature(TransactionalGoTAdapter.__init__)
+print(f'__init__{sig}')
+# Output: (self, got_dir: pathlib.Path = PosixPath('.got'))
+"
+
+# 2. Listed all public methods (80+ methods discovered)
+python3 -c "
+from scripts.got_utils import TransactionalGoTAdapter
+methods = [m for m in dir(TransactionalGoTAdapter) if not m.startswith('_')]
+for m in sorted(methods):
+    print(m)
+"
+
+# 3. Tested Query builder (discovered it was more powerful than expected!)
+python3 -c "
+from cortical.got.api import GoTManager
+from cortical.got.query_builder import Query
+from pathlib import Path
+
+manager = GoTManager(Path('.got'))
+
+# This worked! The Query builder already supports chained conditions
+results = Query(manager).tasks().where(status='pending').or_where(status='blocked').execute()
+print(f'Found {len(results)} tasks')
+
+# This worked! Graph traversal already exists
+results = Query(manager).tasks().connected_to('S-019', via='CONTAINS').execute()
+print(f'Found {len(results)} connected tasks')
+"
+
+# KEY INSIGHT: The Query builder already had the power we needed.
+# The gap wasn't in the Query builder - it was in connecting
+# the CLI's string parsing to the Query builder.
+```
+
+**What To Document From Discovery:**
+
+| Discovery Type | Example | Action |
+|----------------|---------|--------|
+| Method exists that wasn't documented | `Query.connected_to()` | Add to validated API section |
+| Method behaves differently than expected | Returns `Task` not `ThoughtNode` | Note the difference, adjust code |
+| Method is missing that was expected | No `Query.between_dates()` | Add to gap analysis |
+| Error condition not documented | Raises `ValueError` on empty | Add to edge case tests |
+| Performance characteristic discovered | O(n) scan on each query | Note in performance section |
+
+**When To Re-Run Discovery:**
+
+- Before starting any new task
+- After reading code that you'll modify
+- When tests fail unexpectedly
+- When assumptions prove wrong
+- After pulling changes from others
+
+### 4.4 Knowledge Transfer Template
 
 ```yaml
 # Created via: python scripts/got_utils.py kt create "Session: [TOPIC]"
@@ -1472,6 +1598,8 @@ Approval signifies agreement with:
 
 ---
 
-*Document Version 2.1 - Awaiting Approval*
+*Document Version 2.2 - Awaiting Approval*
 
 *Validated internal Python API through direct testing. Key finding: Query builder already provides extensive capabilities; gap is connecting CLI expressions to it.*
+
+*Added API Discovery Protocol (Section 4.3) to ensure agents validate assumptions through direct execution before implementing.*
