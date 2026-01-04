@@ -3,7 +3,7 @@
 **Auditor:** Senior Principal Computer Scientist / Software Engineer
 **Date:** 2026-01-04
 **Status:** DRAFT - Pending Approval
-**Version:** 2.6
+**Version:** 2.7
 
 ---
 
@@ -19,6 +19,7 @@
 | 2.4 | 2026-01-04 | Auditor | Replaced hardcoded schema with existing schema introspection |
 | 2.5 | 2026-01-04 | Auditor | Added T-001-A: Generic entity accessor for Query builder extensibility |
 | 2.6 | 2026-01-04 | Auditor | Added field validation scenarios to T-001-A (unknown field errors with suggestions) |
+| 2.7 | 2026-01-04 | Auditor | Added NOT/Negation grammar, transitive closure functions, no-magic-numbers principle, future enhancements doc |
 
 **Approval Required Before:**
 - Creating any GoT entities (Epic, Sprint, Task)
@@ -47,19 +48,24 @@ This document provides:
 │     All graph functions use a registry pattern. No "inSprint" or        │
 │     "blocks" literals in core code. Everything is configurable.         │
 │                                                                          │
-│  2. DOG-FOOD OUR OWN SYSTEM                                             │
+│  2. NO HARDCODED MAGIC NUMBERS                                          │
+│     Query depth, path length, result limits - all configurable.         │
+│     If a query runs forever, the developer stops it manually.           │
+│     Default to unlimited traversal; let explicit limits be opt-in.      │
+│                                                                          │
+│  3. DOG-FOOD OUR OWN SYSTEM                                             │
 │     This project is managed using GoT (got_utils.py). We prove          │
 │     the system works by using it to build itself.                       │
 │                                                                          │
-│  3. ASSUME CONTEXT LOSS                                                 │
+│  4. ASSUME CONTEXT LOSS                                                 │
 │     Every task is designed for an agent with no prior context.          │
 │     Knowledge transfers and handoffs bridge sessions.                   │
 │                                                                          │
-│  4. TEST BEFORE CODE                                                    │
+│  5. TEST BEFORE CODE                                                    │
 │     Behavioral tests define requirements. Unit tests verify             │
 │     implementation. No code without failing tests first.                │
 │                                                                          │
-│  5. CLEANUP REQUIRES APPROVAL                                           │
+│  6. CLEANUP REQUIRES APPROVAL                                           │
 │     All cleanup tasks are blocked by an approval task.                  │
 │     No automatic cleanup without human review.                          │
 │                                                                          │
@@ -313,7 +319,7 @@ class ConnectedToFunction(QueryFunction):
             name="connected_to",
             description="Find entities connected to a given entity",
             required_args=["entity_id"],
-            optional_args={"via": None, "direction": "both", "depth": 1},
+            optional_args={"via": None, "direction": "both", "depth": None},
             returns="List of connected entities"
         )
 
@@ -321,12 +327,16 @@ class ConnectedToFunction(QueryFunction):
         entity_id = args[0]
         edge_type = kwargs.get("via")
         direction = kwargs.get("direction", "both")
-        depth = kwargs.get("depth", 1)
+        depth = kwargs.get("depth")  # None means unlimited traversal
 
         # Use existing GraphWalker infrastructure
         from cortical.got.graph_walker import GraphWalker
 
-        walker = GraphWalker(manager).starting_from(entity_id).max_depth(depth)
+        walker = GraphWalker(manager).starting_from(entity_id)
+
+        # Only set max_depth if explicitly provided; otherwise traverse until complete
+        if depth is not None:
+            walker = walker.max_depth(depth)
 
         if edge_type:
             walker = walker.follow(edge_type)
@@ -350,7 +360,7 @@ class PathFunction(QueryFunction):
             name="path",
             description="Find shortest path between two entities",
             required_args=["from_id", "to_id"],
-            optional_args={"via": None, "max_length": 10},
+            optional_args={"via": None, "max_length": None},
             returns="List of entity IDs in path, or empty if no path"
         )
 
@@ -358,11 +368,15 @@ class PathFunction(QueryFunction):
         from_id = args[0]
         to_id = args[1]
         edge_type = kwargs.get("via")
-        max_length = kwargs.get("max_length", 10)
+        max_length = kwargs.get("max_length")  # None means unlimited
 
         from cortical.got.path_finder import PathFinder
 
-        finder = PathFinder(manager).max_length(max_length)
+        finder = PathFinder(manager)
+
+        # Only set max_length if explicitly provided; otherwise search until complete
+        if max_length is not None:
+            finder = finder.max_length(max_length)
 
         if edge_type:
             finder = finder.via_edges(edge_type)
@@ -1183,12 +1197,50 @@ Behavioral_Test_First: |
       When I execute "aggregate('status')"
       Then result is a dict with status counts
 
+    Scenario: ancestors finds all predecessors transitively
+      Given T-001 <- T-002 <- T-003 (DEPENDS_ON chain)
+      When I execute "ancestors('T-003', via='DEPENDS_ON')"
+      Then result contains T-002 and T-001
+      And result is ordered from nearest to farthest ancestor
+
+    Scenario: descendants finds all successors transitively
+      Given T-001 <- T-002 <- T-003 (DEPENDS_ON chain)
+      When I execute "descendants('T-001', via='DEPENDS_ON')"
+      Then result contains T-002 and T-003
+      And result is ordered from nearest to farthest descendant
+
+    Scenario: all_dependencies finds complete dependency graph
+      Given T-001 depends on T-002, T-002 depends on T-003
+      When I execute "all_dependencies('T-001')"
+      Then result contains T-002 and T-003
+      And includes both direct and transitive dependencies
+
+    Scenario: cycle_detect identifies circular dependencies
+      Given T-001 -> T-002 -> T-003 -> T-001 (circular)
+      When I execute "cycle_detect('T-001')"
+      Then result is the cycle path [T-001, T-002, T-003, T-001]
+
+    Scenario: cycle_detect returns empty for acyclic graphs
+      Given T-001 -> T-002 -> T-003 (no cycle)
+      When I execute "cycle_detect('T-001')"
+      Then result is empty list
+
+    Scenario: transitive queries run until complete without artificial limits
+      Given a deep dependency chain of 50 tasks
+      When I execute "all_dependencies('T-001')" with no depth limit
+      Then all 49 dependencies are returned
+      And the query completes (developer can cancel if too slow)
+
 Functions_To_Implement:
-  - connected_to(entity_id, via=None, direction="both", depth=1)
-  - path(from_id, to_id, via=None, max_length=10)
+  - connected_to(entity_id, via=None, direction="both", depth=None)  # depth=None means unlimited
+  - path(from_id, to_id, via=None, max_length=None)  # max_length=None means unlimited
   - aggregate(field, operation="count")
   - exists(entity_id)
   - type_of(entity_id)
+  - ancestors(entity_id, via=None)       # Transitive closure: all predecessors
+  - descendants(entity_id, via=None)     # Transitive closure: all successors
+  - all_dependencies(entity_id)          # All direct and transitive dependencies
+  - cycle_detect(entity_id)              # Detect cycles starting from entity
 
 Affected_Files:
   - cortical/got/expression/functions/graph_functions.py (create)
@@ -2089,11 +2141,12 @@ Security_Review_Protocol:
 <query>           ::= <expression> [<order_clause>] [<limit_clause>]
 
 <expression>      ::= <and_expr> ( 'OR' <and_expr> )*
-<and_expr>        ::= <primary> ( 'AND' <primary> )*
+<and_expr>        ::= <not_expr> ( 'AND' <not_expr> )*
+<not_expr>        ::= 'NOT' <not_expr> | <primary>
 <primary>         ::= <comparison> | <function_call> | '(' <expression> ')'
 
 <comparison>      ::= <field> <operator> <value>
-<operator>        ::= '=' | '!=' | '>' | '<' | '>=' | '<=' | 'IN' | 'LIKE'
+<operator>        ::= '=' | '!=' | '>' | '<' | '>=' | '<=' | 'IN' | 'LIKE' | 'NOT' 'IN' | 'NOT' 'LIKE'
 
 <function_call>   ::= <identifier> '(' [<arg_list>] ')'
 <arg_list>        ::= <arg> ( ',' <arg> )*
@@ -2105,6 +2158,48 @@ Security_Review_Protocol:
 
 <order_clause>    ::= 'ORDER' 'BY' <field> ['ASC'|'DESC']
 <limit_clause>    ::= 'LIMIT' <number> ['OFFSET' <number>]
+```
+
+---
+
+## Reminders
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           REMINDERS                                      │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  FUTURE ENHANCEMENTS DOCUMENT                                           │
+│  ─────────────────────────────                                          │
+│  Additional query language capabilities identified during gap analysis   │
+│  have been documented separately for post-foundation discussion:        │
+│                                                                          │
+│  📄 docs/design/got-query-future-enhancements.md                        │
+│                                                                          │
+│  Includes:                                                              │
+│  - Field projection (SELECT specific fields)                            │
+│  - Set operations (UNION, INTERSECT, EXCEPT)                            │
+│  - NULL/missing value handling                                          │
+│  - Temporal query functions                                             │
+│  - Existence subqueries                                                 │
+│  - Extended aggregation (SUM, AVG, MIN, MAX, HAVING)                    │
+│  - DISTINCT results                                                     │
+│  - Graph metrics exposure (PageRank, clustering)                        │
+│  - Variable bindings / CTEs                                             │
+│  - All paths enumeration                                                │
+│  - Write operations exclusion documentation                             │
+│                                                                          │
+│  DO NOT implement these until the foundation is complete and tested.    │
+│                                                                          │
+│  ─────────────────────────────────────────────────────────────────────  │
+│                                                                          │
+│  QUERY LANGUAGE IS READ-ONLY                                            │
+│  ───────────────────────────                                            │
+│  This query language is READ-ONLY by design. Write operations use       │
+│  the existing got_utils.py CLI and TransactionalGoTAdapter API.         │
+│  Never implement UPDATE, DELETE, or INSERT in the expression parser.   │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -2131,9 +2226,13 @@ Approval signifies agreement with:
 
 ---
 
-*Document Version 2.6 - Awaiting Approval*
+*Document Version 2.7 - Awaiting Approval*
 
 *Key additions in this version:*
-- *T-001-A: Field validation against schema with helpful error messages*
-- *Unknown field queries fail fast with "Did you mean" suggestions*
-- *Validation uses correct schema per entity type (not global field list)*
+- *Grammar updated with NOT/Negation support (`<not_expr>` production, `NOT IN`, `NOT LIKE`)*
+- *New design principle: NO HARDCODED MAGIC NUMBERS - depth/length limits are opt-in, not default*
+- *Transitive closure functions added: `ancestors()`, `descendants()`, `all_dependencies()`, `cycle_detect()`*
+- *`connected_to()` and `path()` now default to unlimited traversal (depth=None, max_length=None)*
+- *Future enhancements document created: `docs/design/got-query-future-enhancements.md`*
+- *Reminders section added with reference to future enhancements*
+- *Query language explicitly documented as READ-ONLY*
