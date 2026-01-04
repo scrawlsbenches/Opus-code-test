@@ -6,7 +6,7 @@
     "entity_type": "knowledge_transfer",
     "version": 1,
     "created_at": "2026-01-04T21:06:17.208407",
-    "modified_at": "2026-01-04T21:07:05.325109",
+    "modified_at": "2026-01-04T21:07:23.766995",
     "title": "DI Container as First-Class Citizen Implementation",
     "session_id": "",
     "session_date": "",
@@ -14,7 +14,8 @@
     "sections": {
       "Architecture": "## Container Location\n- **Entry point**: `cortical/core/bootstrap.py`\n- **Container class**: `cortical/common/container.py`\n- **Modules**: `cortical/core/modules/`\n\n## Key Components\n1. **Container** - Central registry with lifecycle management\n2. **ContainerModule** - Abstract base for organized registrations\n3. **CDGModule** - Registers CDGStore, WAL, CDGTransactionManager\n4. **GoTModule** - Registers TransactionManager, GoTManager, QueryIndexManager\n\n## Usage Pattern\n```python\nfrom cortical.core.bootstrap import create_container\n\ncontainer = create_container(got_dir=Path(\".got\"))\ntx_manager = container.resolve(TransactionManager)\ngot_manager = container.resolve(GoTManager)\n```",
       "Breaking Changes": "## TransactionManager\n**Before**: `TransactionManager(got_dir)` - created own dependencies\n**After**: Requires injected `store` and `lock` parameters\n\n## GoTManager  \n**Before**: `GoTManager(got_dir)` - created own TransactionManager\n**After**: Requires injected `tx_manager` parameter\n\n## Migration\nAll consumers must use the container:\n```python\n# OLD (no longer works)\nmanager = GoTManager(Path(\".got\"))\n\n# NEW (required)\ncontainer = create_container(got_dir=Path(\".got\"))\nmanager = container.resolve(GoTManager)\n```\n\n## Test Fixtures\nUpdated `tests/conftest.py` with `_create_got_manager()` helper.\nAll test fixtures now use container-based creation.",
-      "Remaining Work": "## Unit Tests Need Updates\nMany unit tests in `tests/unit/got/` still directly instantiate GoTManager.\nPattern documented in `tests/conftest.py::_create_got_manager()`.\n\n## GoT Tasks Created\n- Refactor KnowledgeTransfer from TransactionManager to repository pattern\n- Fix Worker hardcoded Path('.got') (disabled, llm_orchestration scheduled for removal)\n\n## llm_orchestration\nModule disabled - all tests skipped, GoT Learning Bridge disabled in Worker.\nScheduled for removal."
+      "Remaining Work": "## Unit Tests Need Updates\nMany unit tests in `tests/unit/got/` still directly instantiate GoTManager.\nPattern documented in `tests/conftest.py::_create_got_manager()`.\n\n## GoT Tasks Created\n- Refactor KnowledgeTransfer from TransactionManager to repository pattern\n- Fix Worker hardcoded Path('.got') (disabled, llm_orchestration scheduled for removal)\n\n## llm_orchestration\nModule disabled - all tests skipped, GoT Learning Bridge disabled in Worker.\nScheduled for removal.",
+      "Key Decisions": "## Break Backward Compatibility\n**Decision**: Force DI by removing default fallbacks\n**Rationale**: Ensures loose coupling, prevents hardcoded dependencies\n\n## GoTModule Creates Own CDGStore\n**Decision**: GoTModule creates GoT-specific CDGStore with entity_factory\n**Rationale**: GoT needs `_got_entity_factory` for proper type dispatch (Task, Decision, etc.)\n\n## Container in CLAUDE.md\nAdded \"Container: First-Class Citizen\" section with strict guidance.\nAll future work must use container for component wiring."
     },
     "code_refs": [],
     "related_handoffs": [],
