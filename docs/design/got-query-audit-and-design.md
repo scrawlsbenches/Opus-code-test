@@ -2428,6 +2428,56 @@ This allows incremental progress and earlier validation.
 
 ## Appendix B: Grammar Specification
 
+### Design Intent: SQL Compatibility for Developer Familiarity
+
+**Principle:** The query language should work exactly as developers expect from SQL. No surprises, no reinventing the wheel.
+
+Developers familiar with SQL should be able to write queries intuitively without consulting documentation. When in doubt, we follow SQL standard behavior.
+
+**NOT IN / NOT LIKE Examples:**
+
+```sql
+-- These work exactly as in SQL:
+
+-- Find tasks NOT in a specific set of statuses
+status NOT IN ['pending', 'blocked']
+
+-- Find tasks whose title does NOT match a pattern
+title NOT LIKE '%test%'
+
+-- Combine with other conditions (AND binds tighter than OR)
+status NOT IN ['completed'] AND priority = 'high'
+
+-- Negate an entire expression with prefix NOT
+NOT (status = 'pending' AND priority = 'low')
+
+-- Both forms can be used together
+NOT status IN ['archived'] AND title NOT LIKE '%draft%'
+```
+
+**Operator Precedence (matches SQL):**
+
+```
+Highest:  NOT (prefix)
+          Comparison operators (=, !=, <, >, IN, LIKE, NOT IN, NOT LIKE)
+          AND
+Lowest:   OR
+
+-- Example: how this parses
+status = 'pending' OR priority = 'high' AND NOT blocked = true
+-- Parses as: status = 'pending' OR (priority = 'high' AND (NOT blocked = true))
+```
+
+**Why This Matters:**
+
+1. **No learning curve** - SQL knowledge transfers directly
+2. **Fewer bugs** - Behavior matches developer expectations
+3. **Copy-paste friendly** - SQL snippets work with minor syntax adjustments
+
+---
+
+### Formal Grammar
+
 ```
 <query>           ::= <expression> [<order_clause>] [<limit_clause>]
 
