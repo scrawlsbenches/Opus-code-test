@@ -1506,3 +1506,461 @@ class LearningCycle:
                 if not l.superseded_by
             ])
         }
+
+    # =========================================================================
+    # SEMANTIC INTENT MATCHING
+    # =========================================================================
+    # These methods enable finding experiences by semantic similarity of intent,
+    # not just by categorical context matching. This is critical for useful
+    # learning - agents need to find "what worked for JWT auth" not just
+    # "what worked for features".
+
+    # Stop words to filter out during keyword extraction
+    _STOP_WORDS: Set[str] = {
+        'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+        'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
+        'should', 'may', 'might', 'must', 'shall', 'can', 'need', 'dare',
+        'ought', 'used', 'to', 'of', 'in', 'for', 'on', 'with', 'at', 'by',
+        'from', 'up', 'about', 'into', 'through', 'during', 'before', 'after',
+        'above', 'below', 'between', 'under', 'again', 'further', 'then',
+        'once', 'here', 'there', 'when', 'where', 'why', 'how', 'all', 'each',
+        'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not',
+        'only', 'own', 'same', 'so', 'than', 'too', 'very', 's', 't', 'just',
+        'don', 'now', 'and', 'or', 'but', 'if', 'this', 'that', 'these', 'those',
+    }
+
+    def extract_keywords(self, intent: str) -> Set[str]:
+        """
+        Extract meaningful keywords from a natural language intent string.
+
+        This is the foundation of semantic matching. We extract terms that
+        carry meaning and filter out common stop words.
+
+        Args:
+            intent: Natural language intent like "Implement JWT authentication"
+
+        Returns:
+            Set of keywords like {"implement", "jwt", "authentication"}
+
+        Example:
+            >>> cycle.extract_keywords("Implement JWT authentication for the API")
+            {'implement', 'jwt', 'authentication', 'api'}
+        """
+        # Normalize: lowercase and split on word boundaries
+        words = intent.lower().split()
+
+        # Clean punctuation from words
+        cleaned = []
+        for word in words:
+            # Remove leading/trailing punctuation
+            clean = word.strip('.,!?;:()[]{}"\'-')
+            if clean:
+                cleaned.append(clean)
+
+        # Filter stop words and very short words
+        keywords = {
+            word for word in cleaned
+            if word not in self._STOP_WORDS and len(word) > 1
+        }
+
+        return keywords
+
+    def intent_similarity(self, intent1: str, intent2: str) -> float:
+        """
+        Calculate semantic similarity between two intent strings.
+
+        Uses Jaccard similarity on extracted keywords:
+        similarity = |intersection| / |union|
+
+        Args:
+            intent1: First intent string
+            intent2: Second intent string
+
+        Returns:
+            Similarity score between 0.0 and 1.0
+
+        Example:
+            >>> cycle.intent_similarity(
+            ...     "Implement JWT authentication",
+            ...     "Add JWT token verification"
+            ... )
+            0.4  # Both have 'jwt', one has 'authentication'/'verification'
+        """
+        keywords1 = self.extract_keywords(intent1)
+        keywords2 = self.extract_keywords(intent2)
+
+        if not keywords1 or not keywords2:
+            return 0.0
+
+        intersection = keywords1 & keywords2
+        union = keywords1 | keywords2
+
+        return len(intersection) / len(union)
+
+    def find_by_intent(
+        self,
+        intent: str,
+        min_similarity: float = 0.2,
+        limit: int = 10
+    ) -> List[Experience]:
+        """
+        Find experiences with semantically similar intents.
+
+        This is the key method for semantic matching. It finds experiences
+        where the intent text is similar, regardless of context categories.
+
+        Args:
+            intent: The intent to search for
+            min_similarity: Minimum similarity score (0.0-1.0)
+            limit: Maximum number of results
+
+        Returns:
+            List of experiences sorted by intent similarity (highest first)
+
+        Example:
+            >>> cycle.find_by_intent("Add JWT token authentication")
+            # Returns experiences with intents like:
+            # - "Implement JWT authentication"
+            # - "Fix token expiry verification"
+            # - "Add OAuth token support"
+        """
+        experiences = list(self.store._index.values())
+
+        scored = []
+        for exp in experiences:
+            similarity = self.intent_similarity(intent, exp.intent)
+            if similarity >= min_similarity:
+                scored.append((exp, similarity))
+
+        # Sort by similarity descending
+        scored.sort(key=lambda x: x[1], reverse=True)
+
+        # Return just the experiences (not the scores)
+        return [exp for exp, _ in scored[:limit]]
+
+    def find_similar_context(
+        self,
+        context: Context,
+        min_similarity: float = 0.5,
+        limit: int = 10
+    ) -> List[Tuple[Experience, float]]:
+        """
+        Find experiences with similar contexts.
+
+        This is a wrapper around ExperienceStore.find_similar_context
+        for consistency in the API.
+
+        Args:
+            context: The context to match
+            min_similarity: Minimum context similarity score
+            limit: Maximum number of results
+
+        Returns:
+            List of (experience, similarity_score) tuples
+        """
+        return self.store.find_similar_context(context, min_similarity, limit)
+
+    def find_by_context_and_intent(
+        self,
+        context: Context,
+        intent: str,
+        context_weight: float = 0.3,
+        intent_weight: float = 0.7,
+        min_combined_score: float = 0.3,
+        limit: int = 10
+    ) -> List[Tuple[Experience, float]]:
+        """
+        Find experiences using both context and intent similarity.
+
+        This combines categorical context matching with semantic intent
+        matching to get the best of both worlds.
+
+        Args:
+            context: The context to match
+            intent: The intent to match
+            context_weight: Weight for context similarity (0.0-1.0)
+            intent_weight: Weight for intent similarity (0.0-1.0)
+            min_combined_score: Minimum combined score to include
+            limit: Maximum number of results
+
+        Returns:
+            List of (experience, combined_score) tuples
+
+        Example:
+            >>> cycle.find_by_context_and_intent(
+            ...     context=Context(goal_type="feature", domain="api"),
+            ...     intent="Add JWT authentication",
+            ...     context_weight=0.3,
+            ...     intent_weight=0.7,
+            ... )
+            # Returns experiences that match BOTH the context and intent,
+            # weighted toward intent similarity
+        """
+        # Normalize weights
+        total_weight = context_weight + intent_weight
+        if total_weight == 0:
+            total_weight = 1.0
+        ctx_w = context_weight / total_weight
+        int_w = intent_weight / total_weight
+
+        experiences = list(self.store._index.values())
+
+        scored = []
+        for exp in experiences:
+            # Calculate context similarity
+            ctx_sim = context.similarity_to(exp.context)
+
+            # Calculate intent similarity
+            int_sim = self.intent_similarity(intent, exp.intent)
+
+            # Combined weighted score
+            combined = (ctx_w * ctx_sim) + (int_w * int_sim)
+
+            if combined >= min_combined_score:
+                scored.append((exp, combined))
+
+        # Sort by combined score descending
+        scored.sort(key=lambda x: x[1], reverse=True)
+
+        return scored[:limit]
+
+    def get_experience(self, experience_id: str) -> Optional[Experience]:
+        """
+        Get an experience by ID.
+
+        Convenience wrapper around ExperienceStore.get.
+
+        Args:
+            experience_id: The ID of the experience to retrieve
+
+        Returns:
+            The Experience if found, None otherwise
+        """
+        return self.store.get(experience_id)
+
+    # =========================================================================
+    # FILE OUTCOME TRACKING
+    # =========================================================================
+    # These methods track which files are "risky" based on historical outcomes.
+    # From the Agent Survey (Worker Agent):
+    # > "If src/auth.py has broken 3 times in the last week, I want to know."
+
+    def get_files_from_experience(self, experience_id: str) -> List[str]:
+        """
+        Get the list of files touched in an experience.
+
+        Files are extracted from action targets that look like file paths.
+
+        Args:
+            experience_id: The experience ID to query
+
+        Returns:
+            List of file paths touched in the experience
+        """
+        experience = self.store.get(experience_id)
+        if not experience:
+            return []
+
+        files = []
+        for action in experience.actions:
+            # Check if target looks like a file path
+            target = action.target
+            if target and (
+                "/" in target or
+                "\\" in target or
+                target.endswith(".py") or
+                target.endswith(".js") or
+                target.endswith(".ts") or
+                target.endswith(".json") or
+                target.endswith(".yaml") or
+                target.endswith(".yml") or
+                target.endswith(".md") or
+                target.endswith(".txt")
+            ):
+                if target not in files:
+                    files.append(target)
+
+        return files
+
+    def get_file_history(self, file_path: str) -> Dict[str, Any]:
+        """
+        Get the outcome history for a specific file.
+
+        Scans all experiences to find those that touched this file,
+        and computes success/failure statistics.
+
+        Args:
+            file_path: The file path to query
+
+        Returns:
+            Dictionary with:
+            - total_experiences: Total times file was touched
+            - success_count: Number of successful outcomes
+            - failure_count: Number of failed outcomes
+            - success_rate: success_count / total_experiences
+            - error_patterns: Dict of error_type -> count
+            - recent_experiences: List of recent experience IDs
+        """
+        experiences = list(self.store._index.values())
+
+        matching = []
+        error_patterns: Dict[str, int] = {}
+
+        for exp in experiences:
+            files_touched = self.get_files_from_experience(exp.id)
+            if file_path in files_touched:
+                matching.append(exp)
+
+                # Track error patterns from failures
+                if exp.outcome and exp.outcome.outcome_type == OutcomeType.FAILURE:
+                    error_type = exp.outcome.error_type or "UnknownError"
+                    error_patterns[error_type] = error_patterns.get(error_type, 0) + 1
+
+        total = len(matching)
+        successes = sum(
+            1 for exp in matching
+            if exp.outcome and exp.outcome.was_successful()
+        )
+        failures = sum(
+            1 for exp in matching
+            if exp.outcome and exp.outcome.outcome_type == OutcomeType.FAILURE
+        )
+
+        return {
+            "total_experiences": total,
+            "success_count": successes,
+            "failure_count": failures,
+            "success_rate": successes / total if total > 0 else 1.0,
+            "error_patterns": error_patterns,
+            "recent_experiences": [exp.id for exp in matching[-5:]],
+        }
+
+    def get_risky_files(
+        self,
+        min_experiences: int = 3,
+        max_success_rate: float = 0.5
+    ) -> List[Dict[str, Any]]:
+        """
+        Find files with high failure rates.
+
+        A file is considered risky if:
+        - It has at least min_experiences touches
+        - Its success rate is below max_success_rate
+
+        Args:
+            min_experiences: Minimum touches to consider
+            max_success_rate: Maximum success rate to be flagged
+
+        Returns:
+            List of dicts with file_path, success_rate, failure_count
+        """
+        # Collect all unique files from experiences
+        all_files: Set[str] = set()
+        for exp in self.store._index.values():
+            files = self.get_files_from_experience(exp.id)
+            all_files.update(files)
+
+        risky = []
+        for file_path in all_files:
+            history = self.get_file_history(file_path)
+            if (
+                history["total_experiences"] >= min_experiences and
+                history["success_rate"] < max_success_rate
+            ):
+                risky.append({
+                    "file_path": file_path,
+                    "success_rate": history["success_rate"],
+                    "failure_count": history["failure_count"],
+                    "total_experiences": history["total_experiences"],
+                    "error_patterns": history["error_patterns"],
+                })
+
+        # Sort by success rate ascending (most risky first)
+        risky.sort(key=lambda x: x["success_rate"])
+        return risky
+
+    def get_guidance_for_files(
+        self,
+        intent: str,
+        files_to_modify: List[str],
+    ) -> Dict[str, Any]:
+        """
+        Get guidance for a task, including file risk assessment.
+
+        This combines semantic matching with file risk analysis.
+
+        Args:
+            intent: The task intent
+            files_to_modify: Files that will be modified
+
+        Returns:
+            Dictionary with:
+            - lessons: Applicable lessons
+            - recommendations: From similar successful tasks
+            - warnings: From failures and risky files
+            - file_risks: Per-file risk assessment
+        """
+        # Start with semantic matching
+        semantic_matches = self.find_by_intent(intent, min_similarity=0.15, limit=5)
+
+        guidance = {
+            "lessons": [],
+            "recommendations": [],
+            "warnings": [],
+            "file_risks": {},
+            "similar_experiences": semantic_matches,
+        }
+
+        # Assess risk for each file
+        for file_path in files_to_modify:
+            history = self.get_file_history(file_path)
+
+            is_risky = (
+                history["total_experiences"] >= 2 and
+                history["success_rate"] < 0.6
+            )
+
+            guidance["file_risks"][file_path] = {
+                "is_risky": is_risky,
+                "success_rate": history["success_rate"],
+                "failure_count": history["failure_count"],
+                "total_experiences": history["total_experiences"],
+                "error_patterns": history["error_patterns"],
+                "recent_failures": [
+                    exp_id for exp_id in history["recent_experiences"]
+                    if self._is_failure(exp_id)
+                ],
+            }
+
+            # Add warning for risky files
+            if is_risky:
+                warning = (
+                    f"Caution: {file_path} has {history['failure_count']} recent failures "
+                    f"({history['success_rate']:.0%} success rate)"
+                )
+                if warning not in guidance["warnings"]:
+                    guidance["warnings"].append(warning)
+
+                # Add specific error pattern warnings
+                for error_type, count in history["error_patterns"].items():
+                    if count >= 2:
+                        pattern_warning = f"Common error in {file_path}: {error_type} ({count} occurrences)"
+                        if pattern_warning not in guidance["warnings"]:
+                            guidance["warnings"].append(pattern_warning)
+
+        # Add recommendations from similar successful experiences
+        for exp in semantic_matches:
+            if exp.outcome and exp.outcome.was_successful() and exp.what_worked:
+                for insight in exp.what_worked[:2]:
+                    recommendation = f"From '{exp.intent}': {insight}"
+                    if recommendation not in guidance["recommendations"]:
+                        guidance["recommendations"].append(recommendation)
+
+        return guidance
+
+    def _is_failure(self, experience_id: str) -> bool:
+        """Check if an experience was a failure."""
+        exp = self.store.get(experience_id)
+        if not exp or not exp.outcome:
+            return False
+        return exp.outcome.outcome_type == OutcomeType.FAILURE
