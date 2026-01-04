@@ -1,0 +1,104 @@
+Dependency Injection: Principles, Patterns, and Practice
+
+Dependency injection solves a fundamental problem in software design: how do
+components obtain their collaborators? Without injection, components create their
+own dependencies, tightly coupling them to specific implementations. With
+injection, components receive dependencies from outside, enabling flexibility,
+testability, and modularity.
+
+Consider a service that needs a database connection. The naive approach creates
+the connection internally: "connection = DatabaseConnection()". This hardcodes
+the dependency. Testing requires a real database. Switching to a different
+database requires code changes. The service cannot exist without its dependency.
+
+Dependency injection inverts this: the service declares what it needs, and
+something else provides it. The service constructor accepts a connection:
+"def __init__(self, connection)". Now tests can pass mock connections. Production
+code can pass real connections. The service neither knows nor cares which.
+
+Constructor injection passes dependencies when creating objects. This makes
+dependencies explicit and required. A class with five constructor parameters
+clearly depends on five collaborators. This visibility encourages designers to
+question whether so many dependencies indicate a design problem.
+
+Setter injection provides dependencies after construction through methods. This
+suits optional dependencies or circular references that constructor injection
+cannot resolve. However, setter injection creates temporal coupling: the object
+exists in an invalid state until all setters have been called.
+
+Interface injection defines a contract for receiving dependencies. Components
+implement an interface with an injection method. This approach, less common than
+constructor or setter injection, suits frameworks that manage component lifecycles
+and need uniform injection mechanisms.
+
+The dependency injection container manages object creation and wiring. Register
+types with the container, specifying which implementation satisfies which
+interface. When code requests an interface, the container constructs the
+appropriate implementation, recursively resolving its dependencies.
+
+Lifecycle management determines when instances are created and shared. Singleton
+scope creates one instance for the entire application. Transient scope creates
+new instances for each request. Scoped lifecycle creates one instance per
+context, such as one per web request. Choose lifecycles based on state,
+performance, and resource management needs.
+
+Registration configures the container before use. Explicit registration maps
+interfaces to implementations directly. Convention-based registration
+automatically maps types following naming patterns. Configuration-based
+registration reads mappings from external files, enabling changes without
+recompilation.
+
+Resolution retrieves instances from the container. Request an interface, receive
+an implementation. The container handles construction, dependency resolution, and
+lifecycle management. Client code remains unaware of concrete types, depending
+only on abstractions.
+
+Constructor injection promotes immutability. Dependencies set at construction
+time cannot change. The object is fully initialized or not initialized at all.
+No temporal coupling, no partially constructed states, no forgotten setter calls.
+
+Dependency injection enables testing by allowing mock objects. Unit tests inject
+mocks that simulate collaborator behavior without real implementations. Test
+specific scenarios by configuring mocks to return particular values or throw
+specific exceptions. Verify interactions by checking which mock methods were
+called.
+
+Composition roots centralize object graph construction. One location, typically
+near application startup, configures the container and builds the initial object
+graph. All other code receives dependencies; none creates them. This separation
+keeps dependency configuration visible and maintainable.
+
+Service locator offers an alternative to injection. Rather than receiving
+dependencies, components request them from a global registry. This reduces
+constructor parameters but hides dependencies. Code that calls the locator
+depends on whatever the locator provides, but this dependency is implicit.
+
+Dependency injection containers vary in capability. Some support only constructor
+injection. Others add property injection, method injection, and decorator
+patterns. Advanced containers handle generics, factory delegates, and conditional
+registration. Choose complexity appropriate to your needs.
+
+Over-injection indicates design problems. A class requiring ten injected
+dependencies likely violates single responsibility. Rather than accepting the
+complexity, question why one class needs so many collaborators. Perhaps it should
+be split into smaller, focused classes.
+
+Abstract factories inject the ability to create objects. When a component needs
+to create multiple instances during its lifetime, inject a factory rather than
+the instances themselves. The factory encapsulates creation logic while the
+component remains testable with mock factories.
+
+Dependency injection frameworks exist for every major language. Spring for Java,
+ASP.NET Core for C#, Dagger for Android, and many others. Each provides container
+implementation, lifecycle management, and integration with application frameworks.
+Understanding principles matters more than memorizing any specific framework.
+
+Manual dependency injection works without frameworks. Write factory methods or
+builder classes that construct object graphs. This approach suits smaller
+applications and makes dependencies completely explicit. Frameworks become
+valuable when graphs grow complex and convention reduces boilerplate.
+
+The principle matters more than the mechanism. Dependencies should flow inward
+toward abstractions. High-level policy should not depend on low-level detail.
+Components should depend on interfaces, not implementations. Dependency injection
+is one technique among many for achieving these goals.

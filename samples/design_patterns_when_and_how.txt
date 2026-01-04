@@ -1,0 +1,127 @@
+Design Patterns: Knowing When and How to Apply Them
+
+Design patterns are solutions to recurring problems, not prescriptions for all
+situations. The difference between a skilled developer and a pattern enthusiast
+lies in knowing when patterns help and when they hinder. Premature pattern
+application creates complexity without benefit. Appropriate pattern application
+solves real problems elegantly.
+
+Recognize the problem before reaching for the solution. Patterns address specific
+forces: flexibility versus simplicity, performance versus maintainability,
+generality versus specificity. Without understanding the forces at play in your
+situation, you cannot judge whether a pattern applies.
+
+Start simple. Write straightforward code that solves the immediate problem. As
+the codebase evolves, patterns will become apparent. The need for Strategy
+emerges when you find yourself writing switch statements on type codes. The
+need for Observer emerges when multiple objects must respond to state changes.
+Let the code tell you what it needs.
+
+Refactoring toward patterns beats designing with patterns. Code that grows from
+real requirements naturally contains the shape of appropriate patterns. Extract
+those patterns when they clarify design. Code designed around patterns before
+requirements are clear often bends requirements to fit the pattern.
+
+Three similar pieces of code suggest a pattern. One instance is just code. Two
+instances might be coincidence. Three instances reveal a pattern worth naming
+and extracting. Wait for repetition before abstracting. Premature abstraction
+creates categories that do not match reality.
+
+Singleton solves exactly one problem: ensuring a single instance when multiple
+instances would cause incorrect behavior. Most uses of Singleton address
+convenience, not correctness. Wanting easy access to an object does not justify
+Singleton. Global mutable state creates testing difficulties and hidden
+dependencies regardless of how elegantly you access it.
+
+Factory methods earn their keep when object creation requires decisions. If
+construction always follows the same steps, a constructor suffices. When
+different situations require different objects or different construction
+sequences, factories encapsulate those decisions. The question is not "could I
+use a factory?" but "does creation logic vary?"
+
+Strategy patterns help when algorithms vary independently of the clients using
+them. If you have one algorithm that never changes, inline it. If you have
+multiple algorithms selected at compile time, use configuration. Strategy shines
+when algorithm selection happens at runtime based on context.
+
+Observer patterns suit situations with one-to-many dependencies where changes
+in one object must propagate to others. If propagation is one-time setup,
+direct notification works fine. If observers change dynamically, or if the
+subject should not know about specific observers, the pattern applies.
+
+Decorator patterns add responsibilities to objects dynamically. Use them when
+subclassing would create an explosion of combinations. If you need logging,
+caching, and validation in various combinations, decorators compose cleanly.
+If you need one fixed combination, a single class is simpler.
+
+Adapter patterns bridge incompatible interfaces. Use them at system boundaries
+where you cannot change either interface. Within your own codebase, changing
+the interface often beats adapting to it. Adapters suit integration more than
+internal design.
+
+Composite patterns treat individual objects and compositions uniformly. They
+suit hierarchical structures where clients should not distinguish between leaves
+and branches. File systems, UI component trees, and expression trees exemplify
+natural composites. Forcing the pattern onto flat structures adds pointless
+complexity.
+
+State patterns encapsulate state-dependent behavior. They shine when objects
+change behavior based on internal state and when state transitions follow
+complex rules. Simple state machines work fine with switch statements. Complex
+state machines with many states and transitions benefit from the pattern.
+
+Command patterns encapsulate operations as objects. They enable queuing,
+logging, undo/redo, and macro recording. If you just need to call a function,
+call the function. If you need to manipulate operations as data, commands
+provide that capability.
+
+Template methods define algorithm skeletons with customizable steps. They suit
+situations where the algorithm structure is fixed but certain steps vary. If
+the entire algorithm varies, Strategy applies. If nothing varies, just write
+the algorithm.
+
+Understand the forces each pattern addresses. Patterns balance competing
+concerns. Factory balances creation flexibility against complexity. Strategy
+balances algorithm flexibility against indirection. Observer balances loose
+coupling against debugging difficulty. Judge whether the forces in your
+situation warrant the tradeoffs.
+
+Patterns are not mutually exclusive. A factory might create strategies. A
+composite might contain observers. Decorators might wrap adapters. Combinations
+emerge naturally when each pattern addresses distinct forces in the design.
+Forced combinations indicate pattern enthusiasm over problem solving.
+
+Language features sometimes eliminate pattern needs. First-class functions
+reduce need for Strategy and Command. Closures reduce need for some Observers.
+Mixins reduce need for some Decorators. Know your language before applying
+patterns from other contexts.
+
+Framework patterns differ from application patterns. Frameworks define extension
+points for unknown future use. Applications solve known present problems.
+Framework developers reasonably over-engineer for flexibility. Application
+developers should not emulate this without similar justification.
+
+Anti-patterns deserve recognition. Singleton often masks global state.
+Overloaded factories obscure simple construction. Abstract factories creating
+single products add needless indirection. Recognizing when patterns cause more
+harm than good prevents pattern abuse.
+
+The goal is working software, not pattern catalogs. Patterns serve communication
+and proven solutions. They should not constrain thinking. When a simple solution
+works, use it. When a pattern clarifies design, apply it. When a pattern
+complicates without corresponding benefit, avoid it.
+
+Read pattern catalogs for vocabulary, not prescription. Understanding patterns
+helps you communicate with other developers and recognize solutions others have
+found. Knowing the Strategy pattern means recognizing it in code and discussion.
+It does not mean using it everywhere.
+
+Judgment develops through experience. Write code, observe what becomes
+difficult to maintain, and note which patterns would have helped. This
+experiential learning beats memorizing when to apply patterns. Real problems
+teach better than hypothetical scenarios.
+
+The best pattern is often no pattern at all. Clear, direct code that solves
+the problem at hand serves better than clever abstractions anticipating
+problems that may never arise. Patterns are tools for managing complexity
+that already exists, not investments against complexity that might emerge.
