@@ -1,0 +1,19 @@
+{
+  "_checksum": "95aa345529a4f88e",
+  "_written_at": "2026-01-05T01:49:40.024013+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:49:40.012722+00:00",
+    "description": "LexerError during tokenization, ParseError during parsing, ExecutionError during execution. All include position, context, suggestions. Error messages are debugging-style with caret pointing to problem. Unit test: tests/unit/test_error_integration.py.",
+    "entity_type": "task",
+    "id": "T-20260105-014940-972ac6aa",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:49:40.023962+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "T-011: Integrate error handling with parser and executor",
+    "version": 2
+  }
+}
