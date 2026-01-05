@@ -1,6 +1,6 @@
 # CLAUDE.md — Team Lead & Repository Guardian
 
-*Last updated: 2026-01-04*
+*Last updated: 2026-01-05*
 
 ---
 
@@ -726,6 +726,104 @@ Recognize these patterns and **STOP**:
 | Contradicting earlier statements | State confusion | Re-read context, reconcile |
 | Making changes without reading | Premature action | Read first, then act |
 | Generating placeholder content | Uncertainty masked | Admit uncertainty, ask |
+
+---
+
+## API Exploration with inspect
+
+When encountering unfamiliar APIs, classes, or functions, **use Python's `inspect` module** to understand them before writing code. This is faster and more accurate than guessing.
+
+### Examine Function/Method Signatures
+
+```python
+# Quick signature check
+python3 -c "
+import inspect
+from cortical.got.tx_manager import TransactionManager
+
+sig = inspect.signature(TransactionManager.__init__)
+print('TransactionManager.__init__ signature:')
+print(sig)
+print()
+for param_name, param in sig.parameters.items():
+    if param_name != 'self':
+        default = 'REQUIRED' if param.default == inspect.Parameter.empty else repr(param.default)
+        print(f'  {param_name} = {default}')
+"
+```
+
+### Common inspect Patterns
+
+```python
+import inspect
+
+# 1. Get function signature
+sig = inspect.signature(some_function)
+print(sig)  # (param1, param2, *, keyword_only=None)
+
+# 2. List all public methods of a class
+methods = [m for m in dir(SomeClass) if not m.startswith('_') and callable(getattr(SomeClass, m))]
+
+# 3. Get source code location
+file_path = inspect.getfile(SomeClass)
+source_lines, start_line = inspect.getsourcelines(SomeClass.some_method)
+
+# 4. Check if something is a class, function, or method
+inspect.isclass(obj)
+inspect.isfunction(obj)
+inspect.ismethod(obj)
+
+# 5. Get the full source code
+source = inspect.getsource(SomeClass)
+
+# 6. Examine class hierarchy
+inspect.getmro(SomeClass)  # Method Resolution Order
+
+# 7. Get all members of a module
+inspect.getmembers(some_module, inspect.isclass)  # All classes
+inspect.getmembers(some_module, inspect.isfunction)  # All functions
+```
+
+### When to Use inspect
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    USE inspect WHEN:                                     │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  • You need to call a class/function you haven't used before            │
+│  • Documentation is missing or unclear                                  │
+│  • You want to verify required vs optional parameters                   │
+│  • You need to understand the inheritance hierarchy                     │
+│  • You're debugging and need to find where code is defined              │
+│  • You want to list all available methods on an object                  │
+│                                                                          │
+│  PREFER inspect OVER:                                                   │
+│  ────────────────────                                                   │
+│  • Guessing parameter names or order                                    │
+│  • Reading entire source files to find one signature                    │
+│  • Trial-and-error with function calls                                  │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Practical Examples
+
+```bash
+# Check what parameters TransactionManager needs
+python3 -c "import inspect; from cortical.cdg.transaction_manager import TransactionManager; print(inspect.signature(TransactionManager.__init__))"
+
+# Find all public methods on a class
+python3 -c "from cortical.got.api import GoTAPI; print([m for m in dir(GoTAPI) if not m.startswith('_')])"
+
+# Get the file where a class is defined
+python3 -c "import inspect; from cortical.got.indexer import GoTIndexer; print(inspect.getfile(GoTIndexer))"
+
+# Show class inheritance chain
+python3 -c "import inspect; from cortical.cdg.storage import StorageBackend; print(inspect.getmro(StorageBackend))"
+```
+
+**Remember:** Understanding before implementing. `inspect` is your tool for rapid API comprehension.
 
 ---
 
