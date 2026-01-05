@@ -1,19 +1,23 @@
 {
-  "_checksum": "e0e36bc2a8ed3236",
-  "_written_at": "2026-01-05T01:48:00.001642+00:00",
+  "_checksum": "8fd8ee4929e64070",
+  "_written_at": "2026-01-05T02:16:59.943544+00:00",
   "data": {
     "created_at": "2026-01-05T01:47:59.990448+00:00",
     "description": "Implement FunctionRegistry singleton with @register decorator. FunctionSignature dataclass with name, description, required_args, optional_args, returns. QueryFunction ABC with signature() and execute() methods. Case-insensitive lookup. Behavioral test: tests/behavioral/test_registry.py. Unit test: tests/unit/test_registry.py.",
     "entity_type": "task",
     "id": "T-20260105-014759-8d90c4d0",
-    "metadata": {},
-    "modified_at": "2026-01-05T01:48:00.001595+00:00",
+    "metadata": {
+      "completed_at": "2026-01-05T02:16:59.924901+00:00",
+      "updated_at": "2026-01-05T02:16:59.924909+00:00"
+    },
+    "modified_at": "2026-01-05T02:16:59.943475+00:00",
     "priority": "critical",
     "properties": {
-      "category": "feature"
+      "category": "feature",
+      "retrospective": "Function registry verified and tested. 41 tests passing. Singleton, decorator registration."
     },
-    "status": "pending",
+    "status": "completed",
     "title": "T-005: Implement function registry with decorator-based registration",
-    "version": 2
+    "version": 3
   }
 }
