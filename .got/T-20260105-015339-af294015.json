@@ -1,0 +1,20 @@
+{
+  "_checksum": "4a3a4e0b1971a46d",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T01:53:48.563811+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:53:39.974564+00:00",
+    "description": "User-facing documentation for query expression system. Include: getting started, query syntax reference, function reference, examples for common use cases. Location: docs/user/query-expressions.md.",
+    "entity_type": "task",
+    "id": "T-20260105-015339-af294015",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:53:39.974568+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "docs"
+    },
+    "status": "pending",
+    "title": "T-025: Write user documentation",
+    "version": 1
+  }
+}
