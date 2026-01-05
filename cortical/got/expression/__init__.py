@@ -12,8 +12,12 @@ Public API:
     execute(manager, query) -> Any
         Execute a Query AST against a GoTManager.
 
+    validate(expression, entity_type=None) -> None
+        Validate field names in an expression against the schema.
+        Raises QueryValidationError if invalid fields are found.
+
 Example:
-    from cortical.got.expression import parse, execute
+    from cortical.got.expression import parse, execute, validate
     from cortical.core.bootstrap import create_container
     from cortical.got.api import GoTManager
 
@@ -21,11 +25,13 @@ Example:
     manager = container.resolve(GoTManager)
 
     query = parse("status = 'pending' AND priority = 'high'")
+    validate(query.expression, entity_type='task')  # Validate fields
     results = execute(manager, query)
 """
 
 from .parser import parse
 from .executor import execute
+from .validator import FieldValidator, COMMON_FIELDS
 
 from .ast import (
     Expression,
@@ -61,10 +67,39 @@ from .lexer import (
     tokenize,
 )
 
+def validate(expression, entity_type=None):
+    """
+    Validate field names in an expression against the schema.
+
+    Args:
+        expression: Expression or Query to validate
+        entity_type: Optional entity type to validate against (e.g., 'task')
+                    If None, only common fields are valid.
+
+    Raises:
+        QueryValidationError: If any field references are invalid
+
+    Example:
+        query = parse("status = 'pending' AND priority = 'high'")
+        validate(query.expression, entity_type='task')
+    """
+    # Handle Query objects - extract the expression
+    if isinstance(expression, Query):
+        expression = expression.expression
+
+    # If expression is None (empty query), nothing to validate
+    if expression is None:
+        return
+
+    validator = FieldValidator(entity_type=entity_type)
+    validator.validate_expression(expression)
+
+
 __all__ = [
     # Main API
     'parse',
     'execute',
+    'validate',
 
     # AST nodes
     'Expression',
@@ -95,4 +130,8 @@ __all__ = [
     'Token',
     'TokenType',
     'tokenize',
+
+    # Validator
+    'FieldValidator',
+    'COMMON_FIELDS',
 ]
