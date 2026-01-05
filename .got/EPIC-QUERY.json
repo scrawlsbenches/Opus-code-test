@@ -1,0 +1,20 @@
+{
+  "_checksum": "11ca99f66a490c9e",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T01:45:47.147229+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:45:16.796835+00:00",
+    "entity_type": "epic",
+    "id": "EPIC-QUERY",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:45:16.796840+00:00",
+    "phase": 1,
+    "phases": [],
+    "properties": {
+      "description": "Implement a generalized, extensible query expression parser for GoT that compiles to existing Query builder infrastructure. Uses function registry pattern for extensibility. Follows sovereignty principle. Success criteria: All behavioral tests pass, unit test coverage >= 90%, no hardcoded entity references in core code, function registry supports runtime extension, CLI integration complete, performance within 2x of direct Query builder."
+    },
+    "status": "active",
+    "title": "Complex Query Expression System",
+    "version": 1
+  }
+}
