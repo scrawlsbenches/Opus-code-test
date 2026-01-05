@@ -1,0 +1,23 @@
+{
+  "_checksum": "34453f06551e4d8f",
+  "_written_at": "2026-01-05T02:16:53.252465+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:47:43.074331+00:00",
+    "description": "Tokenize: identifiers, strings, numbers, operators (=, !=, >, <, >=, <=, IN, LIKE, NOT IN, NOT LIKE), keywords (AND, OR, NOT, ORDER BY, LIMIT, OFFSET), parentheses, lists. Handle entity IDs with hyphens (T-123). Include position tracking for error messages. Behavioral test: tests/behavioral/test_lexer.py. Unit test: tests/unit/test_lexer.py.",
+    "entity_type": "task",
+    "id": "T-20260105-014743-2ae9c776",
+    "metadata": {
+      "completed_at": "2026-01-05T02:16:53.230500+00:00",
+      "updated_at": "2026-01-05T02:16:53.230508+00:00"
+    },
+    "modified_at": "2026-01-05T02:16:53.252416+00:00",
+    "priority": "critical",
+    "properties": {
+      "category": "feature",
+      "retrospective": "Lexer implemented with full tokenization. 103 tests passing. Handles entity IDs like T-123."
+    },
+    "status": "completed",
+    "title": "T-003: Implement lexer for tokenizing query expressions",
+    "version": 3
+  }
+}

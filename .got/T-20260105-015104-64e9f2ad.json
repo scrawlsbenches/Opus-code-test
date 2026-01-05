@@ -1,0 +1,20 @@
+{
+  "_checksum": "50a632c8a9bf2aa5",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T01:51:12.626148+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:51:04.783299+00:00",
+    "description": "Register: ancestors(entity_id, via=None), descendants(entity_id, via=None), all_dependencies(entity_id), cycle_detect(entity_id). Use GraphWalker with BFS/DFS. No artificial depth limits. Behavioral test: tests/behavioral/test_transitive_functions.py.",
+    "entity_type": "task",
+    "id": "T-20260105-015104-64e9f2ad",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:51:04.783307+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "T-016: Implement transitive closure functions",
+    "version": 1
+  }
+}

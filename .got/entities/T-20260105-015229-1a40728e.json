@@ -1,0 +1,19 @@
+{
+  "_checksum": "4a5518dbbd869057",
+  "_written_at": "2026-01-05T01:52:29.960018+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:52:29.948957+00:00",
+    "description": "Replace hardcoded pattern matching in got_utils.py query() with expression parser. Maintain backwards compatibility for existing query patterns. Add new capabilities for complex expressions. Integration test: tests/integration/test_cli_query.py.",
+    "entity_type": "task",
+    "id": "T-20260105-015229-1a40728e",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:52:29.959961+00:00",
+    "priority": "critical",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "T-021: Integrate with CLI query command",
+    "version": 2
+  }
+}

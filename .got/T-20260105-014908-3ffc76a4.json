@@ -1,0 +1,20 @@
+{
+  "_checksum": "012f4974c9015109",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T01:49:17.060699+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:49:08.951930+00:00",
+    "description": "Recursive descent parser following grammar: query ::= expression [order_clause] [limit_clause]. Expression precedence: OR < AND < NOT < comparison. Handle parentheses. Parse function calls with positional and keyword args. Behavioral test: tests/behavioral/test_parser.py. Unit test: tests/unit/test_parser.py.",
+    "entity_type": "task",
+    "id": "T-20260105-014908-3ffc76a4",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:49:08.951939+00:00",
+    "priority": "critical",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "T-007: Implement recursive descent parser for expressions",
+    "version": 1
+  }
+}

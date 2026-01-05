@@ -1,0 +1,20 @@
+{
+  "_checksum": "c784a2e8193c14e7",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T01:53:04.350722+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:52:45.806400+00:00",
+    "description": "Debugging-style errors with source context, caret pointing to problem, expected tokens, 'Did you mean?' suggestions. Test with real user error patterns. Ensure errors are helpful not cryptic. Unit test: tests/unit/test_error_messages.py.",
+    "entity_type": "task",
+    "id": "T-20260105-015245-6fbf5b20",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:52:45.806407+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "devex"
+    },
+    "status": "pending",
+    "title": "T-023: Polish error messages to debugging quality",
+    "version": 1
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "_checksum": "569902422446e3c5",
+  "_written_at": "2026-01-05T02:16:18.211005+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:47:51.026355+00:00",
+    "description": "Implement: LexerError, ParseError, ExecutionError, QueryValidationError. All must include position tracking, source context, and suggestions list. Base class QueryError with format_with_context() method. Unit test: tests/unit/test_errors.py.",
+    "entity_type": "task",
+    "id": "T-20260105-014751-326a9068",
+    "metadata": {
+      "completed_at": "2026-01-05T02:16:18.190351+00:00",
+      "updated_at": "2026-01-05T02:16:18.190359+00:00"
+    },
+    "modified_at": "2026-01-05T02:16:18.210922+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature",
+      "retrospective": "Error types enhanced with debugging-quality messages. 34 tests passing. Position tracking, suggestions, formatted context."
+    },
+    "status": "completed",
+    "title": "T-004: Implement custom exception types with position tracking",
+    "version": 3
+  }
+}

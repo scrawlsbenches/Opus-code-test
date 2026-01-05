@@ -1,0 +1,19 @@
+{
+  "_checksum": "75d2880346d25b25",
+  "_written_at": "2026-01-05T01:56:14.236252+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:56:14.222638+00:00",
+    "description": "Comprehensive final security review before release. All backlogged security issues must be addressed or documented. Review: complete attack surface analysis, penetration testing with malicious queries, security documentation.",
+    "entity_type": "task",
+    "id": "T-20260105-015614-e37d60a8",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:56:14.236155+00:00",
+    "priority": "critical",
+    "properties": {
+      "category": "security"
+    },
+    "status": "pending",
+    "title": "SECURITY: Sprint-5 Final Security Review",
+    "version": 2
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "_checksum": "b6a8b8326034a194",
+  "_written_at": "2026-01-05T01:54:58.804527+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:54:58.793683+00:00",
+    "description": "Ensure consistent formatting across all expression module files. Follow project conventions. Run any formatters if configured. BLOCKED BY: T-CLEANUP-APPROVAL.",
+    "entity_type": "task",
+    "id": "T-20260105-015458-fe805b2f",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:54:58.804466+00:00",
+    "priority": "low",
+    "properties": {
+      "category": "refactor"
+    },
+    "status": "pending",
+    "title": "T-CLEANUP-003: Format code consistently",
+    "version": 2
+  }
+}

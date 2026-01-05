@@ -1,0 +1,19 @@
+{
+  "_checksum": "78d2e3a48a41662a",
+  "_written_at": "2026-01-05T01:50:39.299966+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:50:39.289017+00:00",
+    "description": "Register graph functions: connected_to(entity_id, via=None, direction='both', depth=None), path(from_id, to_id, via=None, max_length=None). Use existing GraphWalker and PathFinder. depth=None means unlimited traversal. Behavioral test: tests/behavioral/test_graph_functions.py.",
+    "entity_type": "task",
+    "id": "T-20260105-015039-f068146f",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:50:39.299901+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "T-013: Implement core graph functions using registry",
+    "version": 2
+  }
+}

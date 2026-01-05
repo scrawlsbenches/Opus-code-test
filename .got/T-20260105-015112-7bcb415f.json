@@ -1,0 +1,20 @@
+{
+  "_checksum": "9d6828993ca172dd",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T01:51:29.941544+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:51:12.706169+00:00",
+    "description": "FunctionRegistry.list_functions() returns all signatures with descriptions. Add --list-functions to CLI. Generate markdown documentation from signatures. Include examples for each function. Unit test: tests/unit/test_function_help.py.",
+    "entity_type": "task",
+    "id": "T-20260105-015112-7bcb415f",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:51:12.706176+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "docs"
+    },
+    "status": "pending",
+    "title": "T-017: Create function documentation and help system",
+    "version": 1
+  }
+}

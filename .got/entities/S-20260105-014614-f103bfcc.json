@@ -1,0 +1,23 @@
+{
+  "_checksum": "f9e7cf63ba5d8abc",
+  "_written_at": "2026-01-05T01:46:14.197258+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:46:14.186981+00:00",
+    "entity_type": "sprint",
+    "epic_id": "EPIC-QUERY",
+    "goals": [],
+    "id": "S-20260105-014614-f103bfcc",
+    "isolation": [],
+    "metadata": {},
+    "modified_at": "2026-01-05T01:46:14.197179+00:00",
+    "notes": [
+      "Complete documentation and cleanup. Tasks: T-025 (user documentation), T-026 (API documentation), T-027 (performance benchmarks), T-028 (final validation), T-CLEANUP-APPROVAL (cleanup gate), cleanup tasks."
+    ],
+    "number": 5,
+    "properties": {},
+    "session_id": "",
+    "status": "available",
+    "title": "Documentation and Cleanup",
+    "version": 2
+  }
+}

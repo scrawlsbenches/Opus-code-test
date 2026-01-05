@@ -1,0 +1,19 @@
+{
+  "_checksum": "c9d747af45d27519",
+  "_written_at": "2026-01-05T01:52:38.024083+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:52:38.010742+00:00",
+    "description": "CLI options: --help-syntax, --list-fields [entity_type], --list-functions, --explain [query]. Use SchemaRegistry for field discovery. Show ENUM choices for fields. Show function signatures with examples. Unit test: tests/unit/test_help_system.py.",
+    "entity_type": "task",
+    "id": "T-20260105-015238-e9996ba3",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:52:38.024021+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "T-022: Implement help system and schema introspection",
+    "version": 2
+  }
+}

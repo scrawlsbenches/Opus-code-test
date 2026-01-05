@@ -1,0 +1,19 @@
+{
+  "_checksum": "dc3d02087b12f5c7",
+  "_written_at": "2026-01-05T01:53:48.682775+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:53:48.670760+00:00",
+    "description": "Developer API documentation. Include: parse() and execute() functions, AST node types, FunctionRegistry usage, how to add custom functions. Location: docs/dev/expression-api.md.",
+    "entity_type": "task",
+    "id": "T-20260105-015348-4a6b6a0a",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:53:48.682706+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "docs"
+    },
+    "status": "pending",
+    "title": "T-026: Write API documentation",
+    "version": 2
+  }
+}

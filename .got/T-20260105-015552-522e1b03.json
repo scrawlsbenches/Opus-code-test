@@ -1,0 +1,20 @@
+{
+  "_checksum": "6944f7154182a28e",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T01:55:59.722288+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:55:52.635316+00:00",
+    "description": "Security review backlog for Sprint 2. Track security findings during parser and executor implementation. Review: safe expression evaluation, no code injection vectors, proper escaping.",
+    "entity_type": "task",
+    "id": "T-20260105-015552-522e1b03",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:55:52.635323+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "security"
+    },
+    "status": "pending",
+    "title": "SECURITY: Sprint-2 Security Review",
+    "version": 1
+  }
+}

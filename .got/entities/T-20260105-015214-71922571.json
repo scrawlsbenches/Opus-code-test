@@ -1,0 +1,19 @@
+{
+  "_checksum": "78f8702efda0cb70",
+  "_written_at": "2026-01-05T01:52:14.241012+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:52:14.229387+00:00",
+    "description": "Query optimizer that understands schema. Choose index scan vs full scan based on selectivity. Order joins by estimated result size. Push filters down before traversal. Generate QueryPlan for explain(). Unit test: tests/unit/test_optimizer.py.",
+    "entity_type": "task",
+    "id": "T-20260105-015214-71922571",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:52:14.240936+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "optimization"
+    },
+    "status": "pending",
+    "title": "T-019: Implement query optimizer",
+    "version": 2
+  }
+}

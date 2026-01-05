@@ -1,0 +1,20 @@
+{
+  "_checksum": "43b76398011191c7",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T01:54:04.379383+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:53:56.696664+00:00",
+    "description": "Benchmark expression queries vs direct Query builder calls. Target: within 2x of direct calls. Create scripts/benchmark_expression.py. Measure: parse time, execute time, memory usage. Test with real GoT data.",
+    "entity_type": "task",
+    "id": "T-20260105-015356-6a1d7627",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:53:56.696671+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "performance"
+    },
+    "status": "pending",
+    "title": "T-027: Create performance benchmarks",
+    "version": 1
+  }
+}

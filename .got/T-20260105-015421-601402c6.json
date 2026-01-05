@@ -1,0 +1,20 @@
+{
+  "_checksum": "32ed8c2974366eb8",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T01:54:42.747576+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:54:21.740610+00:00",
+    "description": "This task BLOCKS all cleanup tasks. Cleanup tasks include: removing debug code, removing TODO comments, removing unused imports, reformatting code, deleting temporary files. Cleanup tasks may only proceed AFTER this task is marked complete by a human reviewer who has verified: all implementation complete, all tests pass, coverage requirements met, no functionality will be lost.",
+    "entity_type": "task",
+    "id": "T-20260105-015421-601402c6",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:54:21.740619+00:00",
+    "priority": "critical",
+    "properties": {
+      "category": "arch"
+    },
+    "status": "pending",
+    "title": "T-CLEANUP-APPROVAL: Cleanup Approval Gate",
+    "version": 1
+  }
+}
