@@ -1,22 +1,24 @@
 {
-  "_checksum": "44853bd6a95cf23f",
-  "_written_at": "2026-01-05T19:14:31.292522+00:00",
+  "_checksum": "e1ff28375e2c6d7d",
+  "_written_at": "2026-01-05T19:14:53.716726+00:00",
   "data": {
     "created_at": "2026-01-05T19:14:03.954668+00:00",
     "description": "",
     "entity_type": "task",
     "id": "T-20260105-191403-720045ff",
     "metadata": {
+      "completed_at": "2026-01-05T19:14:53.698222+00:00",
       "started_at": "2026-01-05T19:14:31.273390+00:00",
-      "updated_at": "2026-01-05T19:14:31.273397+00:00"
+      "updated_at": "2026-01-05T19:14:53.698231+00:00"
     },
-    "modified_at": "2026-01-05T19:14:31.292441+00:00",
+    "modified_at": "2026-01-05T19:14:53.716651+00:00",
     "priority": "low",
     "properties": {
-      "category": "test"
+      "category": "test",
+      "retrospective": "CLI validation test completed successfully"
     },
-    "status": "in_progress",
+    "status": "completed",
     "title": "CLI validation test task",
-    "version": 3
+    "version": 4
   }
 }
