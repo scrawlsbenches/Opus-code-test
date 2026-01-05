@@ -18,6 +18,9 @@ from unittest.mock import MagicMock, patch, mock_open
 from dataclasses import dataclass
 from typing import Any, Dict, List
 
+# Mark all tests in this module as slow (disk-heavy)
+pytestmark = pytest.mark.slow
+
 
 class TestCommitExample:
     """Tests for CommitExample dataclass."""

@@ -19,6 +19,9 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
+# Mark all tests in this module as slow (disk-heavy)
+pytestmark = pytest.mark.slow
+
 from cortical.ml_experiments.utils import (
     compute_file_hash,
     compute_content_hash,

@@ -14,6 +14,9 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
+# Mark all tests in this module as slow (disk-heavy)
+pytestmark = pytest.mark.slow
+
 from cortical.got import GoTManager
 from cortical.got.query_builder import Query
 from cortical.core.bootstrap import create_container

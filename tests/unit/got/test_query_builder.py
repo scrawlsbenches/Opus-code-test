@@ -14,6 +14,9 @@ from pathlib import Path
 from typing import Dict, Any, List
 from collections import defaultdict
 
+# Mark all tests in this module as slow (disk-heavy)
+pytestmark = pytest.mark.slow
+
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 

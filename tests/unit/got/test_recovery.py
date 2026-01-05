@@ -8,6 +8,9 @@ import json
 import pytest
 from pathlib import Path
 
+# Mark all tests in this module as slow (disk-heavy)
+pytestmark = pytest.mark.slow
+
 from cortical.got import (
     TransactionManager,
     Task,

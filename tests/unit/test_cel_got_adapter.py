@@ -12,6 +12,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict
 
+# Mark all tests in this module as slow (disk-heavy)
+pytestmark = pytest.mark.slow
+
 from cortical.cel.adapters.got import (
     GoTEventAdapter,
     GoTEntityAdapter,

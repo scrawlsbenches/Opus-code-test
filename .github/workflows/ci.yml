@@ -61,6 +61,17 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:  # Allow manual triggering
+    inputs:
+      run_ml_jobs:
+        description: 'Run ML data collection jobs'
+        required: false
+        default: 'false'
+        type: boolean
+      run_security_scan:
+        description: 'Run security scanning'
+        required: false
+        default: 'false'
+        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -532,32 +543,19 @@ jobs:
         path: coverage.xml
 
   # ==========================================================================
-  # Showcase (runs in parallel with all other jobs)
-  # Runs the full showcase demo - independent of test results
+  # Showcase - REMOVED from CI (runs on-demand via showcase.yml)
+  # Use: gh workflow run showcase.yml
   # ==========================================================================
-  showcase:
-    name: "🎭 Showcase Demo"
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-
-    - name: Run showcase
-      run: |
-        echo "=== Running Showcase Demo ==="
-        python showcase.py
 
   # ==========================================================================
-  # Security Scanning (runs in parallel with all other jobs)
+  # Security Scanning (on-demand only)
   # Static analysis and dependency scanning for security vulnerabilities
+  # Run with: gh workflow run ci.yml -f run_security_scan=true
   # ==========================================================================
   security-scan:
     name: "🔐 Security Scan"
     runs-on: ubuntu-latest
+    if: github.event.inputs.run_security_scan == 'true'
     steps:
     - uses: actions/checkout@v4
 
@@ -633,14 +631,15 @@ jobs:
         echo "Link check complete (informational only)"
 
   # ==========================================================================
-  # ML TestExpert Calibration: Post-Test Feedback
+  # ML TestExpert Calibration: Post-Test Feedback (on-demand only)
   # Processes test results to calibrate TestExpert confidence predictions
+  # Run with: gh workflow run ci.yml -f run_ml_jobs=true
   # ==========================================================================
   ml-test-calibration:
     name: "🎓 ML TestExpert Calibration"
     runs-on: ubuntu-latest
     needs: [unit-tests, integration-tests]
-    if: always()  # Run even if tests fail (failures are valuable calibration data)
+    if: always() && github.event.inputs.run_ml_jobs == 'true'
     continue-on-error: true  # Non-blocking - don't fail CI if calibration fails
     steps:
     - uses: actions/checkout@v4
@@ -721,14 +720,15 @@ jobs:
         fi
 
   # ==========================================================================
-  # ML Data Collection: CI Result Auto-Capture
+  # ML Data Collection: CI Result Auto-Capture (on-demand only)
   # Records test results for model training
+  # Run with: gh workflow run ci.yml -f run_ml_jobs=true
   # ==========================================================================
   ml-ci-capture:
     name: "📊 ML CI Capture"
     runs-on: ubuntu-latest
     needs: [coverage-report]
-    if: always()  # Run even if tests fail
+    if: always() && github.event.inputs.run_ml_jobs == 'true'
     steps:
     - uses: actions/checkout@v4
       with:
@@ -762,14 +762,15 @@ jobs:
         echo "=== ML CI Capture Complete ==="
 
   # ==========================================================================
-  # ML Data Collection: Stats Report
+  # ML Data Collection: Stats Report (on-demand only)
   # Shows current progress toward ML training data goals
+  # Run with: gh workflow run ci.yml -f run_ml_jobs=true
   # ==========================================================================
   ml-stats-report:
     name: "📈 ML Stats Report"
     runs-on: ubuntu-latest
     needs: [ml-ci-capture]
-    if: always()  # Run even if other jobs fail
+    if: always() && github.event.inputs.run_ml_jobs == 'true'
     steps:
     - uses: actions/checkout@v4
       with:

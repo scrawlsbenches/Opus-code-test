@@ -11,6 +11,9 @@ from unittest.mock import MagicMock, patch, mock_open, call
 from argparse import Namespace
 from pathlib import Path
 
+# Mark all tests in this module as slow (disk-heavy)
+pytestmark = pytest.mark.slow
+
 from cortical.got.cli.backup import (
     cmd_backup_create,
     cmd_backup_list,
