@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "entity_type": "knowledge_transfer",
+  "data": {
+    "id": "KT-20260105-003332",
+    "entity_type": "knowledge_transfer",
+    "version": 1,
+    "created_at": "2026-01-05T00:33:32.930583",
+    "modified_at": "2026-01-05T00:33:32.930587",
+    "title": "GoT Query System Design Review Session",
+    "session_id": "",
+    "session_date": "",
+    "summary": "## Session Summary\n\nSenior engineering consultation reviewing `docs/design/got-query-audit-and-design.md` (v2.8).\n\n### Key Decisions Made\n\n1. **Grammar: SQL Compatibility**\n   - NOT IN / NOT LIKE follow SQL standard (compound operators)\n   - Operator precedence matches SQL: NOT > comparisons > AND > OR\n   - Added \"Design Intent\" section to Appendix B with examples\n\n2. **Testing Strategy: DI Container Approach**\n   - Replaced proposed InMemoryGoTFacade with DI container pattern\n   - Use `create_container(got_dir=tmp_path)` for test isolation\n   - Child containers for component overrides\n   - InMemoryStore deferred (tmp_path sufficient for now)\n\n3. **T-001-A: String-Based Dispatch**\n   - Critical finding: EntityType enum only covers 5 of 12 entity types\n   - Must use string-based dispatch with SchemaRegistry validation\n   - Implementation hints updated with code examples\n\n4. **Security: Sprint Gate Pattern**\n   - Create security review task at START of each sprint\n   - Filter eval/exec patterns before parsing\n   - Read-only API by design\n\n5. **CLAUDE.md Updates**\n   - Added \"Senior Engineering Consultation & Design Review\" methodology\n   - Added \"Search Before Creating (MANDATORY)\" principle\n\n### CDG DI/IoC Discovery\n\nDuring review, discovered that DI infrastructure was recently added:\n- `cortical/common/container.py` - Container implementation\n- `cortical/core/bootstrap.py` - Application wiring\n- `cortical/core/modules/got_module.py` - GoT service registration\n- TransactionManager now accepts injectable store, wal, lock\n\nThis resolved our original concern about hardcoded CDGStore creation.\n\n### Design Document Status\n\n- Version: 2.8\n- Status: DRAFT - Under Review\n- All major issues addressed\n- Ready for final approval decision\n\n### Files Modified\n\n- `docs/design/got-query-audit-and-design.md` (multiple updates)\n- `docs/design/T-001-A-validation-report.md` (new - deep inspection)\n- `docs/design/T-001-A-validation-summary.txt` (new)\n- `CLAUDE.md` (design review methodology, search before creating)\n\n### Open Items for Next Session\n\n1. Final approval decision on design document\n2. CDG reminder: Consider formal StorageProtocol interface for future InMemoryStore",
+    "sections": {},
+    "code_refs": [],
+    "related_handoffs": [],
+    "related_tasks": [],
+    "related_decisions": [],
+    "source_file": null,
+    "tags": [],
+    "status": "draft",
+    "properties": {}
+  }
+}
