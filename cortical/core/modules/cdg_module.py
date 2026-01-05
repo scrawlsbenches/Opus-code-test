@@ -39,6 +39,9 @@ class CDGConfig:
     fsync_on_commit: bool = True
     """Force fsync on commit for durability."""
 
+    use_memory: bool = False
+    """Use in-memory storage instead of disk (for testing)."""
+
 
 class CDGModule(ContainerModule):
     """
@@ -48,25 +51,31 @@ class CDGModule(ContainerModule):
     infrastructure used by GoT and other higher-level systems.
     """
 
-    def __init__(self, config: Optional[CDGConfig] = None, got_dir: Optional[Path] = None):
+    def __init__(
+        self,
+        config: Optional[CDGConfig] = None,
+        got_dir: Optional[Path] = None,
+        use_memory: bool = False,
+    ):
         """
         Initialize CDG module.
 
         Args:
             config: CDG configuration (preferred)
             got_dir: Shorthand for base_dir (creates default config)
+            use_memory: Use in-memory storage (for testing)
         """
         if config is not None:
             self.config = config
         elif got_dir is not None:
-            self.config = CDGConfig(base_dir=got_dir)
+            self.config = CDGConfig(base_dir=got_dir, use_memory=use_memory)
         else:
             # Default to .got in current directory
-            self.config = CDGConfig(base_dir=Path(".got"))
+            self.config = CDGConfig(base_dir=Path(".got"), use_memory=use_memory)
 
     def register(self, container: Container) -> None:
         """Register CDG services with the container."""
-        from cortical.cdg.storage import CDGStore
+        from cortical.cdg.storage import CDGStore, InMemoryStore
         from cortical.cdg.wal import CDGWALManager
         from cortical.cdg.transaction_manager import CDGTransactionManager
         from cortical.cdg.recovery import CDGRecoveryManager
@@ -79,35 +88,51 @@ class CDGModule(ContainerModule):
         internal_config = CDGInternalConfig()
         container.register_instance(CDGInternalConfig, internal_config)
 
-        # Register factory for CDGStore (needs path)
-        def create_store() -> CDGStore:
-            entities_dir = self.config.base_dir / "entities"
-            entities_dir.mkdir(parents=True, exist_ok=True)
-            return CDGStore(entities_dir, config=internal_config)
+        # Register factory for store (CDGStore or InMemoryStore)
+        if self.config.use_memory:
+            # In-memory storage for fast testing
+            def create_store() -> InMemoryStore:
+                return InMemoryStore(config=internal_config)
 
-        container.register_factory("cdg_store", create_store)
+            container.register_factory("cdg_store", create_store)
 
-        # Register factory for WAL
-        def create_wal() -> CDGWALManager:
-            wal_dir = self.config.base_dir / "wal"
-            wal_dir.mkdir(parents=True, exist_ok=True)
-            return CDGWALManager(wal_dir, config=internal_config)
+            # Register InMemoryStore as the CDGStore type (duck typing)
+            container.register(
+                CDGStore,
+                lambda: container.create("cdg_store"),
+                lifecycle=Lifecycle.SINGLETON,
+            )
+        else:
+            # Disk-based storage for production
+            def create_store() -> CDGStore:
+                entities_dir = self.config.base_dir / "entities"
+                entities_dir.mkdir(parents=True, exist_ok=True)
+                return CDGStore(entities_dir, config=internal_config)
 
-        container.register_factory("cdg_wal", create_wal)
+            container.register_factory("cdg_store", create_store)
 
-        # Register CDGStore as singleton using factory
-        container.register(
-            CDGStore,
-            lambda: container.create("cdg_store"),
-            lifecycle=Lifecycle.SINGLETON,
-        )
+            # Register CDGStore as singleton using factory (disk mode)
+            container.register(
+                CDGStore,
+                lambda: container.create("cdg_store"),
+                lifecycle=Lifecycle.SINGLETON,
+            )
 
-        # Register WAL as singleton using factory
-        container.register(
-            CDGWALManager,
-            lambda: container.create("cdg_wal"),
-            lifecycle=Lifecycle.SINGLETON,
-        )
+        # Register factory for WAL (skip in memory mode - no WAL needed)
+        if not self.config.use_memory:
+            def create_wal() -> CDGWALManager:
+                wal_dir = self.config.base_dir / "wal"
+                wal_dir.mkdir(parents=True, exist_ok=True)
+                return CDGWALManager(wal_dir, config=internal_config)
+
+            container.register_factory("cdg_wal", create_wal)
+
+            # Register WAL as singleton using factory
+            container.register(
+                CDGWALManager,
+                lambda: container.create("cdg_wal"),
+                lifecycle=Lifecycle.SINGLETON,
+            )
 
         # Register transaction manager factory
         def create_tx_manager() -> CDGTransactionManager:
