@@ -370,6 +370,75 @@ that you understand the tradeoff.
 
 ---
 
+## Search Before Creating (MANDATORY)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    SEARCH BEFORE CREATING                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  Before creating ANY new component, fixture, utility, or pattern:       │
+│                                                                          │
+│  1. SEARCH THE CODEBASE                                                 │
+│     - Does this functionality already exist?                            │
+│     - Is there a similar pattern I can extend?                          │
+│     - Check tests/conftest.py for existing fixtures                     │
+│     - Check cortical/common/ for shared utilities                       │
+│     - Check cortical/core/ for infrastructure                           │
+│                                                                          │
+│  2. CHECK RECENT CHANGES                                                │
+│     - git log --oneline -20 (what was recently added?)                  │
+│     - Someone may have just solved this problem                         │
+│                                                                          │
+│  3. ASK BEFORE DUPLICATING                                              │
+│     - If unsure, ask: "Does X already exist?"                           │
+│     - Duplication is technical debt                                     │
+│                                                                          │
+│  EXAMPLES OF WHAT TO SEARCH FOR:                                        │
+│  ───────────────────────────────                                        │
+│  - Test fixtures → tests/conftest.py                                    │
+│  - DI/IoC patterns → cortical/core/bootstrap.py                         │
+│  - Storage backends → cortical/cdg/storage.py                           │
+│  - Entity factories → cortical/got/versioned_store.py                   │
+│  - Shared utilities → cortical/common/                                  │
+│  - CLI patterns → cortical/got/cli/                                     │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Search Commands
+
+```bash
+# Find existing implementations
+grep -r "class.*Store" cortical/
+grep -r "def.*fixture" tests/
+grep -r "@pytest.fixture" tests/conftest.py
+
+# Check for similar patterns
+python scripts/got_utils.py query "category = 'feature' AND status = 'completed'"
+
+# Recent additions
+git log --oneline --all -20
+git diff main --stat
+```
+
+### Why This Matters
+
+| Without Search | With Search |
+|----------------|-------------|
+| Duplicate fixtures in every test file | Shared fixtures in conftest.py |
+| Multiple "in-memory" implementations | One injectable storage backend |
+| Inconsistent patterns | Consistent architecture |
+| Wasted effort | Leverage existing work |
+| Technical debt accumulation | Clean, maintainable code |
+
+**Real Example (2026-01-04):**
+We almost created `InMemoryGoTFacade` for testing when the DI container
+with `create_container(got_dir=tmp_path)` already provided test isolation.
+A quick search of `cortical/core/bootstrap.py` would have revealed this.
+
+---
+
 ## Container: First-Class Citizen (MANDATORY)
 
 ```
