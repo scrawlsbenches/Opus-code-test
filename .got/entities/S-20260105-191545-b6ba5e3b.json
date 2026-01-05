@@ -1,0 +1,23 @@
+{
+  "_checksum": "191e1f92f52d8728",
+  "_written_at": "2026-01-05T19:15:46.005501+00:00",
+  "data": {
+    "created_at": "2026-01-05T19:15:45.988877+00:00",
+    "entity_type": "sprint",
+    "epic_id": "",
+    "goals": [],
+    "id": "S-20260105-191545-b6ba5e3b",
+    "isolation": [],
+    "metadata": {},
+    "modified_at": "2026-01-05T19:15:46.005426+00:00",
+    "notes": [
+      "Testing sprint commands"
+    ],
+    "number": null,
+    "properties": {},
+    "session_id": "",
+    "status": "available",
+    "title": "CLI Validation Test Sprint",
+    "version": 2
+  }
+}
