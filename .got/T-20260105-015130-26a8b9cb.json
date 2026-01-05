@@ -1,0 +1,20 @@
+{
+  "_checksum": "3d695b928cf56070",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T01:52:14.154062+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:51:30.012598+00:00",
+    "description": "Validation gate for Sprint 3. All graph functions work: connected_to, path, ancestors, descendants, all_dependencies, cycle_detect. Aggregations work. Function help system works. Create scripts/validate_sprint3.sh. Coverage >= 90%.",
+    "entity_type": "task",
+    "id": "T-20260105-015130-26a8b9cb",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:51:30.012605+00:00",
+    "priority": "critical",
+    "properties": {
+      "category": "test"
+    },
+    "status": "pending",
+    "title": "T-018: Sprint-3 validation gate - functions and graph operations",
+    "version": 1
+  }
+}
