@@ -1,0 +1,18 @@
+{
+  "_checksum": "4dc09e9e2b4bd71e",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T18:24:22.830101+00:00",
+  "data": {
+    "confidence": 1.0,
+    "created_at": "2026-01-05T18:24:17.062554+00:00",
+    "edge_type": "DOCUMENTS",
+    "entity_type": "edge",
+    "id": "E-KT-20260103-084006-T-20260103-083020-b5853c69-DOCUMENTS",
+    "modified_at": "2026-01-05T18:24:17.062564+00:00",
+    "reason": "KT documents task (migration fix)",
+    "source_id": "KT-20260103-084006",
+    "target_id": "T-20260103-083020-b5853c69",
+    "version": 1,
+    "weight": 1.0
+  }
+}
