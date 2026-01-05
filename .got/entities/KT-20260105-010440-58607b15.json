@@ -1,0 +1,26 @@
+{
+  "_checksum": "12a3b70afdbae226",
+  "_written_at": "2026-01-05T01:04:41.025255+00:00",
+  "data": {
+    "code_refs": [],
+    "created_at": "2026-01-05T01:04:40.651713+00:00",
+    "entity_type": "knowledge_transfer",
+    "id": "KT-20260105-010440-58607b15",
+    "modified_at": "2026-01-05T01:04:41.025134+00:00",
+    "properties": {},
+    "related_decisions": [],
+    "related_handoffs": [],
+    "related_tasks": [],
+    "sections": {},
+    "session_date": "",
+    "session_id": "",
+    "source_file": null,
+    "status": "draft",
+    "summary": "Completed senior engineering design review of GoT Query System, fixed two KT checksum bypass bugs, added 4 behavioral guardrail tests. Design document is DRAFT - ready for final approval pass.",
+    "tags": [
+      "handoff,design-review,bugfix,tests"
+    ],
+    "title": "Session Handoff: Design Review & KT Bug Fixes",
+    "version": 3
+  }
+}
