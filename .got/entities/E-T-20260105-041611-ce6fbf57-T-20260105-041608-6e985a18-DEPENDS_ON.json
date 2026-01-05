@@ -1,0 +1,17 @@
+{
+  "_checksum": "38302dbeea216c0b",
+  "_written_at": "2026-01-05T04:16:31.849371+00:00",
+  "data": {
+    "confidence": 1.0,
+    "created_at": "2026-01-05T04:16:31.838435+00:00",
+    "edge_type": "DEPENDS_ON",
+    "entity_type": "edge",
+    "id": "E-T-20260105-041611-ce6fbf57-T-20260105-041608-6e985a18-DEPENDS_ON",
+    "modified_at": "2026-01-05T04:16:31.849315+00:00",
+    "reason": "Natural language translator needs function calls to work",
+    "source_id": "T-20260105-041611-ce6fbf57",
+    "target_id": "T-20260105-041608-6e985a18",
+    "version": 2,
+    "weight": 1.0
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "_checksum": "34d5856c5cdfac11",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T04:16:31.763419+00:00",
+  "data": {
+    "confidence": 1.0,
+    "created_at": "2026-01-05T04:16:30.694028+00:00",
+    "edge_type": "DEPENDS_ON",
+    "entity_type": "edge",
+    "id": "E-T-20260105-041608-6e985a18-T-20260105-041606-d8fce554-DEPENDS_ON",
+    "modified_at": "2026-01-05T04:16:30.694038+00:00",
+    "reason": "Mixed expressions require top-level FunctionCall handling first",
+    "source_id": "T-20260105-041608-6e985a18",
+    "target_id": "T-20260105-041606-d8fce554",
+    "version": 1,
+    "weight": 1.0
+  }
+}
