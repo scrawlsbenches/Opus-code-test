@@ -278,6 +278,29 @@ RELATIONSHIP_RULES: Dict[str, FrozenSet[Tuple[str, str]]] = {
         ("task", "decision"),
         ("task", "task"),
     }),
+
+    # DOCUMENTS: Knowledge transfer documentation relationship
+    # KnowledgeTransfer documents the work done on Tasks or Decisions
+    "DOCUMENTS": frozenset({
+        ("knowledge_transfer", "task"),
+        ("knowledge_transfer", "decision"),
+    }),
+
+    # CONTINUES: Continuation relationship for knowledge transfer chains
+    # Forms bidirectional chains: KT1 → Handoff1 → KT2 → Handoff2 → KT3
+    # - KT → Handoff: "KT's work continues via this handoff" (when finalizing)
+    # - Handoff → KT: "Handoff continues into this KT" (when picking up)
+    # Both directions needed for get_kt_history() to trace full chain
+    "CONTINUES": frozenset({
+        ("knowledge_transfer", "handoff"),  # KT produces handoff for continuation
+        ("handoff", "knowledge_transfer"),  # Handoff continues into new KT
+    }),
+
+    # FAILED_ATTEMPT: Records a failed approach to a task
+    # Failure entity tracks what didn't work to prevent repeating mistakes
+    "FAILED_ATTEMPT": frozenset({
+        ("failure", "task"),
+    }),
 }
 
 # Edge types that allow self-references (A→A)
@@ -579,6 +602,7 @@ def infer_entity_type_from_id(entity_id: str) -> Optional[str]:
         ("PP-", "persona_profile"),
         ("OP-", "orchestration_plan"),
         ("EX-", "execution"),
+        ("KT-", "knowledge_transfer"),  # Knowledge transfer entities
         ("T-", "task"),
         ("D-", "decision"),
         ("E-", "edge"),

@@ -1,0 +1,27 @@
+{
+  "_checksum": "ea3996683a45f3f5",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T17:55:47.196241+00:00",
+  "data": {
+    "code_refs": [],
+    "created_at": "2026-01-05T12:08:36.529835+00:00",
+    "entity_type": "knowledge_transfer",
+    "id": "KT-20260105-120836-6296ad4a",
+    "modified_at": "2026-01-05T17:55:02.117019+00:00",
+    "properties": {},
+    "related_decisions": [],
+    "related_handoffs": [],
+    "related_tasks": [
+      "T-20251222-204137-56f13aae"
+    ],
+    "sections": {},
+    "session_date": "",
+    "session_id": "",
+    "source_file": null,
+    "status": "draft",
+    "summary": "Fixed critical edge semantics bugs in graph functions, added 20 behavioral tests, implemented missing exists() and type_of() functions, created outstanding issues tracker.",
+    "tags": [],
+    "title": "Session: Graph Function Fixes & Behavioral Tests",
+    "version": 4
+  }
+}

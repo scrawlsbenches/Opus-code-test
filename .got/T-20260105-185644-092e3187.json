@@ -1,0 +1,20 @@
+{
+  "_checksum": "a1eb27dd65368abf",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T18:57:00.778989+00:00",
+  "data": {
+    "created_at": "2026-01-05T18:56:44.987102+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260105-185644-092e3187",
+    "metadata": {},
+    "modified_at": "2026-01-05T18:56:44.987113+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "test"
+    },
+    "status": "pending",
+    "title": "Validate KT-Handoff edge chain",
+    "version": 1
+  }
+}

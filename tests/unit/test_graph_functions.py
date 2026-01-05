@@ -66,17 +66,19 @@ def manager(tmp_path: Path) -> GoTManager:
         task_ids['t9'] = tx.create_task("Task 9", priority="low").id
 
     # Create edges
+    # Edge semantic: source DEPENDS_ON target means "source depends on target"
+    # Diagram arrows show workflow order (T2 before T3), so T3 depends on T2
     with manager.transaction() as tx:
-        # T2 --> T3 --> T4
-        tx.add_edge(task_ids['t2'], task_ids['t3'], "DEPENDS_ON")
-        tx.add_edge(task_ids['t3'], task_ids['t4'], "DEPENDS_ON")
-        # T2 --> T5
-        tx.add_edge(task_ids['t2'], task_ids['t5'], "DEPENDS_ON")
-        # T3 --> T6
-        tx.add_edge(task_ids['t3'], task_ids['t6'], "DEPENDS_ON")
-        # T7 <--> T8 (cycle)
-        tx.add_edge(task_ids['t7'], task_ids['t8'], "DEPENDS_ON")
+        # T2 --> T3 --> T4 (T3 depends on T2, T4 depends on T3)
+        tx.add_edge(task_ids['t3'], task_ids['t2'], "DEPENDS_ON")
+        tx.add_edge(task_ids['t4'], task_ids['t3'], "DEPENDS_ON")
+        # T2 --> T5 (T5 depends on T2)
+        tx.add_edge(task_ids['t5'], task_ids['t2'], "DEPENDS_ON")
+        # T3 --> T6 (T6 depends on T3)
+        tx.add_edge(task_ids['t6'], task_ids['t3'], "DEPENDS_ON")
+        # T7 <--> T8 (cycle: each depends on the other)
         tx.add_edge(task_ids['t8'], task_ids['t7'], "DEPENDS_ON")
+        tx.add_edge(task_ids['t7'], task_ids['t8'], "DEPENDS_ON")
 
     # Store task_ids as attribute for test access
     manager.test_task_ids = task_ids

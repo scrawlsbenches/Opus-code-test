@@ -2202,7 +2202,12 @@ class TransactionalGoTAdapter:
         context: Dict[str, Any],
         instructions: str = "",
     ) -> str:
-        """Initiate a handoff using TX backend."""
+        """Initiate a handoff using TX backend.
+
+        Creates both:
+        - Handoff entity
+        - TRANSFERS edge from task to handoff for graph connectivity
+        """
         handoff = self._manager.initiate_handoff(
             source_agent=source_agent,
             target_agent=target_agent,
@@ -2210,6 +2215,13 @@ class TransactionalGoTAdapter:
             instructions=instructions,
             context=context,
         )
+
+        # Create TRANSFERS edge for graph connectivity (Task transfers to Handoff)
+        if task_id:
+            edge = self.add_edge(task_id, handoff.id, "TRANSFERS", weight=1.0)
+            if edge is None:
+                logger.warning(f"Failed to create TRANSFERS edge from {task_id} to {handoff.id}")
+
         return handoff.id
 
     def accept_handoff(
@@ -2670,7 +2682,12 @@ class TransactionalGoTAdapter:
         return self._update_kt_entity(kt_id, {'sections': sections})
 
     def link_kt_handoff(self, kt_id: str, handoff_id: str) -> bool:
-        """Link a knowledge transfer to a handoff entity."""
+        """Link a knowledge transfer to a handoff entity.
+
+        Creates both:
+        - Embedded reference in related_handoffs array
+        - CONTINUES edge for graph connectivity
+        """
         kt = self.get_knowledge_transfer(kt_id)
         if not kt:
             return False
@@ -2679,10 +2696,27 @@ class TransactionalGoTAdapter:
         if handoff_id not in related_handoffs:
             related_handoffs.append(handoff_id)
 
-        return self._update_kt_entity(kt_id, {'related_handoffs': related_handoffs})
+        # Update embedded reference
+        if not self._update_kt_entity(kt_id, {'related_handoffs': related_handoffs}):
+            return False
+
+        # Create CONTINUES edge for graph connectivity
+        # Semantics: Handoff continues INTO KnowledgeTransfer (handoff is source)
+        # Direction: handoff_id → kt_id
+        edge = self.add_edge(handoff_id, kt_id, "CONTINUES", weight=1.0)
+        if edge is None:
+            logger.warning(f"Failed to create CONTINUES edge from {handoff_id} to {kt_id}")
+            return False  # Edge creation is essential for graph connectivity
+
+        return True
 
     def link_kt_task(self, kt_id: str, task_id: str) -> bool:
-        """Link a knowledge transfer to a task entity."""
+        """Link a knowledge transfer to a task entity.
+
+        Creates both:
+        - Embedded reference in related_tasks array
+        - DOCUMENTS edge for graph connectivity
+        """
         kt = self.get_knowledge_transfer(kt_id)
         if not kt:
             return False
@@ -2691,10 +2725,25 @@ class TransactionalGoTAdapter:
         if task_id not in related_tasks:
             related_tasks.append(task_id)
 
-        return self._update_kt_entity(kt_id, {'related_tasks': related_tasks})
+        # Update embedded reference
+        if not self._update_kt_entity(kt_id, {'related_tasks': related_tasks}):
+            return False
+
+        # Create DOCUMENTS edge for graph connectivity (KT documents Task)
+        edge = self.add_edge(kt_id, task_id, "DOCUMENTS", weight=1.0)
+        if edge is None:
+            logger.warning(f"Failed to create DOCUMENTS edge from {kt_id} to {task_id}")
+            return False  # Edge creation is essential for graph connectivity
+
+        return True
 
     def link_kt_decision(self, kt_id: str, decision_id: str) -> bool:
-        """Link a knowledge transfer to a decision entity."""
+        """Link a knowledge transfer to a decision entity.
+
+        Creates both:
+        - Embedded reference in related_decisions array
+        - DOCUMENTS edge for graph connectivity
+        """
         kt = self.get_knowledge_transfer(kt_id)
         if not kt:
             return False
@@ -2703,7 +2752,17 @@ class TransactionalGoTAdapter:
         if decision_id not in related_decisions:
             related_decisions.append(decision_id)
 
-        return self._update_kt_entity(kt_id, {'related_decisions': related_decisions})
+        # Update embedded reference
+        if not self._update_kt_entity(kt_id, {'related_decisions': related_decisions}):
+            return False
+
+        # Create DOCUMENTS edge for graph connectivity (KT documents Decision)
+        edge = self.add_edge(kt_id, decision_id, "DOCUMENTS", weight=1.0)
+        if edge is None:
+            logger.warning(f"Failed to create DOCUMENTS edge from {kt_id} to {decision_id}")
+            return False  # Edge creation is essential for graph connectivity
+
+        return True
 
     def list_knowledge_transfers(
         self,
@@ -2863,20 +2922,26 @@ class TransactionalGoTAdapter:
         if handoff_to:
             try:
                 # Create a handoff entity for continuation
+                # NOTE: We pass empty task_id because TRANSFERS is for Task→Handoff only
                 handoff_id = self.initiate_handoff(
                     source_agent="main",
                     target_agent=handoff_to,
-                    task_id=kt_id,  # Link to KT instead of task
+                    task_id="",  # No task - this is a KT continuation handoff
                     context={
                         "kt_title": kt.get('title', ''),
                         "kt_summary": kt.get('summary', ''),
                         "session_id": kt.get('session_id', ''),
+                        "source_kt_id": kt_id,  # Store originating KT for reference
                         "type": "knowledge_transfer_continuation",
                     },
                     instructions=instructions,
                 )
 
-                # Add CONTINUES edge from KT to Handoff
+                # Create CONTINUES edge: KT → Handoff (forward direction)
+                # This is the "outgoing" half of the continuation chain:
+                #   KT1 --CONTINUES--> Handoff1 --CONTINUES--> KT2 --CONTINUES--> Handoff2
+                # The "incoming" half (Handoff→KT) is created by link_kt_handoff()
+                # when a new KT picks up this handoff.
                 edge = self.add_edge(kt_id, handoff_id, "CONTINUES", weight=1.0)
                 if edge is None:
                     logger.warning(f"Failed to create CONTINUES edge from {kt_id} to {handoff_id}")

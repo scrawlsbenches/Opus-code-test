@@ -1,0 +1,18 @@
+{
+  "_checksum": "37834367459a7e9a",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T18:34:19.816786+00:00",
+  "data": {
+    "confidence": 1.0,
+    "created_at": "2026-01-05T18:25:17.031425+00:00",
+    "edge_type": "TRANSFERS",
+    "entity_type": "edge",
+    "id": "E-T-20251222-145525-445df343-H-20251224-085257-4115db7e-TRANSFERS",
+    "modified_at": "2026-01-05T18:25:17.031434+00:00",
+    "reason": "Handoff from task (migration fix)",
+    "source_id": "T-20251222-145525-445df343",
+    "target_id": "H-20251224-085257-4115db7e",
+    "version": 1,
+    "weight": 1.0
+  }
+}

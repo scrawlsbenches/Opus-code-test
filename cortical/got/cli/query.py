@@ -150,25 +150,64 @@ def cmd_validate(args, manager: "TransactionalGoTAdapter") -> int:
         by_status[status] = by_status.get(status, 0) + 1
 
     # Check for orphan nodes (no edges)
-    # Only count edge references that point to existing nodes
+    # Build comprehensive set of ALL entity IDs (not just graph.nodes which only has TASK/DECISION)
     all_node_ids = set(manager.graph.nodes.keys())
+
+    # Add Sprint IDs - stored separately from graph.nodes
+    try:
+        for sprint in manager.list_sprints():
+            all_node_ids.add(sprint.id if hasattr(sprint, 'id') else sprint.get('id'))
+    except Exception:
+        pass  # Sprint listing may fail, continue with what we have
+
+    # Add Epic IDs - stored separately from graph.nodes
+    try:
+        for epic in manager.list_epics():
+            all_node_ids.add(epic.id if hasattr(epic, 'id') else epic.get('id'))
+    except Exception:
+        pass
+
+    # Add Handoff IDs - stored separately from graph.nodes
+    try:
+        for handoff in manager.list_handoffs():
+            all_node_ids.add(handoff.get('id') if isinstance(handoff, dict) else handoff.id)
+    except Exception:
+        pass
+
+    # Add KnowledgeTransfer IDs - stored separately from graph.nodes
+    try:
+        for kt in manager.list_knowledge_transfers():
+            all_node_ids.add(kt.get('id') if isinstance(kt, dict) else kt.id)
+    except Exception:
+        pass
+
     nodes_with_edges = set()
     orphan_edges = []  # Edges pointing to non-existent entities
 
-    for edge in manager.graph.edges:
-        # Create edge identifier from source->target (ThoughtEdge has no .id attribute)
-        edge_repr = f"{edge.source_id}->{edge.target_id}"
-        if edge.source_id in all_node_ids:
-            nodes_with_edges.add(edge.source_id)
+    # CRITICAL: Use list_edges() to get ALL edges from disk, not graph.edges which may be incomplete
+    # Bug fix: graph.edges only contains edges loaded in memory, missing ~50 edges
+    all_edges = manager.list_edges()
+    for edge in all_edges:
+        # Handle both Edge objects and dicts
+        source_id = edge.source_id if hasattr(edge, 'source_id') else edge.get('source_id')
+        target_id = edge.target_id if hasattr(edge, 'target_id') else edge.get('target_id')
+
+        # Create edge identifier from source->target
+        edge_repr = f"{source_id}->{target_id}"
+        if source_id in all_node_ids:
+            nodes_with_edges.add(source_id)
         else:
-            orphan_edges.append((edge_repr, "source", edge.source_id))
-        if edge.target_id in all_node_ids:
-            nodes_with_edges.add(edge.target_id)
+            orphan_edges.append((edge_repr, "source", source_id))
+        if target_id in all_node_ids:
+            nodes_with_edges.add(target_id)
         else:
-            orphan_edges.append((edge_repr, "target", edge.target_id))
+            orphan_edges.append((edge_repr, "target", target_id))
 
     orphan_count = len(all_node_ids - nodes_with_edges)
-    orphan_rate = orphan_count / max(total_nodes, 1) * 100
+    # Bug fix: Use all_node_ids count as denominator, not just graph.nodes (which only has Tasks+Decisions)
+    # Previously: orphan_rate = orphan_count / max(total_nodes, 1) * 100  # Wrong: 452 denominator
+    total_all_entities = len(all_node_ids)
+    orphan_rate = orphan_count / max(total_all_entities, 1) * 100
 
     # Check orphan rate (warning if high, but not critical)
     if orphan_rate > 50:

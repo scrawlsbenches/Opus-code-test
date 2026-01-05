@@ -108,46 +108,49 @@ def cmd_edge_list(args, manager: "TransactionalGoTAdapter") -> int:
 
 
 def cmd_edge_types(args, manager: "TransactionalGoTAdapter") -> int:
-    """Handle 'got edge types' command - show available edge types."""
-    print("\nAvailable Edge Types:")
+    """Handle 'got edge types' command - show available edge types.
+
+    Displays the 22 authoritative edge types from VALID_EDGE_TYPES.
+    These were consolidated in OI-002 resolution.
+    """
+    print("\nAvailable Edge Types (22 authoritative types):")
     print("=" * 60)
 
+    # Categories based on the authoritative VALID_EDGE_TYPES from cortical/got/types.py
     categories = {
-        "Semantic (meaning relationships)": [
-            ("REQUIRES", "A requires B to exist/function"),
-            ("ENABLES", "A makes B possible"),
-            ("CONFLICTS", "A and B cannot both be true/chosen"),
-            ("SUPPORTS", "A provides evidence for B"),
-            ("REFUTES", "A provides evidence against B"),
-            ("SIMILAR", "A and B share significant properties"),
-            ("CONTAINS", "A includes B as a component"),
-            ("CONTRADICTS", "A contradicts B"),
+        "Core Relationships": [
+            ("DEPENDS_ON", "Task A depends on Task B"),
+            ("BLOCKS", "Task A blocks Task B"),
+            ("CONTAINS", "Sprint contains Task, Epic contains Sprint"),
+            ("RELATES_TO", "General relationship"),
+            ("REQUIRES", "Hard requirement"),
+            ("IMPLEMENTS", "Task implements Decision"),
+            ("SUPERSEDES", "Entity replaces another"),
+            ("DERIVED_FROM", "Entity derived from another"),
         ],
-        "Temporal (time relationships)": [
-            ("PRECEDES", "A must happen before B"),
-            ("TRIGGERS", "A causes B to happen"),
-            ("BLOCKS", "A prevents B until resolved"),
+        "Hierarchical Relationships": [
+            ("PARENT_OF", "Hierarchical parent"),
+            ("CHILD_OF", "Hierarchical child"),
+            ("PART_OF", "Component of larger entity"),
         ],
-        "Epistemic (knowledge relationships)": [
-            ("ANSWERS", "A answers question B"),
-            ("RAISES", "A raises question B"),
-            ("EXPLORES", "A explores/investigates B"),
-            ("OBSERVES", "A observes/notices B"),
-            ("SUGGESTS", "A suggests B as possibility"),
+        "Reference & Semantic Relationships": [
+            ("REFERENCES", "Soft reference"),
+            ("CONTRADICTS", "Conflicting entities"),
+            ("JUSTIFIES", "Decision justifies Task"),
+            ("MOTIVATES", "Entity motivates another"),
+            ("CAUSED_BY", "Entity was caused by another"),
         ],
-        "Practical (work relationships)": [
-            ("IMPLEMENTS", "A implements concept/decision B"),
-            ("TESTS", "A tests/verifies B"),
-            ("DEPENDS_ON", "A needs B to be complete first"),
-            ("REFINES", "A refines/details B"),
-            ("MOTIVATES", "A motivates/justifies B"),
-            ("JUSTIFIES", "A justifies/rationalizes B"),
-            ("CAUSED_BY", "A was caused by B"),
+        "Workflow Relationships": [
+            ("TRANSFERS", "Task transfers to Handoff"),
+            ("PRODUCES", "Task produces Document/Artifact"),
+            ("DOCUMENTED_BY", "Task/Decision documented by Document"),
         ],
-        "Structural (organization relationships)": [
-            ("HAS_OPTION", "A (decision) has B as an option"),
-            ("HAS_ASPECT", "A has B as an aspect/dimension"),
-            ("PART_OF", "A is part of B"),
+        "Knowledge Transfer Relationships": [
+            ("DOCUMENTS", "KnowledgeTransfer documents Task/Decision"),
+            ("CONTINUES", "KnowledgeTransfer continues from Handoff"),
+        ],
+        "Failure Tracking": [
+            ("FAILED_ATTEMPT", "Failure record for a failed approach"),
         ],
     }
 
@@ -155,7 +158,9 @@ def cmd_edge_types(args, manager: "TransactionalGoTAdapter") -> int:
         print(f"\n{category}:")
         print("-" * 50)
         for type_name, description in types:
-            print(f"  {type_name:<15} {description}")
+            # Verify this type is actually in VALID_EDGE_TYPES
+            marker = "  " if type_name in VALID_EDGE_TYPES else "? "
+            print(f"{marker}{type_name:<15} {description}")
 
     print()
     return 0

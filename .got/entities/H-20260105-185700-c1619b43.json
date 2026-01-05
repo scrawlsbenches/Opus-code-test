@@ -1,0 +1,31 @@
+{
+  "_checksum": "6e9d142a2252bba7",
+  "_written_at": "2026-01-05T18:57:36.735218+00:00",
+  "data": {
+    "accepted_at": "2026-01-05T18:57:36.716796+00:00",
+    "artifacts": [],
+    "completed_at": "",
+    "context": {
+      "task_priority": "medium",
+      "task_status": "pending",
+      "task_title": "Validate KT-Handoff edge chain"
+    },
+    "created_at": "2026-01-05T18:57:00.852873+00:00",
+    "entity_type": "handoff",
+    "id": "H-20260105-185700-c1619b43",
+    "initiated_at": "2026-01-05T18:57:00.852890+00:00",
+    "instructions": "Continue KT-Handoff validation testing after initial edge creation",
+    "modified_at": "2026-01-05T18:57:36.735158+00:00",
+    "properties": {
+      "acknowledgment": "Accepted handoff for KT-Handoff validation"
+    },
+    "reject_reason": "",
+    "rejected_at": "",
+    "result": {},
+    "source_agent": "main",
+    "status": "accepted",
+    "target_agent": "validation-agent",
+    "task_id": "T-20260105-185644-092e3187",
+    "version": 3
+  }
+}
