@@ -1,0 +1,20 @@
+{
+  "_checksum": "d128b52e96689db2",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T01:54:50.935098+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:54:42.833055+00:00",
+    "description": "Remove all print() debug statements, commented-out debug code, verbose logging not needed in production. BLOCKED BY: T-CLEANUP-APPROVAL. Do not proceed until approval gate is complete.",
+    "entity_type": "task",
+    "id": "T-20260105-015442-6e99086b",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:54:42.833062+00:00",
+    "priority": "low",
+    "properties": {
+      "category": "refactor"
+    },
+    "status": "pending",
+    "title": "T-CLEANUP-001: Remove debug statements",
+    "version": 1
+  }
+}
