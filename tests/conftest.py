@@ -185,7 +185,7 @@ import shutil
 from pathlib import Path
 
 
-def _create_tx_manager(got_dir: Path, use_memory: bool = False):
+def _create_tx_manager(got_dir: Path, use_memory: bool = True):
     """
     Create TransactionManager via DI container.
 
@@ -194,7 +194,8 @@ def _create_tx_manager(got_dir: Path, use_memory: bool = False):
 
     Args:
         got_dir: Directory for GoT storage
-        use_memory: Use in-memory storage (fast, no disk I/O)
+        use_memory: Use in-memory storage (default: True for fast tests)
+                    Set to False for tests that need disk persistence.
 
     Returns:
         Fully configured TransactionManager
@@ -205,7 +206,7 @@ def _create_tx_manager(got_dir: Path, use_memory: bool = False):
     return container.resolve(TransactionManager)
 
 
-def _create_got_manager(got_dir: Path, use_memory: bool = False):
+def _create_got_manager(got_dir: Path, use_memory: bool = True):
     """
     Create GoTManager via DI container.
 
@@ -214,7 +215,8 @@ def _create_got_manager(got_dir: Path, use_memory: bool = False):
 
     Args:
         got_dir: Directory for GoT storage
-        use_memory: Use in-memory storage (fast, no disk I/O)
+        use_memory: Use in-memory storage (default: True for fast tests)
+                    Set to False for tests that need disk persistence.
 
     Returns:
         Fully configured GoTManager
@@ -225,7 +227,7 @@ def _create_got_manager(got_dir: Path, use_memory: bool = False):
     return container.resolve(GoTManager)
 
 
-def _create_container(got_dir: Path, use_memory: bool = False):
+def _create_container(got_dir: Path, use_memory: bool = True):
     """
     Create a DI container for GoT services.
 
@@ -233,7 +235,8 @@ def _create_container(got_dir: Path, use_memory: bool = False):
 
     Args:
         got_dir: Directory for GoT storage
-        use_memory: Use in-memory storage (fast, no disk I/O)
+        use_memory: Use in-memory storage (default: True for fast tests)
+                    Set to False for tests that need disk persistence.
 
     Returns:
         Configured Container instance

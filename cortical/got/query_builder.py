@@ -1407,6 +1407,17 @@ class Query(Generic[T]):
         import json
         from cortical.got.versioned_store import _got_entity_factory
 
+        # Use store's iter_entities if available (works with in-memory storage)
+        store = getattr(self._manager.tx_manager, 'store', None)
+        if store is not None and hasattr(store, 'iter_entities'):
+            entities = []
+            # Iterate all entities and filter by type
+            for entity in store.iter_entities():
+                if getattr(entity, 'entity_type', None) == entity_type:
+                    entities.append(entity)
+            return entities
+
+        # Fallback: scan disk directory
         entities_dir = self._manager.got_dir / "entities"
         if not entities_dir.exists():
             return []

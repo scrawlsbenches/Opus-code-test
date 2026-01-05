@@ -250,6 +250,61 @@ class GoTManager:
             self._query_api = QueryAPI(self)
         return self._query_api
 
+    def _iter_entities_by_prefix(self, prefix: str):
+        """
+        Iterate entities by ID prefix using CDGStore.
+
+        This method uses the store's iter_entities() method which works
+        with both disk-based and in-memory storage through the FileSystem
+        abstraction.
+
+        Args:
+            prefix: Entity ID prefix (e.g., "T-", "E-", "D-", "S-", "H-", etc.)
+
+        Yields:
+            Entity objects matching the prefix
+        """
+        store = getattr(self.tx_manager, 'store', None)
+        if store is not None and hasattr(store, 'iter_entities'):
+            yield from store.iter_entities(prefix=prefix)
+        else:
+            # Fallback: scan disk directory (for backwards compatibility)
+            entities_dir = self.got_dir / "entities"
+            if not entities_dir.exists():
+                return
+
+            pattern = f"{prefix}*.json"
+            for entity_file in entities_dir.glob(pattern):
+                try:
+                    entity = self._read_entity_file(entity_file, prefix)
+                    if entity is not None:
+                        yield entity
+                except (CorruptionError, json.JSONDecodeError, KeyError) as e:
+                    logger.warning(f"Skipping corrupted file {entity_file}: {e}")
+                    continue
+
+    def _read_entity_file(self, entity_file: Path, prefix: str):
+        """Read an entity file based on its prefix type."""
+        if prefix == "T-":
+            return self._read_task_file(entity_file)
+        elif prefix == "E-":
+            return self._read_edge_file(entity_file)
+        elif prefix == "D-":
+            return self._read_decision_file(entity_file)
+        elif prefix == "S-":
+            return self._read_sprint_file(entity_file)
+        elif prefix == "H-":
+            return self._read_handoff_file(entity_file)
+        elif prefix == "DOC-":
+            return self._read_document_file(entity_file)
+        elif prefix == "EPIC-":
+            return self._read_epic_file(entity_file)
+        elif prefix == "KT-":
+            return self._read_knowledge_transfer_file(entity_file)
+        elif prefix.startswith("CML"):
+            return self._read_claudemd_layer_file(entity_file)
+        return None
+
     def _rebuild_indexes(self) -> None:
         """Rebuild all indexes from current entities."""
         if self._index_manager is None:
@@ -974,18 +1029,12 @@ class GoTManager:
                 )
 
         # Get all edges connected to this sprint
-        entities_dir = self.got_dir / "entities"
         connected_edges = []
-        for edge_file in entities_dir.glob("E-*.json"):
-            try:
-                edge = self._read_edge_file(edge_file)
-                if edge is None:
-                    continue
-                if edge.source_id == sprint_id or edge.target_id == sprint_id:
-                    connected_edges.append(edge)
-            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
-                logger.warning(f"Skipping corrupted edge file {edge_file}: {e}")
+        for edge in self._iter_entities_by_prefix("E-"):
+            if not isinstance(edge, Edge):
                 continue
+            if edge.source_id == sprint_id or edge.target_id == sprint_id:
+                connected_edges.append(edge)
 
         # Collect IDs for cache invalidation
         ids_to_invalidate = [sprint_id] + [edge.id for edge in connected_edges]
@@ -1115,26 +1164,16 @@ class GoTManager:
         Returns:
             List of matching Epic objects
         """
-        entities_dir = self.got_dir / "entities"
-        if not entities_dir.exists():
-            return []
-
         epics = []
-        for entity_file in entities_dir.glob("EPIC-*.json"):
-            try:
-                # Read epic file
-                epic = self._read_epic_file(entity_file)
-                if epic is None:
-                    continue
-
-                # Apply filter
-                if status is not None and epic.status != status:
-                    continue
-
-                epics.append(epic)
-            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
-                logger.warning(f"Skipping corrupted epic file {entity_file}: {e}")
+        for epic in self._iter_entities_by_prefix("EPIC-"):
+            if not isinstance(epic, Epic):
                 continue
+
+            # Apply filter
+            if status is not None and epic.status != status:
+                continue
+
+            epics.append(epic)
 
         return epics
 
@@ -1251,29 +1290,20 @@ class GoTManager:
         Returns:
             List of matching Document objects
         """
-        entities_dir = self.got_dir / "entities"
-        if not entities_dir.exists():
-            return []
-
         documents = []
-        for entity_file in entities_dir.glob("DOC-*.json"):
-            try:
-                doc = self._read_document_file(entity_file)
-                if doc is None:
-                    continue
-
-                # Apply filters
-                if doc_type is not None and doc.doc_type != doc_type:
-                    continue
-                if tag is not None and tag not in doc.tags:
-                    continue
-                if is_stale is not None and doc.is_stale != is_stale:
-                    continue
-
-                documents.append(doc)
-            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
-                logger.warning(f"Skipping corrupted document file {entity_file}: {e}")
+        for doc in self._iter_entities_by_prefix("DOC-"):
+            if not isinstance(doc, Document):
                 continue
+
+            # Apply filters
+            if doc_type is not None and doc.doc_type != doc_type:
+                continue
+            if tag is not None and tag not in doc.tags:
+                continue
+            if is_stale is not None and doc.is_stale != is_stale:
+                continue
+
+            documents.append(doc)
 
         return documents
 
@@ -1873,6 +1903,17 @@ class GoTManager:
         Returns:
             Handoff object or None if not found
         """
+        # Use store's read method if available (works with in-memory storage)
+        store = getattr(self.tx_manager, 'store', None)
+        if store is not None and hasattr(store, 'read'):
+            entity = store.read(handoff_id)
+            if entity is None:
+                return None
+            if isinstance(entity, Handoff):
+                return entity
+            return None
+
+        # Fallback: read from disk
         entities_dir = self.got_dir / "entities"
         handoff_file = entities_dir / f"{handoff_id}.json"
         if not handoff_file.exists():
@@ -1901,29 +1942,20 @@ class GoTManager:
         Returns:
             List of matching Handoff objects
         """
-        entities_dir = self.got_dir / "entities"
-        if not entities_dir.exists():
-            return []
-
         handoffs = []
-        for entity_file in entities_dir.glob("H-*.json"):
-            try:
-                handoff = self._read_handoff_file(entity_file)
-                if handoff is None:
-                    continue
-
-                # Apply filters
-                if status is not None and handoff.status != status:
-                    continue
-                if target_agent is not None and handoff.target_agent != target_agent:
-                    continue
-                if source_agent is not None and handoff.source_agent != source_agent:
-                    continue
-
-                handoffs.append(handoff)
-            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
-                logger.warning(f"Skipping corrupted handoff file {entity_file}: {e}")
+        for handoff in self._iter_entities_by_prefix("H-"):
+            if not isinstance(handoff, Handoff):
                 continue
+
+            # Apply filters
+            if status is not None and handoff.status != status:
+                continue
+            if target_agent is not None and handoff.target_agent != target_agent:
+                continue
+            if source_agent is not None and handoff.source_agent != source_agent:
+                continue
+
+            handoffs.append(handoff)
 
         return handoffs
 
@@ -3092,34 +3124,51 @@ class TransactionContext:
         Returns:
             List of matching ClaudeMdLayer objects
         """
-        entities_dir = self.tx_manager.got_dir / "entities"
         layers = []
+        store = getattr(self.tx_manager, 'store', None)
 
-        # Glob for layer files (CML prefix)
-        for layer_file in entities_dir.glob("CML*.json"):
-            try:
-                with open(layer_file, 'r') as f:
-                    data = json.load(f)
-
-                entity_data = data.get("data", data)
-                if entity_data.get("entity_type") != "claudemd_layer":
+        if store is not None and hasattr(store, 'iter_entities'):
+            # Use store's iter_entities for in-memory or disk-based iteration
+            for entity in store.iter_entities(prefix="CML"):
+                if not isinstance(entity, ClaudeMdLayer):
                     continue
-
-                layer = ClaudeMdLayer.from_dict(entity_data)
 
                 # Apply filters
-                if layer_type and layer.layer_type != layer_type:
+                if layer_type and entity.layer_type != layer_type:
                     continue
-                if freshness_status and layer.freshness_status != freshness_status:
+                if freshness_status and entity.freshness_status != freshness_status:
                     continue
-                if inclusion_rule and layer.inclusion_rule != inclusion_rule:
+                if inclusion_rule and entity.inclusion_rule != inclusion_rule:
                     continue
 
-                layers.append(layer)
+                layers.append(entity)
+        else:
+            # Fallback: scan disk directory
+            entities_dir = self.tx_manager.got_dir / "entities"
+            for layer_file in entities_dir.glob("CML*.json"):
+                try:
+                    with open(layer_file, 'r') as f:
+                        data = json.load(f)
 
-            except (json.JSONDecodeError, KeyError, CorruptionError) as e:
-                logger.warning(f"Skipping corrupted layer file {layer_file}: {e}")
-                continue
+                    entity_data = data.get("data", data)
+                    if entity_data.get("entity_type") != "claudemd_layer":
+                        continue
+
+                    layer = ClaudeMdLayer.from_dict(entity_data)
+
+                    # Apply filters
+                    if layer_type and layer.layer_type != layer_type:
+                        continue
+                    if freshness_status and layer.freshness_status != freshness_status:
+                        continue
+                    if inclusion_rule and layer.inclusion_rule != inclusion_rule:
+                        continue
+
+                    layers.append(layer)
+
+                except (json.JSONDecodeError, KeyError, CorruptionError) as e:
+                    logger.warning(f"Skipping corrupted layer file {layer_file}: {e}")
+                    continue
 
         return layers
 
