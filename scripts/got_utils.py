@@ -2700,10 +2700,13 @@ class TransactionalGoTAdapter:
         if not self._update_kt_entity(kt_id, {'related_handoffs': related_handoffs}):
             return False
 
-        # Create CONTINUES edge for graph connectivity (KT continues from Handoff)
-        edge = self.add_edge(kt_id, handoff_id, "CONTINUES", weight=1.0)
+        # Create CONTINUES edge for graph connectivity
+        # Semantics: Handoff continues INTO KnowledgeTransfer (handoff is source)
+        # Direction: handoff_id → kt_id
+        edge = self.add_edge(handoff_id, kt_id, "CONTINUES", weight=1.0)
         if edge is None:
-            logger.warning(f"Failed to create CONTINUES edge from {kt_id} to {handoff_id}")
+            logger.warning(f"Failed to create CONTINUES edge from {handoff_id} to {kt_id}")
+            return False  # Edge creation is essential for graph connectivity
 
         return True
 
@@ -2730,6 +2733,7 @@ class TransactionalGoTAdapter:
         edge = self.add_edge(kt_id, task_id, "DOCUMENTS", weight=1.0)
         if edge is None:
             logger.warning(f"Failed to create DOCUMENTS edge from {kt_id} to {task_id}")
+            return False  # Edge creation is essential for graph connectivity
 
         return True
 
@@ -2756,6 +2760,7 @@ class TransactionalGoTAdapter:
         edge = self.add_edge(kt_id, decision_id, "DOCUMENTS", weight=1.0)
         if edge is None:
             logger.warning(f"Failed to create DOCUMENTS edge from {kt_id} to {decision_id}")
+            return False  # Edge creation is essential for graph connectivity
 
         return True
 
@@ -2917,23 +2922,30 @@ class TransactionalGoTAdapter:
         if handoff_to:
             try:
                 # Create a handoff entity for continuation
+                # NOTE: We pass empty task_id because:
+                # 1. TRANSFERS edge is meant for Task→Handoff, not KT→Handoff
+                # 2. The handoff stores kt_id in context for reference
+                # 3. CONTINUES edge will be created when a NEW KT picks up this handoff
+                #    (via link_kt_handoff), not here - that's the correct semantics
                 handoff_id = self.initiate_handoff(
                     source_agent="main",
                     target_agent=handoff_to,
-                    task_id=kt_id,  # Link to KT instead of task
+                    task_id="",  # No task - this is a KT continuation handoff
                     context={
                         "kt_title": kt.get('title', ''),
                         "kt_summary": kt.get('summary', ''),
                         "session_id": kt.get('session_id', ''),
+                        "source_kt_id": kt_id,  # Store originating KT for reference
                         "type": "knowledge_transfer_continuation",
                     },
                     instructions=instructions,
                 )
 
-                # Add CONTINUES edge from KT to Handoff
-                edge = self.add_edge(kt_id, handoff_id, "CONTINUES", weight=1.0)
-                if edge is None:
-                    logger.warning(f"Failed to create CONTINUES edge from {kt_id} to {handoff_id}")
+                # NOTE: We do NOT create a CONTINUES edge here because:
+                # CONTINUES semantics: "KnowledgeTransfer continues from Handoff"
+                # This means a NEW KT continues FROM this handoff (future relationship)
+                # The edge should be created by link_kt_handoff() when someone picks up
+                # this handoff and creates a new KT to continue the work.
 
                 logger.info(f"Created continuation handoff {handoff_id} for KT {kt_id}")
 

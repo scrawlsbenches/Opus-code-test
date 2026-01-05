@@ -278,6 +278,27 @@ RELATIONSHIP_RULES: Dict[str, FrozenSet[Tuple[str, str]]] = {
         ("task", "decision"),
         ("task", "task"),
     }),
+
+    # DOCUMENTS: Knowledge transfer documentation relationship
+    # KnowledgeTransfer documents the work done on Tasks or Decisions
+    "DOCUMENTS": frozenset({
+        ("knowledge_transfer", "task"),
+        ("knowledge_transfer", "decision"),
+    }),
+
+    # CONTINUES: Continuation from handoff
+    # KnowledgeTransfer continues from a Handoff (captures handoff context)
+    # Semantically: the handoff continues INTO the knowledge transfer
+    # Direction: handoff → knowledge_transfer (handoff is source)
+    "CONTINUES": frozenset({
+        ("handoff", "knowledge_transfer"),
+    }),
+
+    # FAILED_ATTEMPT: Records a failed approach to a task
+    # Failure entity tracks what didn't work to prevent repeating mistakes
+    "FAILED_ATTEMPT": frozenset({
+        ("failure", "task"),
+    }),
 }
 
 # Edge types that allow self-references (A→A)

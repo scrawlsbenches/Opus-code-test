@@ -1,0 +1,18 @@
+{
+  "_checksum": "0329ce458dd8d1bb",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T18:34:19.814176+00:00",
+  "data": {
+    "confidence": 1.0,
+    "created_at": "2026-01-05T18:27:07.988999+00:00",
+    "edge_type": "JUSTIFIES",
+    "entity_type": "edge",
+    "id": "E-D-20260102-120452-6cc97d53-T-20260102-110258-99c0e016-JUSTIFIES",
+    "modified_at": "2026-01-05T18:27:07.989007+00:00",
+    "reason": "Decision affects task (migration fix)",
+    "source_id": "D-20260102-120452-6cc97d53",
+    "target_id": "T-20260102-110258-99c0e016",
+    "version": 1,
+    "weight": 1.0
+  }
+}
