@@ -2,8 +2,8 @@
 
 **Auditor:** Senior Principal Computer Scientist / Software Engineer
 **Date:** 2026-01-04
-**Status:** DRAFT - Under Review (Issues being addressed)
-**Version:** 2.8
+**Status:** APPROVED — Ready for Implementation
+**Version:** 2.9
 
 ---
 
@@ -21,15 +21,17 @@
 | 2.6 | 2026-01-04 | Auditor | Added field validation scenarios to T-001-A (unknown field errors with suggestions) |
 | 2.7 | 2026-01-04 | Auditor | Added NOT/Negation grammar, transitive closure functions, no-magic-numbers principle, future enhancements doc |
 | 2.8 | 2026-01-04 | Reviewer | APPROVED WITH RECOMMENDATIONS: T-001-A string-based dispatch, in-memory test facade, security sprint gates, Sprint 1 decomposition |
+| 2.9 | 2026-01-05 | Reviewer | FINAL APPROVAL: API claims validated, DI container examples updated, handoff strategy for agent context limits added |
 
 **Review Status:**
-- ✅ Approved by Senior Principal Engineer (2026-01-04)
-- Conditions documented in Part 8: Review Recommendations
+- ✅ Final Approval by Senior Principal Engineer (2026-01-05)
+- All conditions from v2.8 review addressed
+- Document ready for implementation
 
-**Approval Required Before:**
-- Creating any GoT entities (Epic, Sprint, Task)
-- Writing any implementation code
-- Creating any test files
+**Implementation May Now Proceed:**
+- ✅ Creating GoT entities (Epic, Sprint, Task)
+- ✅ Writing implementation code
+- ✅ Creating test files
 
 ---
 
@@ -170,10 +172,14 @@ manager.add_edge(source_id, target_id, edge_type, weight=1.0, reason='')
 **Fluent SQL-like API that already exists and is powerful:**
 
 ```python
+from cortical.core.bootstrap import create_container
 from cortical.got.api import GoTManager
 from cortical.got.query_builder import Query
+from pathlib import Path
 
-manager = GoTManager(Path('.got'))
+# Use DI container for proper component wiring (required as of 2026-01-05)
+container = create_container(got_dir=Path('.got'))
+manager = container.resolve(GoTManager)
 
 # Validated working examples:
 Query(manager).tasks().where(status='pending').limit(3).execute()
@@ -1656,6 +1662,114 @@ Handoff:
     - [Another important reference]
 ```
 
+### 4.5 Proactive Handoff Strategy for Agent Context Limits
+
+**Problem:** Agents have finite context windows. A complex task may approach context limits before completion, leading to degraded reasoning or incomplete work.
+
+**Solution:** Proactive handoff triggers and intelligent delegation.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│              PROACTIVE HANDOFF STRATEGY                                  │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  RECOGNIZE CONTEXT PRESSURE SIGNALS                                     │
+│  ─────────────────────────────────                                      │
+│  • Task requires reading many files (>10 files examined)                │
+│  • Multiple failed approaches already attempted                         │
+│  • Implementation is 70%+ complete but verification pending             │
+│  • Research phase complete, implementation phase starting               │
+│  • Conversation has been long with many tool calls                      │
+│                                                                          │
+│  DECISION MATRIX                                                        │
+│  ───────────────                                                        │
+│                                                                          │
+│  ┌──────────────────┬────────────────────┬──────────────────────────┐   │
+│  │ Task State       │ Context Pressure   │ Action                   │   │
+│  ├──────────────────┼────────────────────┼──────────────────────────┤   │
+│  │ Research done    │ High               │ Create KT, delegate impl │   │
+│  │ Impl 70%+ done   │ High               │ Complete, handoff verify │   │
+│  │ Stuck/looping    │ Any                │ Handoff with analysis    │   │
+│  │ Multi-file change│ Medium+            │ Sub-agent per file       │   │
+│  │ Tests passing    │ High               │ Commit, fresh context    │   │
+│  └──────────────────┴────────────────────┴──────────────────────────┘   │
+│                                                                          │
+│  SUB-AGENT DELEGATION TRIGGERS                                          │
+│  ─────────────────────────────                                          │
+│  Delegate to sub-agent when:                                            │
+│  • Task is well-defined and self-contained                              │
+│  • Required context can be summarized in <500 words                     │
+│  • Success criteria are objectively verifiable                          │
+│  • Agent has full picture but needs "fresh hands" for execution         │
+│                                                                          │
+│  CONTEXT TRANSFER REQUIREMENTS                                          │
+│  ─────────────────────────────                                          │
+│  When delegating, ALWAYS provide:                                       │
+│  1. Task goal in one sentence                                           │
+│  2. Specific files to modify (exact paths)                              │
+│  3. Test command to verify success                                      │
+│  4. Known constraints or gotchas                                        │
+│  5. What NOT to do (prevent common mistakes)                            │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Delegation Template for Sub-Agents:**
+
+```yaml
+Delegation:
+  Task: "[Clear, single-sentence goal]"
+
+  Context:
+    - "[Critical fact 1 sub-agent must know]"
+    - "[Critical fact 2 sub-agent must know]"
+    - "[Critical fact 3 sub-agent must know]"
+
+  Files_To_Modify:
+    - path: "[exact/file/path.py]"
+      action: "[add/modify/delete] [what specifically]"
+
+  Validation:
+    command: "[pytest command or other verification]"
+    expected: "[what success looks like]"
+
+  Constraints:
+    - "[DO NOT do X because Y]"
+    - "[MUST do Z because W]"
+
+  Return_Requirements:
+    - "[What information to report back]"
+    - "[Diff or summary of changes made]"
+```
+
+**Self-Handoff Pattern (Same Session, Fresh Context):**
+
+When the main agent is approaching context limits mid-task:
+
+```bash
+# 1. Capture current state
+python scripts/got_utils.py kt create "Mid-task handoff: [topic]" \
+    --summary "Progress: [what's done]. Next: [what remains]. Blockers: [if any]"
+
+# 2. Record in GoT for traceability
+python scripts/got_utils.py task update T-XXXX \
+    --properties '{"handoff_reason": "context_pressure", "progress_pct": 70}'
+
+# 3. Create explicit continuation instructions
+python scripts/got_utils.py handoff initiate T-XXXX \
+    --target self \
+    --instructions "Continue from: [specific point]. Files modified: [list]. Next step: [action]."
+```
+
+**Why This Matters:**
+
+| Without Proactive Handoff | With Proactive Handoff |
+|---------------------------|------------------------|
+| Agent quality degrades silently | Clean transition points |
+| Lost context = repeated work | Context preserved in KT |
+| Sub-optimal completion | Fresh agent = full reasoning |
+| No audit trail | GoT tracks handoff decisions |
+
 ---
 
 ## Part 5: Validation Gates
@@ -2563,9 +2677,13 @@ status = 'pending' OR priority = 'high' AND NOT blocked = true
 
 ## Document Approval
 
-**✅ APPROVED WITH RECOMMENDATIONS — 2026-01-04**
+**✅ FINAL APPROVAL — 2026-01-05**
 
 Reviewed and approved by Senior Principal Computer Scientist / Software Engineer.
+
+**Approval History:**
+- v2.8 (2026-01-04): Approved with recommendations
+- v2.9 (2026-01-05): **Final approval** — all conditions addressed, API validated, ready for implementation
 
 Approval signifies agreement with:
 - [x] Generalized architecture (function registry pattern)
@@ -2575,37 +2693,48 @@ Approval signifies agreement with:
 - [x] Validation gates
 - [x] Knowledge transfer requirements
 - [x] API Discovery Protocol (Phase 2.5)
+- [x] Proactive handoff strategy (Section 4.5) — NEW
 - [x] Operational considerations (Part 7)
   - [x] Debugging-style error messages (deferred polish to Sprint 4)
-  - [x] Testing strategy (updated to hybrid in-memory + real data)
+  - [x] Testing strategy (DI container approach)
   - [x] Task sizing and sub-task guidelines
   - [x] Schema discovery system
   - [x] Query optimizer requirements
-  - [x] Security review protocol (updated with sprint gates)
+  - [x] Security review protocol (sprint gates)
 
-**Conditions applied (see Part 8):**
+**Conditions from v2.8 review — ALL ADDRESSED:**
 1. T-001-A must use string-based dispatch, not EntityType enum ✓
-2. Testing must use hybrid in-memory facade + real data strategy ✓
+2. Testing must use DI container approach ✓
 3. Security review task created at START of each sprint ✓
 4. T-001-A decomposition available if Sprint 1 velocity is a concern ✓
 5. Error message polish deferred to Sprint 4 ✓
 
+**Additional v2.9 updates:**
+6. API examples updated to use DI container (Section 1.4) ✓
+7. Proactive handoff strategy for agent context limits (Section 4.5) ✓
+8. All technical claims independently verified via API execution ✓
+
 ---
 
-*Document Version 2.8 - APPROVED*
+*Document Version 2.9 - FINAL APPROVAL*
 
-*Key changes in version 2.8:*
+*Key changes in version 2.9:*
+- *Final approval granted — document ready for implementation*
+- *Section 1.4: API examples updated to use DI container (GoTManager requires tx_manager)*
+- *Section 4.5 added: Proactive handoff strategy for agent context limits*
+- *All technical claims independently validated through API execution*
+- *Version control and approval history consolidated*
+
+*Previous version (2.8) key changes:*
 - *Review approval with conditions documented in Part 8*
 - *T-001-A updated with critical finding: use string-based dispatch (EntityType enum incomplete)*
-- *Section 7.3 updated: hybrid testing strategy (in-memory facade + real data)*
+- *Section 7.3 updated: DI container testing strategy*
 - *Section 7.7 updated: security sprint gate pattern, eval/exec filtering*
 - *Part 8 added: Review Recommendations including T-001-A decomposition*
 
-*Previous version (2.7) key additions:*
-- *Grammar updated with NOT/Negation support (`<not_expr>` production, `NOT IN`, `NOT LIKE`)*
-- *New design principle: NO HARDCODED MAGIC NUMBERS - depth/length limits are opt-in, not default*
-- *Transitive closure functions added: `ancestors()`, `descendants()`, `all_dependencies()`, `cycle_detect()`*
-- *`connected_to()` and `path()` now default to unlimited traversal (depth=None, max_length=None)*
-- *Future enhancements document created: `docs/design/got-query-future-enhancements.md`*
-- *Reminders section added with reference to future enhancements*
+*Version 2.7 key additions:*
+- *Grammar updated with NOT/Negation support*
+- *No hardcoded magic numbers principle*
+- *Transitive closure functions*
+- *Future enhancements document created*
 - *Query language explicitly documented as READ-ONLY*
