@@ -1,0 +1,19 @@
+{
+  "_checksum": "5113153cc04f0f50",
+  "_written_at": "2026-01-05T16:22:39.090197+00:00",
+  "data": {
+    "created_at": "2026-01-05T16:22:39.077216+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260105-162239-b8201338",
+    "metadata": {},
+    "modified_at": "2026-01-05T16:22:39.090139+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "docs"
+    },
+    "status": "pending",
+    "title": "Forensic Repository Analysis Complete",
+    "version": 2
+  }
+}
