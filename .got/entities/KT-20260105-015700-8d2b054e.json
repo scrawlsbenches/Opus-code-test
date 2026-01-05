@@ -1,12 +1,12 @@
 {
-  "_checksum": "1eb631a2abdb3f1c",
-  "_written_at": "2026-01-05T01:57:58.619072+00:00",
+  "_checksum": "a39703aabcc3d937",
+  "_written_at": "2026-01-05T01:58:10.415612+00:00",
   "data": {
     "code_refs": [],
     "created_at": "2026-01-05T01:57:00.726818+00:00",
     "entity_type": "knowledge_transfer",
     "id": "KT-20260105-015700-8d2b054e",
-    "modified_at": "2026-01-05T01:57:58.619007+00:00",
+    "modified_at": "2026-01-05T01:58:10.415539+00:00",
     "properties": {},
     "related_decisions": [],
     "related_handoffs": [],
@@ -21,10 +21,10 @@
     "session_date": "",
     "session_id": "",
     "source_file": null,
-    "status": "draft",
+    "status": "published",
     "summary": "Created full GoT structure from design document v2.9: 1 Epic, 5 Sprints, 39 tasks with dependency edges. Ready for Sprint 1 implementation.",
     "tags": [],
     "title": "GoT Query System Epic Setup Complete",
-    "version": 13
+    "version": 15
   }
 }
