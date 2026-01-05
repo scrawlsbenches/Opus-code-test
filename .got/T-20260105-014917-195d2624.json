@@ -1,0 +1,20 @@
+{
+  "_checksum": "86a21322693a3465",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T01:49:24.719523+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:49:17.103284+00:00",
+    "description": "QueryExecutor class that walks AST and executes against GoTManager. Use FunctionRegistry for function dispatch. Handle comparisons, boolean logic, function calls. Behavioral test: tests/behavioral/test_executor.py. Unit test: tests/unit/test_executor.py.",
+    "entity_type": "task",
+    "id": "T-20260105-014917-195d2624",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:49:17.103290+00:00",
+    "priority": "critical",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "T-008: Implement expression executor using registry",
+    "version": 1
+  }
+}
