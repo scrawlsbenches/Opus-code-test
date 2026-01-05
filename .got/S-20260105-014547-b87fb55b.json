@@ -1,0 +1,24 @@
+{
+  "_checksum": "3821e8abda24c52a",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T01:45:53.829291+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:45:47.164958+00:00",
+    "entity_type": "sprint",
+    "epic_id": "EPIC-QUERY",
+    "goals": [],
+    "id": "S-20260105-014547-b87fb55b",
+    "isolation": [],
+    "metadata": {},
+    "modified_at": "2026-01-05T01:45:47.164963+00:00",
+    "notes": [
+      "Establish parsing foundation and generic query extensibility. Tasks: T-001 (module skeleton), T-001-A (generic entity accessor), T-002 (AST nodes), T-003 (lexer), T-004 (error types), T-005 (function registry), T-006 (validation gate)."
+    ],
+    "number": 1,
+    "properties": {},
+    "session_id": "",
+    "status": "available",
+    "title": "Foundation: Lexer, AST, Query Infrastructure, and Tests",
+    "version": 1
+  }
+}
