@@ -29,9 +29,19 @@ ancestors(entity_id, max_depth=None):
     Returns all entities this entity transitively depends on.
     Optional depth limit to prevent deep recursion.
 
+all_dependencies(entity_id):
+    Returns all direct and transitive dependencies of an entity.
+    Follows DEPENDS_ON edges to find complete dependency graph.
+    Semantically equivalent to ancestors() but more explicit name.
+
 orphan_nodes():
     Returns entities with no incoming or outgoing edges.
     Useful for finding isolated tasks or decisions.
+
+cycle_detect(entity_id):
+    Detects circular dependencies starting from an entity.
+    Returns the cycle path if found, empty list if no cycle.
+    Uses DFS with path tracking.
 
 USAGE EXAMPLES
 --------------
@@ -48,6 +58,10 @@ Find dependencies:
 Find transitive relationships:
     >>> descendants('T-001', max_depth=3)  # All tasks blocked by T-001
     >>> ancestors('T-010')  # Full dependency chain
+    >>> all_dependencies('T-010')  # Same as ancestors, explicit name
+
+Detect cycles:
+    >>> cycle_detect('T-001')  # Returns cycle path or []
 
 Find isolated work:
     >>> orphan_nodes()  # Tasks with no relationships
@@ -550,3 +564,160 @@ class Dependents(QueryFunction):
         # Get all tasks and filter by dependent IDs
         all_entities = manager.list_all_tasks()
         return [e for e in all_entities if e.id in dependent_ids]
+
+
+@FunctionRegistry.register("all_dependencies")
+class AllDependencies(QueryFunction):
+    """Find all direct and transitive dependencies of an entity."""
+
+    @classmethod
+    def signature(cls) -> FunctionSignature:
+        return FunctionSignature(
+            name="all_dependencies",
+            description="Find all direct and transitive dependencies (complete dependency graph)",
+            required_args=["entity_id"],
+            optional_args={},
+            returns="List of all entities this entity depends on (direct and transitive)"
+        )
+
+    def execute(
+        self,
+        manager: Any,
+        args: List[Any],
+        kwargs: Dict[str, Any]
+    ) -> List[Any]:
+        """
+        Execute all_dependencies function.
+
+        This is semantically equivalent to ancestors() - finds all entities
+        that the given entity depends on, following DEPENDS_ON edges backwards.
+
+        Args:
+            manager: GoTManager instance
+            args: Positional arguments [entity_id]
+            kwargs: Keyword arguments {entity_id: str}
+
+        Returns:
+            List of all dependency entities (direct and transitive)
+        """
+        entity_id = args[0] if args else kwargs.get('entity_id')
+        if not entity_id:
+            raise ValueError("entity_id is required")
+
+        # Build reverse adjacency (follow DEPENDS_ON edges backwards)
+        edges = manager.list_edges()
+        reverse_adjacency = {}
+
+        for edge in edges:
+            if edge.edge_type == "DEPENDS_ON":
+                # If A -> DEPENDS_ON -> B, then from B we can reach dependency A
+                if edge.target_id not in reverse_adjacency:
+                    reverse_adjacency[edge.target_id] = []
+                reverse_adjacency[edge.target_id].append(edge.source_id)
+
+        # BFS to find all dependencies
+        visited = set()
+        queue = [entity_id]
+
+        while queue:
+            current = queue.pop(0)
+            if current in visited:
+                continue
+            visited.add(current)
+
+            # Add dependencies (parents in the dependency graph)
+            for dependency in reverse_adjacency.get(current, []):
+                if dependency not in visited:
+                    queue.append(dependency)
+
+        # Remove the entity itself from results
+        visited.discard(entity_id)
+
+        # Get all tasks and filter by dependency IDs
+        all_entities = manager.list_all_tasks()
+        return [e for e in all_entities if e.id in visited]
+
+
+@FunctionRegistry.register("cycle_detect")
+class CycleDetect(QueryFunction):
+    """Detect circular dependencies starting from an entity."""
+
+    @classmethod
+    def signature(cls) -> FunctionSignature:
+        return FunctionSignature(
+            name="cycle_detect",
+            description="Detect circular dependencies, returns cycle path if found",
+            required_args=["entity_id"],
+            optional_args={},
+            returns="List of entity IDs forming the cycle, or empty list if no cycle"
+        )
+
+    def execute(
+        self,
+        manager: Any,
+        args: List[Any],
+        kwargs: Dict[str, Any]
+    ) -> List[str]:
+        """
+        Execute cycle_detect function.
+
+        Uses DFS with path tracking to detect cycles in the dependency graph.
+        If a cycle is found, returns the path forming the cycle.
+
+        Args:
+            manager: GoTManager instance
+            args: Positional arguments [entity_id]
+            kwargs: Keyword arguments {entity_id: str}
+
+        Returns:
+            List of entity IDs forming the cycle path, or empty list if no cycle
+        """
+        entity_id = args[0] if args else kwargs.get('entity_id')
+        if not entity_id:
+            raise ValueError("entity_id is required")
+
+        # Build adjacency list for DEPENDS_ON edges
+        edges = manager.list_edges()
+        adjacency = {}
+
+        for edge in edges:
+            if edge.edge_type == "DEPENDS_ON":
+                if edge.source_id not in adjacency:
+                    adjacency[edge.source_id] = []
+                adjacency[edge.source_id].append(edge.target_id)
+
+        # DFS with path tracking to detect cycles
+        def dfs_cycle(node: str, path: List[str], visited: set) -> Optional[List[str]]:
+            """
+            DFS to detect cycle.
+
+            Args:
+                node: Current node
+                path: Current path from start
+                visited: Set of nodes in current path
+
+            Returns:
+                Cycle path if found, None otherwise
+            """
+            if node in visited:
+                # Found a cycle - return the cycle path
+                cycle_start_idx = path.index(node)
+                return path[cycle_start_idx:] + [node]
+
+            visited.add(node)
+            path.append(node)
+
+            # Explore neighbors
+            for neighbor in adjacency.get(node, []):
+                result = dfs_cycle(neighbor, path, visited)
+                if result:
+                    return result
+
+            # Backtrack
+            path.pop()
+            visited.remove(node)
+            return None
+
+        # Start DFS from the given entity
+        result = dfs_cycle(entity_id, [], set())
+        return result if result else []

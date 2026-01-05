@@ -68,6 +68,12 @@ from .lexer import (
     tokenize,
 )
 
+from .optimizer import (
+    QueryOptimizer,
+    QueryPlan,
+    SchemaInfo,
+)
+
 def validate(expression, entity_type=None):
     """
     Validate field names in an expression against the schema.
@@ -138,4 +144,9 @@ __all__ = [
 
     # Translator
     'translator',
+
+    # Optimizer
+    'QueryOptimizer',
+    'QueryPlan',
+    'SchemaInfo',
 ]
