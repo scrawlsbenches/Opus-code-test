@@ -1,17 +1,16 @@
 {
-  "_checksum": "c0b3d136fcb5d1a8",
-  "_written_at": "2026-01-05T18:59:16.350633+00:00",
+  "_checksum": "b8c5a45814938240",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T18:59:16.249906+00:00",
   "data": {
     "code_refs": [],
     "created_at": "2026-01-05T18:59:02.880009+00:00",
     "entity_type": "knowledge_transfer",
     "id": "KT-20260105-185902-a28dbe86",
-    "modified_at": "2026-01-05T18:59:16.350544+00:00",
+    "modified_at": "2026-01-05T18:59:02.893554+00:00",
     "properties": {},
     "related_decisions": [],
-    "related_handoffs": [
-      "H-20260105-185700-c1619b43"
-    ],
+    "related_handoffs": [],
     "related_tasks": [],
     "sections": {},
     "session_date": "",
@@ -21,6 +20,6 @@
     "summary": "Continuing validation of bidirectional CONTINUES edges on a new thread",
     "tags": [],
     "title": "Continuation: Edge Validation Thread 2",
-    "version": 5
+    "version": 2
   }
 }
