@@ -1874,77 +1874,89 @@ class QueryError(Exception):
         return "\n".join(lines)
 ```
 
-### 7.3 Testing Strategy: Hybrid Approach (In-Memory + Real Data)
+### 7.3 Testing Strategy: DI Container Approach
 
-**Use a HYBRID testing strategy for speed AND realism.**
+**Use the DI Container for test isolation - do NOT create custom facades.**
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    TESTING STRATEGY (UPDATED)                            │
+│                    TESTING STRATEGY (DI CONTAINER)                       │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
-│  UNIT TESTS: In-Memory Facade API                                       │
-│  ─────────────────────────────────                                      │
-│  - Fast execution (no disk I/O)                                         │
-│  - Controlled, repeatable test data                                     │
-│  - Test isolation (no state bleed between tests)                        │
-│  - Suitable for CI/CD pipelines                                         │
+│  The Container is the SINGLE SOURCE OF TRUTH for component wiring.      │
+│  Tests use child containers to override components.                     │
 │                                                                          │
-│  INTEGRATION/BEHAVIORAL TESTS: Real GoT Data                            │
-│  ───────────────────────────────────────────                            │
+│  UNIT TESTS: Child Container with tmp_path                              │
+│  ─────────────────────────────────────────                              │
+│  - Use create_container(got_dir=tmp_path)                               │
+│  - Fast execution (isolated temp directory)                             │
+│  - Real components, controlled environment                              │
+│  - No mocking required - use container overrides                        │
+│                                                                          │
+│  INTEGRATION TESTS: Child Container with real .got                      │
+│  ────────────────────────────────────────────────                       │
+│  - Use create_container(got_dir=Path(".got"))                           │
 │  - Proves system works on real data (dog-fooding)                       │
-│  - Validates against actual edge cases                                  │
-│  - No schema divergence risk                                            │
-│  - Run less frequently (pre-commit, CI)                                 │
+│  - Read-only tests to preserve data                                     │
 │                                                                          │
-│  NOTE: Only developers have write access. Data is stable.               │
+│  FUTURE: In-Memory Storage Backend                                      │
+│  ─────────────────────────────────                                      │
+│  - Create InMemoryStore implementing CDGStore interface                 │
+│  - Inject via child container for fastest unit tests                    │
+│  - Deferred until needed (tmp_path is fast enough for now)              │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-**In-Memory Facade Pattern:**
+**Standard Test Pattern (Use This):**
 
 ```python
-# tests/conftest.py - Create in-memory test fixture
+# tests/conftest.py - USE EXISTING FIXTURES
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Any
-
-@dataclass
-class InMemoryGoTFacade:
-    """Fast in-memory facade for unit testing."""
-
-    tasks: Dict[str, Dict[str, Any]] = field(default_factory=dict)
-    sprints: Dict[str, Dict[str, Any]] = field(default_factory=dict)
-    edges: List[Dict[str, Any]] = field(default_factory=list)
-
-    def add_task(self, id: str, **kwargs) -> None:
-        self.tasks[id] = {'id': id, **kwargs}
-
-    def add_edge(self, from_id: str, to_id: str, edge_type: str) -> None:
-        self.edges.append({'from_id': from_id, 'to_id': to_id, 'type': edge_type})
-
-    def list_tasks(self, **filters) -> List[Dict]:
-        """Filter tasks by field values."""
-        return [t for t in self.tasks.values()
-                if all(t.get(k) == v for k, v in filters.items())]
+from cortical.core.bootstrap import create_container
+from cortical.got.tx_manager import TransactionManager
+from cortical.got import GoTManager
 
 @pytest.fixture
-def memory_got():
-    """Fixture providing in-memory GoT for fast unit tests."""
-    facade = InMemoryGoTFacade()
-    # Pre-populate with controlled test data
-    facade.add_task('T-001', title='Test Task', status='pending', priority='high')
-    facade.add_task('T-002', title='Another Task', status='completed', priority='low')
-    facade.add_task('T-003', title='Blocked Task', status='blocked', priority='medium')
-    facade.add_edge('T-001', 'T-002', 'DEPENDS_ON')
-    return facade
+def fresh_tx_manager(tmp_path):
+    """TransactionManager with isolated temp storage."""
+    container = create_container(got_dir=tmp_path)
+    return container.resolve(TransactionManager)
 
-# Unit test uses in-memory facade (fast)
-def test_query_filters_by_status(memory_got):
-    results = memory_got.list_tasks(status='pending')
+@pytest.fixture
+def fresh_got_manager(tmp_path):
+    """GoTManager with isolated temp storage."""
+    container = create_container(got_dir=tmp_path)
+    return container.resolve(GoTManager)
+
+# Unit test uses container-provided manager
+def test_query_filters_by_status(fresh_got_manager):
+    # Create test data
+    fresh_got_manager.create_task("Test Task", priority="high")
+    fresh_got_manager.create_task("Another Task", priority="low")
+
+    # Query
+    results = fresh_got_manager.list_tasks(priority="high")
     assert len(results) == 1
-    assert results[0]['id'] == 'T-001'
+```
+
+**Overriding Components (When Needed):**
+
+```python
+# For tests that need custom storage behavior
+def test_with_custom_storage(tmp_path):
+    from cortical.core.bootstrap import create_container
+    from cortical.cdg.storage import CDGStore
+
+    # Create base container
+    container = create_container(got_dir=tmp_path, apply_modules=False)
+
+    # Create child with overrides
+    test_container = container.create_child()
+    test_container.register(CDGStore, MyCustomStore)
+
+    # Resolve uses custom storage
+    tx_manager = test_container.resolve(TransactionManager)
 ```
 
 **Real Data for Integration Tests:**
@@ -1961,17 +1973,21 @@ Available Test Data (verified 2026-01-04):
 ```
 
 ```python
-# Integration test uses real GoT (slower, realistic)
+# Integration test uses real GoT (read-only)
 @pytest.mark.integration
 def test_query_works_on_real_data():
-    manager = TransactionalGoTAdapter()
+    from cortical.core.bootstrap import create_container
+    from cortical.got import GoTManager
+
+    container = create_container()  # Uses .got in cwd
+    manager = container.resolve(GoTManager)
 
     # Assert on structure, not specific counts (data changes)
-    results = manager.query("status = 'pending'")
+    results = manager.list_tasks(status='pending')
     assert isinstance(results, list)
     for r in results:
-        assert 'id' in r
-        assert 'title' in r
+        assert hasattr(r, 'id')
+        assert hasattr(r, 'title')
 ```
 
 ### 7.4 Task Sizing and Sub-Task Guidelines
@@ -2314,9 +2330,9 @@ Security enhancements will be added when the query system is functional and data
 │     SchemaRegistry validation, not enum-based.                          │
 │     → Updated in T-001-A Implementation_Hints ✓                         │
 │                                                                          │
-│  2. TESTING: HYBRID STRATEGY                                            │
-│     Use in-memory facade for unit tests (speed)                         │
-│     Use real GoT data for integration tests (realism)                   │
+│  2. TESTING: DI CONTAINER APPROACH                                      │
+│     Use DI container with tmp_path for unit tests (isolation)           │
+│     Use child containers to override components when needed             │
 │     → Updated in Section 7.3 ✓                                          │
 │                                                                          │
 │  3. SECURITY: SPRINT GATE PATTERN                                       │
