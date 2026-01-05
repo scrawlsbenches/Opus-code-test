@@ -13,6 +13,9 @@ from .ast import (
 from .registry import FunctionRegistry
 from .errors import ExecutionError
 
+# Import functions to ensure they are registered with the FunctionRegistry
+from .functions import graph, filters  # noqa: F401
+
 if TYPE_CHECKING:
     from cortical.got.api import GoTManager
     from cortical.got.query_builder import Query as QueryBuilder
@@ -39,6 +42,10 @@ class QueryExecutor:
         Handles NOT and complex OR expressions through post-filtering when necessary.
         """
         from cortical.got.query_builder import Query as QueryBuilder
+
+        # Handle top-level FunctionCall expressions directly
+        if query.expression and isinstance(query.expression, FunctionCall):
+            return self._apply_function(query.expression)
 
         # Check if expression requires post-filtering
         needs_post_filter = query.expression and (
