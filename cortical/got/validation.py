@@ -46,6 +46,7 @@ from datetime import datetime
 from typing import Dict, Any, Tuple, Optional, FrozenSet, Set
 
 from .types import VALID_ENTITY_TYPES, VALID_EDGE_TYPES
+from .entity_schemas import get_valid_statuses
 
 
 # =============================================================================
@@ -399,7 +400,7 @@ def _validate_entity_specific(data: dict, entity_type: str, strict: bool) -> Tup
                 return False, f"Task missing required field: {field}"
 
         # Validate status
-        valid_statuses = {'pending', 'in_progress', 'completed', 'blocked'}
+        valid_statuses = get_valid_statuses('task')
         if data['status'] not in valid_statuses:
             return False, f"Invalid task status: {data['status']}. Must be one of: {', '.join(sorted(valid_statuses))}"
 
@@ -439,7 +440,7 @@ def _validate_entity_specific(data: dict, entity_type: str, strict: bool) -> Tup
                 return False, f"Sprint missing required field: {field}"
 
         # Validate status
-        valid_statuses = {'available', 'in_progress', 'completed', 'on_hold'}
+        valid_statuses = get_valid_statuses('sprint')
         if data['status'] not in valid_statuses:
             return False, f"Invalid sprint status: {data['status']}. Must be one of: {', '.join(sorted(valid_statuses))}"
 
@@ -451,7 +452,7 @@ def _validate_entity_specific(data: dict, entity_type: str, strict: bool) -> Tup
                 return False, f"Epic missing required field: {field}"
 
         # Validate status
-        valid_statuses = {'active', 'completed', 'on_hold', 'archived'}
+        valid_statuses = get_valid_statuses('epic')
         if data['status'] not in valid_statuses:
             return False, f"Invalid epic status: {data['status']}. Must be one of: {', '.join(sorted(valid_statuses))}"
 
@@ -463,7 +464,7 @@ def _validate_entity_specific(data: dict, entity_type: str, strict: bool) -> Tup
                 return False, f"Handoff missing required field: {field}"
 
         # Validate status
-        valid_statuses = {'initiated', 'accepted', 'completed', 'rejected'}
+        valid_statuses = get_valid_statuses('handoff')
         if data['status'] not in valid_statuses:
             return False, f"Invalid handoff status: {data['status']}. Must be one of: {', '.join(sorted(valid_statuses))}"
 

@@ -9,13 +9,13 @@
 
 | ID | Priority | Category | Status | Description |
 |----|----------|----------|--------|-------------|
-| OI-001 | HIGH | Hardcoded Values | Open | Status strings duplicated across 8+ files |
-| OI-002 | HIGH | Hardcoded Values | Open | Edge types scattered across multiple files |
+| OI-001 | HIGH | Hardcoded Values | **Partially Resolved** | Status strings: validation.py fixed, others remain |
+| OI-002 | HIGH | Hardcoded Values | **Partially Resolved** | EdgeTypes class created, CLI fixed, 21 string literals remain |
 | OI-003 | MEDIUM | Hardcoded Values | Open | Magic numbers in filter functions |
 | OI-004 | MEDIUM | Hardcoded Values | Open | Learning thresholds not configurable |
 | OI-005 | MEDIUM | Test Coverage | Open | Some graph functions lack unit tests |
 | OI-006 | LOW | Schema Gap | Open | Task categories not in schema |
-| OI-007 | LOW | Inconsistency | Open | Edge type validation lists differ between CLI commands |
+| OI-007 | LOW | Inconsistency | **Resolved** | CLI edge.py now uses authoritative VALID_EDGE_TYPES |
 
 ---
 
@@ -25,32 +25,33 @@
 
 **Priority:** HIGH
 **Category:** Hardcoded Values
-**Status:** Open
+**Status:** Partially Resolved
 **Task:** T-20260105-114909-68226531
 
 **Description:**
 Task status strings (`"pending"`, `"in_progress"`, `"completed"`, `"blocked"`) are hardcoded in 8+ locations instead of being pulled from schema.
 
-**Affected Files:**
+**RESOLVED (2026-01-05):**
+- ✅ Created `get_valid_statuses()` helper in `cortical/got/entity_schemas.py`
+- ✅ Updated `cortical/got/validation.py` to use helper (4 locations)
+- ✅ Fixed schema/validation discrepancies:
+  - Sprint: 'on_hold' → 'blocked' (aligned with schema)
+  - Epic: Removed 'archived' (not in schema)
+  - Handoff CLI: Removed 'in_progress' (not in schema)
+
+**REMAINING (Lower Priority):**
 | File | Line(s) | Current Value |
 |------|---------|---------------|
-| `cortical/got/validation.py` | 402-404 | `{'pending', 'in_progress', 'completed', 'blocked'}` |
-| `cortical/got/validation.py` | 442-444 | Sprint statuses hardcoded |
-| `cortical/got/validation.py` | 454-456 | Epic statuses hardcoded |
-| `cortical/got/validation.py` | 466-468 | Handoff statuses hardcoded |
 | `cortical/got/recovery.py` | 212 | `["pending", "in_progress", "completed", "blocked"]` |
-| `cortical/got/cli/backlog.py` | 280 | CLI choices hardcoded |
+| `cortical/got/cli/backlog.py` | 232, 280 | CLI choices hardcoded |
 | `cortical/got/cli/orphan.py` | 305 | CLI choices hardcoded |
-| `cortical/got/query_api.py` | 384-387 | Status names in aggregation |
+| `cortical/got/query_api.py` | 376-387 | Status names in aggregation |
+| `cortical/got/types.py` | 343-524 | Dataclass __post_init__ validation |
 
-**Recommended Fix:**
+**How to Fix Remaining:**
 ```python
-# Create cortical/got/constants.py or extend schema.py
-from cortical.got.entity_schemas import get_schema_for_entity_type
-
-def get_entity_statuses(entity_type: str) -> set:
-    schema = get_schema_for_entity_type(entity_type)
-    return set(schema.fields['status'].choices)
+from cortical.got.entity_schemas import get_valid_statuses
+valid_statuses = get_valid_statuses('task')  # or 'sprint', 'epic', 'handoff'
 ```
 
 **Design Principle Violated:**
@@ -62,31 +63,38 @@ def get_entity_statuses(entity_type: str) -> set:
 
 **Priority:** HIGH
 **Category:** Hardcoded Values
-**Status:** Open
+**Status:** Partially Resolved
 **Task:** T-20260105-114916-15adf67e
 
 **Description:**
 Edge type strings (`"DEPENDS_ON"`, `"BLOCKS"`, `"CONTAINS"`) are hardcoded in multiple files instead of using centralized constants.
 
-**Affected Files:**
-| File | Line(s) | Values |
-|------|---------|--------|
-| `cortical/got/validation.py` | 140-280 | All edge types duplicated |
-| `cortical/got/indexer.py` | 406 | `"CONTAINS"` |
-| `cortical/got/query_api.py` | 147, 184, 568, 571 | `"BLOCKS"`, `"DEPENDS_ON"`, `"CONTAINS"` |
-| `cortical/got/expression/functions/filters.py` | 262 | `"BLOCKS"` |
-| `cortical/got/expression/functions/graph.py` | Multiple | `"DEPENDS_ON"` throughout |
+**RESOLVED (2026-01-05):**
+- ✅ Created `EdgeTypes` constants class in `cortical/got/types.py`
+- ✅ Exported `EdgeTypes` and `VALID_EDGE_TYPES` from `cortical/got/__init__.py`
+- ✅ Fixed `cortical/got/cli/edge.py`: Removed duplicate 35-item list, imports from types.py
+- ✅ Eliminated 17 phantom edge types that were in CLI but not authoritative
 
-**Recommended Fix:**
+**REMAINING (Lower Priority) - 21 Hardcoded String Comparisons:**
+| File | Count | Edge Types Used |
+|------|-------|-----------------|
+| `cortical/got/expression/functions/graph.py` | 8 | DEPENDS_ON |
+| `cortical/got/query_api.py` | 4 | BLOCKS, DEPENDS_ON, CONTAINS |
+| `cortical/got/cli/decision.py` | 4 | JUSTIFIES, MOTIVATES, SUPERSEDES |
+| `cortical/got/api.py` | 1+ | DEPENDS_ON, BLOCKS, CONTAINS |
+| `cortical/got/indexer.py` | 1 | CONTAINS |
+| `cortical/got/expression/functions/filters.py` | 1 | BLOCKS |
+| `cortical/got/orphan.py` | 1 | CONTAINS |
+
+**How to Fix Remaining:**
 ```python
-# Use existing VALID_EDGE_TYPES from cortical/got/types.py
-from cortical.got.types import VALID_EDGE_TYPES
+from cortical.got.types import EdgeTypes
 
-class EdgeTypes:
-    DEPENDS_ON = "DEPENDS_ON"
-    BLOCKS = "BLOCKS"
-    CONTAINS = "CONTAINS"
-    # ... etc
+# Instead of:
+if edge.edge_type == "DEPENDS_ON":
+
+# Use:
+if edge.edge_type == EdgeTypes.DEPENDS_ON:
 ```
 
 ---
@@ -200,34 +208,66 @@ Add `category` field to TaskSchema with choices list, then reference in CLI.
 
 **Priority:** LOW
 **Category:** Inconsistency
-**Status:** Open
+**Status:** ✅ Resolved
 
 **Description:**
 Different CLI commands show different valid edge type lists, indicating multiple hardcoded lists exist.
 
-**Evidence:**
-```
-# From one command:
-Valid types: BLOCKS, CAUSED_BY, CHILD_OF, CONTAINS, CONTINUES, CONTRADICTS,
-             DEPENDS_ON, DERIVED_FROM, DOCUMENTED_BY, DOCUMENTS, FAILED_ATTEMPT,
-             IMPLEMENTS, JUSTIFIES, MOTIVATES, PARENT_OF, PART_OF, PRODUCES,
-             REFERENCES, RELATES_TO, REQUIRES, SUPERSEDES, TRANSFERS
+**Resolution (2026-01-05):**
+The duplicate `VALID_EDGE_TYPES` list in `cortical/got/cli/edge.py` (35 items with phantom types) was removed and replaced with an import from the authoritative source:
 
-# From another command:
-Valid types: ANSWERS, BLOCKS, CAUSED_BY, CONFLICTS, CONTAINS, CONTRADICTS,
-             DEPENDS_ON, ENABLES, EXPLORES, FAILED_ATTEMPT, HAS_ASPECT,
-             HAS_OPTION, IMPLEMENTS, JUSTIFIES, LOCATED_IN, MOTIVATES,
-             OBSERVES, PART_OF, PRECEDES, RAISES, REFINES, REFUTES,
-             REQUIRES, SIMILAR, SUGGESTS, SUPPORTS, TESTS, TRIGGERS
+```python
+from cortical.got.types import VALID_EDGE_TYPES
 ```
 
-**Root Cause:** Multiple edge type definitions exist in different files.
+Now all CLI commands use the same 22 authoritative edge types from `cortical/got/types.py`.
 
-**Recommended Fix:** Consolidate to single source of truth in `cortical/got/types.py`.
+**Phantom Types Removed:**
+ENABLES, CONFLICTS, SUPPORTS, REFUTES, SIMILAR, TESTS, PRECEDES, TRIGGERS, ANSWERS, RAISES, EXPLORES, OBSERVES, SUGGESTS, REFINES, HAS_OPTION, HAS_ASPECT, LOCATED_IN
 
 ---
 
 ## Recently Resolved Issues
+
+### RESOLVED: Schema/Validation Discrepancies & Status Helper
+
+**Resolved:** 2026-01-05
+**Session:** Senior Engineering Consultation
+
+**Issues Fixed:**
+1. **Epic validation** accepted 'archived' status not in schema → Removed
+2. **Sprint validation** accepted 'on_hold' but schema has 'blocked' → Fixed
+3. **Handoff CLI** accepted 'in_progress' not in schema → Removed
+
+**Infrastructure Created:**
+- `get_valid_statuses(entity_type)` helper in `cortical/got/entity_schemas.py`
+- Updated `cortical/got/validation.py` to use helper (4 locations)
+
+**Verification:** `python3 scripts/got_utils.py validate` → HEALTHY
+
+---
+
+### RESOLVED: EdgeTypes Constants Class & CLI Consolidation
+
+**Resolved:** 2026-01-05
+**Session:** Senior Engineering Consultation
+
+**Issues Fixed:**
+1. **Created `EdgeTypes` class** in `cortical/got/types.py` with 22 constants
+2. **Removed duplicate list** in `cortical/got/cli/edge.py` (had 35 phantom types)
+3. **Added exports** to `cortical/got/__init__.py`
+
+**Phantom Types Eliminated:** 17 types (ENABLES, CONFLICTS, SUPPORTS, etc.)
+
+**Usage Example:**
+```python
+from cortical.got import EdgeTypes
+if edge.edge_type == EdgeTypes.DEPENDS_ON:
+```
+
+**Verification:** All imports work, `len(VALID_EDGE_TYPES) == 22`
+
+---
 
 ### RESOLVED: Inverted Edge Semantics in Graph Functions
 

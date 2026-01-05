@@ -239,6 +239,32 @@ VALID_EDGE_TYPES = frozenset({
 })
 
 
+class EdgeTypes:
+    """Constants for edge types. Use these instead of string literals."""
+    DEPENDS_ON = "DEPENDS_ON"
+    BLOCKS = "BLOCKS"
+    CONTAINS = "CONTAINS"
+    RELATES_TO = "RELATES_TO"
+    REQUIRES = "REQUIRES"
+    IMPLEMENTS = "IMPLEMENTS"
+    SUPERSEDES = "SUPERSEDES"
+    DERIVED_FROM = "DERIVED_FROM"
+    PARENT_OF = "PARENT_OF"
+    CHILD_OF = "CHILD_OF"
+    PART_OF = "PART_OF"
+    REFERENCES = "REFERENCES"
+    CONTRADICTS = "CONTRADICTS"
+    JUSTIFIES = "JUSTIFIES"
+    MOTIVATES = "MOTIVATES"
+    CAUSED_BY = "CAUSED_BY"
+    TRANSFERS = "TRANSFERS"
+    PRODUCES = "PRODUCES"
+    DOCUMENTED_BY = "DOCUMENTED_BY"
+    DOCUMENTS = "DOCUMENTS"
+    CONTINUES = "CONTINUES"
+    FAILED_ATTEMPT = "FAILED_ATTEMPT"
+
+
 # Valid entity types - single source of truth for deserialization
 VALID_ENTITY_TYPES = frozenset({
     'task',
