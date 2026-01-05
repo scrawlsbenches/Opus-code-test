@@ -1,16 +1,20 @@
 {
-  "_checksum": "24f57b5f546d9a9e",
-  "_written_at": "2026-01-05T19:01:12.773676+00:00",
+  "_checksum": "dec7cda79f1c2e09",
+  "_written_at": "2026-01-05T19:06:39.114734+00:00",
   "data": {
     "code_refs": [],
     "created_at": "2026-01-05T19:00:59.149336+00:00",
     "entity_type": "knowledge_transfer",
     "id": "KT-20260105-190059-848f7679",
-    "modified_at": "2026-01-05T19:01:12.773585+00:00",
+    "modified_at": "2026-01-05T19:06:39.114678+00:00",
     "properties": {},
     "related_decisions": [],
     "related_handoffs": [],
-    "related_tasks": [],
+    "related_tasks": [
+      "T-nonexistent",
+      "T-20260105-999999-abcdef12",
+      "T-20260105-185644-092e3187"
+    ],
     "sections": {},
     "session_date": "",
     "session_id": "",
@@ -19,6 +23,6 @@
     "summary": "This is the origin KT that will create a handoff via finalize",
     "tags": [],
     "title": "Workflow Test: Origin KT",
-    "version": 5
+    "version": 11
   }
 }
