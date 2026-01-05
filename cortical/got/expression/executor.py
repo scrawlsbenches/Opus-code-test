@@ -13,6 +13,9 @@ from .ast import (
 from .registry import FunctionRegistry
 from .errors import ExecutionError
 
+# Import functions to ensure they are registered with the FunctionRegistry
+from .functions import graph, filters  # noqa: F401
+
 if TYPE_CHECKING:
     from cortical.got.api import GoTManager
     from cortical.got.query_builder import Query as QueryBuilder
@@ -40,15 +43,20 @@ class QueryExecutor:
         """
         from cortical.got.query_builder import Query as QueryBuilder
 
+        # Handle top-level FunctionCall expressions directly
+        if query.expression and isinstance(query.expression, FunctionCall):
+            return self._apply_function(query.expression)
+
         # Check if expression requires post-filtering
         needs_post_filter = query.expression and (
             self._contains_not(query.expression) or
-            self._has_complex_or(query.expression)
+            self._has_complex_or(query.expression) or
+            self._contains_function(query.expression)
         )
 
         if needs_post_filter:
-            # For NOT or complex OR expressions, we need to get all entities and filter in Python
-            return self._execute_with_not_filter(query)
+            # For NOT, complex OR, or function expressions, we need post-processing
+            return self._execute_with_post_filter(query)
 
         # Standard path: can use Query builder directly
         entity_type = query.entity_type or 'task'
@@ -82,6 +90,16 @@ class QueryExecutor:
             return any(self._contains_not(child) for child in expr.children)
         return False
 
+    def _contains_function(self, expr: Expression) -> bool:
+        """Check if expression tree contains FunctionCall nodes."""
+        if isinstance(expr, FunctionCall):
+            return True
+        elif isinstance(expr, (AndExpr, OrExpr)):
+            return any(self._contains_function(child) for child in expr.children)
+        elif isinstance(expr, NotExpr):
+            return self._contains_function(expr.child)
+        return False
+
     def _has_complex_or(self, expr: Expression) -> bool:
         """Check if expression contains complex OR (with nested AND/OR)."""
         if isinstance(expr, OrExpr):
@@ -92,25 +110,33 @@ class QueryExecutor:
             return any(self._has_complex_or(child) for child in expr.children)
         return False
 
-    def _execute_with_not_filter(self, query: Query) -> Any:
+    def _execute_with_post_filter(self, query: Query) -> Any:
         """
-        Execute query with NOT expressions by filtering results in Python.
+        Execute query with expressions requiring post-filtering.
 
-        This is necessary because the Query builder doesn't support negation.
-        We fetch all entities and filter them using the NOT logic.
+        This path is used when:
+        - Expression contains NOT (Query builder doesn't support negation)
+        - Expression contains complex OR (nested AND/OR)
+        - Expression contains function calls mixed with filters
+
+        For function expressions, we evaluate them to get result sets and
+        combine them using set operations.
         """
         from cortical.got.query_builder import Query as QueryBuilder
 
-        # Get all entities of the type
         entity_type = query.entity_type or 'task'
-        q = self._build_base_query(entity_type)
-        all_entities = q.execute()
 
-        # Filter entities using the NOT expression
-        filtered = [
-            entity for entity in all_entities
-            if self._matches_expression(entity, query.expression)
-        ]
+        # If expression contains functions, use special evaluation
+        if self._contains_function(query.expression):
+            filtered = self._evaluate_expression_with_functions(query.expression, entity_type)
+        else:
+            # Original path: Get all entities and filter with predicates
+            q = self._build_base_query(entity_type)
+            all_entities = q.execute()
+            filtered = [
+                entity for entity in all_entities
+                if self._matches_expression(entity, query.expression)
+            ]
 
         # Apply ORDER BY manually if present
         if query.order_by:
@@ -124,6 +150,87 @@ class QueryExecutor:
             filtered = filtered[:query.limit]
 
         return filtered
+
+    def _evaluate_expression_with_functions(self, expr: Expression, entity_type: str) -> List[Any]:
+        """
+        Evaluate expression containing function calls.
+
+        Returns a list of entities matching the expression.
+        Uses set operations to combine results from functions and filters.
+
+        For example:
+        - recent(7) AND priority = 'high': Execute function, filter results
+        - blocked() OR status = 'pending': Union of function results and filter results
+        """
+        if isinstance(expr, FunctionCall):
+            # Execute function directly
+            return self._apply_function(expr)
+
+        elif isinstance(expr, Comparison):
+            # Get all entities and filter by comparison
+            q = self._build_base_query(entity_type)
+            all_entities = q.execute()
+            return [e for e in all_entities if self._matches_comparison(e, expr)]
+
+        elif isinstance(expr, AndExpr):
+            # Strategy: Execute functions first, then apply filters to results
+            func_results = None
+            filters = []
+
+            for child in expr.children:
+                if self._contains_function(child):
+                    # Evaluate this function subtree
+                    child_results = self._evaluate_expression_with_functions(child, entity_type)
+                    if func_results is None:
+                        func_results = child_results
+                    else:
+                        # Multiple functions: intersection
+                        child_ids = {getattr(e, 'id', id(e)) for e in child_results}
+                        func_results = [e for e in func_results if getattr(e, 'id', id(e)) in child_ids]
+                else:
+                    # This is a filter expression
+                    filters.append(child)
+
+            # Start with function results or all entities
+            if func_results is not None:
+                entities = func_results
+            else:
+                # No functions (shouldn't happen, but handle it)
+                q = self._build_base_query(entity_type)
+                entities = q.execute()
+
+            # Apply filters
+            if filters:
+                entities = [e for e in entities
+                           if all(self._matches_expression(e, f) for f in filters)]
+
+            return entities
+
+        elif isinstance(expr, OrExpr):
+            # Union of all child results
+            all_results = []
+            seen_ids = set()
+
+            for child in expr.children:
+                child_results = self._evaluate_expression_with_functions(child, entity_type)
+                for e in child_results:
+                    entity_id = getattr(e, 'id', id(e))
+                    if entity_id not in seen_ids:
+                        seen_ids.add(entity_id)
+                        all_results.append(e)
+
+            return all_results
+
+        elif isinstance(expr, NotExpr):
+            # Complement: all entities minus child results
+            q = self._build_base_query(entity_type)
+            all_entities = q.execute()
+            child_results = self._evaluate_expression_with_functions(expr.child, entity_type)
+            child_ids = {getattr(e, 'id', id(e)) for e in child_results}
+            return [e for e in all_entities if getattr(e, 'id', id(e)) not in child_ids]
+
+        else:
+            raise ExecutionError(f"Unsupported expression type: {type(expr).__name__}")
 
     def _matches_expression(self, entity: Any, expr: Expression) -> bool:
         """Check if entity matches an expression (handles NOT)."""

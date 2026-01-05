@@ -32,6 +32,7 @@ Example:
 from .parser import parse
 from .executor import execute
 from .validator import FieldValidator, COMMON_FIELDS
+from . import translator
 
 from .ast import (
     Expression,
@@ -65,6 +66,12 @@ from .lexer import (
     Token,
     TokenType,
     tokenize,
+)
+
+from .optimizer import (
+    QueryOptimizer,
+    QueryPlan,
+    SchemaInfo,
 )
 
 def validate(expression, entity_type=None):
@@ -134,4 +141,12 @@ __all__ = [
     # Validator
     'FieldValidator',
     'COMMON_FIELDS',
+
+    # Translator
+    'translator',
+
+    # Optimizer
+    'QueryOptimizer',
+    'QueryPlan',
+    'SchemaInfo',
 ]

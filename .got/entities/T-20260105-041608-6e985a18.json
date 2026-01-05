@@ -1,0 +1,23 @@
+{
+  "_checksum": "92263ee0eb79118e",
+  "_written_at": "2026-01-05T04:31:32.045660+00:00",
+  "data": {
+    "created_at": "2026-01-05T04:16:08.691630+00:00",
+    "description": "Support expressions like 'blocked() AND priority = high'.\n\nCurrent behavior: Fails because FunctionCalls mixed with filters can't be processed\nExpected behavior: Execute function, then post-filter results\n\nChanges needed:\n1. Add _contains_function() check in execute()\n2. Implement _apply_mixed_function_and_filter() method\n3. Execute FunctionCalls first, then apply remaining filters\n\nFiles to modify:\n- cortical/got/expression/executor.py\n\nDepends on: Fix top-level FunctionCall handling\n",
+    "entity_type": "task",
+    "id": "T-20260105-041608-6e985a18",
+    "metadata": {
+      "completed_at": "2026-01-05T04:31:32.025982+00:00",
+      "updated_at": "2026-01-05T04:31:32.025989+00:00"
+    },
+    "modified_at": "2026-01-05T04:31:32.045566+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature",
+      "retrospective": "Implemented by sub-agent. Changes to executor.py:\n\n1. Added _contains_function() helper to detect FunctionCalls in expression tree\n2. Updated execute() to route function-containing expressions to post-filter path\n3. Renamed _execute_with_not_filter() to _execute_with_post_filter()\n4. Added _evaluate_expression_with_functions() for set-based evaluation:\n   - FunctionCall: Execute directly\n   - Comparison: Get all entities, filter by predicate\n   - AndExpr: Execute functions first, intersect, then apply filters\n   - OrExpr: Union all child results\n   - NotExpr: Complement (all - child results)\n\nNow supports:\n- recent(7) AND priority = 'high' \u2192 78 results\n- orphan_nodes() AND status = 'pending' \u2192 16 results\n- has_edge('CONTAINS') OR status = 'blocked' \u2192 331 results\n- NOT recent(1) \u2192 336 results\n\nAll 13 integration tests pass."
+    },
+    "status": "completed",
+    "title": "Handle mixed FunctionCall and filter expressions in executor",
+    "version": 3
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "_checksum": "c3af3889977f83a7",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T05:08:08.684148+00:00",
+  "data": {
+    "code_refs": [],
+    "created_at": "2026-01-05T05:03:31.332449+00:00",
+    "entity_type": "knowledge_transfer",
+    "id": "KT-20260105-050331-a26cb2cf",
+    "modified_at": "2026-01-05T05:03:31.332471+00:00",
+    "properties": {},
+    "related_decisions": [],
+    "related_handoffs": [],
+    "related_tasks": [],
+    "sections": {},
+    "session_date": "",
+    "session_id": "",
+    "source_file": null,
+    "status": "published",
+    "summary": "Consolidating query command to use expression DSL. Alpha software - no backward compatibility concerns. Design doc specifies: translate() \u2192 parse() \u2192 execute() pipeline replaces if/elif block.",
+    "tags": [],
+    "title": "Query Consolidation Implementation",
+    "version": 1
+  }
+}

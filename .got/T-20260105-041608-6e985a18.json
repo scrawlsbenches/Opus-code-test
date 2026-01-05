@@ -1,0 +1,20 @@
+{
+  "_checksum": "135e1976fcb71161",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T04:16:11.303611+00:00",
+  "data": {
+    "created_at": "2026-01-05T04:16:08.691630+00:00",
+    "description": "Support expressions like 'blocked() AND priority = high'.\n\nCurrent behavior: Fails because FunctionCalls mixed with filters can't be processed\nExpected behavior: Execute function, then post-filter results\n\nChanges needed:\n1. Add _contains_function() check in execute()\n2. Implement _apply_mixed_function_and_filter() method\n3. Execute FunctionCalls first, then apply remaining filters\n\nFiles to modify:\n- cortical/got/expression/executor.py\n\nDepends on: Fix top-level FunctionCall handling\n",
+    "entity_type": "task",
+    "id": "T-20260105-041608-6e985a18",
+    "metadata": {},
+    "modified_at": "2026-01-05T04:16:08.691638+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Handle mixed FunctionCall and filter expressions in executor",
+    "version": 1
+  }
+}

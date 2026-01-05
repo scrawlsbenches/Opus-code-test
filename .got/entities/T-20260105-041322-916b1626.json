@@ -1,0 +1,19 @@
+{
+  "_checksum": "6ec7a75d437ed5ce",
+  "_written_at": "2026-01-05T04:13:22.387752+00:00",
+  "data": {
+    "created_at": "2026-01-05T04:13:22.374424+00:00",
+    "description": "Consolidate the legacy 'query' command (hardcoded pattern matching) with the new 'expr' command (parser-based) into a single unified query system that uses the Query Builder infrastructure.\n\n## Background\n- Legacy 'query': ~300 lines of if/elif pattern matching (got_utils.py:2392-2693)\n- New 'expr': Modular Lexer\u2192Parser\u2192AST\u2192Executor\u2192Query Builder (cortical/got/expression/)\n- Design doc explicitly states expr should REPLACE query (Section 1.5)\n\n## Current Gap\n- expr CLI doesn't support function calls (blocked(), in_sprint(), etc.)\n- query has natural language patterns expr doesn't support\n\n## Acceptance Criteria\n- [ ] expr CLI supports all function calls\n- [ ] Natural language patterns translate to expr syntax\n- [ ] query command becomes alias/wrapper for expr\n- [ ] Single execution path through Query Builder\n- [ ] Backwards compatibility maintained\n",
+    "entity_type": "task",
+    "id": "T-20260105-041322-916b1626",
+    "metadata": {},
+    "modified_at": "2026-01-05T04:13:22.387652+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "refactor"
+    },
+    "status": "pending",
+    "title": "Consolidate query and expr into unified query system",
+    "version": 2
+  }
+}

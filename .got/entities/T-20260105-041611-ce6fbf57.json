@@ -1,0 +1,23 @@
+{
+  "_checksum": "efb7b2ebebc90d76",
+  "_written_at": "2026-01-05T04:54:53.880001+00:00",
+  "data": {
+    "created_at": "2026-01-05T04:16:11.391320+00:00",
+    "description": "Translate legacy query patterns to expr syntax for backwards compatibility.\n\nPattern mappings:\n- 'blocked tasks' \u2192 'status = blocked' OR blocked()\n- 'what blocks T-123' \u2192 parents('T-123')\n- 'tasks in sprint S-001' \u2192 in_sprint('S-001')\n- 'orphan tasks' \u2192 orphan_nodes()\n- etc. (21 patterns total)\n\nImplementation options:\nA. Simple regex-based translator\nB. Small grammar/parser for natural language\nC. Dict-based pattern \u2192 expr mapping\n\nFiles to create:\n- cortical/got/expression/natural_language.py\n\nDepends on: Function calls work in expr\n",
+    "entity_type": "task",
+    "id": "T-20260105-041611-ce6fbf57",
+    "metadata": {
+      "completed_at": "2026-01-05T04:54:53.864517+00:00",
+      "updated_at": "2026-01-05T04:54:53.864523+00:00"
+    },
+    "modified_at": "2026-01-05T04:54:53.879925+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature",
+      "retrospective": "Implemented natural language query translator with full TDD approach. Wrote 27 behavioral tests BEFORE implementation (defining requirements), then used sub-agent to implement: translator.py with 25 pattern translations, added blockers() and dependents() functions to graph.py, added entity_type() function to filters.py. All tests pass with no regressions."
+    },
+    "status": "completed",
+    "title": "Create natural language to expr translator",
+    "version": 3
+  }
+}
