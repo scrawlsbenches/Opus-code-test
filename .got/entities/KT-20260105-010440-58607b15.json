@@ -1,18 +1,19 @@
 {
-  "_checksum": "d422fc6b91ec81e8",
-  "_written_at": "2026-01-05T01:05:25.027169+00:00",
+  "_checksum": "ea835441f50a0825",
+  "_written_at": "2026-01-05T01:05:32.441542+00:00",
   "data": {
     "code_refs": [],
     "created_at": "2026-01-05T01:04:40.651713+00:00",
     "entity_type": "knowledge_transfer",
     "id": "KT-20260105-010440-58607b15",
-    "modified_at": "2026-01-05T01:05:25.027113+00:00",
+    "modified_at": "2026-01-05T01:05:32.441461+00:00",
     "properties": {},
     "related_decisions": [],
     "related_handoffs": [],
     "related_tasks": [],
     "sections": {
       "Bugs Fixed": "1. create_knowledge_transfer() - scripts/got_utils.py:2815\n   - Was writing files directly without CDGStore checksum wrapper\n   - Fix: Delegate to TransactionManager.create_knowledge_transfer()\n   - Commit: f79f06e0\n\n2. _update_kt_entity() - scripts/got_utils.py:3014\n   - Same pattern - direct file writes without checksums  \n   - Fix: Use TransactionManager.begin/read/write/commit\n   - Commit: 8b1dd7ed",
+      "Design Document Status": "docs/design/got-query-audit-and-design.md\nStatus: DRAFT - Under Review (NOT yet approved)\n\nKey updates made:\n- T-001-A: Use string-based dispatch with SchemaRegistry (EntityType enum incomplete)\n- Section 7.3: DI container testing strategy\n- Section 7.7: Security sprint gate pattern\n- Appendix B: SQL compatibility design intent\n\nReady for final approval pass when user confirms.",
       "Session Context": "Conducted senior engineering design review of docs/design/got-query-audit-and-design.md (GoT Query System v2.8). Review methodology documented in CLAUDE.md. During session, discovered and fixed two bugs in KT storage that bypassed CDGStore checksums.",
       "Tests Added": "tests/behavioral/test_knowledge_transfer_stories.py (new file, 4 tests):\n- test_kt_creation_should_use_transactional_storage_with_checksums\n- test_kt_with_corrupted_checksum_should_raise_corruption_error\n- test_kt_update_should_preserve_checksum_integrity\n- test_tx_manager_creates_kt_with_checksums\n\nAll 38 tests passing (4 behavioral + 34 smoke)"
     },
@@ -25,6 +26,6 @@
       "handoff,design-review,bugfix,tests"
     ],
     "title": "Session Handoff: Design Review & KT Bug Fixes",
-    "version": 9
+    "version": 11
   }
 }
