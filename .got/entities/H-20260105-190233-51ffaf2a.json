@@ -1,0 +1,31 @@
+{
+  "_checksum": "2a87c0faab359b63",
+  "_written_at": "2026-01-05T19:02:33.719694+00:00",
+  "data": {
+    "accepted_at": "",
+    "artifacts": [],
+    "completed_at": "",
+    "context": {
+      "kt_summary": "This KT continues from the previous handoff",
+      "kt_title": "Workflow Test: Continuation KT",
+      "session_id": "",
+      "source_kt_id": "KT-20260105-190156-cdfb156f",
+      "type": "knowledge_transfer_continuation"
+    },
+    "created_at": "2026-01-05T19:02:33.708113+00:00",
+    "entity_type": "handoff",
+    "id": "H-20260105-190233-51ffaf2a",
+    "initiated_at": "2026-01-05T19:02:33.708127+00:00",
+    "instructions": "Final validation - verify complete chain KT1\u2192H1\u2192KT2\u2192H2",
+    "modified_at": "2026-01-05T19:02:33.719610+00:00",
+    "properties": {},
+    "reject_reason": "",
+    "rejected_at": "",
+    "result": {},
+    "source_agent": "main",
+    "status": "initiated",
+    "target_agent": "validation-thread-3",
+    "task_id": "",
+    "version": 2
+  }
+}
