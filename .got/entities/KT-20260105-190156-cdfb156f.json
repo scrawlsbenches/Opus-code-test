@@ -1,0 +1,24 @@
+{
+  "_checksum": "5081bc525a6b2d45",
+  "_written_at": "2026-01-05T19:01:57.125647+00:00",
+  "data": {
+    "code_refs": [],
+    "created_at": "2026-01-05T19:01:56.636986+00:00",
+    "entity_type": "knowledge_transfer",
+    "id": "KT-20260105-190156-cdfb156f",
+    "modified_at": "2026-01-05T19:01:57.125569+00:00",
+    "properties": {},
+    "related_decisions": [],
+    "related_handoffs": [],
+    "related_tasks": [],
+    "sections": {},
+    "session_date": "",
+    "session_id": "",
+    "source_file": null,
+    "status": "draft",
+    "summary": "This KT continues from the previous handoff",
+    "tags": [],
+    "title": "Workflow Test: Continuation KT",
+    "version": 3
+  }
+}
