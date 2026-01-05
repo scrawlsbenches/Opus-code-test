@@ -1,0 +1,98 @@
+Performance Contract Testing: Codifying Speed as Requirements
+
+Performance contracts transform vague aspirations into enforceable guarantees.
+Rather than hoping software runs fast enough, performance contracts specify
+exactly how fast is fast enough. These contracts execute as tests, failing
+builds when performance degrades below acceptable thresholds.
+
+Latency contracts specify response time bounds. A search function might contract
+to return results within 100 milliseconds for 99th percentile queries. The
+contract test measures actual latency across representative workloads and fails
+if the threshold is exceeded. This prevents gradual degradation that individual
+changes might not notice.
+
+Throughput contracts specify processing capacity. A queue processor might
+contract to handle 10,000 messages per second. The contract test generates
+load and measures sustained throughput. Falling below the contracted rate
+indicates insufficient capacity or performance regression.
+
+Scaling contracts specify how performance changes with load. Linear scaling
+means doubling input doubles processing time. A contract might specify that
+processing time must not exceed 1.5 times when input doubles, catching O(n²)
+algorithmic regressions that would devastate large-scale performance.
+
+Memory contracts specify resource consumption bounds. A cache might contract to
+use no more than 100 megabytes for 10,000 entries. The contract test populates
+the cache and measures memory consumption. Unbounded memory growth would
+eventually cause out-of-memory failures in production.
+
+Warmup considerations affect performance contract testing. Initial operations
+often run slower than steady-state operations due to JIT compilation, cache
+population, and connection establishment. Contract tests should include warmup
+phases before measurement to test realistic performance rather than cold-start
+anomalies.
+
+Statistical stability requires multiple measurements. A single timing measurement
+might hit a scheduling anomaly or garbage collection pause. Contract tests
+should run multiple iterations and use statistical aggregates: median for
+typical performance, 95th percentile for worst-case bounds, standard deviation
+for consistency.
+
+Baseline comparisons detect relative regression. Absolute thresholds might be
+too loose or too tight for different environments. Comparing current performance
+against a recorded baseline detects percentage regressions regardless of
+absolute speed. A 20% regression deserves attention even if absolute performance
+remains acceptable.
+
+Hardware variation complicates performance contracts. Tests might pass on fast
+developer machines but fail on slower CI servers. Contracts should account for
+environmental variation through looser thresholds or environment-specific
+baselines. Alternatively, dedicated performance testing environments eliminate
+hardware variability.
+
+Isolation prevents interference between tests. Other tests consuming CPU or
+memory affect timing measurements. Performance contract tests benefit from
+running in isolation or accounting for contention. The goal is measuring the
+code under test, not environmental noise.
+
+Representative workloads matter for meaningful contracts. Testing with trivial
+inputs might pass contracts that fail with realistic data. Performance
+contracts should use workloads representative of production: similar data
+sizes, distribution patterns, and access patterns that stress realistic
+scenarios.
+
+Algorithmic complexity contracts verify scaling behavior. By testing with
+different input sizes and measuring timing ratios, contracts verify that
+algorithms maintain expected complexity. If processing 1000 items takes 10
+milliseconds, processing 2000 items should take approximately 20 milliseconds
+for O(n) algorithms, not 40 milliseconds indicating O(n²) regression.
+
+Continuous integration enforces contracts automatically. Performance tests
+run on every commit or merge request. Failed contracts block integration,
+preventing performance regressions from reaching production. This discipline
+treats performance as seriously as correctness, both requiring automated
+verification.
+
+Performance budgets allocate contracts across components. If the overall
+response time budget is 200 milliseconds, individual components receive
+budgets summing to that total: 50 milliseconds for database queries, 30
+milliseconds for business logic, 20 milliseconds for serialization. Component
+contracts enforce the budget allocation.
+
+Contract violation investigation follows systematic patterns. Profile the
+slow code path to identify bottlenecks. Compare with previous versions to
+identify regressions. Check for environmental factors affecting measurements.
+Either fix the regression or, with justification, revise the contract if
+requirements changed legitimately.
+
+Trend monitoring supplements contract testing. Even when contracts pass,
+tracking performance over time reveals gradual degradation before it breaches
+thresholds. Dashboards visualizing historical performance help teams notice
+trends and investigate proactively rather than waiting for contract failures.
+
+Documentation accompanies performance contracts. Each contract should explain
+its rationale: why this threshold, what user experience it protects, what
+architectural assumption it enforces. This context helps future maintainers
+understand whether to fix violations or revise contracts when circumstances
+change.
+

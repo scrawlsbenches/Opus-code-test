@@ -1,0 +1,97 @@
+Contract Testing: Guarantees, Verification, and Continuous Enforcement
+
+Contract testing formalizes agreements between software components. Unlike
+traditional tests that verify implementation details, contract tests verify
+that components honor their promises to each other. This distinction enables
+independent evolution while maintaining integration reliability.
+
+A software contract specifies what a component guarantees about its behavior.
+Input contracts define acceptable parameters. Output contracts specify return
+value structure and semantics. Performance contracts establish timing bounds.
+Error contracts describe failure modes and recovery expectations.
+
+Consumer-driven contracts invert traditional API design. Rather than providers
+dictating interfaces, consumers express their requirements. The provider must
+satisfy all consumer contracts. This approach prevents providers from breaking
+consumers unknowingly and surfaces unused API capabilities that complicate
+maintenance.
+
+Performance contracts codify non-functional requirements as executable tests.
+Response time limits become assertions: search must complete within 50
+milliseconds. Throughput guarantees become benchmarks: the system must handle
+1000 requests per second. Scaling contracts verify that doubling load does not
+more than double response time.
+
+Contract violations demand immediate attention. Unlike feature tests that might
+tolerate temporary breakage during refactoring, contract failures indicate
+broken promises to other components. A violated performance contract might
+cascade into downstream timeouts. A violated API contract breaks consumers who
+depend on its structure.
+
+Schema contracts verify data structure compatibility. When services communicate
+through JSON or Protocol Buffers, schema contracts ensure both sides agree on
+field names, types, and required values. Schema evolution must maintain backward
+compatibility or explicitly version breaking changes.
+
+Contract tests execute at integration boundaries. Unit tests verify internal
+behavior. Contract tests verify external promises. This separation allows
+refactoring internals freely while contract tests guard the interface. A
+component might completely rewrite its implementation; contract tests should
+still pass if external behavior remains consistent.
+
+Pact exemplifies consumer-driven contract testing. Consumers record expected
+interactions as pacts. Providers verify they can satisfy all pacts. A central
+broker manages pact versions and tracks compatibility. This workflow enables
+independent deployment when contract verification succeeds.
+
+Mock services implement contracts for testing. When testing a consumer, mock
+the provider according to its contract. The mock responds as the real provider
+would, enabling testing without actual integration. Contract-based mocks stay
+accurate because they derive from the same contract the provider implements.
+
+Contract evolution requires careful management. Adding optional fields maintains
+backward compatibility. Removing fields or changing types breaks consumers.
+Semantic versioning signals compatibility: minor versions add capabilities
+without breaking contracts; major versions may introduce breaking changes with
+migration paths.
+
+Assertions in contract tests should be precise but not brittle. Verify that
+required fields exist with correct types. Avoid asserting exact values that
+might legitimately change. Assert structure and constraints rather than specific
+content. This balance catches real contract violations while tolerating
+acceptable variation.
+
+Contract testing complements integration testing. Integration tests verify that
+components work together correctly. Contract tests verify that components can
+work together at all. Both are necessary: contracts ensure compatibility while
+integration tests verify correct composition.
+
+The testing pyramid places contract tests between unit and integration tests.
+They run faster than full integration tests because they test boundaries with
+mocks. They provide stronger guarantees than unit tests because they verify
+cross-component agreements. This intermediate position offers excellent
+cost-benefit balance.
+
+Continuous contract verification prevents regression. Every build runs contract
+tests. Failed contracts block deployment. This discipline catches breaking
+changes before they reach production. Teams develop confidence that their
+changes will not break consumers because contracts verify compatibility
+continuously.
+
+Contract discovery documents existing behavior. When contracts do not exist
+for legacy systems, recording actual behavior creates baseline contracts.
+These discovered contracts might reveal undocumented expectations that consumers
+depend upon. Formalizing implicit contracts reduces the risk of breaking
+unknown dependencies.
+
+Provider states enable testing complex scenarios. A consumer might need the
+provider in a specific configuration: "given a user with expired subscription."
+Provider states set up these preconditions. The provider implements state setup;
+consumers reference states in their contract expectations.
+
+Contract test failures diagnose integration problems precisely. Rather than a
+vague "integration test failed" message, contract failures identify exactly
+which expectation was violated. This precision accelerates debugging and
+clarifies responsibility: either the consumer expectation is wrong or the
+provider implementation is deficient.
+

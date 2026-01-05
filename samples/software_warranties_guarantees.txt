@@ -1,0 +1,87 @@
+Software Warranties and Guarantees: Promises in Code
+
+Software warranties bridge legal commitment and technical capability. Unlike
+physical product warranties covering material defects, software warranties
+address behavioral expectations. The abstract nature of software makes
+warranty specification challenging: what exactly constitutes a defect in
+something intangible?
+
+Fitness for purpose warranties promise that software performs its intended
+function. A spreadsheet must calculate correctly. A compiler must generate
+valid code. These warranties focus on core functionality that justifies the
+software's existence. Violation means the software fails its fundamental
+purpose.
+
+Performance warranties quantify operational expectations. Response time
+guarantees promise speed. Availability guarantees promise uptime. Capacity
+guarantees promise throughput. These warranties transform non-functional
+requirements into contractual commitments with measurable thresholds.
+
+Compatibility warranties promise interoperation. Software warranted to run
+on specified platforms must actually run there. APIs warranted to follow
+specifications must honor documented contracts. Compatibility warranties
+enable ecosystem building where components reliably work together.
+
+Security warranties address protection capabilities. Claims about encryption
+strength, access control rigor, or vulnerability absence carry warranty
+implications. Security breaches might trigger warranty claims if protection
+failed to meet warranted capabilities. These warranties require careful
+scoping given evolving threat landscapes.
+
+Disclaimer of implied warranties limits liability. Most software licenses
+explicitly disclaim implied warranties of merchantability and fitness.
+These broad disclaimers protect vendors from claims about capabilities never
+explicitly promised. Users accept software as-is despite potential issues.
+
+Express warranties create explicit commitments. When vendors explicitly
+promise specific capabilities—in marketing, documentation, or contracts—
+they create express warranties. Unlike disclaimed implied warranties, express
+warranties bind vendors to their specific claims.
+
+Warranty duration defines commitment period. Time-limited warranties expire
+after specified periods. Perpetual warranties last indefinitely. Version-
+limited warranties apply only to specific releases. Duration scoping aligns
+warranty commitment with realistic maintenance capability.
+
+Warranty remedies specify violation consequences. Repair-or-replace remedies
+require vendors to fix warranted defects. Refund remedies return purchase
+price. Credit remedies offset future purchases. Service credit remedies
+reduce ongoing fees. Remedy selection balances customer protection with
+vendor sustainability.
+
+Warranty exclusions carve out exceptions. User modification might void
+warranties. Misuse beyond intended purpose might exclude coverage.
+Environmental factors outside specifications might excuse failures. Clear
+exclusions prevent unreasonable claims while maintaining meaningful coverage.
+
+Extended warranties offer additional coverage. Beyond standard warranty
+periods, extended warranties provide ongoing commitment for additional fees.
+These arrangements suit critical systems requiring long-term assurance.
+Cost-benefit analysis determines whether extended coverage justifies expense.
+
+Support agreements complement warranties. Warranties address defect remediation;
+support agreements address assistance needs. Support tiers offer different
+response times, access channels, and expertise levels. Combined warranty and
+support packages provide comprehensive coverage.
+
+Warranty verification requires testing. Vendors must verify that software
+meets warranted capabilities before making claims. Test suites exercise
+warranted functionality. Performance testing validates performance warranties.
+Security audits verify security claims. Testing creates evidence supporting
+warranty validity.
+
+Warranty claims require documentation. When users claim warranty violations,
+evidence matters. Error logs demonstrate defective behavior. Performance
+measurements show threshold violations. Reproduction steps enable vendor
+verification. Documentation quality affects claim success.
+
+Insurance transfers warranty risk. Vendors might insure against warranty
+claims for critical deployments. Insurance providers assess risk based on
+development practices, testing rigor, and claim history. Insurance availability
+signals actuarial assessment of warranty reliability.
+
+Warranty economics balance protection and cost. Stronger warranties increase
+development cost through additional testing and quality assurance. But
+stronger warranties also build customer confidence and justify premium pricing.
+Market positioning determines appropriate warranty strength.
+

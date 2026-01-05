@@ -1,0 +1,96 @@
+Software Quality Assurance: Systematic Prevention of Defects
+
+Quality assurance shifts focus from finding defects to preventing them.
+While testing discovers existing bugs, quality assurance establishes processes
+that reduce bug introduction. This proactive approach proves more efficient
+than reactive debugging: preventing a bug costs less than finding and fixing
+it after deployment.
+
+Process quality determines product quality. Chaotic development processes
+produce inconsistent results. Defined processes with clear standards produce
+predictable quality. Quality assurance examines and improves processes rather
+than just products. Better processes yield better products sustainably.
+
+Requirements review catches defects earliest. Ambiguous or contradictory
+requirements become implementation bugs later. Reviewing requirements before
+implementation identifies problems when they're cheapest to fix. Quality
+assurance facilitates requirement reviews that prevent downstream defects.
+
+Design review validates architectural decisions. Poor design choices create
+systemic quality problems that testing cannot fix. Reviewing designs against
+quality attributes—performance, maintainability, security—prevents fundamental
+flaws. Architectural review boards or design documents enable systematic
+design quality assurance.
+
+Code review catches implementation defects. Fresh eyes notice problems that
+developers miss in their own code. Structured review processes ensure
+consistent coverage. Checklists guide reviewers toward common issues.
+Review comments improve immediate code and build team knowledge.
+
+Static analysis automates defect detection. Tools analyze code without
+executing it, finding patterns that indicate bugs: null pointer dereferences,
+resource leaks, security vulnerabilities. Integrating static analysis into
+build pipelines catches issues continuously without manual review effort.
+
+Coding standards establish consistent practices. When all code follows the
+same patterns, deviations that often indicate bugs become visible. Standards
+reduce cognitive load: developers don't reinvent approaches for common
+situations. Automated linting enforces standards without manual policing.
+
+Testing validates behavior empirically. Unit tests verify component behavior.
+Integration tests verify component interaction. System tests verify end-to-end
+functionality. Performance tests verify non-functional requirements. Each
+testing level catches different defect types.
+
+Test coverage measurement identifies gaps. Untested code might contain
+undetected bugs. Coverage tools reveal which code paths tests exercise.
+Coverage targets ensure testing reaches sufficient breadth. But coverage
+measures execution, not verification quality; thoughtful assertions matter
+beyond mere execution.
+
+Continuous integration catches integration issues early. Frequent integration
+reveals conflicts before they compound. Automated build and test on every
+change ensures continuous quality visibility. Failed builds block integration
+until issues resolve, maintaining quality gates.
+
+Defect tracking enables systematic improvement. Recording defects, their root
+causes, and resolution patterns reveals quality trends. Which components
+produce most defects? Which defect types recur? Analysis guides process
+improvement toward highest-impact areas.
+
+Root cause analysis prevents recurrence. Surface fixes address symptoms;
+root cause analysis addresses underlying problems. The five whys technique
+traces from symptom to fundamental cause. Fixes targeting root causes prevent
+entire classes of similar defects.
+
+Quality metrics quantify quality state. Defect density measures bugs per
+code volume. Escape rate measures defects reaching production. Mean time to
+resolution measures fix speed. Trend analysis reveals whether quality
+improves or degrades over time.
+
+Risk-based testing prioritizes high-impact areas. Limited testing resources
+should focus on highest-risk components: complex logic, security-critical
+code, frequently changing modules. Risk assessment guides testing investment
+toward maximum defect prevention per effort expended.
+
+Regression testing prevents quality erosion. Changes might break previously
+working functionality. Regression test suites verify that existing behavior
+survives modification. Automated regression testing enables confident change
+without manual verification overhead.
+
+Environment parity reduces environmental defects. When development, testing,
+and production environments differ, environment-specific bugs appear in
+production that testing didn't catch. Infrastructure as code and
+containerization enable consistent environments across the deployment
+pipeline.
+
+Quality gates prevent defect propagation. Automatic checks at pipeline stages
+block progression until quality criteria are met. Failed tests block deployment.
+Security scans block vulnerable code. Quality gates ensure defects are caught
+before reaching later, more expensive stages.
+
+Shift-left moves quality activities earlier. Traditional quality assurance
+comes late in development. Shift-left integrates quality activities throughout
+development: testing while coding, security review during design, requirement
+validation before implementation. Earlier detection means cheaper fixes.
+

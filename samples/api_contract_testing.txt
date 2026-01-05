@@ -1,0 +1,98 @@
+API Contract Testing: Enforcing Interface Agreements
+
+API contracts define the agreement between service providers and consumers.
+Beyond documentation that might drift from reality, contract tests verify that
+APIs actually behave as promised. This verification enables confident evolution
+of both providers and consumers without manual coordination.
+
+Request contracts specify valid input structures. Required fields must be
+present. Field types must match expectations. Value ranges must fall within
+acceptable bounds. Contract tests verify that providers correctly validate
+input and reject malformed requests with appropriate error responses.
+
+Response contracts specify output structure guarantees. Consumers depend on
+specific fields existing with specific types. Contract tests verify that
+responses contain promised fields. Adding optional fields maintains
+compatibility; removing fields or changing types violates the contract.
+
+Error contracts specify failure behavior. When requests fail, what error
+structure does the API return? What status codes indicate which failures?
+Contract tests verify that error responses match documented formats. Consumers
+depend on predictable error handling for proper recovery logic.
+
+Versioning strategies manage contract evolution. URL versioning embeds version
+in the path: /v1/users and /v2/users. Header versioning uses content negotiation.
+Query parameter versioning adds version to requests. Each strategy trades
+discoverability against cleanliness. Contracts must specify versioning
+conventions.
+
+Backward compatibility permits adding but not removing. New optional fields
+in responses maintain compatibility. New required fields in requests break
+consumers. New endpoints extend without breaking. Deprecation with migration
+periods manages intentional breaking changes responsibly.
+
+OpenAPI specifications serve as contract definitions. The machine-readable
+specification describes endpoints, parameters, request bodies, and responses.
+Contract tests can generate from OpenAPI specs, ensuring tests match
+documentation. Spec-first development writes the contract before implementation.
+
+Mock servers implement contracts for consumer testing. Given an API contract,
+tools generate mock servers returning valid responses. Consumers test against
+mocks during development. When the real provider changes, contract verification
+against the mock reveals incompatibility before integration.
+
+Provider verification confirms contract satisfaction. The provider runs tests
+derived from consumer contracts. Each consumer expectation becomes a test case.
+If the provider satisfies all consumer contracts, integration should succeed.
+Failures identify which consumer expectations the provider cannot meet.
+
+Contract tests versus integration tests serve different purposes. Integration
+tests verify end-to-end behavior with real services. Contract tests verify
+interface compatibility without full integration. Both matter: contracts ensure
+components can connect; integration tests ensure they work together correctly.
+
+Idempotency contracts matter for retry safety. Can consumers safely retry
+failed requests? Idempotent operations produce the same result regardless of
+repetition. Contracts should specify idempotency guarantees so consumers know
+which operations are safe to retry during transient failures.
+
+Rate limiting contracts specify throttling behavior. How many requests per
+time period? What response indicates throttling? How long until retry is
+appropriate? Contract tests verify that throttling behaves predictably,
+enabling consumers to implement proper backoff strategies.
+
+Authentication contracts specify security requirements. Which endpoints
+require authentication? What token format is accepted? What errors indicate
+authentication failure versus authorization failure? Contract tests verify
+that security behaves consistently across the API surface.
+
+Pagination contracts specify handling of large result sets. What parameters
+control page size and position? What response fields indicate total count
+and next page? Are there cursor-based or offset-based semantics? Contract
+tests verify pagination behavior matches documented patterns.
+
+Webhook contracts specify callback behavior. When providers push events to
+consumers, what payload structure do webhooks deliver? What acknowledgment
+does the provider expect? Contract tests verify webhook payloads match
+consumer expectations, enabling reliable event-driven integration.
+
+HATEOAS contracts specify hypermedia semantics. When responses include links
+for navigation, what link relations exist? What do they indicate? Contract
+tests verify that hypermedia responses enable discovery without hardcoded
+URL knowledge.
+
+GraphQL contracts differ from REST contracts. Schema introspection provides
+built-in contract documentation. However, resolver behavior requires contract
+testing beyond schema. Performance contracts matter because clients can
+construct expensive queries that servers must handle predictably.
+
+Contract testing builds confidence for independent deployment. When provider
+changes satisfy all consumer contracts, deployment is safe without consumer
+coordination. When consumer changes only use contracted features, deployment
+is safe without provider notification. This independence accelerates delivery.
+
+Breaking change detection happens at pull request time. Running contract tests
+against proposed changes reveals incompatibilities before merge. Teams can
+then coordinate breaking changes intentionally rather than discovering breaks
+in production integration.
+
