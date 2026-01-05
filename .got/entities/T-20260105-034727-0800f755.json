@@ -1,0 +1,19 @@
+{
+  "_checksum": "7148075f5a1274c5",
+  "_written_at": "2026-01-05T03:47:27.962630+00:00",
+  "data": {
+    "created_at": "2026-01-05T03:47:27.951692+00:00",
+    "description": "Validate the Sprint 4 CLI expression query integration.\n\n## Validation Checklist\n\n### 1. Smoke Test\n```bash\npython scripts/got_utils.py validate\npython -m pytest tests/smoke/ -v --tb=short\n```\n\n### 2. CLI Command Tests\n```bash\n# Help displays correctly\npython scripts/got_utils.py expr --help\n\n# List functions works\npython scripts/got_utils.py expr --list-functions\n\n# List fields works\npython scripts/got_utils.py expr --list-fields --type task\n\n# Basic query works\npython scripts/got_utils.py expr \"status = 'pending'\" --count\n\n# AND query works\npython scripts/got_utils.py expr \"status = 'pending' AND priority = 'high'\"\n\n# NOT query works\npython scripts/got_utils.py expr \"NOT status = 'completed'\" --count\n\n# JSON output works\npython scripts/got_utils.py expr \"status = 'in_progress'\" --format json\n\n# Explain works\npython scripts/got_utils.py expr --explain \"status = 'pending' AND priority = 'high'\"\n```\n\n### 3. Integration Tests\n```bash\npytest tests/integration/test_got_cli.py::TestExpressionQueryCommands -v\n```\n\n### 4. Design Document Alignment Check\n- Verify implementation matches docs/design/got-query-audit-and-design.md Sprint 4 requirements\n- Key checks:\n  - [ ] CLI \u2192 Expression Parser \u2192 Query Builder \u2192 Execute flow\n  - [ ] --list-fields implemented\n  - [ ] --list-functions implemented\n  - [ ] --explain implemented\n  - [ ] Integration tests present and passing\n\n### 5. Code Review Points\n- cortical/got/cli/query.py: cmd_expr and helper functions\n- scripts/got_utils.py: imports and VALID_COMMANDS\n- tests/integration/test_got_cli.py: TestExpressionQueryCommands\n\n## Success Criteria\n- All CLI commands execute without error\n- All 13 integration tests pass\n- Output matches expected formats",
+    "entity_type": "task",
+    "id": "T-20260105-034727-0800f755",
+    "metadata": {},
+    "modified_at": "2026-01-05T03:47:27.962550+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "test"
+    },
+    "status": "pending",
+    "title": "Validate Sprint 4 CLI Integration",
+    "version": 2
+  }
+}

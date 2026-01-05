@@ -108,6 +108,7 @@ from cortical.got.cli.query import (
     handle_query_commands,
     # Re-export individual handlers for tests
     cmd_query,
+    cmd_expr,
     cmd_infer,
     cmd_blocked,
     cmd_active,
@@ -3300,7 +3301,7 @@ def format_sprint_status(sprint: ThoughtNode, progress: Dict[str, Any]) -> str:
 
 # All valid commands for suggestion
 VALID_COMMANDS = [
-    "task", "sprint", "epic", "handoff", "decision", "doc", "query",
+    "task", "sprint", "epic", "handoff", "decision", "doc", "query", "expr",
     "blocked", "active", "stats", "dashboard", "validate", "infer",
     "export", "backup", "sync", "orphan", "backlog", "analyze", "edge",
     "batch", "knowledge", "kt", "failure",

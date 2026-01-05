@@ -2,7 +2,7 @@
 Query and validation CLI commands for GoT system.
 
 Provides commands for:
-- Querying the graph
+- Querying the graph (legacy natural language and new expression-based)
 - Showing blocked/active/stats
 - Validating graph health
 - Inferring edges from git
@@ -12,7 +12,7 @@ This module can be integrated into got_utils.py CLI or used standalone.
 
 import json
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, List
 
 from .shared import format_task_table
 
@@ -287,6 +287,280 @@ def cmd_export(args, manager: "TransactionalGoTAdapter") -> int:
 
 
 # =============================================================================
+# EXPRESSION QUERY COMMANDS
+# =============================================================================
+
+def cmd_expr(args, manager: "TransactionalGoTAdapter") -> int:
+    """
+    Handle 'got expr' command - expression-based queries.
+
+    Uses the new expression parser to execute structured queries like:
+        got expr "status = 'pending' AND priority = 'high'"
+        got expr "NOT status = 'completed'"
+        got expr "recent(days=7)"
+    """
+    from cortical.got.expression import parse, execute, validate
+    from cortical.got.expression.errors import QueryError
+
+    query_str = " ".join(args.expression)
+
+    # Handle special flags first
+    if getattr(args, 'list_fields', False):
+        return _cmd_list_fields(args)
+
+    if getattr(args, 'list_functions', False):
+        return _cmd_list_functions()
+
+    if getattr(args, 'explain', False):
+        return _cmd_explain(query_str)
+
+    if not query_str:
+        print("Error: No expression provided.")
+        print("Usage: got expr \"status = 'pending'\"")
+        return 1
+
+    try:
+        # Parse the expression
+        query = parse(query_str)
+
+        # Validate if entity type is specified
+        entity_type = getattr(args, 'type', 'task')
+        if entity_type:
+            validate(query, entity_type=entity_type)
+
+        # Execute against the GoT manager
+        # The execute function expects a GoTManager. TransactionalGoTAdapter
+        # stores the actual manager in _manager
+        got_manager = getattr(manager, '_manager', manager)
+        results = execute(got_manager, query)
+
+        # Format and display results
+        _display_results(results, query_str, args)
+
+        return 0
+
+    except QueryError as e:
+        print(f"Query Error: {e}")
+        return 1
+    except Exception as e:
+        print(f"Error: {e}")
+        if getattr(args, 'debug', False):
+            import traceback
+            traceback.print_exc()
+        return 1
+
+
+def _display_results(results: Any, query_str: str, args) -> None:
+    """Display query results in a formatted way."""
+    output_format = getattr(args, 'format', 'table')
+    show_count = getattr(args, 'count', False)
+
+    if show_count:
+        print(len(results) if hasattr(results, '__len__') else 1)
+        return
+
+    if not results:
+        print("No results found.")
+        return
+
+    # Ensure results is a list
+    if not isinstance(results, list):
+        results = [results]
+
+    print(f"Results ({len(results)}):\n")
+
+    if output_format == 'json':
+        # JSON output
+        output = []
+        for r in results:
+            if hasattr(r, 'to_dict'):
+                output.append(r.to_dict())
+            elif hasattr(r, '__dict__'):
+                output.append({k: v for k, v in r.__dict__.items()
+                             if not k.startswith('_')})
+            else:
+                output.append(str(r))
+        print(json.dumps(output, indent=2, default=str))
+    elif output_format == 'ids':
+        # IDs only
+        for r in results:
+            entity_id = getattr(r, 'id', None) or getattr(r, 'entity_id', str(r))
+            print(entity_id)
+    else:
+        # Table format (default)
+        for r in results:
+            _print_result_item(r)
+
+
+def _print_result_item(item: Any) -> None:
+    """Print a single result item."""
+    # Get entity ID
+    entity_id = getattr(item, 'id', None) or getattr(item, 'entity_id', None)
+
+    # Get title/content
+    title = (getattr(item, 'title', None) or
+             getattr(item, 'content', None) or
+             getattr(item, 'name', None) or
+             str(item))
+
+    if entity_id:
+        print(f"  {entity_id}")
+        if title and str(title) != str(entity_id):
+            print(f"    Title: {title}")
+    else:
+        print(f"  {title}")
+
+    # Show status and priority if available
+    status = getattr(item, 'status', None)
+    if status is None and hasattr(item, 'properties'):
+        status = item.properties.get('status')
+    if status:
+        print(f"    Status: {status}")
+
+    priority = getattr(item, 'priority', None)
+    if priority is None and hasattr(item, 'properties'):
+        priority = item.properties.get('priority')
+    if priority:
+        print(f"    Priority: {priority}")
+
+    print()
+
+
+def _cmd_list_fields(args) -> int:
+    """List available fields for an entity type."""
+    from cortical.got.schema import get_registry
+    from cortical.got.entity_schemas import ensure_schemas_registered
+
+    ensure_schemas_registered()
+
+    entity_type = getattr(args, 'type', 'task')
+    registry = get_registry()
+
+    schema = registry.get_schema(entity_type)
+    if schema is not None:
+        print(f"Fields for '{entity_type}':\n")
+        for field_name, field_def in schema.fields.items():
+            field_type = field_def.field_type.name if hasattr(field_def.field_type, 'name') else str(field_def.field_type)
+            required = "required" if field_def.required else "optional"
+            print(f"  {field_name}: {field_type.lower()} ({required})")
+            if field_def.description:
+                print(f"      {field_def.description}")
+        return 0
+    else:
+        print(f"No schema registered for '{entity_type}'.")
+        # Fall back to common fields
+        from cortical.got.expression.validator import COMMON_FIELDS
+        print(f"\nCommon fields (available for all entity types):")
+        for field in sorted(COMMON_FIELDS):
+            print(f"  {field}")
+        return 0
+
+
+def _cmd_list_functions() -> int:
+    """List available query functions."""
+    from cortical.got.expression.registry import FunctionRegistry
+
+    # Ensure functions are registered
+    from cortical.got.expression.functions import graph, filters  # noqa: F401
+
+    registry = FunctionRegistry.instance()
+    functions = registry.list_functions()
+
+    if not functions:
+        print("No functions registered.")
+        return 0
+
+    print("Available query functions:\n")
+
+    # Group functions - FunctionSignature doesn't have category, so just list all
+    for sig in sorted(functions, key=lambda s: s.name):
+        # Format parameters from required_args and optional_args
+        params = []
+        # Required args first
+        for arg in sig.required_args:
+            params.append(arg)
+        # Optional args with defaults
+        for arg, default in sig.optional_args.items():
+            params.append(f"{arg}={default}")
+        params_str = ", ".join(params)
+
+        print(f"  {sig.name}({params_str})")
+        if sig.description:
+            print(f"      {sig.description}")
+        if sig.returns:
+            print(f"      Returns: {sig.returns}")
+        print()
+
+    return 0
+
+
+def _cmd_explain(query_str: str) -> int:
+    """Explain how a query will be executed."""
+    from cortical.got.expression import parse
+    from cortical.got.expression.errors import QueryError
+
+    if not query_str:
+        print("Error: No expression to explain.")
+        return 1
+
+    try:
+        query = parse(query_str)
+
+        print(f"Expression: {query_str}\n")
+        print("Parsed AST:")
+        _print_ast(query.expression, indent=2)
+
+        print(f"\nEntity type: {query.entity_type or 'task (default)'}")
+        if query.order_by:
+            field, desc = query.order_by
+            print(f"Order by: {field} {'DESC' if desc else 'ASC'}")
+        if query.limit:
+            print(f"Limit: {query.limit}")
+        if query.offset:
+            print(f"Offset: {query.offset}")
+
+        return 0
+
+    except QueryError as e:
+        print(f"Parse Error: {e}")
+        return 1
+
+
+def _print_ast(node, indent=0) -> None:
+    """Print AST node for debugging."""
+    from cortical.got.expression.ast import (
+        Comparison, AndExpr, OrExpr, NotExpr, FunctionCall, Literal, Field
+    )
+
+    prefix = " " * indent
+
+    if node is None:
+        print(f"{prefix}(empty)")
+    elif isinstance(node, Comparison):
+        print(f"{prefix}Comparison:")
+        print(f"{prefix}  field: {node.field.name if hasattr(node.field, 'name') else node.field}")
+        print(f"{prefix}  op: {node.op.name}")
+        print(f"{prefix}  value: {node.value.value if hasattr(node.value, 'value') else node.value}")
+    elif isinstance(node, AndExpr):
+        print(f"{prefix}AND:")
+        for child in node.children:
+            _print_ast(child, indent + 2)
+    elif isinstance(node, OrExpr):
+        print(f"{prefix}OR:")
+        for child in node.children:
+            _print_ast(child, indent + 2)
+    elif isinstance(node, NotExpr):
+        print(f"{prefix}NOT:")
+        _print_ast(node.child, indent + 2)
+    elif isinstance(node, FunctionCall):
+        args_str = ", ".join(str(a) for a in node.args)
+        kwargs_str = ", ".join(f"{k}={v}" for k, v in node.kwargs)
+        print(f"{prefix}Function: {node.name}({args_str}{', ' + kwargs_str if kwargs_str else ''})")
+    else:
+        print(f"{prefix}{type(node).__name__}: {node}")
+
+
+# =============================================================================
 # CLI INTEGRATION
 # =============================================================================
 
@@ -297,12 +571,72 @@ def setup_query_parser(subparsers) -> None:
     Args:
         subparsers: The subparsers object from argparse
     """
-    # Query command
-    query_parser = subparsers.add_parser("query", help="Query the graph")
+    # Query command (legacy natural language)
+    query_parser = subparsers.add_parser("query", help="Query the graph (natural language)")
     query_parser.add_argument(
         "query_string",
         nargs="+",
         help="Query (e.g., 'what blocks task:T-...')"
+    )
+
+    # Expression query command (new structured queries)
+    expr_parser = subparsers.add_parser(
+        "expr",
+        help="Query using expression syntax (e.g., \"status = 'pending'\")",
+        description="""
+Execute structured queries using the expression DSL.
+
+Examples:
+  got expr "status = 'pending'"
+  got expr "status = 'pending' AND priority = 'high'"
+  got expr "NOT status = 'completed'"
+  got expr "priority IN ['high', 'critical']"
+  got expr --type decision "status = 'draft'"
+  got expr --list-functions
+  got expr --list-fields --type task
+  got expr --explain "status = 'pending' AND priority = 'high'"
+        """,
+    )
+    expr_parser.add_argument(
+        "expression",
+        nargs="*",
+        help="Expression to query (e.g., \"status = 'pending'\")"
+    )
+    expr_parser.add_argument(
+        "--type", "-t",
+        default="task",
+        help="Entity type to query (default: task)"
+    )
+    expr_parser.add_argument(
+        "--format", "-f",
+        choices=["table", "json", "ids"],
+        default="table",
+        help="Output format (default: table)"
+    )
+    expr_parser.add_argument(
+        "--count", "-c",
+        action="store_true",
+        help="Only show the count of results"
+    )
+    expr_parser.add_argument(
+        "--list-fields",
+        action="store_true",
+        help="List available fields for the entity type"
+    )
+    expr_parser.add_argument(
+        "--list-functions",
+        action="store_true",
+        help="List available query functions"
+    )
+    expr_parser.add_argument(
+        "--explain",
+        action="store_true",
+        help="Show how the query will be parsed and executed"
+    )
+    expr_parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Show debug information on errors"
     )
 
     # Simple query shortcuts
@@ -352,6 +686,7 @@ def handle_query_commands(args, manager: "TransactionalGoTAdapter") -> int:
 
     handlers = {
         "query": cmd_query,
+        "expr": cmd_expr,
         "blocked": cmd_blocked,
         "active": cmd_active,
         "stats": cmd_stats,
