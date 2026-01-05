@@ -1,19 +1,22 @@
 {
-  "_checksum": "f618e81780a8db5d",
-  "_written_at": "2026-01-05T03:13:14.064558+00:00",
+  "_checksum": "3ab2dd590d4c6318",
+  "_written_at": "2026-01-05T03:23:37.970643+00:00",
   "data": {
     "created_at": "2026-01-05T03:13:14.051989+00:00",
     "description": "",
     "entity_type": "task",
     "id": "T-20260105-031314-c02db93d",
-    "metadata": {},
-    "modified_at": "2026-01-05T03:13:14.064490+00:00",
+    "metadata": {
+      "started_at": "2026-01-05T03:23:37.955701+00:00",
+      "updated_at": "2026-01-05T03:23:37.955706+00:00"
+    },
+    "modified_at": "2026-01-05T03:23:37.970584+00:00",
     "priority": "high",
     "properties": {
       "category": "feature"
     },
-    "status": "pending",
+    "status": "in_progress",
     "title": "Sprint 4-5: CLI Integration and Documentation",
-    "version": 2
+    "version": 3
   }
 }
