@@ -1,19 +1,23 @@
 {
-  "_checksum": "a71e9d130db70fd3",
-  "_written_at": "2026-01-05T04:16:06.049993+00:00",
+  "_checksum": "1d86122b992b4eec",
+  "_written_at": "2026-01-05T04:24:33.165697+00:00",
   "data": {
     "created_at": "2026-01-05T04:16:06.038107+00:00",
     "description": "Modify cortical/got/expression/executor.py to detect and execute standalone FunctionCalls.\n\nCurrent behavior: 'got expr blocked()' fails with 'Function calls cannot be used as filter expressions'\nExpected behavior: Should execute the blocked() function and return results\n\nChanges needed:\n1. In execute() method, check if query.expression is a FunctionCall\n2. If so, call new _execute_function_call() method\n3. Implement _execute_function_call() using existing _apply_function() logic\n\nFiles to modify:\n- cortical/got/expression/executor.py (lines 34-75)\n\nTest:\n- got expr 'blocked()' should return blocked tasks\n- got expr 'recent(7)' should return recent tasks\n",
     "entity_type": "task",
     "id": "T-20260105-041606-d8fce554",
-    "metadata": {},
-    "modified_at": "2026-01-05T04:16:06.049894+00:00",
+    "metadata": {
+      "completed_at": "2026-01-05T04:24:33.144564+00:00",
+      "updated_at": "2026-01-05T04:24:33.144576+00:00"
+    },
+    "modified_at": "2026-01-05T04:24:33.165618+00:00",
     "priority": "critical",
     "properties": {
-      "category": "bugfix"
+      "category": "bugfix",
+      "retrospective": "Fixed by:\n1. Sub-agent added detection of top-level FunctionCall in execute() method\n2. Added import of functions modules to ensure registration with FunctionRegistry\n\nChanges made to cortical/got/expression/executor.py:\n- Added import: from .functions import graph, filters\n- Added check in execute(): if query.expression and isinstance(query.expression, FunctionCall): return self._apply_function(query.expression)\n\nAll function calls now work: blocked(), orphan_nodes(), recent(), has_edge(), in_sprint(), etc."
     },
-    "status": "pending",
+    "status": "completed",
     "title": "Fix executor to handle top-level FunctionCall expressions",
-    "version": 2
+    "version": 3
   }
 }
