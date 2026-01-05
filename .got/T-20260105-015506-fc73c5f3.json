@@ -1,0 +1,20 @@
+{
+  "_checksum": "6602a0ad93000622",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T01:55:45.183708+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:55:06.711993+00:00",
+    "description": "Remove unused imports from all expression module files. Verify no breakage after removal. BLOCKED BY: T-CLEANUP-APPROVAL.",
+    "entity_type": "task",
+    "id": "T-20260105-015506-fc73c5f3",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:55:06.711999+00:00",
+    "priority": "low",
+    "properties": {
+      "category": "refactor"
+    },
+    "status": "pending",
+    "title": "T-CLEANUP-004: Remove unused imports",
+    "version": 1
+  }
+}
