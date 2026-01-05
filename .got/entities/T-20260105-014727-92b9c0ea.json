@@ -1,19 +1,23 @@
 {
-  "_checksum": "338a3fbaccf21871",
-  "_written_at": "2026-01-05T01:47:27.666322+00:00",
+  "_checksum": "145fd6d10786a4c0",
+  "_written_at": "2026-01-05T02:16:39.254529+00:00",
   "data": {
     "created_at": "2026-01-05T01:47:27.654331+00:00",
     "description": "Add Query(manager).entities('task') generic accessor. CRITICAL: Use string-based dispatch with SchemaRegistry, NOT EntityType enum (only covers 5 of 12 types). Include field validation with 'Did you mean?' suggestions. Behavioral test: tests/behavioral/test_generic_entity_accessor.py. Unit test: tests/unit/test_query_builder_entities.py.",
     "entity_type": "task",
     "id": "T-20260105-014727-92b9c0ea",
-    "metadata": {},
-    "modified_at": "2026-01-05T01:47:27.666250+00:00",
+    "metadata": {
+      "completed_at": "2026-01-05T02:16:39.234620+00:00",
+      "updated_at": "2026-01-05T02:16:39.234627+00:00"
+    },
+    "modified_at": "2026-01-05T02:16:39.254466+00:00",
     "priority": "critical",
     "properties": {
-      "category": "feature"
+      "category": "feature",
+      "retrospective": "Generic entity accessor implemented with string-based dispatch. Uses SchemaRegistry validation. 34 tests passing."
     },
-    "status": "pending",
+    "status": "completed",
     "title": "T-001-A: Add generic entity accessor to Query builder for extensibility",
-    "version": 2
+    "version": 3
   }
 }
