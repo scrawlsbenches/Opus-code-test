@@ -85,8 +85,7 @@ class QueryAPI:
         """
         Find tasks matching criteria.
 
-        Uses the store's iter_entities() method when available (e.g., InMemoryStore),
-        otherwise falls back to scanning the disk directory.
+        Uses the store's iter_entities() method for efficient iteration.
 
         Args:
             status: Filter by status ('pending', 'in_progress', 'completed', etc.)
@@ -99,7 +98,7 @@ class QueryAPI:
         """
         tasks = []
 
-        # Try to use store's iter_entities if available (supports InMemoryStore)
+        # Use store's iter_entities for efficient entity iteration
         store = getattr(self._manager.tx_manager, 'store', None)
         if store is not None and hasattr(store, 'iter_entities'):
             # Use store's iter_entities for in-memory or disk-based iteration

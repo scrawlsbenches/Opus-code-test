@@ -47,7 +47,7 @@ from .config import (
     RecoveryMode,
     OrphanStrategy,
 )
-from .storage import CDGStore, InMemoryStore, EntityFactory, default_entity_factory
+from .storage import CDGStore, EntityFactory, default_entity_factory
 from .wal import CDGWALManager
 from .transaction_manager import (
     CDGTransactionManager,
@@ -68,7 +68,6 @@ __all__ = [
     "VALID_EDGE_TYPES",
     # Storage
     "CDGStore",
-    "InMemoryStore",
     "EntityFactory",
     "default_entity_factory",
     # Transactions

@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from cortical.common import Container, ContainerModule, Lifecycle
+from cortical.common import Container, ContainerModule, Lifecycle, RealFileSystem, InMemoryFileSystem
 
 
 @dataclass
@@ -79,7 +79,7 @@ class GoTModule(ContainerModule):
         from cortical.got.indexer import QueryIndexManager
         from cortical.got.config import DurabilityMode
         from cortical.got.versioned_store import _got_entity_factory
-        from cortical.cdg.storage import CDGStore, InMemoryStore
+        from cortical.cdg.storage import CDGStore
         from cortical.cdg.wal import CDGWALManager
         from cortical.cdg.config import CDGConfig
         from cortical.utils.locking import ProcessLock
@@ -92,11 +92,16 @@ class GoTModule(ContainerModule):
             # Create GoT-specific CDG config
             cdg_config = CDGConfig.for_got()
 
+            # Select filesystem based on use_memory flag
+            filesystem = InMemoryFileSystem() if self.config.use_memory else RealFileSystem()
+
             if self.config.use_memory:
                 # In-memory storage for fast testing
-                store = InMemoryStore(
+                store = CDGStore(
+                    self.config.got_dir / "entities",
                     config=cdg_config,
                     entity_factory=_got_entity_factory,
+                    filesystem=filesystem,
                 )
                 wal = None
                 # Create a no-op lock for in-memory mode (context manager protocol)
@@ -116,6 +121,7 @@ class GoTModule(ContainerModule):
                     entities_dir,
                     config=cdg_config,
                     entity_factory=_got_entity_factory,
+                    filesystem=filesystem,
                 )
 
                 # Create WAL if enabled

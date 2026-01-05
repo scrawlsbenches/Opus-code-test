@@ -306,16 +306,22 @@ class TestCDGBasicOperations:
     """Verify CDG can store and retrieve entities (using in-memory storage)."""
 
     def test_create_store(self):
-        """InMemoryStore can be instantiated."""
-        from cortical.cdg import InMemoryStore
-        store = InMemoryStore()
+        """CDGStore with InMemoryFileSystem can be instantiated."""
+        from cortical.cdg import CDGStore
+        from cortical.common import InMemoryFileSystem
+        from pathlib import Path
+        fs = InMemoryFileSystem()
+        store = CDGStore(Path("/test"), filesystem=fs)
         assert store is not None
 
     def test_write_and_read_entity(self):
         """Entity can be written and read back."""
-        from cortical.cdg import InMemoryStore, Entity
+        from cortical.cdg import CDGStore, Entity
+        from cortical.common import InMemoryFileSystem
+        from pathlib import Path
 
-        store = InMemoryStore()
+        fs = InMemoryFileSystem()
+        store = CDGStore(Path("/test"), filesystem=fs)
 
         entity = Entity(id="smoke-test-001", entity_type="test")
         store.write(entity)

@@ -288,8 +288,8 @@ class InMemoryFileSystem:
         base_str = self._normalize(path)
         results = []
 
-        # Combine base path with pattern
-        full_pattern = str(path / pattern)
+        # Combine normalized base path with pattern (use / to join, not Path)
+        full_pattern = base_str.rstrip("/") + "/" + pattern
 
         # Check all files
         for file_path in self._files.keys():

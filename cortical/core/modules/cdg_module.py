@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from cortical.common import Container, ContainerModule, Lifecycle
+from cortical.common import Container, ContainerModule, Lifecycle, RealFileSystem, InMemoryFileSystem
 
 
 @dataclass
@@ -75,7 +75,7 @@ class CDGModule(ContainerModule):
 
     def register(self, container: Container) -> None:
         """Register CDG services with the container."""
-        from cortical.cdg.storage import CDGStore, InMemoryStore
+        from cortical.cdg.storage import CDGStore
         from cortical.cdg.wal import CDGWALManager
         from cortical.cdg.transaction_manager import CDGTransactionManager
         from cortical.cdg.recovery import CDGRecoveryManager
@@ -88,35 +88,24 @@ class CDGModule(ContainerModule):
         internal_config = CDGInternalConfig()
         container.register_instance(CDGInternalConfig, internal_config)
 
-        # Register factory for store (CDGStore or InMemoryStore)
-        if self.config.use_memory:
-            # In-memory storage for fast testing
-            def create_store() -> InMemoryStore:
-                return InMemoryStore(config=internal_config)
+        # Select filesystem based on use_memory flag
+        filesystem = InMemoryFileSystem() if self.config.use_memory else RealFileSystem()
 
-            container.register_factory("cdg_store", create_store)
-
-            # Register InMemoryStore as the CDGStore type (duck typing)
-            container.register(
-                CDGStore,
-                lambda: container.create("cdg_store"),
-                lifecycle=Lifecycle.SINGLETON,
-            )
-        else:
-            # Disk-based storage for production
-            def create_store() -> CDGStore:
-                entities_dir = self.config.base_dir / "entities"
+        # Register factory for store (always CDGStore, different filesystem)
+        def create_store() -> CDGStore:
+            entities_dir = self.config.base_dir / "entities"
+            if not self.config.use_memory:
                 entities_dir.mkdir(parents=True, exist_ok=True)
-                return CDGStore(entities_dir, config=internal_config)
+            return CDGStore(entities_dir, config=internal_config, filesystem=filesystem)
 
-            container.register_factory("cdg_store", create_store)
+        container.register_factory("cdg_store", create_store)
 
-            # Register CDGStore as singleton using factory (disk mode)
-            container.register(
-                CDGStore,
-                lambda: container.create("cdg_store"),
-                lifecycle=Lifecycle.SINGLETON,
-            )
+        # Register CDGStore as singleton using factory
+        container.register(
+            CDGStore,
+            lambda: container.create("cdg_store"),
+            lifecycle=Lifecycle.SINGLETON,
+        )
 
         # Register factory for WAL (skip in memory mode - no WAL needed)
         if not self.config.use_memory:
