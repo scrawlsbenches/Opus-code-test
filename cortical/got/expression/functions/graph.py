@@ -9,9 +9,10 @@ AVAILABLE FUNCTIONS
 connected_to(entity_id):
     Returns all entities connected to the specified entity via any edge.
 
-path(from_id, to_id, max_depth=10):
+path(from_id, to_id, max_depth=None):
     Finds the shortest path between two entities.
     Returns list of entity IDs, or None if no path exists.
+    No artificial depth limit by default (design principle: no hardcoded magic numbers).
 
 children(entity_id):
     Returns entities that directly depend on the specified entity.
@@ -135,7 +136,7 @@ class Path(QueryFunction):
             name="path",
             description="Find the shortest path between two entities",
             required_args=["from_id", "to_id"],
-            optional_args={"max_depth": 10},
+            optional_args={"max_depth": None},  # No artificial limit per design principle
             returns="List of entity IDs representing the path, or None if no path exists"
         )
 
@@ -148,6 +149,10 @@ class Path(QueryFunction):
         """
         Execute path function.
 
+        Design principle: No hardcoded magic numbers. Default to unlimited
+        traversal; let explicit limits be opt-in. If a query runs forever,
+        the developer stops it manually.
+
         Args:
             manager: GoTManager instance
             args: Positional arguments [from_id, to_id, max_depth]
@@ -156,15 +161,15 @@ class Path(QueryFunction):
         Returns:
             List of entity IDs in path, or None if no path exists
         """
-        # Parse arguments
+        # Parse arguments - default to None (unlimited) per design principle
         if len(args) >= 2:
             from_id = args[0]
             to_id = args[1]
-            max_depth = args[2] if len(args) > 2 else kwargs.get('max_depth', 10)
+            max_depth = args[2] if len(args) > 2 else kwargs.get('max_depth')
         else:
             from_id = kwargs.get('from_id')
             to_id = kwargs.get('to_id')
-            max_depth = kwargs.get('max_depth', 10)
+            max_depth = kwargs.get('max_depth')
 
         if not from_id or not to_id:
             raise ValueError("from_id and to_id are required")
@@ -523,7 +528,7 @@ class Dependents(QueryFunction):
             description="Find tasks that depend on the specified task",
             required_args=["task_id"],
             optional_args={},
-            returns="List of tasks with DEPENDS_ON edge FROM the specified task"
+            returns="List of tasks with DEPENDS_ON edge TO the specified task"
         )
 
     def execute(
@@ -535,10 +540,11 @@ class Dependents(QueryFunction):
         """
         Execute dependents function.
 
-        Finds tasks that have a DEPENDS_ON edge pointing TO them FROM the given task.
-        These are the tasks that depend on the specified task completing.
+        Finds tasks that depend on the given task (tasks that have DEPENDS_ON
+        edges pointing TO the given task).
 
-        Semantically equivalent to children() function, but named for clarity in queries.
+        Edge semantics: A → DEPENDS_ON → B means "A depends on B"
+        So dependents(B) returns [A] - all tasks that depend on B.
 
         Args:
             manager: GoTManager instance
@@ -552,14 +558,15 @@ class Dependents(QueryFunction):
         if not task_id:
             raise ValueError("task_id is required")
 
-        # Get edges where source is the given task and edge type is DEPENDS_ON
-        # If A -> DEPENDS_ON -> B, then B depends on A
+        # Get edges where target is the given task and edge type is DEPENDS_ON
+        # If A -> DEPENDS_ON -> B, then A depends on B
+        # So dependents(B) returns tasks where B is the target
         edges = manager.list_edges()
         dependent_ids = set()
 
         for edge in edges:
-            if edge.source_id == task_id and edge.edge_type == "DEPENDS_ON":
-                dependent_ids.add(edge.target_id)
+            if edge.target_id == task_id and edge.edge_type == "DEPENDS_ON":
+                dependent_ids.add(edge.source_id)
 
         # Get all tasks and filter by dependent IDs
         all_entities = manager.list_all_tasks()

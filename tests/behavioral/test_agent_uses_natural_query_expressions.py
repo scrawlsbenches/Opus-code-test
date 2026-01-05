@@ -59,7 +59,8 @@ def populated_got(got_manager):
 
     # Create blocking relationships: task_hp1 blocks task_blocked
     manager.add_edge(task_hp1.id, task_blocked.id, "BLOCKS")
-    manager.add_edge(task_mp1.id, task_blocked.id, "DEPENDS_ON")
+    # blocked_task depends on medium_pending (task_blocked → DEPENDS_ON → task_mp1)
+    manager.add_edge(task_blocked.id, task_mp1.id, "DEPENDS_ON")
 
     # Create a sprint with some tasks
     sprint = manager.create_sprint(title="Sprint 1", status="in_progress")

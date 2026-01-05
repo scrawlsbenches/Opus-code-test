@@ -73,6 +73,11 @@ def translate(query: str) -> str:
         if potential_id.startswith("S-"):
             return f"in_sprint('{potential_id}')"
 
+    # "relationships T-XXX" → connected_to('T-XXX')
+    if query_lower.startswith("relationships "):
+        entity_id = original_query[14:].strip()
+        return f"connected_to('{entity_id}')"
+
     # =========================================================================
     # Static Patterns
     # =========================================================================
@@ -191,4 +196,5 @@ def get_supported_patterns() -> List[str]:
         "what depends on <task_id>",
         "tasks in sprint <sprint_id>",
         "tasks in <sprint_id>",
+        "relationships <entity_id>",
     ]
