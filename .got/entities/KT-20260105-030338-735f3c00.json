@@ -1,0 +1,24 @@
+{
+  "_checksum": "432de5af0e27a26d",
+  "_written_at": "2026-01-05T03:03:39.284644+00:00",
+  "data": {
+    "code_refs": [],
+    "created_at": "2026-01-05T03:03:38.955835+00:00",
+    "entity_type": "knowledge_transfer",
+    "id": "KT-20260105-030338-735f3c00",
+    "modified_at": "2026-01-05T03:03:39.284572+00:00",
+    "properties": {},
+    "related_decisions": [],
+    "related_handoffs": [],
+    "related_tasks": [],
+    "sections": {},
+    "session_date": "",
+    "session_id": "",
+    "source_file": null,
+    "status": "draft",
+    "summary": "## Sprint 3 Completed Successfully\n\n### Accomplishments\n- Implemented QueryExecutor (executor.py - 381 lines)\n- Created 7 graph traversal functions (graph.py - 447 lines)\n- Created 8 filter functions (filters.py - 416 lines)\n- Fixed registry autouse fixture for test isolation\n\n### Executor Features\n- Dual execution strategy: Query builder direct OR post-filtering\n- All operators: EQ, NE, GT, LT, GTE, LTE, IN, LIKE\n- AND/OR/NOT expression handling\n- ORDER BY, LIMIT, OFFSET clause support\n\n### Graph Functions\n1. connected_to(entity_id) - All connected entities\n2. path(from_id, to_id, max_depth) - BFS shortest path\n3. children(entity_id) - Direct children\n4. parents(entity_id) - Direct parents\n5. descendants(entity_id, max_depth) - Transitive children\n6. ancestors(entity_id, max_depth) - Transitive parents\n7. orphan_nodes() - Isolated entities\n\n### Filter Functions\n1. recent(days=7) - Created within N days\n2. stale(days=30) - Not modified in N days\n3. has_edge(edge_type) - Has edge of type\n4. blocked() - Blocked tasks\n5. blocking() - Tasks blocking others\n6. in_sprint(sprint_id) - Sprint membership\n7. unassigned() - No assignee\n8. overdue() - Past due date\n\n### Test Coverage\n- 24 executor tests\n- 36 graph function tests\n- 40 filter function tests\n- Total: 100+ new tests\n\n### Registry Fix\nFixed autouse fixtures to reload function modules after clear() to prevent test pollution.\n\n### Commit\n07b7a169 feat(got): Sprint 3 - Executor and query functions\n\n### Complete Expression Pipeline\n```python\nfrom cortical.got.expression import parse, validate, execute\n\n# Parse expression\nquery = parse(\"status = 'pending' AND priority = 'high'\")\n\n# Validate fields\nvalidate(query, entity_type='task')\n\n# Execute query\nresults = execute(manager, query)\n```\n\n### Next: Sprint 4/5\n- CLI integration\n- End-to-end testing\n- Documentation",
+    "tags": [],
+    "title": "Sprint 3 Complete: Executor and Query Functions",
+    "version": 3
+  }
+}
