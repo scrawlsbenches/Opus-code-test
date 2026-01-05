@@ -14,6 +14,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from scripts.got_utils import TransactionalGoTAdapter
 
+from ..types import EdgeTypes
+
 
 # =============================================================================
 # CLI COMMAND HANDLERS
@@ -106,7 +108,7 @@ def _prompt_task_linkage(decision_id: str, manager: "TransactionalGoTAdapter") -
                 manager.add_edge(
                     source_id=decision_id,
                     target_id=selected_task_id,
-                    edge_type="JUSTIFIES",
+                    edge_type=EdgeTypes.JUSTIFIES,
                 )
                 print(f"✓ Linked {decision_id} -> {selected_task_id} (JUSTIFIES)")
             except Exception as e:
@@ -277,14 +279,14 @@ def cmd_decision_trace(args, manager: "TransactionalGoTAdapter") -> int:
 
     for edge in edges:
         if edge.source_id == decision_id:
-            if edge.edge_type == "JUSTIFIES":
+            if edge.edge_type == EdgeTypes.JUSTIFIES:
                 justifies.append(edge.target_id)
-            elif edge.edge_type == "MOTIVATES":
+            elif edge.edge_type == EdgeTypes.MOTIVATES:
                 motivates.append(edge.target_id)
-            elif edge.edge_type == "SUPERSEDES":
+            elif edge.edge_type == EdgeTypes.SUPERSEDES:
                 supersedes.append(edge.target_id)
         elif edge.target_id == decision_id:
-            if edge.edge_type == "SUPERSEDES":
+            if edge.edge_type == EdgeTypes.SUPERSEDES:
                 superseded_by.append(edge.source_id)
 
     # Display what this decision justifies

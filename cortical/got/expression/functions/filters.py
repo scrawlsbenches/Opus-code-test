@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, TYPE_CHECKING
 
 from cortical.got.expression.registry import FunctionRegistry, FunctionSignature, QueryFunction
+from cortical.got.types import EdgeTypes
 
 if TYPE_CHECKING:
     from cortical.got.api import GoTManager
@@ -256,7 +257,7 @@ class BlockingFunction(QueryFunction):
         blocker_ids = set()
 
         for edge in all_edges:
-            if edge.edge_type == "BLOCKS":
+            if edge.edge_type == EdgeTypes.BLOCKS:
                 # Check if the blocked task is not completed
                 blocked_task = manager.get_task(edge.target_id)
                 if blocked_task is not None and blocked_task.status != "completed":

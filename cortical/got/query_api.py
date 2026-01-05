@@ -35,7 +35,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Any
 
-from .types import Task, Decision, Edge, Sprint, Document
+from .types import Task, Decision, Edge, Sprint, Document, EdgeTypes
 from .errors import CorruptionError
 
 if TYPE_CHECKING:
@@ -144,7 +144,7 @@ class QueryAPI:
                 if edge is None:
                     continue
 
-                if edge.edge_type == "BLOCKS" and edge.target_id == task_id:
+                if edge.edge_type == EdgeTypes.BLOCKS and edge.target_id == task_id:
                     blocker_ids.append(edge.source_id)
             except (CorruptionError, json.JSONDecodeError, KeyError) as e:
                 logger.warning(f"Skipping corrupted edge file {edge_file}: {e}")
@@ -181,7 +181,7 @@ class QueryAPI:
                 if edge is None:
                     continue
 
-                if edge.edge_type == "DEPENDS_ON" and edge.target_id == task_id:
+                if edge.edge_type == EdgeTypes.DEPENDS_ON and edge.target_id == task_id:
                     dependent_ids.append(edge.source_id)
             except (CorruptionError, json.JSONDecodeError, KeyError) as e:
                 logger.warning(f"Skipping corrupted edge file {edge_file}: {e}")
@@ -336,7 +336,7 @@ class QueryAPI:
                 if edge is None:
                     continue
 
-                if edge.edge_type == "CONTAINS" and edge.source_id == sprint_id:
+                if edge.edge_type == EdgeTypes.CONTAINS and edge.source_id == sprint_id:
                     task_ids.append(edge.target_id)
             except (CorruptionError, json.JSONDecodeError, KeyError) as e:
                 logger.warning(f"Skipping corrupted edge file {edge_file}: {e}")
@@ -565,7 +565,7 @@ class QueryAPI:
                 if edge is None:
                     continue
 
-                if edge.edge_type == "BLOCKS":
+                if edge.edge_type == EdgeTypes.BLOCKS:
                     # Check if blocker is not completed
                     blocker = self._manager.get_task(edge.source_id)
                     if blocker is not None and blocker.status != "completed":

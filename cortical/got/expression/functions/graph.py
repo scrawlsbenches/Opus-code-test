@@ -73,6 +73,7 @@ from typing import Any, Dict, List, Optional
 from cortical.got.expression.registry import FunctionRegistry, QueryFunction, FunctionSignature
 from cortical.got.path_finder import PathFinder
 from cortical.got.query_builder import Query
+from cortical.got.types import EdgeTypes
 
 
 @FunctionRegistry.register("connected_to")
@@ -227,7 +228,7 @@ class Children(QueryFunction):
         child_ids = set()
 
         for edge in edges:
-            if edge.target_id == entity_id and edge.edge_type == "DEPENDS_ON":
+            if edge.target_id == entity_id and edge.edge_type == EdgeTypes.DEPENDS_ON:
                 child_ids.add(edge.source_id)
 
         # Get all tasks and filter by child IDs
@@ -280,7 +281,7 @@ class Parents(QueryFunction):
         parent_ids = set()
 
         for edge in edges:
-            if edge.source_id == entity_id and edge.edge_type == "DEPENDS_ON":
+            if edge.source_id == entity_id and edge.edge_type == EdgeTypes.DEPENDS_ON:
                 parent_ids.add(edge.target_id)
 
         # Get all tasks and filter by parent IDs
@@ -342,7 +343,7 @@ class Descendants(QueryFunction):
         reverse_adjacency = {}
 
         for edge in edges:
-            if edge.edge_type == "DEPENDS_ON":
+            if edge.edge_type == EdgeTypes.DEPENDS_ON:
                 if edge.target_id not in reverse_adjacency:
                     reverse_adjacency[edge.target_id] = []
                 reverse_adjacency[edge.target_id].append(edge.source_id)
@@ -430,7 +431,7 @@ class Ancestors(QueryFunction):
         forward_adjacency = {}
 
         for edge in edges:
-            if edge.edge_type == "DEPENDS_ON":
+            if edge.edge_type == EdgeTypes.DEPENDS_ON:
                 if edge.source_id not in forward_adjacency:
                     forward_adjacency[edge.source_id] = []
                 forward_adjacency[edge.source_id].append(edge.target_id)
@@ -552,7 +553,7 @@ class Blockers(QueryFunction):
         blocker_ids = set()
 
         for edge in edges:
-            if edge.target_id == task_id and edge.edge_type == "BLOCKS":
+            if edge.target_id == task_id and edge.edge_type == EdgeTypes.BLOCKS:
                 blocker_ids.add(edge.source_id)
 
         # Get all tasks and filter by blocker IDs
@@ -608,7 +609,7 @@ class Dependents(QueryFunction):
         dependent_ids = set()
 
         for edge in edges:
-            if edge.target_id == task_id and edge.edge_type == "DEPENDS_ON":
+            if edge.target_id == task_id and edge.edge_type == EdgeTypes.DEPENDS_ON:
                 dependent_ids.add(edge.source_id)
 
         # Get all tasks and filter by dependent IDs
@@ -664,7 +665,7 @@ class AllDependencies(QueryFunction):
         forward_adjacency = {}
 
         for edge in edges:
-            if edge.edge_type == "DEPENDS_ON":
+            if edge.edge_type == EdgeTypes.DEPENDS_ON:
                 if edge.source_id not in forward_adjacency:
                     forward_adjacency[edge.source_id] = []
                 forward_adjacency[edge.source_id].append(edge.target_id)
@@ -735,7 +736,7 @@ class CycleDetect(QueryFunction):
         adjacency = {}
 
         for edge in edges:
-            if edge.edge_type == "DEPENDS_ON":
+            if edge.edge_type == EdgeTypes.DEPENDS_ON:
                 if edge.source_id not in adjacency:
                     adjacency[edge.source_id] = []
                 adjacency[edge.source_id].append(edge.target_id)

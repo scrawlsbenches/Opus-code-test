@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from scripts.got_utils import TransactionalGoTAdapter
 
+from ..entity_schemas import get_valid_statuses
 from ..orphan import OrphanDetector, OrphanReport
 
 
@@ -302,7 +303,7 @@ def setup_orphan_parser(subparsers) -> None:
     )
     list_parser.add_argument(
         "--status",
-        choices=["pending", "in_progress", "completed", "blocked"],
+        choices=sorted(get_valid_statuses('task')),
         help="Filter by status"
     )
 
