@@ -793,6 +793,7 @@ class Query(Generic[T]):
         self._metrics = metrics if metrics is not None else _default_metrics
         self._config = config if config is not None else _default_config
         self._entity_type: Optional[EntityType] = None
+        self._entity_type_str: Optional[str] = None  # For generic entities() method
         self._where_clauses: List[WhereClause] = []
         self._or_groups: List[OrGroup] = []
         self._order_by: List[OrderByClause] = []
@@ -854,6 +855,59 @@ class Query(Generic[T]):
     def edges(self) -> "Query[Edge]":
         """Query edges."""
         self._entity_type = EntityType.EDGE
+        return self
+
+    def entities(self, entity_type: str) -> "Query[T]":
+        """
+        Query entities by type name (generic accessor).
+
+        This method provides a generic way to query any registered entity type
+        using string-based dispatch instead of the EntityType enum. It validates
+        against the SchemaRegistry and provides helpful error messages for
+        unknown types.
+
+        Args:
+            entity_type: Entity type name (case-insensitive).
+                        Valid types: task, decision, sprint, epic, edge, handoff,
+                        knowledge_transfer, document, claudemd_layer, claudemd_version,
+                        team, persona_profile
+
+        Returns:
+            Self for chaining
+
+        Raises:
+            QueryValidationError: If entity_type is not registered in SchemaRegistry
+
+        Example:
+            >>> Query(manager).entities('task').where(status='pending').execute()
+            >>> Query(manager).entities('SPRINT').limit(5).execute()
+            >>> Query(manager).entities('knowledge_transfer').execute()
+        """
+        entity_type = entity_type.lower()
+
+        # Import here to avoid circular dependencies
+        from cortical.got.entity_schemas import ensure_schemas_registered
+        from cortical.got.schema import get_registry
+
+        # Ensure schemas are registered
+        ensure_schemas_registered()
+        registry = get_registry()
+
+        # Validate entity type exists in registry
+        if not registry.has_schema(entity_type):
+            available = sorted(registry._schemas.keys())
+            import difflib
+            suggestions = difflib.get_close_matches(entity_type, available, n=3)
+
+            error_msg = f"Unknown entity type '{entity_type}'."
+            if suggestions:
+                error_msg += f"\n  Did you mean: {', '.join(suggestions)}?"
+            error_msg += f"\n  Available: {', '.join(available)}"
+
+            raise QueryValidationError(error_msg)
+
+        # Store entity type as string
+        self._entity_type_str = entity_type
         return self
 
     def where(self, **conditions) -> "Query[T]":
@@ -1036,7 +1090,13 @@ class Query(Generic[T]):
             List of matching entities, or dict if using group_by/aggregate
         """
         # Start metrics timing
-        entity_type_name = self._entity_type.name if self._entity_type else "UNKNOWN"
+        # Use string-based entity type if available, otherwise enum name
+        if self._entity_type_str:
+            entity_type_name = self._entity_type_str
+        elif self._entity_type:
+            entity_type_name = self._entity_type.name
+        else:
+            entity_type_name = "UNKNOWN"
         start_time = self._metrics.start_query(self._manager, entity_type_name)
 
         # DEBUG level: Log query plan before execution
@@ -1200,9 +1260,17 @@ class Query(Generic[T]):
         steps = []
 
         # Step 1: Entity source
+        # Use string-based entity type if available, otherwise enum name
+        if self._entity_type_str:
+            entity_type_name = self._entity_type_str
+        elif self._entity_type:
+            entity_type_name = self._entity_type.name
+        else:
+            entity_type_name = "unknown"
+
         steps.append({
             "type": "scan",
-            "entity_type": self._entity_type.name if self._entity_type else "unknown",
+            "entity_type": entity_type_name,
             "index": self._index_hint,
         })
 
@@ -1272,6 +1340,11 @@ class Query(Generic[T]):
 
     def _get_base_entities(self) -> List[Any]:
         """Get base entities based on entity type."""
+        # Handle string-based entity types first (from entities() method)
+        if self._entity_type_str:
+            return self._get_entities_by_string_type(self._entity_type_str)
+
+        # Handle enum-based entity types (from tasks(), sprints(), etc.)
         if self._entity_type == EntityType.TASK:
             return self._manager.list_all_tasks()
         elif self._entity_type == EntityType.SPRINT:
@@ -1282,6 +1355,93 @@ class Query(Generic[T]):
             return self._manager.list_edges()
         else:
             return []
+
+    def _get_entities_by_string_type(self, entity_type: str) -> List[Any]:
+        """
+        Get entities by string entity type.
+
+        This method maps entity type strings to appropriate manager methods.
+        For entity types without dedicated manager methods, it scans the
+        entities directory directly.
+
+        Args:
+            entity_type: Entity type name (lowercase)
+
+        Returns:
+            List of entities of the specified type
+        """
+        # Map entity types to manager methods
+        entity_type_map = {
+            'task': lambda: self._manager.list_all_tasks(),
+            'decision': lambda: self._manager.list_decisions(),
+            'sprint': lambda: self._manager.list_sprints(),
+            'edge': lambda: self._manager.list_edges(),
+            'epic': lambda: self._manager.list_epics(),
+            'handoff': lambda: self._manager.list_handoffs(),
+            'document': lambda: self._manager.list_documents(),
+            'claudemd_layer': lambda: self._manager.list_claudemd_layers(),
+        }
+
+        # If manager has a method for this entity type, use it
+        if entity_type in entity_type_map:
+            return entity_type_map[entity_type]()
+
+        # Otherwise, scan entities directory for files matching the entity type
+        # This handles entity types without dedicated manager methods:
+        # knowledge_transfer, claudemd_version, team, persona_profile
+        return self._scan_entities_by_type(entity_type)
+
+    def _scan_entities_by_type(self, entity_type: str) -> List[Any]:
+        """
+        Scan entities directory for entities of a specific type.
+
+        This is a fallback method for entity types that don't have dedicated
+        manager list methods. It scans all entity files and filters by entity_type.
+
+        Args:
+            entity_type: Entity type name (lowercase)
+
+        Returns:
+            List of entities of the specified type
+        """
+        import json
+        from cortical.got.versioned_store import _got_entity_factory
+
+        entities_dir = self._manager.got_dir / "entities"
+        if not entities_dir.exists():
+            return []
+
+        entities = []
+        for entity_file in entities_dir.glob("*.json"):
+            # Skip special files
+            if entity_file.name.startswith('_'):
+                continue
+
+            try:
+                # Read and parse JSON file
+                with open(entity_file, 'r', encoding='utf-8') as f:
+                    wrapper = json.load(f)
+
+                # Extract entity data (may be wrapped or unwrapped)
+                if 'data' in wrapper:
+                    entity_data = wrapper['data']
+                else:
+                    entity_data = wrapper
+
+                # Check entity type
+                if entity_data.get('entity_type') != entity_type:
+                    continue
+
+                # Create entity object using factory
+                entity = _got_entity_factory(entity_data)
+                entities.append(entity)
+
+            except Exception as e:
+                # Skip corrupted files
+                logger.warning(f"Skipping corrupted entity file {entity_file}: {e}")
+                continue
+
+        return entities
 
     def _get_connected_ids(self) -> Set[str]:
         """Get IDs of entities connected per connection filters."""
