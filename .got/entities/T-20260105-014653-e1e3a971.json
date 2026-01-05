@@ -1,0 +1,19 @@
+{
+  "_checksum": "2242ff786fa45ba1",
+  "_written_at": "2026-01-05T01:46:53.257969+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:46:53.247176+00:00",
+    "description": "Create cortical/got/expression/ module structure with __init__.py exposing parse() and execute() functions. Create stub files for lexer.py, parser.py, ast.py, registry.py, executor.py, errors.py. Behavioral test: tests/behavioral/test_expression_module.py. Validation: python -c 'from cortical.got.expression import parse, execute'",
+    "entity_type": "task",
+    "id": "T-20260105-014653-e1e3a971",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:46:53.257901+00:00",
+    "priority": "critical",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "T-001: Create expression module skeleton with __init__.py",
+    "version": 2
+  }
+}

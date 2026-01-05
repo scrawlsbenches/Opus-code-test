@@ -1,0 +1,17 @@
+{
+  "_checksum": "2f3157f7da3bb119",
+  "_written_at": "2026-01-05T01:46:53.649251+00:00",
+  "data": {
+    "confidence": 1.0,
+    "created_at": "2026-01-05T01:46:53.638283+00:00",
+    "edge_type": "CONTAINS",
+    "entity_type": "edge",
+    "id": "E-S-20260105-014547-b87fb55b-T-20260105-014653-e1e3a971-CONTAINS",
+    "modified_at": "2026-01-05T01:46:53.649140+00:00",
+    "reason": "",
+    "source_id": "S-20260105-014547-b87fb55b",
+    "target_id": "T-20260105-014653-e1e3a971",
+    "version": 2,
+    "weight": 1.0
+  }
+}
