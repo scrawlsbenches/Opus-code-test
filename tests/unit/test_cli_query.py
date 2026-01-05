@@ -271,11 +271,13 @@ class TestCmdValidate:
         manager = MagicMock()
         manager.events_dir = "/fake/events"
 
-        # Create mock nodes
+        # Create mock nodes with properties (required for status grouping)
         task1 = MagicMock()
         task1.node_type = NodeType.TASK
+        task1.properties = {"status": "pending"}
         task2 = MagicMock()
         task2.node_type = NodeType.TASK
+        task2.properties = {"status": "completed"}
 
         manager.graph.nodes = {
             "T-001": task1,
@@ -288,6 +290,8 @@ class TestCmdValidate:
         edge1.target_id = "T-002"
 
         manager.graph.edges = [edge1]
+        # Mock list_edges() to return the same edges (used by orphan calculation)
+        manager.list_edges.return_value = [edge1]
 
         return manager
 
