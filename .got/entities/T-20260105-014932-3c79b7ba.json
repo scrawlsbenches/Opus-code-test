@@ -1,0 +1,19 @@
+{
+  "_checksum": "b958407ba62e0b91",
+  "_written_at": "2026-01-05T01:49:32.688666+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:49:32.675994+00:00",
+    "description": "Register basic functions: exists(entity_id), type_of(entity_id), count(). Each function is a QueryFunction subclass with signature() and execute(). Behavioral test: tests/behavioral/test_builtin_functions.py. Unit test: tests/unit/test_builtin_functions.py.",
+    "entity_type": "task",
+    "id": "T-20260105-014932-3c79b7ba",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:49:32.688602+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "T-010: Implement basic built-in functions",
+    "version": 2
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "_checksum": "45af1b6f7dd948d5",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T01:49:32.613049+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:49:24.777044+00:00",
+    "description": "Connect expression execution to Query builder infrastructure. Comparisons translate to where() calls. ORDER BY to order_by(). LIMIT/OFFSET to limit()/offset(). Reuse Query builder power, don't duplicate. Unit test: tests/unit/test_query_bridge.py.",
+    "entity_type": "task",
+    "id": "T-20260105-014924-866776c3",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:49:24.777051+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "T-009: Bridge executor to Query builder",
+    "version": 1
+  }
+}
