@@ -1,0 +1,20 @@
+{
+  "_checksum": "9b4b3e8d3a35aa4a",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T01:47:43.035218+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:47:35.024428+00:00",
+    "description": "Implement AST nodes: Literal, Field, Comparison, AndExpr, OrExpr, NotExpr, FunctionCall, Query. Use frozen dataclasses. Include __repr__ and __eq__. Behavioral test: tests/behavioral/test_ast_nodes.py. Unit test: tests/unit/test_ast.py. Target coverage >= 95%.",
+    "entity_type": "task",
+    "id": "T-20260105-014735-16780187",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:47:35.024435+00:00",
+    "priority": "critical",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "T-002: Implement AST node types with dataclasses",
+    "version": 1
+  }
+}
