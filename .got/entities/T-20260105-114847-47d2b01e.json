@@ -1,0 +1,19 @@
+{
+  "_checksum": "fd56d0578da0943e",
+  "_written_at": "2026-01-05T11:48:47.614782+00:00",
+  "data": {
+    "created_at": "2026-01-05T11:48:47.601910+00:00",
+    "description": "TDD: Define behavior for finding tasks that depend on a given task.",
+    "entity_type": "task",
+    "id": "T-20260105-114847-47d2b01e",
+    "metadata": {},
+    "modified_at": "2026-01-05T11:48:47.614709+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "test"
+    },
+    "status": "pending",
+    "title": "Write behavioral tests for dependents() function",
+    "version": 2
+  }
+}
