@@ -1,0 +1,19 @@
+{
+  "_checksum": "f2fa88cb594d2068",
+  "_written_at": "2026-01-05T11:48:40.637484+00:00",
+  "data": {
+    "created_at": "2026-01-05T11:48:40.625101+00:00",
+    "description": "TDD: Define behavior for dependency analysis and cycle detection.",
+    "entity_type": "task",
+    "id": "T-20260105-114840-0272a2e3",
+    "metadata": {},
+    "modified_at": "2026-01-05T11:48:40.637419+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "test"
+    },
+    "status": "pending",
+    "title": "Write behavioral tests for all_dependencies() and cycle_detect() functions",
+    "version": 2
+  }
+}
