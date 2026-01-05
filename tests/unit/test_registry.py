@@ -41,10 +41,15 @@ class MockFunction(QueryFunction):
 
 @pytest.fixture(autouse=True)
 def clean_registry():
-    """Ensure clean registry for each test."""
+    """Ensure clean registry for each test and re-register after."""
     FunctionRegistry.clear()
     yield
     FunctionRegistry.clear()
+    # Re-import to re-register functions for subsequent tests
+    import importlib
+    from cortical.got.expression import functions
+    importlib.reload(functions.graph)
+    importlib.reload(functions.filters)
 
 
 class TestFunctionSignature:
