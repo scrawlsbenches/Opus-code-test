@@ -150,8 +150,37 @@ def cmd_validate(args, manager: "TransactionalGoTAdapter") -> int:
         by_status[status] = by_status.get(status, 0) + 1
 
     # Check for orphan nodes (no edges)
-    # Only count edge references that point to existing nodes
+    # Build comprehensive set of ALL entity IDs (not just graph.nodes which only has TASK/DECISION)
     all_node_ids = set(manager.graph.nodes.keys())
+
+    # Add Sprint IDs - stored separately from graph.nodes
+    try:
+        for sprint in manager.list_sprints():
+            all_node_ids.add(sprint.id if hasattr(sprint, 'id') else sprint.get('id'))
+    except Exception:
+        pass  # Sprint listing may fail, continue with what we have
+
+    # Add Epic IDs - stored separately from graph.nodes
+    try:
+        for epic in manager.list_epics():
+            all_node_ids.add(epic.id if hasattr(epic, 'id') else epic.get('id'))
+    except Exception:
+        pass
+
+    # Add Handoff IDs - stored separately from graph.nodes
+    try:
+        for handoff in manager.list_handoffs():
+            all_node_ids.add(handoff.get('id') if isinstance(handoff, dict) else handoff.id)
+    except Exception:
+        pass
+
+    # Add KnowledgeTransfer IDs - stored separately from graph.nodes
+    try:
+        for kt in manager.list_knowledge_transfers():
+            all_node_ids.add(kt.get('id') if isinstance(kt, dict) else kt.id)
+    except Exception:
+        pass
+
     nodes_with_edges = set()
     orphan_edges = []  # Edges pointing to non-existent entities
 

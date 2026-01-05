@@ -24,39 +24,45 @@ from cortical.got.cli.edge import (
 
 
 class TestValidEdgeTypes:
-    """Test the VALID_EDGE_TYPES constant."""
+    """Test the VALID_EDGE_TYPES constant.
 
-    def test_contains_semantic_edges(self):
-        """Semantic edge types should be present."""
-        semantic = ["REQUIRES", "ENABLES", "CONFLICTS", "SUPPORTS", "REFUTES",
-                    "SIMILAR", "CONTAINS", "CONTRADICTS"]
-        for edge_type in semantic:
-            assert edge_type in VALID_EDGE_TYPES
+    Note: Edge types were consolidated in OI-002 resolution. Only the 22
+    authoritative types defined in cortical/got/types.py are valid.
+    """
 
-    def test_contains_temporal_edges(self):
-        """Temporal edge types should be present."""
-        temporal = ["PRECEDES", "TRIGGERS", "BLOCKS"]
-        for edge_type in temporal:
-            assert edge_type in VALID_EDGE_TYPES
-
-    def test_contains_epistemic_edges(self):
-        """Epistemic edge types should be present."""
-        epistemic = ["ANSWERS", "RAISES", "EXPLORES", "OBSERVES", "SUGGESTS"]
-        for edge_type in epistemic:
-            assert edge_type in VALID_EDGE_TYPES
-
-    def test_contains_practical_edges(self):
-        """Practical edge types should be present."""
-        practical = ["IMPLEMENTS", "TESTS", "DEPENDS_ON", "REFINES",
-                     "MOTIVATES", "JUSTIFIES"]
-        for edge_type in practical:
+    def test_contains_dependency_edges(self):
+        """Dependency edge types should be present."""
+        dependency = ["DEPENDS_ON", "BLOCKS", "REQUIRES"]
+        for edge_type in dependency:
             assert edge_type in VALID_EDGE_TYPES
 
     def test_contains_structural_edges(self):
         """Structural edge types should be present."""
-        structural = ["HAS_OPTION", "HAS_ASPECT", "PART_OF"]
+        structural = ["CONTAINS", "PART_OF", "CHILD_OF", "PARENT_OF"]
         for edge_type in structural:
             assert edge_type in VALID_EDGE_TYPES
+
+    def test_contains_semantic_edges(self):
+        """Semantic relationship edge types should be present."""
+        semantic = ["RELATES_TO", "REFERENCES", "CONTRADICTS"]
+        for edge_type in semantic:
+            assert edge_type in VALID_EDGE_TYPES
+
+    def test_contains_workflow_edges(self):
+        """Workflow edge types should be present."""
+        workflow = ["IMPLEMENTS", "MOTIVATES", "JUSTIFIES", "CONTINUES"]
+        for edge_type in workflow:
+            assert edge_type in VALID_EDGE_TYPES
+
+    def test_contains_provenance_edges(self):
+        """Provenance/history edge types should be present."""
+        provenance = ["DERIVED_FROM", "CAUSED_BY", "SUPERSEDES", "PRODUCES"]
+        for edge_type in provenance:
+            assert edge_type in VALID_EDGE_TYPES
+
+    def test_total_edge_type_count(self):
+        """Should have exactly 22 authoritative edge types."""
+        assert len(VALID_EDGE_TYPES) == 22
 
 
 class TestCmdEdgeAdd:
@@ -336,7 +342,11 @@ class TestCmdEdgeTypes:
     """Tests for cmd_edge_types command handler."""
 
     def test_edge_types_displays_all_categories(self, capsys):
-        """All edge type categories are displayed."""
+        """All edge type categories are displayed.
+
+        Note: Categories updated per OI-002 resolution to match
+        the 22 authoritative edge types in cortical/got/types.py.
+        """
         args = SimpleNamespace()
         manager = MagicMock()
 
@@ -344,11 +354,13 @@ class TestCmdEdgeTypes:
 
         assert result == 0
         output = capsys.readouterr().out
-        assert "Semantic" in output
-        assert "Temporal" in output
-        assert "Epistemic" in output
-        assert "Practical" in output
-        assert "Structural" in output
+        # Authoritative categories per OI-002
+        assert "Core Relationships" in output
+        assert "Hierarchical Relationships" in output
+        assert "Reference & Semantic Relationships" in output
+        assert "Workflow Relationships" in output
+        assert "Knowledge Transfer Relationships" in output
+        assert "Failure Tracking" in output
 
     def test_edge_types_displays_descriptions(self, capsys):
         """Edge type descriptions are displayed."""

@@ -397,15 +397,19 @@ class TestCmdHandoffList:
 
         manager.list_handoffs.assert_called_once_with(status="accepted")
 
-    def test_list_handoffs_in_progress_alias(self, capsys):
-        """in_progress is normalized to accepted."""
-        args = SimpleNamespace(status="in_progress")
+    def test_list_handoffs_status_passthrough(self, capsys):
+        """Status is passed through to manager without normalization.
+
+        Note: Valid status values per schema are: initiated, accepted, completed, rejected.
+        The 'in_progress' status was removed per OI-001 schema alignment.
+        """
+        args = SimpleNamespace(status="initiated")
         manager = MagicMock()
         manager.list_handoffs.return_value = []
 
         result = cmd_handoff_list(args, manager)
 
-        manager.list_handoffs.assert_called_once_with(status="accepted")
+        manager.list_handoffs.assert_called_once_with(status="initiated")
 
     def test_list_handoffs_with_limit(self, capsys):
         """List handoffs with limit."""
