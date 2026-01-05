@@ -1,0 +1,20 @@
+{
+  "_checksum": "6749a470b8dd59e6",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T11:49:09.041214+00:00",
+  "data": {
+    "created_at": "2026-01-05T11:49:01.161691+00:00",
+    "description": "Design doc specifies type_of(entity_id) -> str. Function does not exist in codebase.",
+    "entity_type": "task",
+    "id": "T-20260105-114901-efb5df8f",
+    "metadata": {},
+    "modified_at": "2026-01-05T11:49:01.161699+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Implement missing type_of() expression function",
+    "version": 1
+  }
+}
