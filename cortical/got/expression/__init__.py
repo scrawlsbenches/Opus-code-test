@@ -32,6 +32,7 @@ Example:
 from .parser import parse
 from .executor import execute
 from .validator import FieldValidator, COMMON_FIELDS
+from . import translator
 
 from .ast import (
     Expression,
@@ -134,4 +135,7 @@ __all__ = [
     # Validator
     'FieldValidator',
     'COMMON_FIELDS',
+
+    # Translator
+    'translator',
 ]

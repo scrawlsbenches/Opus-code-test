@@ -414,3 +414,65 @@ class OverdueFunction(QueryFunction):
                     results.append(task)
 
         return results
+
+
+@FunctionRegistry.register("entity_type")
+class EntityTypeFunction(QueryFunction):
+    """
+    Filter entities by their type.
+
+    Returns entities of the specified type (task, decision, sprint, etc.).
+
+    Args:
+        type_name: Entity type to filter by ('task', 'decision', 'sprint', etc.)
+
+    Returns:
+        List of entities of the specified type
+
+    Example:
+        entity_type('decision')  # All decisions
+        entity_type('sprint')    # All sprints
+        entity_type('task')      # All tasks
+    """
+
+    @classmethod
+    def signature(cls) -> FunctionSignature:
+        return FunctionSignature(
+            name="entity_type",
+            description="Find entities of a specific type",
+            required_args=["type_name"],
+            optional_args={},
+            returns="List[Entity]"
+        )
+
+    def execute(
+        self,
+        manager: "GoTManager",
+        args: List[Any],
+        kwargs: Dict[str, Any]
+    ) -> List[Any]:
+        if not args and "type_name" not in kwargs:
+            raise ValueError("entity_type requires type_name argument")
+
+        type_name = args[0] if args else kwargs.get("type_name")
+        if not isinstance(type_name, str):
+            raise ValueError(f"type_name must be a string, got {type(type_name)}")
+
+        type_name = type_name.lower()
+
+        # Route to appropriate manager method based on type
+        if type_name == "decision":
+            return manager.list_decisions()
+        elif type_name == "sprint":
+            return manager.list_sprints()
+        elif type_name == "task":
+            return manager.query_api.list_all_tasks()
+        elif type_name == "edge":
+            return manager.list_edges()
+        elif type_name == "handoff":
+            return manager.list_handoffs()
+        elif type_name == "kt" or type_name == "knowledge_transfer":
+            return manager.list_knowledge_transfers()
+        else:
+            # Unknown type - return empty list
+            return []

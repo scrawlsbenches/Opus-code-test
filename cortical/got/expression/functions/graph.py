@@ -445,3 +445,108 @@ class OrphanNodes(QueryFunction):
         # Get all tasks and filter for orphans
         all_entities = manager.list_all_tasks()
         return [e for e in all_entities if e.id not in connected_ids]
+
+
+@FunctionRegistry.register("blockers")
+class Blockers(QueryFunction):
+    """Find tasks that block the given task."""
+
+    @classmethod
+    def signature(cls) -> FunctionSignature:
+        return FunctionSignature(
+            name="blockers",
+            description="Find tasks that block the specified task",
+            required_args=["task_id"],
+            optional_args={},
+            returns="List of tasks with BLOCKS edge TO the specified task"
+        )
+
+    def execute(
+        self,
+        manager: Any,
+        args: List[Any],
+        kwargs: Dict[str, Any]
+    ) -> List[Any]:
+        """
+        Execute blockers function.
+
+        Finds tasks that have a BLOCKS edge pointing TO the given task.
+        These are the tasks that are blocking the specified task from proceeding.
+
+        Args:
+            manager: GoTManager instance
+            args: Positional arguments [task_id]
+            kwargs: Keyword arguments {task_id: str}
+
+        Returns:
+            List of tasks blocking the specified task
+        """
+        task_id = args[0] if args else kwargs.get('task_id')
+        if not task_id:
+            raise ValueError("task_id is required")
+
+        # Get edges where target is the given task and edge type is BLOCKS
+        edges = manager.list_edges()
+        blocker_ids = set()
+
+        for edge in edges:
+            if edge.target_id == task_id and edge.edge_type == "BLOCKS":
+                blocker_ids.add(edge.source_id)
+
+        # Get all tasks and filter by blocker IDs
+        all_entities = manager.list_all_tasks()
+        return [e for e in all_entities if e.id in blocker_ids]
+
+
+@FunctionRegistry.register("dependents")
+class Dependents(QueryFunction):
+    """Find tasks that depend on the given task."""
+
+    @classmethod
+    def signature(cls) -> FunctionSignature:
+        return FunctionSignature(
+            name="dependents",
+            description="Find tasks that depend on the specified task",
+            required_args=["task_id"],
+            optional_args={},
+            returns="List of tasks with DEPENDS_ON edge FROM the specified task"
+        )
+
+    def execute(
+        self,
+        manager: Any,
+        args: List[Any],
+        kwargs: Dict[str, Any]
+    ) -> List[Any]:
+        """
+        Execute dependents function.
+
+        Finds tasks that have a DEPENDS_ON edge pointing TO them FROM the given task.
+        These are the tasks that depend on the specified task completing.
+
+        Semantically equivalent to children() function, but named for clarity in queries.
+
+        Args:
+            manager: GoTManager instance
+            args: Positional arguments [task_id]
+            kwargs: Keyword arguments {task_id: str}
+
+        Returns:
+            List of tasks that depend on the specified task
+        """
+        task_id = args[0] if args else kwargs.get('task_id')
+        if not task_id:
+            raise ValueError("task_id is required")
+
+        # Get edges where source is the given task and edge type is DEPENDS_ON
+        # If A -> DEPENDS_ON -> B, then B depends on A
+        edges = manager.list_edges()
+        dependent_ids = set()
+
+        for edge in edges:
+            if edge.source_id == task_id and edge.edge_type == "DEPENDS_ON":
+                dependent_ids.add(edge.target_id)
+
+        # Get all tasks and filter by dependent IDs
+        all_entities = manager.list_all_tasks()
+        return [e for e in all_entities if e.id in dependent_ids]
