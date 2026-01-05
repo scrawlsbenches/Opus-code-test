@@ -580,6 +580,197 @@ python scripts/got_utils.py handoff complete H-XXX
 
 ---
 
+## GoT Deep Dive: Understanding the Data Model
+
+This section teaches agents how got_utils.py works internally, so you can use it effectively.
+
+### Entity Types and Storage
+
+GoT stores entities as JSON files in `.got/entities/`:
+
+| Entity | ID Prefix | File Pattern | Key Fields |
+|--------|-----------|--------------|------------|
+| Task | T- | `T-*.json` | title, status, priority, description, properties |
+| Edge | E- | `E-*.json` | from_id, to_id, edge_type, weight |
+| Decision | D- | `D-*.json` | content, rationale, status |
+| Sprint | S- | `S-*.json` | name, goal, status, task_ids |
+| Handoff | H- | `H-*.json` | task_id, target, instructions, status |
+| KnowledgeTransfer | KT- | `KT-*.json` | title, summary, sections, status |
+
+### The Task Lifecycle
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        TASK STATE MACHINE                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│    [pending] ──start──► [in_progress] ──complete──► [completed]         │
+│        │                     │                                          │
+│        └───────block────────►│◄────unblock────────                      │
+│                              │                                          │
+│                         [blocked]                                       │
+│                                                                          │
+│    Commands:                                                            │
+│    - task create → pending                                              │
+│    - task start T-XXX → in_progress                                     │
+│    - task complete T-XXX → completed (requires retrospective!)          │
+│    - task block T-XXX --reason "..." → blocked                          │
+│    - task unblock T-XXX → in_progress                                   │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Task Properties: The Extensibility Point
+
+Every task has a `properties: Dict[str, Any]` field for storing arbitrary metadata. This is how we extend tasks without changing the schema:
+
+```python
+# What gets stored when you complete a task with retrospective:
+task.properties = {
+    "retrospective": "What worked: X. What didn't: Y. Learned: Z.",
+    # Future: files_touched, learning_context, etc.
+}
+```
+
+**Currently used properties:**
+- `retrospective` - Lessons learned on completion
+- `category` - feature/bugfix/refactor/docs/test
+- `estimated_effort` - Optional time estimate
+- `actual_effort` - Tracked time spent
+
+### Edge Types and When to Use Them
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           EDGE TYPE GUIDE                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  DEPENDENCY EDGES:                                                      │
+│  - DEPENDS_ON: T-2 depends on T-1 (T-1 must complete first)            │
+│  - BLOCKS: T-1 blocks T-2 (inverse of DEPENDS_ON)                       │
+│                                                                          │
+│  STRUCTURAL EDGES:                                                      │
+│  - CONTAINS: Sprint S-1 contains Task T-1                               │
+│  - BELONGS_TO: T-1 belongs to Epic E-1                                  │
+│                                                                          │
+│  RELATIONSHIP EDGES:                                                    │
+│  - SIMILAR: T-1 is similar to T-2 (for guidance/learning)              │
+│  - RELATED: Generic relationship                                        │
+│  - IMPLEMENTS: T-1 implements Decision D-1                              │
+│  - TESTS: T-1 tests feature in T-2                                      │
+│                                                                          │
+│  Usage:                                                                 │
+│  python scripts/got_utils.py edge add T-001 T-002 DEPENDS_ON           │
+│  python scripts/got_utils.py edge add S-001 T-001 CONTAINS             │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Query Language (Natural Language)
+
+The query command parses natural language patterns:
+
+```bash
+# Blocking relationships
+python scripts/got_utils.py query "what blocks T-001"
+python scripts/got_utils.py query "what does T-001 depend on"
+
+# Status queries
+python scripts/got_utils.py query "blocked tasks"
+python scripts/got_utils.py query "high priority pending"
+
+# Path queries
+python scripts/got_utils.py query "path from T-001 to T-010"
+
+# Free-form search (title/description matching)
+python scripts/got_utils.py query "authentication"
+```
+
+### TransactionalGoTAdapter: The CLI Engine
+
+The `scripts/got_utils.py` file contains `TransactionalGoTAdapter`, which wraps the GoT manager with CLI-friendly methods. Key methods:
+
+| Method | Purpose | Returns |
+|--------|---------|---------|
+| `create_task(title, **kwargs)` | Create new task | Task ID (T-XXX) |
+| `get_task(task_id)` | Fetch task by ID | Task object or None |
+| `update_task(task_id, **updates)` | Update task fields | Success boolean |
+| `complete_task(task_id, retrospective)` | Mark complete | Success boolean |
+| `query(query_str)` | Natural language query | List of results |
+| `get_blocked_tasks()` | Find blocked tasks | List[(Task, reason)] |
+| `get_active_tasks()` | Find in_progress | List[Task] |
+
+### Common Patterns
+
+**Pattern 1: Task Workflow**
+```bash
+# Create
+T_ID=$(python scripts/got_utils.py task create "Fix login bug" --priority high)
+
+# Start work
+python scripts/got_utils.py task start $T_ID
+
+# Complete with learnings
+python scripts/got_utils.py task complete $T_ID \
+    --retrospective "Root cause was session timeout. Fixed by extending TTL."
+```
+
+**Pattern 2: Dependency Chain**
+```bash
+# T-002 can't start until T-001 is done
+python scripts/got_utils.py edge add T-001 T-002 DEPENDS_ON
+
+# Check what's blocking
+python scripts/got_utils.py blocked
+```
+
+**Pattern 3: Session Handoff**
+```bash
+# Create knowledge transfer
+python scripts/got_utils.py kt create "Session: Auth refactor" \
+    --summary "Completed token validation. Pending: refresh flow."
+
+# Create handoff for specific task
+python scripts/got_utils.py handoff initiate T-001 \
+    --target "next-agent" \
+    --instructions "Continue from step 3 of the plan"
+```
+
+**Pattern 4: Failed Approach Tracking**
+```bash
+# Record what didn't work (prevents future agents from repeating mistakes)
+python scripts/got_utils.py failure record T-001 \
+    "Tried mutex lock on shared state - caused deadlock under high load"
+```
+
+### Validation and Health Checks
+
+```bash
+# Basic validation (checks node/edge counts, orphan detection)
+python scripts/got_utils.py validate
+
+# Deep validation (checks edge references point to existing entities)
+python scripts/got_utils.py validate --check-refs
+
+# Statistics
+python scripts/got_utils.py stats
+```
+
+### Recovery Commands
+
+```bash
+# If validation fails
+python scripts/got_utils.py recover
+
+# Backup before risky operations
+python scripts/got_utils.py backup create "pre-refactor"
+
+# Restore from backup
+python scripts/got_utils.py backup restore BACKUP_ID
+```
+
+---
+
 ## Test Commands Reference
 
 ```bash
