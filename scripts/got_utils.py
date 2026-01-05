@@ -2841,46 +2841,38 @@ class TransactionalGoTAdapter:
         Returns:
             Knowledge transfer entity ID
         """
-        from cortical.got.types import KnowledgeTransfer
-        from datetime import datetime
+        # Build properties dict for extra fields
+        properties = {}
+        if source_file:
+            properties["source_file"] = source_file
 
-        # Generate ID
-        kt_id = f"KT-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-
-        # Create entity
-        kt = KnowledgeTransfer(
-            id=kt_id,
-            entity_type="knowledge_transfer",
+        # Delegate to TransactionManager (proper transactional storage with checksums)
+        kt = self._manager.tx_manager.create_knowledge_transfer(
             title=title,
+            summary=summary,
             session_id=session_id,
             session_date=session_date,
-            summary=summary,
-            sections=sections or {},
-            code_refs=code_refs or [],
-            related_handoffs=[],
-            related_tasks=[],
-            related_decisions=[],
-            tags=tags or [],
-            status=status,
-            source_file=source_file,
-            created_at=datetime.now().isoformat(),
-            modified_at=datetime.now().isoformat(),
+            sections=sections,
+            code_refs=code_refs,
+            tags=tags,
+            properties=properties,
         )
 
-        # Save entity
-        entities_dir = self.got_dir / "entities"
-        entities_dir.mkdir(parents=True, exist_ok=True)
-
-        entity_file = entities_dir / f"{kt_id}.json"
-        with open(entity_file, 'w') as f:
-            json.dump({
-                "version": 1,
-                "entity_type": "knowledge_transfer",
-                "data": kt.model_dump() if hasattr(kt, 'model_dump') else asdict(kt),
-            }, f, indent=2)
+        # Update status if not the default (TransactionManager creates with status="published")
+        if status != "published":
+            tx = self._manager.tx_manager.begin()
+            try:
+                kt.status = status
+                if source_file:
+                    kt.source_file = source_file
+                self._manager.tx_manager.write(tx, kt)
+                self._manager.tx_manager.commit(tx)
+            except Exception:
+                self._manager.tx_manager.rollback(tx, reason="update_kt_status_failed")
+                raise
 
         self.save()
-        return kt_id
+        return kt.id
 
     def append_kt_section(
         self,
