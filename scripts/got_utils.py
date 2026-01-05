@@ -2390,303 +2390,66 @@ class TransactionalGoTAdapter:
         return None
 
     def query(self, query_str: str) -> List[Dict[str, Any]]:
-        """Query language for the graph.
+        """Query the graph using natural language patterns.
 
-        Supported queries:
-
-        Relationship queries:
-        - "what blocks <task_id>" - tasks blocking this task
-        - "what depends on <task_id>" - tasks depending on this task
-        - "relationships <task_id>" - all relationships for a task
-
-        Status queries:
-        - "blocked tasks" - tasks with blocked status
-        - "active tasks" - tasks with in_progress status
-        - "pending tasks" - tasks with pending status
-        - "completed tasks" - tasks with completed status
-        - "in_progress tasks" - tasks with in_progress status
-        - "all tasks" - all tasks regardless of status
-
-        Priority queries:
-        - "high priority tasks" - tasks with high priority
-        - "critical tasks" - tasks with critical priority
-
-        Orphan queries:
-        - "orphan tasks" / "orphan nodes" / "orphans" - tasks with no edges
-
-        Sprint queries:
-        - "tasks in sprint <sprint_id>" - tasks contained in a sprint
-        - "what is in <sprint_id>" - tasks contained in a sprint
-        - "tasks in <sprint_id>" - tasks contained in a sprint (short form)
-        - "show sprint <sprint_id>" - sprint details with task count
-        - "current sprint" / "active sprint" - sprint with in_progress status
-        - "sprints" / "all sprints" - all sprints
-
-        Entity queries:
-        - "decisions" / "all decisions" - all decisions
-
-        Time-based queries:
-        - "recent tasks" / "tasks today" - tasks created in last 24h
-        - "stale tasks" - non-completed tasks not updated in 7+ days
-
-        Returns:
-            List of result dicts with id, title, and relevant fields.
+        Translates natural language to expression DSL, then executes.
+        See get_supported_patterns() for available patterns.
         """
-        # Preserve original for extracting IDs (case-sensitive)
-        original_query = query_str.strip()
-        query_str = original_query.lower()
-        results = []
+        from cortical.got.expression.translator import translate
+        from cortical.got.expression import parse, execute
 
-        if query_str.startswith("what blocks "):
-            # Extract ID from original (case-sensitive)
-            task_id = original_query[12:].strip()
-            for node in self.what_blocks(task_id):
-                results.append({
-                    "id": node.id,
-                    "title": node.content,
-                    "status": node.properties.get("status"),
-                    "relation": "blocks",
-                })
+        # Translate natural language to DSL expression
+        expr_str = translate(query_str)
 
-        elif query_str.startswith("what depends on "):
-            # Extract ID from original (case-sensitive)
-            task_id = original_query[16:].strip()
-            for node in self.what_depends_on(task_id):
-                results.append({
-                    "id": node.id,
-                    "title": node.content,
-                    "status": node.properties.get("status"),
-                    "relation": "depends_on",
-                })
+        # Handle empty expression (e.g., "all tasks" returns everything)
+        if not expr_str:
+            # Return all tasks
+            return [self._task_to_dict(t) for t in self.list_all_tasks()]
 
-        elif query_str == "blocked tasks":
-            for node, reason in self.get_blocked_tasks():
-                results.append({
-                    "id": node.id,
-                    "title": node.content,
-                    "reason": reason,
-                })
+        # Parse and execute
+        try:
+            ast = parse(expr_str)
+            results = execute(self._manager, ast)
+            return [self._entity_to_dict(query_str, e) for e in results]
+        except Exception:
+            # Unknown pattern - return empty list
+            return []
 
-        elif query_str == "active tasks":
-            for node in self.get_active_tasks():
-                results.append({
-                    "id": node.id,
-                    "title": node.content,
-                    "priority": node.properties.get("priority"),
-                })
+    def _task_to_dict(self, task) -> Dict[str, Any]:
+        """Convert a task to dict format."""
+        return {
+            "id": task.id,
+            "title": task.content,
+            "status": task.properties.get("status"),
+            "priority": task.properties.get("priority"),
+        }
 
-        elif query_str == "pending tasks":
-            for node in self.list_tasks(status=STATUS_PENDING):
-                results.append({
-                    "id": node.id,
-                    "title": node.content,
-                    "priority": node.properties.get("priority"),
-                })
+    def _entity_to_dict(self, query_str: str, entity) -> Dict[str, Any]:
+        """Convert entity to dict format for query results."""
+        query_lower = query_str.lower()
 
-        elif query_str in ("orphan tasks", "orphan nodes", "orphans"):
-            for node in self.get_orphan_tasks():
-                results.append({
-                    "id": node.id,
-                    "title": node.content,
-                    "status": node.properties.get("status"),
-                    "priority": node.properties.get("priority"),
-                })
+        # Build base dict
+        result = {
+            "id": entity.id,
+            "title": getattr(entity, 'title', getattr(entity, 'content', '')),
+        }
 
-        elif query_str.startswith("relationships "):
-            # Extract ID from original (case-sensitive)
-            task_id = original_query[14:].strip()
-            rels = self.get_all_relationships(task_id)
-            for rel_type, nodes in rels.items():
-                for node in nodes:
-                    results.append({
-                        "relation": rel_type,
-                        "id": node.id,
-                        "title": node.content,
-                    })
+        # Add context-specific fields based on query
+        if hasattr(entity, 'status'):
+            result["status"] = entity.status
+        if hasattr(entity, 'priority'):
+            result["priority"] = entity.priority
+        if hasattr(entity, 'properties'):
+            if "priority" in entity.properties:
+                result["priority"] = entity.properties["priority"]
+            if "status" in entity.properties:
+                result["status"] = entity.properties["status"]
 
-        # Status-based queries
-        elif query_str == "completed tasks":
-            for node in self.list_tasks(status=STATUS_COMPLETED):
-                results.append({
-                    "id": node.id,
-                    "title": node.content,
-                    "status": "completed",
-                    "priority": node.properties.get("priority"),
-                })
+        # Add relation field for relationship queries
+        if "blocks" in query_lower or "depends" in query_lower:
+            result["relation"] = "blocks" if "blocks" in query_lower else "depends_on"
 
-        elif query_str in ("in_progress tasks", "in progress tasks"):
-            for node in self.list_tasks(status=STATUS_IN_PROGRESS):
-                results.append({
-                    "id": node.id,
-                    "title": node.content,
-                    "status": "in_progress",
-                    "priority": node.properties.get("priority"),
-                })
-
-        elif query_str == "all tasks":
-            for node in self.list_all_tasks():
-                results.append({
-                    "id": node.id,
-                    "title": node.content,
-                    "status": node.properties.get("status"),
-                    "priority": node.properties.get("priority"),
-                })
-
-        # Priority-based queries
-        elif query_str == "high priority tasks":
-            for node in self.list_all_tasks():
-                if node.properties.get("priority") == "high":
-                    results.append({
-                        "id": node.id,
-                        "title": node.content,
-                        "status": node.properties.get("status"),
-                        "priority": "high",
-                    })
-
-        elif query_str == "critical tasks":
-            for node in self.list_all_tasks():
-                if node.properties.get("priority") == "critical":
-                    results.append({
-                        "id": node.id,
-                        "title": node.content,
-                        "status": node.properties.get("status"),
-                        "priority": "critical",
-                    })
-
-        # Sprint-based queries
-        elif query_str.startswith("tasks in sprint "):
-            # Extract ID from original (case-sensitive)
-            sprint_id = original_query[16:].strip()
-            # Find all tasks contained in this sprint via CONTAINS edges
-            for edge in self._manager.list_edges():
-                if edge.source_id == sprint_id and edge.edge_type == "CONTAINS":
-                    task = self._manager.get_task(edge.target_id)
-                    if task:
-                        results.append({
-                            "id": task.id,
-                            "title": task.title,
-                            "status": task.status,
-                            "priority": task.priority,
-                        })
-
-        elif query_str.startswith("what is in "):
-            # Extract ID from original (case-sensitive)
-            sprint_id = original_query[11:].strip()
-            # Get tasks linked to sprint via CONTAINS edges
-            for edge in self._manager.list_edges():
-                if edge.source_id == sprint_id and edge.edge_type == "CONTAINS":
-                    task = self._manager.get_task(edge.target_id)
-                    if task:
-                        results.append({
-                            "id": task.id,
-                            "title": task.title,
-                            "status": task.status,
-                            "relation": "contained_in",
-                        })
-
-        elif query_str.startswith("tasks in "):
-            # Extract ID from original (case-sensitive)
-            sprint_id = original_query[9:].strip()
-            # Same logic as "what is in" but shorter form
-            for edge in self._manager.list_edges():
-                if edge.source_id == sprint_id and edge.edge_type == "CONTAINS":
-                    task = self._manager.get_task(edge.target_id)
-                    if task:
-                        results.append({
-                            "id": task.id,
-                            "title": task.title,
-                            "status": task.status,
-                            "relation": "contained_in",
-                        })
-
-        elif query_str.startswith("show sprint "):
-            # Extract ID from original (case-sensitive)
-            sprint_id = original_query[12:].strip()
-            sprint = self._manager.get_sprint(sprint_id)
-            if sprint:
-                # Count tasks in sprint
-                task_count = sum(
-                    1 for edge in self._manager.list_edges()
-                    if edge.source_id == sprint_id and edge.edge_type == "CONTAINS"
-                )
-                results.append({
-                    "id": sprint.id,
-                    "title": sprint.title,
-                    "status": sprint.status,
-                    "task_count": task_count,
-                    "relation": "sprint_info",
-                })
-
-        elif query_str in ("current sprint", "active sprint"):
-            for sprint in self._manager.list_sprints():
-                if sprint.status == "in_progress":
-                    results.append({
-                        "id": sprint.id,
-                        "title": sprint.title,
-                        "status": sprint.status,
-                        "number": sprint.number,
-                    })
-
-        elif query_str in ("sprints", "all sprints"):
-            for sprint in self._manager.list_sprints():
-                results.append({
-                    "id": sprint.id,
-                    "title": sprint.title,
-                    "status": sprint.status,
-                    "number": sprint.number,
-                })
-
-        # Entity listing queries
-        elif query_str in ("decisions", "all decisions"):
-            for decision in self._manager.list_decisions():
-                results.append({
-                    "id": decision.id,
-                    "title": decision.title,
-                    "rationale": decision.rationale,
-                })
-
-        # Time-based queries
-        elif query_str in ("recent tasks", "tasks today"):
-            from datetime import datetime, timedelta
-            cutoff = datetime.now() - timedelta(days=1)
-            for node in self.list_all_tasks():
-                created = node.metadata.get("created_at", "")
-                if created:
-                    try:
-                        # Parse ISO format timestamp
-                        created_dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
-                        if created_dt.replace(tzinfo=None) > cutoff:
-                            results.append({
-                                "id": node.id,
-                                "title": node.content,
-                                "status": node.properties.get("status"),
-                                "created_at": created,
-                            })
-                    except (ValueError, TypeError):
-                        pass
-
-        elif query_str == "stale tasks":
-            from datetime import datetime, timedelta
-            cutoff = datetime.now() - timedelta(days=7)
-            for node in self.list_all_tasks():
-                # Check both updated_at and created_at
-                updated = node.metadata.get("updated_at") or node.metadata.get("created_at", "")
-                if updated:
-                    try:
-                        updated_dt = datetime.fromisoformat(updated.replace("Z", "+00:00"))
-                        if updated_dt.replace(tzinfo=None) < cutoff:
-                            # Only include non-completed tasks
-                            if node.properties.get("status") != "completed":
-                                results.append({
-                                    "id": node.id,
-                                    "title": node.content,
-                                    "status": node.properties.get("status"),
-                                    "last_updated": updated,
-                                })
-                    except (ValueError, TypeError):
-                        pass
-
-        return results
+        return result
 
     def sync_to_git(self) -> str:
         """Sync to git (no-op for TX backend, state is already persistent)."""
