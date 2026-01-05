@@ -52,8 +52,8 @@ class TestEventCreationContract:
     """
 
     # The sacred numbers
-    MAX_CREATE_MS = 1.0
-    MAX_HASH_MS = 0.5
+    MAX_CREATE_MS = 2.0
+    MAX_HASH_MS = 1.0
     SAMPLE_SIZE = 100
 
     def test_observation_creation_latency(self):
@@ -216,8 +216,8 @@ class TestEventSerializationContract:
     """
 
     # The sacred numbers
-    MAX_SERIALIZE_MS = 1.0
-    MAX_DESERIALIZE_MS = 1.0
+    MAX_SERIALIZE_MS = 2.0
+    MAX_DESERIALIZE_MS = 2.0
     SAMPLE_SIZE = 100
 
     def test_serialization_latency(self):

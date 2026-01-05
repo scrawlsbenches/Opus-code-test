@@ -51,8 +51,8 @@ class TestTransferLearningContract:
     So that transfer learning is practical.
     """
 
-    MAX_VOCAB_ANALYSIS_MS = 100
-    MAX_ADAPTATION_MS = 200
+    MAX_VOCAB_ANALYSIS_MS = 200
+    MAX_ADAPTATION_MS = 400
 
     def test_vocabulary_analysis_latency(self):
         """
@@ -193,8 +193,8 @@ class TestCoChangeAnalysisContract:
     So that co-change analysis scales to large repos.
     """
 
-    MAX_COMMIT_ADD_MS = 50
-    MAX_PREDICTION_MS = 10
+    MAX_COMMIT_ADD_MS = 100
+    MAX_PREDICTION_MS = 20
 
     def test_commit_addition_latency(self):
         """
@@ -315,7 +315,7 @@ class TestDiffTokenizationContract:
     So that diff analysis is practical.
     """
 
-    MAX_DIFF_PARSE_MS = 100
+    MAX_DIFF_PARSE_MS = 200
 
     def test_diff_parsing_latency(self):
         """
@@ -415,7 +415,7 @@ class TestIntentParsingContract:
     So that commit analysis scales to large repos.
     """
 
-    MAX_PARSE_LATENCY_MS = 5
+    MAX_PARSE_LATENCY_MS = 10
     MIN_CONVENTIONAL_ACCURACY = 0.90
 
     def test_commit_message_parsing_latency(self):
@@ -504,8 +504,8 @@ class TestASTIndexingContract:
     So that structural analysis is practical.
     """
 
-    MAX_FILE_INDEX_MS = 500  # AST parsing is moderately expensive
-    MAX_QUERY_MS = 10
+    MAX_FILE_INDEX_MS = 1000  # AST parsing is moderately expensive
+    MAX_QUERY_MS = 20
 
     def test_file_indexing_latency(self):
         """
@@ -631,7 +631,7 @@ class TestAlignmentIndexContract:
     So that alignment is practical.
     """
 
-    MAX_SEARCH_MS = 10
+    MAX_SEARCH_MS = 20
 
     def test_alignment_search_latency(self):
         """

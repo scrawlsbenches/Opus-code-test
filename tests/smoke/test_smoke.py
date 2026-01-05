@@ -225,23 +225,22 @@ class TestGoTImports:
 
 
 class TestGoTBasicOperations:
-    """Verify GoT can create and query tasks (via container)."""
+    """Verify GoT can create and query tasks (via container with in-memory storage)."""
 
-    def test_create_manager(self, tmp_path):
+    def test_create_manager(self):
         """GoTManager can be resolved from container."""
         from cortical.core.bootstrap import create_container
         from cortical.got import GoTManager
-        got_dir = tmp_path / ".got"
-        container = create_container(got_dir=got_dir)
+        # Use in-memory storage for fast smoke tests
+        container = create_container(use_memory=True)
         manager = container.resolve(GoTManager)
         assert manager is not None
 
-    def test_create_task(self, tmp_path):
+    def test_create_task(self):
         """Task can be created."""
         from cortical.core.bootstrap import create_container
         from cortical.got import GoTManager
-        got_dir = tmp_path / ".got"
-        container = create_container(got_dir=got_dir)
+        container = create_container(use_memory=True)
         manager = container.resolve(GoTManager)
 
         task = manager.create_task("Smoke test task", priority="medium")
@@ -249,12 +248,11 @@ class TestGoTBasicOperations:
         assert task.id.startswith("T-")
         assert task.title == "Smoke test task"
 
-    def test_query_tasks(self, tmp_path):
+    def test_query_tasks(self):
         """Tasks can be queried."""
         from cortical.core.bootstrap import create_container
         from cortical.got import GoTManager
-        got_dir = tmp_path / ".got"
-        container = create_container(got_dir=got_dir)
+        container = create_container(use_memory=True)
         manager = container.resolve(GoTManager)
 
         manager.create_task("Task 1", priority="high")
@@ -263,12 +261,11 @@ class TestGoTBasicOperations:
         tasks = manager.find_tasks()
         assert len(tasks) == 2
 
-    def test_create_edge(self, tmp_path):
+    def test_create_edge(self):
         """Edges can be created between tasks."""
         from cortical.core.bootstrap import create_container
         from cortical.got import GoTManager
-        got_dir = tmp_path / ".got"
-        container = create_container(got_dir=got_dir)
+        container = create_container(use_memory=True)
         manager = container.resolve(GoTManager)
 
         t1 = manager.create_task("Task A")
@@ -306,19 +303,19 @@ class TestCDGImports:
 
 
 class TestCDGBasicOperations:
-    """Verify CDG can store and retrieve entities."""
+    """Verify CDG can store and retrieve entities (using in-memory storage)."""
 
-    def test_create_store(self, tmp_path):
-        """CDGStore can be instantiated."""
-        from cortical.cdg import CDGStore
-        store = CDGStore(tmp_path / "cdg")
+    def test_create_store(self):
+        """InMemoryStore can be instantiated."""
+        from cortical.cdg import InMemoryStore
+        store = InMemoryStore()
         assert store is not None
 
-    def test_write_and_read_entity(self, tmp_path):
+    def test_write_and_read_entity(self):
         """Entity can be written and read back."""
-        from cortical.cdg import CDGStore, Entity
+        from cortical.cdg import InMemoryStore, Entity
 
-        store = CDGStore(tmp_path / "cdg")
+        store = InMemoryStore()
 
         entity = Entity(id="smoke-test-001", entity_type="test")
         store.write(entity)

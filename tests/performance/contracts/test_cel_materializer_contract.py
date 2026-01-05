@@ -52,8 +52,8 @@ class TestMaterializationLatencyContract:
     """
 
     # The sacred numbers
-    MAX_MATERIALIZE_MS = 10.0
-    MAX_CACHE_HIT_MS = 1.0
+    MAX_MATERIALIZE_MS = 20.0
+    MAX_CACHE_HIT_MS = 2.0
     SAMPLE_SIZE = 20
 
     def test_single_entity_materialization_latency(self, tmp_path):

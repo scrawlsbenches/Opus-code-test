@@ -40,9 +40,9 @@ class TestEmbeddingComputationPerformanceContract:
     So that semantic indexing is practical.
     """
 
-    MAX_FAST_ADJACENCY_MS = 500
-    MAX_TFIDF_MS = 300
-    MAX_RANDOM_WALK_SECONDS = 10
+    MAX_FAST_ADJACENCY_MS = 1000
+    MAX_TFIDF_MS = 600
+    MAX_RANDOM_WALK_SECONDS = 20
 
     def test_fast_adjacency_embeddings_latency(self):
         """

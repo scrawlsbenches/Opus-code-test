@@ -83,7 +83,10 @@ class QueryAPI:
         category: Optional[str] = None,
     ) -> List[Task]:
         """
-        Find tasks matching criteria. Scans disk (no in-memory cache).
+        Find tasks matching criteria.
+
+        Uses the store's iter_entities() method when available (e.g., InMemoryStore),
+        otherwise falls back to scanning the disk directory.
 
         Args:
             status: Filter by status ('pending', 'in_progress', 'completed', etc.)
@@ -94,11 +97,36 @@ class QueryAPI:
         Returns:
             List of matching Task objects
         """
+        tasks = []
+
+        # Try to use store's iter_entities if available (supports InMemoryStore)
+        store = getattr(self._manager.tx_manager, 'store', None)
+        if store is not None and hasattr(store, 'iter_entities'):
+            # Use store's iter_entities for in-memory or disk-based iteration
+            all_entities = store.iter_entities(prefix="T-")
+            for entity in all_entities:
+                if not isinstance(entity, Task):
+                    continue
+                task = entity
+
+                # Apply filters
+                if status is not None and task.status != status:
+                    continue
+                if priority is not None and task.priority != priority:
+                    continue
+                if title_contains is not None and title_contains.lower() not in task.title.lower():
+                    continue
+                if category is not None and task.category != category:
+                    continue
+
+                tasks.append(task)
+            return tasks
+
+        # Fallback: scan disk directory
         entities_dir = self.got_dir / "entities"
         if not entities_dir.exists():
             return []
 
-        tasks = []
         for entity_file in entities_dir.glob("T-*.json"):
             try:
                 task = self._manager._read_task_file(entity_file)

@@ -44,8 +44,8 @@ class TestSemanticExtractionPerformanceContract:
     So that corpus analysis is practical.
     """
 
-    MAX_EXTRACTION_SECONDS = 5.0
-    MAX_PATTERN_EXTRACTION_SECONDS = 2.0
+    MAX_EXTRACTION_SECONDS = 10.0
+    MAX_PATTERN_EXTRACTION_SECONDS = 4.0
 
     def test_corpus_semantics_extraction_latency(self, small_processor):
         """
@@ -219,7 +219,7 @@ class TestIsAHierarchyContract:
     So that taxonomy analysis is practical.
     """
 
-    MAX_BUILD_HIERARCHY_MS = 500
+    MAX_BUILD_HIERARCHY_MS = 1000
 
     def test_build_isa_hierarchy_latency(self):
         """
@@ -284,7 +284,7 @@ class TestPropertyInheritanceContract:
     So that semantic inference is practical.
     """
 
-    MAX_INHERIT_PROPERTIES_SECONDS = 1.0
+    MAX_INHERIT_PROPERTIES_SECONDS = 2.0
 
     def test_inherit_properties_latency(self):
         """

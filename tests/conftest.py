@@ -185,7 +185,7 @@ import shutil
 from pathlib import Path
 
 
-def _create_tx_manager(got_dir: Path):
+def _create_tx_manager(got_dir: Path, use_memory: bool = False):
     """
     Create TransactionManager via DI container.
 
@@ -194,17 +194,18 @@ def _create_tx_manager(got_dir: Path):
 
     Args:
         got_dir: Directory for GoT storage
+        use_memory: Use in-memory storage (fast, no disk I/O)
 
     Returns:
         Fully configured TransactionManager
     """
     from cortical.core.bootstrap import create_container
     from cortical.got.tx_manager import TransactionManager
-    container = create_container(got_dir=got_dir)
+    container = create_container(got_dir=got_dir, use_memory=use_memory)
     return container.resolve(TransactionManager)
 
 
-def _create_got_manager(got_dir: Path):
+def _create_got_manager(got_dir: Path, use_memory: bool = False):
     """
     Create GoTManager via DI container.
 
@@ -213,17 +214,18 @@ def _create_got_manager(got_dir: Path):
 
     Args:
         got_dir: Directory for GoT storage
+        use_memory: Use in-memory storage (fast, no disk I/O)
 
     Returns:
         Fully configured GoTManager
     """
     from cortical.core.bootstrap import create_container
     from cortical.got import GoTManager
-    container = create_container(got_dir=got_dir)
+    container = create_container(got_dir=got_dir, use_memory=use_memory)
     return container.resolve(GoTManager)
 
 
-def _create_container(got_dir: Path):
+def _create_container(got_dir: Path, use_memory: bool = False):
     """
     Create a DI container for GoT services.
 
@@ -231,12 +233,13 @@ def _create_container(got_dir: Path):
 
     Args:
         got_dir: Directory for GoT storage
+        use_memory: Use in-memory storage (fast, no disk I/O)
 
     Returns:
         Configured Container instance
     """
     from cortical.core.bootstrap import create_container
-    return create_container(got_dir=got_dir)
+    return create_container(got_dir=got_dir, use_memory=use_memory)
 
 
 # =============================================================================
@@ -291,6 +294,61 @@ def fresh_got_manager(tmp_got_dir):
             assert task.title == "My task"
     """
     return _create_got_manager(tmp_got_dir)
+
+
+# =============================================================================
+# IN-MEMORY FIXTURES - FAST, NO DISK I/O
+# =============================================================================
+# Use these fixtures for unit tests that don't need actual disk persistence.
+# ~10x faster than disk-based fixtures.
+
+@pytest.fixture
+def memory_tx_manager():
+    """
+    Function-scoped fixture for an in-memory TransactionManager.
+
+    Use when your test needs fast transactions without disk I/O.
+    ~10x faster than disk-based fresh_tx_manager.
+
+    Example:
+        def test_transaction(memory_tx_manager):
+            tx = memory_tx_manager.begin()
+            # ... do transaction work
+            memory_tx_manager.commit(tx)
+    """
+    return _create_tx_manager(Path(".got"), use_memory=True)
+
+
+@pytest.fixture
+def memory_got_manager():
+    """
+    Function-scoped fixture for an in-memory GoT manager.
+
+    Use when your test needs fast task operations without disk I/O.
+    ~10x faster than disk-based fresh_got_manager.
+
+    Example:
+        def test_create_task(memory_got_manager):
+            task = memory_got_manager.create_task("My task")
+            assert task.title == "My task"
+    """
+    return _create_got_manager(Path(".got"), use_memory=True)
+
+
+@pytest.fixture
+def memory_container():
+    """
+    Function-scoped fixture for an in-memory DI container.
+
+    Use when you need access to multiple in-memory services.
+
+    Example:
+        def test_services(memory_container):
+            from cortical.got import GoTManager, TransactionManager
+            tx = memory_container.resolve(TransactionManager)
+            got = memory_container.resolve(GoTManager)
+    """
+    return _create_container(Path(".got"), use_memory=True)
 
 
 @pytest.fixture(scope="class")

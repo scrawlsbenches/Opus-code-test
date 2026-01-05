@@ -972,6 +972,47 @@ class CDGStore:
                 # Rename (atomic on POSIX)
                 temp_path.rename(version_path)
 
+    def list_by_prefix(self, prefix: str) -> List[str]:
+        """
+        List entity IDs matching a prefix by scanning the directory.
+
+        Args:
+            prefix: ID prefix to match (e.g., "T-" for tasks)
+
+        Returns:
+            List of matching entity IDs
+        """
+        if not self.store_dir.exists():
+            return []
+        return [
+            f.stem for f in self.store_dir.glob(f"{prefix}*.json")
+            if not f.name.startswith("_")  # Skip _version.json etc
+        ]
+
+    def iter_entities(self, prefix: Optional[str] = None) -> List[Entity]:
+        """
+        Iterate over all entities, optionally filtered by prefix.
+
+        Args:
+            prefix: Optional ID prefix to filter (e.g., "T-" for tasks)
+
+        Returns:
+            List of Entity objects
+        """
+        if not self.store_dir.exists():
+            return []
+
+        pattern = f"{prefix}*.json" if prefix else "*.json"
+        entities = []
+        for entity_file in self.store_dir.glob(pattern):
+            # Skip internal files
+            if entity_file.name.startswith("_"):
+                continue
+            entity = self.read(entity_file.stem)
+            if entity is not None:
+                entities.append(entity)
+        return entities
+
 
 # Alias for backward compatibility with VersionedStore API
 VersionedStore = CDGStore
@@ -1266,3 +1307,31 @@ class InMemoryStore:
     def entity_count(self) -> int:
         """Return count of stored entities."""
         return len(self._entities)
+
+    def list_by_prefix(self, prefix: str) -> List[str]:
+        """
+        List entity IDs matching a prefix.
+
+        Args:
+            prefix: ID prefix to match (e.g., "T-" for tasks)
+
+        Returns:
+            List of matching entity IDs
+        """
+        return [eid for eid in self._entities.keys() if eid.startswith(prefix)]
+
+    def iter_entities(self, prefix: Optional[str] = None) -> List[Entity]:
+        """
+        Iterate over all entities, optionally filtered by prefix.
+
+        Args:
+            prefix: Optional ID prefix to filter (e.g., "T-" for tasks)
+
+        Returns:
+            List of Entity objects
+        """
+        entities = []
+        for eid, wrapper in self._entities.items():
+            if prefix is None or eid.startswith(prefix):
+                entities.append(self.entity_factory(wrapper["data"]))
+        return entities

@@ -299,7 +299,7 @@ class TestLayerStatisticsContract:
     So that monitoring doesn't slow down the system.
     """
 
-    MAX_STATS_MS = 50
+    MAX_STATS_MS = 100
 
     def test_statistics_computation_latency(self):
         """

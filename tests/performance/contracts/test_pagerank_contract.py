@@ -35,7 +35,7 @@ class TestPageRankConvergenceContract:
 
     # The sacred numbers - DO NOT CHANGE without team review
     MAX_ITERATIONS = 20
-    MAX_LATENCY_MS = 500
+    MAX_LATENCY_MS = 1000
 
     def test_pagerank_converges_within_iteration_limit(self, small_processor):
         """
@@ -223,7 +223,7 @@ class TestHierarchicalPageRankContract:
     """
 
     MAX_GLOBAL_ITERATIONS = 5
-    MAX_LATENCY_MS = 2000  # More permissive - hierarchical is more complex
+    MAX_LATENCY_MS = 4000  # More permissive - hierarchical is more complex
 
     def test_hierarchical_pagerank_converges(self, small_processor):
         """

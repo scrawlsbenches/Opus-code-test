@@ -109,7 +109,7 @@ def create_container(
     # Apply subsystem modules
     if apply_modules:
         container.apply_module(CDGModule(got_dir=effective_got_dir, use_memory=use_memory))
-        container.apply_module(GoTModule(got_dir=effective_got_dir))
+        container.apply_module(GoTModule(got_dir=effective_got_dir, use_memory=use_memory))
 
     return container
 

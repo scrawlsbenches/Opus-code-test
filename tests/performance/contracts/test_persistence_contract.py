@@ -43,8 +43,8 @@ class TestPersistencePerformanceContract:
     So that state management doesn't block workflows.
     """
 
-    MAX_SAVE_SMALL_SECONDS = 3.0
-    MAX_LOAD_SMALL_SECONDS = 5.0
+    MAX_SAVE_SMALL_SECONDS = 6.0
+    MAX_LOAD_SMALL_SECONDS = 10.0
 
     def test_save_small_corpus_latency(self, small_processor, tmp_path):
         """

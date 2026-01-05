@@ -1,0 +1,18 @@
+{
+  "_checksum": "47d1dc2b33f3be3e",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T22:01:11.745773+00:00",
+  "data": {
+    "created_at": "2026-01-05T21:59:26.930937+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260105-215926-3af08c06",
+    "metadata": {},
+    "modified_at": "2026-01-05T21:59:26.930942+00:00",
+    "priority": "medium",
+    "properties": {},
+    "status": "pending",
+    "title": "Task A",
+    "version": 1
+  }
+}

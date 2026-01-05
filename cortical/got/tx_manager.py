@@ -36,7 +36,7 @@ from .errors import TransactionError as GoTTransactionError
 from cortical.cdg.transaction_manager import CDGTransactionManager
 from cortical.cdg.config import CDGConfig, DurabilityMode as CDGDurabilityMode
 from cortical.cdg.errors import TransactionError as CDGTransactionError
-from cortical.cdg.storage import CDGStore
+from cortical.cdg.storage import CDGStore, InMemoryStore
 from cortical.cdg.wal import CDGWALManager
 
 # Import ProcessLock for backward compatibility (re-exported by __init__.py)
@@ -114,13 +114,15 @@ class TransactionManager:
             tx_manager = container.resolve(TransactionManager)
         """
         # Validate required dependencies (no defaults - DI is mandatory)
-        if not isinstance(store, CDGStore):
+        if not isinstance(store, (CDGStore, InMemoryStore)):
             raise TypeError(
-                f"store is required and must be CDGStore instance, got {type(store).__name__}"
+                f"store is required and must be CDGStore or InMemoryStore instance, got {type(store).__name__}"
             )
-        if not isinstance(lock, ProcessLock):
+        # Lock must support context manager protocol (ProcessLock or similar)
+        # For in-memory storage, a no-op lock is acceptable
+        if lock is not None and not hasattr(lock, '__enter__'):
             raise TypeError(
-                f"lock is required and must be ProcessLock instance, got {type(lock).__name__}"
+                f"lock must support context manager protocol, got {type(lock).__name__}"
             )
         if wal is not None and not isinstance(wal, CDGWALManager):
             raise TypeError(
