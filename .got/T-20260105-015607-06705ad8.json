@@ -1,0 +1,20 @@
+{
+  "_checksum": "2807e4737e403b9a",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T01:56:14.103720+00:00",
+  "data": {
+    "created_at": "2026-01-05T01:56:07.085113+00:00",
+    "description": "Security review backlog for Sprint 4. Track security findings during CLI integration. Review: command-line injection prevention, error message information leakage, safe output formatting.",
+    "entity_type": "task",
+    "id": "T-20260105-015607-06705ad8",
+    "metadata": {},
+    "modified_at": "2026-01-05T01:56:07.085120+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "security"
+    },
+    "status": "pending",
+    "title": "SECURITY: Sprint-4 Security Review",
+    "version": 1
+  }
+}
