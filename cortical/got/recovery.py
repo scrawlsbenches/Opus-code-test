@@ -28,6 +28,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List
 
+from cortical.got.entity_schemas import get_valid_statuses
+
 # Module-level logger - configure via logging.getLogger('cortical.got.recovery')
 logger = logging.getLogger(__name__)
 
@@ -209,7 +211,7 @@ class RecoveryManager:
 
         # Get all task IDs from index
         indexed_task_ids = set()
-        for status in ["pending", "in_progress", "completed", "blocked"]:
+        for status in get_valid_statuses('task'):
             indexed_task_ids.update(index_manager.lookup("status", status))
 
         # Check if there are tasks on disk not in the index

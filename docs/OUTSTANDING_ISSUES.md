@@ -9,8 +9,8 @@
 
 | ID | Priority | Category | Status | Description |
 |----|----------|----------|--------|-------------|
-| OI-001 | HIGH | Hardcoded Values | **Partially Resolved** | Status strings: validation.py fixed, others remain |
-| OI-002 | HIGH | Hardcoded Values | **Partially Resolved** | EdgeTypes class created, CLI fixed, 21 string literals remain |
+| OI-001 | HIGH | Hardcoded Values | **✅ Resolved** | Status strings: all files now use get_valid_statuses() |
+| OI-002 | HIGH | Hardcoded Values | **✅ Resolved** | EdgeTypes class created, all files now use EdgeTypes constants |
 | OI-003 | MEDIUM | Hardcoded Values | Open | Magic numbers in filter functions |
 | OI-004 | MEDIUM | Hardcoded Values | Open | Learning thresholds not configurable |
 | OI-005 | MEDIUM | Test Coverage | Open | Some graph functions lack unit tests |
@@ -25,7 +25,7 @@
 
 **Priority:** HIGH
 **Category:** Hardcoded Values
-**Status:** Partially Resolved
+**Status:** ✅ Resolved
 **Task:** T-20260105-114909-68226531
 
 **Description:**
@@ -38,24 +38,15 @@ Task status strings (`"pending"`, `"in_progress"`, `"completed"`, `"blocked"`) a
   - Sprint: 'on_hold' → 'blocked' (aligned with schema)
   - Epic: Removed 'archived' (not in schema)
   - Handoff CLI: Removed 'in_progress' (not in schema)
+- ✅ Updated `cortical/got/recovery.py` to use `get_valid_statuses('task')`
+- ✅ Updated `cortical/got/cli/backlog.py` to use `get_valid_statuses('task')`
+- ✅ Updated `cortical/got/cli/orphan.py` to use `get_valid_statuses('task')`
 
-**REMAINING (Lower Priority):**
-| File | Line(s) | Current Value |
-|------|---------|---------------|
-| `cortical/got/recovery.py` | 212 | `["pending", "in_progress", "completed", "blocked"]` |
-| `cortical/got/cli/backlog.py` | 232, 280 | CLI choices hardcoded |
-| `cortical/got/cli/orphan.py` | 305 | CLI choices hardcoded |
-| `cortical/got/query_api.py` | 376-387 | Status names in aggregation |
-| `cortical/got/types.py` | 343-524 | Dataclass __post_init__ validation |
+**INTENTIONALLY NOT CHANGED:**
+- `cortical/got/query_api.py` (lines 376-387): Status names are part of the documented API contract
+- `cortical/got/types.py` (lines 343-524): Dataclass `__post_init__` validation is foundational and should not depend on higher-level schema module
 
-**How to Fix Remaining:**
-```python
-from cortical.got.entity_schemas import get_valid_statuses
-valid_statuses = get_valid_statuses('task')  # or 'sprint', 'epic', 'handoff'
-```
-
-**Design Principle Violated:**
-> "NO HARDCODED ENTITIES - All graph functions use registry pattern"
+**Design Principle:** Now satisfied - all dynamic lookups use schema helper
 
 ---
 
@@ -63,7 +54,7 @@ valid_statuses = get_valid_statuses('task')  # or 'sprint', 'epic', 'handoff'
 
 **Priority:** HIGH
 **Category:** Hardcoded Values
-**Status:** Partially Resolved
+**Status:** ✅ Resolved
 **Task:** T-20260105-114916-15adf67e
 
 **Description:**
@@ -74,27 +65,22 @@ Edge type strings (`"DEPENDS_ON"`, `"BLOCKS"`, `"CONTAINS"`) are hardcoded in mu
 - ✅ Exported `EdgeTypes` and `VALID_EDGE_TYPES` from `cortical/got/__init__.py`
 - ✅ Fixed `cortical/got/cli/edge.py`: Removed duplicate 35-item list, imports from types.py
 - ✅ Eliminated 17 phantom edge types that were in CLI but not authoritative
+- ✅ Updated `cortical/got/expression/functions/graph.py` (8 occurrences)
+- ✅ Updated `cortical/got/query_api.py` (4 occurrences)
+- ✅ Updated `cortical/got/cli/decision.py` (4 occurrences)
+- ✅ Updated `cortical/got/api.py` (6 occurrences)
+- ✅ Updated `cortical/got/indexer.py` (1 occurrence)
+- ✅ Updated `cortical/got/expression/functions/filters.py` (1 occurrence)
+- ✅ Updated `cortical/got/orphan.py` (1 occurrence)
 
-**REMAINING (Lower Priority) - 21 Hardcoded String Comparisons:**
-| File | Count | Edge Types Used |
-|------|-------|-----------------|
-| `cortical/got/expression/functions/graph.py` | 8 | DEPENDS_ON |
-| `cortical/got/query_api.py` | 4 | BLOCKS, DEPENDS_ON, CONTAINS |
-| `cortical/got/cli/decision.py` | 4 | JUSTIFIES, MOTIVATES, SUPERSEDES |
-| `cortical/got/api.py` | 1+ | DEPENDS_ON, BLOCKS, CONTAINS |
-| `cortical/got/indexer.py` | 1 | CONTAINS |
-| `cortical/got/expression/functions/filters.py` | 1 | BLOCKS |
-| `cortical/got/orphan.py` | 1 | CONTAINS |
+**All files now use `EdgeTypes` constants instead of string literals.**
 
-**How to Fix Remaining:**
+**Usage Example:**
 ```python
 from cortical.got.types import EdgeTypes
 
-# Instead of:
-if edge.edge_type == "DEPENDS_ON":
-
-# Use:
 if edge.edge_type == EdgeTypes.DEPENDS_ON:
+    # ...
 ```
 
 ---

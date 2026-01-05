@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from scripts.got_utils import TransactionalGoTAdapter
 
+from ..entity_schemas import get_valid_statuses
 from ..orphan import OrphanDetector
 
 
@@ -229,7 +230,7 @@ def cmd_backlog_stats(args, manager: "TransactionalGoTAdapter") -> int:
                 print(f"  {p:<8}: {bar} {count}")
         print()
         print("By Status:")
-        for s in ['pending', 'in_progress', 'completed', 'blocked']:
+        for s in sorted(get_valid_statuses('task')):
             count = status_counts.get(s, 0)
             if count > 0:
                 bar = '█' * min(count, 30)
@@ -277,7 +278,7 @@ def setup_backlog_parser(subparsers) -> None:
     )
     list_parser.add_argument(
         "--status",
-        choices=["pending", "in_progress", "completed", "blocked"],
+        choices=sorted(get_valid_statuses('task')),
         help="Filter by status"
     )
 

@@ -30,6 +30,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
+from .types import EdgeTypes
+
 logger = logging.getLogger(__name__)
 
 
@@ -403,7 +405,7 @@ class QueryIndexManager:
                 else:
                     continue
 
-                if edge_type == "CONTAINS":
+                if edge_type == EdgeTypes.CONTAINS:
                     # Edge uses source_id/target_id, legacy used from_id/to_id
                     if hasattr(edge, "source_id"):
                         source = edge.source_id

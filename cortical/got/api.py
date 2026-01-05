@@ -41,7 +41,7 @@ from .tx_manager import TransactionManager, CommitResult
 from .sync import SyncManager, SyncResult
 from .recovery import RecoveryManager, RecoveryResult
 from .indexer import QueryIndexManager
-from .types import Task, Decision, Edge, Entity, Sprint, Epic, Handoff, ClaudeMdLayer, ClaudeMdVersion, Document
+from .types import Task, Decision, Edge, Entity, Sprint, Epic, Handoff, ClaudeMdLayer, ClaudeMdVersion, Document, EdgeTypes
 from .transaction import Transaction
 from .errors import TransactionError, CorruptionError
 from .config import DurabilityMode
@@ -807,7 +807,7 @@ class GoTManager:
         Raises:
             TransactionError: If commit fails
         """
-        return self.add_edge(task_id, depends_on_id, "DEPENDS_ON")
+        return self.add_edge(task_id, depends_on_id, EdgeTypes.DEPENDS_ON)
 
     def add_blocks(self, blocker_id: str, blocked_id: str) -> Edge:
         """
@@ -823,7 +823,7 @@ class GoTManager:
         Raises:
             TransactionError: If commit fails
         """
-        return self.add_edge(blocker_id, blocked_id, "BLOCKS")
+        return self.add_edge(blocker_id, blocked_id, EdgeTypes.BLOCKS)
 
     def delete_task(self, task_id: str, force: bool = False) -> None:
         """
@@ -1018,7 +1018,7 @@ class GoTManager:
         Raises:
             TransactionError: If commit fails
         """
-        return self.add_edge(sprint_id, task_id, "CONTAINS")
+        return self.add_edge(sprint_id, task_id, EdgeTypes.CONTAINS)
 
     def get_sprint_tasks(self, sprint_id: str) -> List[Task]:
         """
@@ -1152,7 +1152,7 @@ class GoTManager:
         Raises:
             TransactionError: If commit fails
         """
-        return self.add_edge(epic_id, sprint_id, "CONTAINS")
+        return self.add_edge(epic_id, sprint_id, EdgeTypes.CONTAINS)
 
     # Document management methods
     def create_document(
@@ -2337,7 +2337,7 @@ class TransactionContext:
         # Read all edges to find DEPENDS_ON edges targeting this task
         for entity_id, entity in self.tx.write_set.items():
             if isinstance(entity, Edge):
-                if entity.edge_type == "DEPENDS_ON" and entity.target_id == task_id:
+                if entity.edge_type == EdgeTypes.DEPENDS_ON and entity.target_id == task_id:
                     source = self.get_task(entity.source_id)
                     if source:
                         dependents.append(source)
@@ -2345,7 +2345,7 @@ class TransactionContext:
         if self._got_manager:
             for edge in self._got_manager.list_edges():
                 if edge.id not in self.tx.write_set and not self.tx.has_delete(edge.id):
-                    if edge.edge_type == "DEPENDS_ON" and edge.target_id == task_id:
+                    if edge.edge_type == EdgeTypes.DEPENDS_ON and edge.target_id == task_id:
                         source = self.get_task(edge.source_id)
                         if source and source.id not in [d.id for d in dependents]:
                             dependents.append(source)

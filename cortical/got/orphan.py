@@ -34,6 +34,8 @@ if TYPE_CHECKING:
     from .api import GoTManager
     from .types import Task, Sprint, Edge
 
+from .types import EdgeTypes
+
 logger = logging.getLogger(__name__)
 
 
@@ -323,7 +325,7 @@ class OrphanDetector:
             # Check if already in a sprint
             outgoing, incoming = self.manager.get_edges_for_task(task_id)
             already_in_sprint = any(
-                e.edge_type == "CONTAINS" and e.source_id.startswith("S-")
+                e.edge_type == EdgeTypes.CONTAINS and e.source_id.startswith("S-")
                 for e in incoming
             )
 
