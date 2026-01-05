@@ -2202,7 +2202,12 @@ class TransactionalGoTAdapter:
         context: Dict[str, Any],
         instructions: str = "",
     ) -> str:
-        """Initiate a handoff using TX backend."""
+        """Initiate a handoff using TX backend.
+
+        Creates both:
+        - Handoff entity
+        - TRANSFERS edge from task to handoff for graph connectivity
+        """
         handoff = self._manager.initiate_handoff(
             source_agent=source_agent,
             target_agent=target_agent,
@@ -2210,6 +2215,13 @@ class TransactionalGoTAdapter:
             instructions=instructions,
             context=context,
         )
+
+        # Create TRANSFERS edge for graph connectivity (Task transfers to Handoff)
+        if task_id:
+            edge = self.add_edge(task_id, handoff.id, "TRANSFERS", weight=1.0)
+            if edge is None:
+                logger.warning(f"Failed to create TRANSFERS edge from {task_id} to {handoff.id}")
+
         return handoff.id
 
     def accept_handoff(
