@@ -2841,46 +2841,38 @@ class TransactionalGoTAdapter:
         Returns:
             Knowledge transfer entity ID
         """
-        from cortical.got.types import KnowledgeTransfer
-        from datetime import datetime
+        # Build properties dict for extra fields
+        properties = {}
+        if source_file:
+            properties["source_file"] = source_file
 
-        # Generate ID
-        kt_id = f"KT-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-
-        # Create entity
-        kt = KnowledgeTransfer(
-            id=kt_id,
-            entity_type="knowledge_transfer",
+        # Delegate to TransactionManager (proper transactional storage with checksums)
+        kt = self._manager.tx_manager.create_knowledge_transfer(
             title=title,
+            summary=summary,
             session_id=session_id,
             session_date=session_date,
-            summary=summary,
-            sections=sections or {},
-            code_refs=code_refs or [],
-            related_handoffs=[],
-            related_tasks=[],
-            related_decisions=[],
-            tags=tags or [],
-            status=status,
-            source_file=source_file,
-            created_at=datetime.now().isoformat(),
-            modified_at=datetime.now().isoformat(),
+            sections=sections,
+            code_refs=code_refs,
+            tags=tags,
+            properties=properties,
         )
 
-        # Save entity
-        entities_dir = self.got_dir / "entities"
-        entities_dir.mkdir(parents=True, exist_ok=True)
-
-        entity_file = entities_dir / f"{kt_id}.json"
-        with open(entity_file, 'w') as f:
-            json.dump({
-                "version": 1,
-                "entity_type": "knowledge_transfer",
-                "data": kt.model_dump() if hasattr(kt, 'model_dump') else asdict(kt),
-            }, f, indent=2)
+        # Update status if not the default (TransactionManager creates with status="published")
+        if status != "published":
+            tx = self._manager.tx_manager.begin()
+            try:
+                kt.status = status
+                if source_file:
+                    kt.source_file = source_file
+                self._manager.tx_manager.write(tx, kt)
+                self._manager.tx_manager.commit(tx)
+            except Exception:
+                self._manager.tx_manager.rollback(tx, reason="update_kt_status_failed")
+                raise
 
         self.save()
-        return kt_id
+        return kt.id
 
     def append_kt_section(
         self,
@@ -3023,6 +3015,8 @@ class TransactionalGoTAdapter:
         """
         Internal method to update a knowledge transfer entity.
 
+        Uses TransactionManager for proper transactional storage with checksums.
+
         Args:
             kt_id: Knowledge transfer entity ID
             updates: Dictionary of fields to update
@@ -3030,36 +3024,34 @@ class TransactionalGoTAdapter:
         Returns:
             True if successful, False otherwise
         """
-        from datetime import datetime
-
-        entities_dir = self.got_dir / "entities"
-        kt_file = entities_dir / f"{kt_id}.json"
-
-        if not kt_file.exists():
-            return False
-
+        tx = self._manager.tx_manager.begin()
         try:
-            # Load current entity
-            with open(kt_file, 'r') as f:
-                wrapper = json.load(f)
+            # Read current entity via transaction
+            entity = self._manager.tx_manager.read(tx, kt_id)
+            if entity is None:
+                self._manager.tx_manager.rollback(tx, reason="kt_not_found")
+                return False
 
-            data = wrapper.get("data", wrapper)
+            # Apply updates to entity attributes
+            for key, value in updates.items():
+                if hasattr(entity, key):
+                    setattr(entity, key, value)
+                elif hasattr(entity, 'properties') and isinstance(entity.properties, dict):
+                    entity.properties[key] = value
 
-            # Apply updates
-            data.update(updates)
-            data['modified_at'] = datetime.now().isoformat()
+            # Bump version and write
+            entity.bump_version()
+            self._manager.tx_manager.write(tx, entity)
+            result = self._manager.tx_manager.commit(tx)
 
-            # Save updated entity
-            with open(kt_file, 'w') as f:
-                json.dump({
-                    "version": wrapper.get("version", 1),
-                    "entity_type": "knowledge_transfer",
-                    "data": data,
-                }, f, indent=2)
+            if not result.success:
+                logger.error(f"Failed to update KT {kt_id}: {result.reason}")
+                return False
 
             self.save()
             return True
         except Exception as e:
+            self._manager.tx_manager.rollback(tx, reason="update_kt_failed")
             logger.error(f"Failed to update KT {kt_id}: {e}")
             return False
 

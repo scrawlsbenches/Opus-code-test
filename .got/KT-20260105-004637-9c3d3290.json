@@ -1,0 +1,27 @@
+{
+  "_checksum": "1c00e167c72ff0a2",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T00:46:57.261639+00:00",
+  "data": {
+    "code_refs": [],
+    "created_at": "2026-01-05T00:46:37.327206+00:00",
+    "entity_type": "knowledge_transfer",
+    "id": "KT-20260105-004637-9c3d3290",
+    "modified_at": "2026-01-05T00:46:37.327212+00:00",
+    "properties": {},
+    "related_decisions": [],
+    "related_handoffs": [],
+    "related_tasks": [],
+    "sections": {},
+    "session_date": "",
+    "session_id": "",
+    "source_file": null,
+    "status": "published",
+    "summary": "Conducted senior engineering design review of got-query-audit-and-design.md with iterative refinement. Key outcomes: DI container testing strategy, security sprint gates, SQL-compatible grammar, T-001-A string dispatch, and fixed KT checksum bug.",
+    "tags": [
+      "design-review,got-query,di-container,session-handoff"
+    ],
+    "title": "Design Review Session: GoT Query System",
+    "version": 1
+  }
+}

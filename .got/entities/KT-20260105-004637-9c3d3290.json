@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "entity_type": "knowledge_transfer",
+  "data": {
+    "code_refs": [],
+    "created_at": "2026-01-05T00:46:37.327206+00:00",
+    "entity_type": "knowledge_transfer",
+    "id": "KT-20260105-004637-9c3d3290",
+    "modified_at": "2026-01-05T00:48:25.435565",
+    "properties": {},
+    "related_decisions": [],
+    "related_handoffs": [],
+    "related_tasks": [],
+    "sections": {
+      "Context and Goals": "This session focused on senior engineering design review of docs/design/got-query-audit-and-design.md (GoT Query System v2.8). The review was conducted as a principal engineer with 30+ years experience, validating technical claims through actual code execution.\n\nPrimary goals:\n- Review design for correctness, completeness, and extensibility\n- Validate technical claims against actual code\n- Address specific questions about grammar, testing, and security\n- Update CLAUDE.md with design review methodology\n- Create handoff for continuation",
+      "Key Technical Discoveries": "1. T-001-A Entity Type Dispatch:\n   - EntityType enum only covers 5 of 12 entity types\n   - Must use string-based dispatch with SchemaRegistry validation\n   - Updated design document with implementation hints\n\n2. DI Container for Testing:\n   - New infrastructure discovered after merging main branch:\n     - cortical/common/container.py - Container implementation\n     - cortical/core/bootstrap.py - Application wiring\n     - cortical/core/modules/got_module.py - GoT service registration\n   - TransactionManager now accepts injectable store, wal, lock\n   - Updated Section 7.3 to use container.create_child() pattern\n\n3. SQL-Compatible Grammar:\n   - NOT IN / NOT LIKE are compound operators, not separate modifiers\n   - Precedence: NOT > comparisons > AND > OR\n   - Added design intent documentation to Appendix B\n\n4. Security Sprint Gate Pattern:\n   - Security review at START of each sprint, not end\n   - Added Section 7.7 with specific checklist",
+      "Bug Fixed This Session": "KT Checksum Mismatch Bug:\n- Symptom: CorruptionError when creating knowledge transfers\n- Root Cause: TransactionalGoTAdapter.create_knowledge_transfer() in scripts/got_utils.py bypassed CDGStore and wrote files directly without checksum wrapper\n- Fix: Modified create_knowledge_transfer() to delegate to TransactionManager.create_knowledge_transfer() which uses proper transactional storage\n- Location: scripts/got_utils.py lines 2815-2875\n- Verified: KT creation and retrieval now work correctly",
+      "Files Modified": "1. CLAUDE.md\n   - Added 'Senior Engineering Consultation & Design Review' section (review methodology, approval framework, patterns)\n   - Added 'Search Before Creating (MANDATORY)' section to prevent duplicate functionality\n\n2. docs/design/got-query-audit-and-design.md\n   - T-001-A: Added critical finding about string-based dispatch\n   - Section 7.3: Updated testing strategy to use DI container approach\n   - Section 7.7: Added security sprint gate pattern\n   - Appendix B: Added SQL compatibility design intent\n   - Part 8: Added Review Recommendations\n   - Status: DRAFT - Under Review (NOT yet approved)\n\n3. scripts/got_utils.py\n   - Fixed create_knowledge_transfer() to use TransactionManager delegation",
+      "Next Steps for Continuation": "1. Design Document Final Approval:\n   - Status is currently 'DRAFT - Under Review'\n   - All major issues have been addressed\n   - Ready for final review pass and approval decision\n\n2. CDG StorageProtocol Interface (Deferred):\n   - Consider adding formal StorageProtocol interface for future InMemoryStore\n   - Not blocking for design approval but worth tracking\n\n3. Implementation:\n   - Once design is approved, proceed with Sprint 1 implementation\n   - T-001-A should use string-based entity dispatch (documented)\n   - Use DI container for test isolation\n\n4. Commit Changes:\n   - Changes have not been committed yet\n   - Ready to commit when user confirms",
+      "Key Code References": "cortical/core/bootstrap.py:61-107 - create_container() function\ncortical/core/modules/got_module.py:66-145 - GoTModule.register() with DI\ncortical/got/tx_manager.py:286-355 - create_knowledge_transfer() proper implementation\nscripts/got_utils.py:2815-2875 - Fixed create_knowledge_transfer() delegation\ncortical/got/schema.py:1-50 - SchemaRegistry for entity type validation"
+    },
+    "session_date": "",
+    "session_id": "",
+    "source_file": null,
+    "status": "draft",
+    "summary": "Conducted senior engineering design review of got-query-audit-and-design.md with iterative refinement. Key outcomes: DI container testing strategy, security sprint gates, SQL-compatible grammar, T-001-A string dispatch, and fixed KT checksum bug.",
+    "tags": [
+      "design-review,got-query,di-container,session-handoff"
+    ],
+    "title": "Design Review Session: GoT Query System",
+    "version": 3
+  }
+}

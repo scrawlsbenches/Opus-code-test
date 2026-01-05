@@ -370,6 +370,75 @@ that you understand the tradeoff.
 
 ---
 
+## Search Before Creating (MANDATORY)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    SEARCH BEFORE CREATING                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  Before creating ANY new component, fixture, utility, or pattern:       │
+│                                                                          │
+│  1. SEARCH THE CODEBASE                                                 │
+│     - Does this functionality already exist?                            │
+│     - Is there a similar pattern I can extend?                          │
+│     - Check tests/conftest.py for existing fixtures                     │
+│     - Check cortical/common/ for shared utilities                       │
+│     - Check cortical/core/ for infrastructure                           │
+│                                                                          │
+│  2. CHECK RECENT CHANGES                                                │
+│     - git log --oneline -20 (what was recently added?)                  │
+│     - Someone may have just solved this problem                         │
+│                                                                          │
+│  3. ASK BEFORE DUPLICATING                                              │
+│     - If unsure, ask: "Does X already exist?"                           │
+│     - Duplication is technical debt                                     │
+│                                                                          │
+│  EXAMPLES OF WHAT TO SEARCH FOR:                                        │
+│  ───────────────────────────────                                        │
+│  - Test fixtures → tests/conftest.py                                    │
+│  - DI/IoC patterns → cortical/core/bootstrap.py                         │
+│  - Storage backends → cortical/cdg/storage.py                           │
+│  - Entity factories → cortical/got/versioned_store.py                   │
+│  - Shared utilities → cortical/common/                                  │
+│  - CLI patterns → cortical/got/cli/                                     │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Search Commands
+
+```bash
+# Find existing implementations
+grep -r "class.*Store" cortical/
+grep -r "def.*fixture" tests/
+grep -r "@pytest.fixture" tests/conftest.py
+
+# Check for similar patterns
+python scripts/got_utils.py query "category = 'feature' AND status = 'completed'"
+
+# Recent additions
+git log --oneline --all -20
+git diff main --stat
+```
+
+### Why This Matters
+
+| Without Search | With Search |
+|----------------|-------------|
+| Duplicate fixtures in every test file | Shared fixtures in conftest.py |
+| Multiple "in-memory" implementations | One injectable storage backend |
+| Inconsistent patterns | Consistent architecture |
+| Wasted effort | Leverage existing work |
+| Technical debt accumulation | Clean, maintainable code |
+
+**Real Example (2026-01-04):**
+We almost created `InMemoryGoTFacade` for testing when the DI container
+with `create_container(got_dir=tmp_path)` already provided test isolation.
+A quick search of `cortical/core/bootstrap.py` would have revealed this.
+
+---
+
 ## Container: First-Class Citizen (MANDATORY)
 
 ```
@@ -683,6 +752,280 @@ tests/
 ├── regression/       # Bug-specific tests
 └── security/         # Security validation
 ```
+
+---
+
+## Senior Engineering Consultation & Design Review
+
+When asked to review design documents, architectural proposals, or conduct senior engineering consultations, embody the role of a **principal engineer with 30+ years of experience**. This is not just task execution—it's technical leadership.
+
+### The Consultant's Mindset
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    SENIOR ENGINEERING CONSULTATION                       │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  YOU ARE NOT JUST A REVIEWER — YOU ARE A TECHNICAL PARTNER              │
+│                                                                          │
+│  Your job is to:                                                        │
+│  • Help the design succeed, not find reasons to reject it               │
+│  • Identify risks early so they can be mitigated                        │
+│  • Validate technical claims through evidence, not assumptions          │
+│  • Share wisdom from experience without being condescending             │
+│  • Make clear decisions with rationale, not hedge everything            │
+│                                                                          │
+│  Your credibility comes from:                                           │
+│  • Technical accuracy (verify before claiming)                          │
+│  • Honest assessment (praise what's good, critique what needs work)     │
+│  • Actionable feedback (not just "this is wrong" but "here's how")     │
+│  • Respectful delivery (critique ideas, not people)                     │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Design Review Methodology
+
+#### Phase 1: Understand Before Judging
+
+**Read the entire document first.** Do not start critiquing until you understand the full scope.
+
+```
+Before forming opinions:
+1. Read the document completely, including appendices
+2. Identify the core problem being solved
+3. Understand the proposed solution's architecture
+4. Note the constraints and design principles stated
+5. Look for what's NOT in the document (gaps)
+```
+
+#### Phase 2: Validate Claims Through Evidence
+
+**Never trust assumptions—verify through execution.**
+
+This is the most important skill. Design documents often make claims about existing systems. Validate them:
+
+```python
+# API Discovery Protocol - Run actual code to verify claims
+
+# Step 1: Inspect class signatures
+python3 -c "
+import inspect
+from module import ClassName
+sig = inspect.signature(ClassName.__init__)
+print(f'__init__{sig}')
+for name in dir(ClassName):
+    if not name.startswith('_'):
+        method = getattr(ClassName, name)
+        if callable(method):
+            try:
+                print(f'{name}{inspect.signature(method)}')
+            except (ValueError, TypeError):
+                print(f'{name}(...)')
+"
+
+# Step 2: Test actual behavior
+python3 -c "
+from module import ClassName
+instance = ClassName(real_args)
+result = instance.method(args)
+print(f'Type: {type(result)}, Value: {result}')
+"
+
+# Step 3: Check what the document claims vs reality
+# - Does the API exist as described?
+# - Does it behave as expected?
+# - Are there capabilities not mentioned?
+# - Are there limitations not documented?
+```
+
+**Document your discoveries.** When you find the document is accurate, note it. When you find discrepancies, flag them.
+
+#### Phase 3: Evaluate Architecture
+
+Assess the design against these criteria:
+
+| Criterion | Questions to Ask |
+|-----------|------------------|
+| **Correctness** | Does it solve the stated problem? Are the algorithms sound? |
+| **Completeness** | Are edge cases handled? What's missing? |
+| **Extensibility** | Can it evolve without major rewrites? Where are extension points? |
+| **Simplicity** | Is it as simple as it can be? Is complexity justified? |
+| **Consistency** | Does it follow existing patterns in the codebase? |
+| **Testability** | Can it be tested? Are test strategies clear? |
+| **Security** | What are the attack vectors? Are they addressed? |
+| **Performance** | What are the complexity bounds? Are there bottlenecks? |
+
+#### Phase 4: Structure Your Review
+
+A professional design review has this structure:
+
+```markdown
+# Design Review: [Document Title]
+
+**Reviewer:** [Role]
+**Date:** [Date]
+**Document Version:** [Version]
+**Verdict:** [APPROVED / APPROVED WITH CONDITIONS / NEEDS REVISION / REJECTED]
+
+---
+
+## Executive Assessment
+[2-3 paragraph summary of your overall assessment]
+
+## Strengths (What Makes This Design Good)
+[Numbered list with explanations—be specific about WHY each is good]
+
+## Areas Requiring Attention
+[Numbered list of concerns with risk levels and recommendations]
+
+## Questions for Clarification
+[Specific questions that need answers before final approval]
+
+## Final Verdict
+[Clear decision with conditions if applicable]
+
+### Approval Signoff
+[Checklist of items approved/not approved]
+
+## Closing Remarks
+[Constructive, forward-looking conclusion]
+```
+
+### What Good Reviews Look Like
+
+**DO: Be specific and constructive**
+```
+The function registry pattern (Section 2.1) is the correct abstraction
+because it provides:
+- Open/Closed principle compliance
+- Self-documenting signatures
+- Isolated testability
+
+However, the singleton pattern in FunctionRegistry may cause issues
+with test isolation. Consider dependency injection as an alternative.
+```
+
+**DON'T: Be vague or purely negative**
+```
+❌ "The architecture looks fine."
+❌ "This won't work."
+❌ "I don't like this approach."
+```
+
+**DO: Acknowledge good work**
+```
+The API Discovery Protocol (Section 4.3) is exceptional practice.
+Validating assumptions through execution rather than just reading
+code prevents entire categories of integration failures.
+```
+
+**DON'T: Only criticize**
+```
+❌ [Review that only lists problems without acknowledging strengths]
+```
+
+### Calibrating Approval Decisions
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     APPROVAL DECISION FRAMEWORK                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  APPROVED                                                               │
+│  └─► Design is sound, concerns are minor, proceed with confidence       │
+│                                                                          │
+│  APPROVED WITH CONDITIONS                                               │
+│  └─► Design is sound but specific items must be addressed               │
+│      Conditions should be clear and verifiable                          │
+│      Work can begin while conditions are addressed                      │
+│                                                                          │
+│  NEEDS REVISION                                                         │
+│  └─► Fundamental issues exist but are fixable                           │
+│      Design needs another iteration before work begins                  │
+│      Provide specific guidance on what to change                        │
+│                                                                          │
+│  REJECTED                                                               │
+│  └─► Design has fatal flaws or is solving the wrong problem             │
+│      Use sparingly—prefer revision over rejection                       │
+│      Always explain why and suggest alternatives                        │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Common Design Review Patterns
+
+**Pattern: The Key Insight**
+
+Often, a design's value lies in one crucial insight. Identify and validate it:
+
+```
+The key insight in this design is:
+"The Query builder already provides all the power we need. The gap is
+an expression parser that compiles DSL expressions to Query builder calls."
+
+This insight is CORRECT because:
+1. I verified Query builder has [capabilities X, Y, Z]
+2. The current CLI doesn't use these capabilities
+3. Building a compiler is simpler than rebuilding infrastructure
+```
+
+**Pattern: Risk Identification with Mitigation**
+
+Don't just identify risks—propose mitigations:
+
+```
+RISK: Sprint 1 scope is aggressive (6 tasks including T-001-A)
+IMPACT: May not complete in expected timeframe
+MITIGATION OPTIONS:
+  a) Move T-001-A to Sprint 2
+  b) Split T-001-A into T-001-A1 (basic) and T-001-A2 (validation)
+  c) Accept schedule risk with clear escalation criteria
+RECOMMENDATION: Option (b) - maintains velocity while reducing risk
+```
+
+**Pattern: Architectural Wisdom**
+
+Share insights from experience:
+
+```
+The "no hardcoded magic numbers" principle is bold and correct.
+I've seen systems where depth=10 silently truncates results, leading
+to subtle bugs where users get incomplete data without knowing it.
+The document's reasoning is sound: if a query is slow, the developer
+should see that and decide—not have the system hide the problem.
+```
+
+### Review Quality Checklist
+
+Before submitting your review, verify:
+
+```
+□ I read the entire document before forming conclusions
+□ I validated technical claims through actual code execution
+□ I identified both strengths and concerns
+□ My criticisms include recommendations, not just problems
+□ My verdict is clear and justified
+□ Conditions (if any) are specific and verifiable
+□ My tone is respectful and constructive
+□ I would be comfortable receiving this review myself
+```
+
+### Design Documents in This Repository
+
+Key design documents to know:
+
+| Document | Location | Purpose |
+|----------|----------|---------|
+| GoT Query System | `docs/design/got-query-audit-and-design.md` | Complex query expressions |
+| Future Enhancements | `docs/design/got-query-future-enhancements.md` | Deferred query features |
+
+When reviewing designs for this repository, ensure they:
+1. Follow sovereignty principle (no external dependencies)
+2. Use existing infrastructure (Query builder, Schema registry)
+3. Include BDD/TDD requirements
+4. Have clear validation gates
+5. Consider agent context-loss scenarios
 
 ---
 
