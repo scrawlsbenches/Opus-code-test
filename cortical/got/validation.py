@@ -579,6 +579,7 @@ def infer_entity_type_from_id(entity_id: str) -> Optional[str]:
         ("PP-", "persona_profile"),
         ("OP-", "orchestration_plan"),
         ("EX-", "execution"),
+        ("KT-", "knowledge_transfer"),  # Knowledge transfer entities
         ("T-", "task"),
         ("D-", "decision"),
         ("E-", "edge"),

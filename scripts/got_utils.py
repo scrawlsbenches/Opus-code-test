@@ -2670,7 +2670,12 @@ class TransactionalGoTAdapter:
         return self._update_kt_entity(kt_id, {'sections': sections})
 
     def link_kt_handoff(self, kt_id: str, handoff_id: str) -> bool:
-        """Link a knowledge transfer to a handoff entity."""
+        """Link a knowledge transfer to a handoff entity.
+
+        Creates both:
+        - Embedded reference in related_handoffs array
+        - CONTINUES edge for graph connectivity
+        """
         kt = self.get_knowledge_transfer(kt_id)
         if not kt:
             return False
@@ -2679,10 +2684,24 @@ class TransactionalGoTAdapter:
         if handoff_id not in related_handoffs:
             related_handoffs.append(handoff_id)
 
-        return self._update_kt_entity(kt_id, {'related_handoffs': related_handoffs})
+        # Update embedded reference
+        if not self._update_kt_entity(kt_id, {'related_handoffs': related_handoffs}):
+            return False
+
+        # Create CONTINUES edge for graph connectivity (KT continues from Handoff)
+        edge = self.add_edge(kt_id, handoff_id, "CONTINUES", weight=1.0)
+        if edge is None:
+            logger.warning(f"Failed to create CONTINUES edge from {kt_id} to {handoff_id}")
+
+        return True
 
     def link_kt_task(self, kt_id: str, task_id: str) -> bool:
-        """Link a knowledge transfer to a task entity."""
+        """Link a knowledge transfer to a task entity.
+
+        Creates both:
+        - Embedded reference in related_tasks array
+        - DOCUMENTS edge for graph connectivity
+        """
         kt = self.get_knowledge_transfer(kt_id)
         if not kt:
             return False
@@ -2691,10 +2710,24 @@ class TransactionalGoTAdapter:
         if task_id not in related_tasks:
             related_tasks.append(task_id)
 
-        return self._update_kt_entity(kt_id, {'related_tasks': related_tasks})
+        # Update embedded reference
+        if not self._update_kt_entity(kt_id, {'related_tasks': related_tasks}):
+            return False
+
+        # Create DOCUMENTS edge for graph connectivity (KT documents Task)
+        edge = self.add_edge(kt_id, task_id, "DOCUMENTS", weight=1.0)
+        if edge is None:
+            logger.warning(f"Failed to create DOCUMENTS edge from {kt_id} to {task_id}")
+
+        return True
 
     def link_kt_decision(self, kt_id: str, decision_id: str) -> bool:
-        """Link a knowledge transfer to a decision entity."""
+        """Link a knowledge transfer to a decision entity.
+
+        Creates both:
+        - Embedded reference in related_decisions array
+        - DOCUMENTS edge for graph connectivity
+        """
         kt = self.get_knowledge_transfer(kt_id)
         if not kt:
             return False
@@ -2703,7 +2736,16 @@ class TransactionalGoTAdapter:
         if decision_id not in related_decisions:
             related_decisions.append(decision_id)
 
-        return self._update_kt_entity(kt_id, {'related_decisions': related_decisions})
+        # Update embedded reference
+        if not self._update_kt_entity(kt_id, {'related_decisions': related_decisions}):
+            return False
+
+        # Create DOCUMENTS edge for graph connectivity (KT documents Decision)
+        edge = self.add_edge(kt_id, decision_id, "DOCUMENTS", weight=1.0)
+        if edge is None:
+            logger.warning(f"Failed to create DOCUMENTS edge from {kt_id} to {decision_id}")
+
+        return True
 
     def list_knowledge_transfers(
         self,
