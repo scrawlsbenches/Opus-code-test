@@ -1,0 +1,15 @@
+{
+  "_checksum": "8c991d14ae0bd256",
+  "_written_at": "2026-01-05T04:15:35.334414+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-05T04:15:35.320399+00:00",
+    "entity_type": "decision",
+    "id": "D-20260105-041535-a748fcdb",
+    "modified_at": "2026-01-05T04:15:35.334348+00:00",
+    "properties": {},
+    "rationale": "Research shows:\n1. Legacy 'query' has 21 hardcoded patterns (~300 lines of if/elif)\n2. New 'expr' has proper architecture but function calls fail in CLI\n3. Root cause: executor's execute() method doesn't handle top-level FunctionCalls\n4. Solution: Fix executor first (6 changes), then migrate query patterns to expr functions\n\nThis approach:\n- Maintains backwards compatibility during transition\n- Leverages existing function implementations (15 registered functions)\n- Results in single Query Builder execution path\n- Eliminates ~300 lines of duplicated pattern matching code",
+    "title": "Query Consolidation Strategy: Fix expr function calls, then migrate query patterns",
+    "version": 2
+  }
+}
