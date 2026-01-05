@@ -286,12 +286,14 @@ RELATIONSHIP_RULES: Dict[str, FrozenSet[Tuple[str, str]]] = {
         ("knowledge_transfer", "decision"),
     }),
 
-    # CONTINUES: Continuation from handoff
-    # KnowledgeTransfer continues from a Handoff (captures handoff context)
-    # Semantically: the handoff continues INTO the knowledge transfer
-    # Direction: handoff → knowledge_transfer (handoff is source)
+    # CONTINUES: Continuation relationship for knowledge transfer chains
+    # Forms bidirectional chains: KT1 → Handoff1 → KT2 → Handoff2 → KT3
+    # - KT → Handoff: "KT's work continues via this handoff" (when finalizing)
+    # - Handoff → KT: "Handoff continues into this KT" (when picking up)
+    # Both directions needed for get_kt_history() to trace full chain
     "CONTINUES": frozenset({
-        ("handoff", "knowledge_transfer"),
+        ("knowledge_transfer", "handoff"),  # KT produces handoff for continuation
+        ("handoff", "knowledge_transfer"),  # Handoff continues into new KT
     }),
 
     # FAILED_ATTEMPT: Records a failed approach to a task
