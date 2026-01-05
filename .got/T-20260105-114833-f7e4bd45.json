@@ -1,0 +1,20 @@
+{
+  "_checksum": "d897442b56284f97",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T11:48:40.510080+00:00",
+  "data": {
+    "created_at": "2026-01-05T11:48:33.514402+00:00",
+    "description": "TDD: Define behavior before verifying implementation. Test direct relationships.",
+    "entity_type": "task",
+    "id": "T-20260105-114833-f7e4bd45",
+    "metadata": {},
+    "modified_at": "2026-01-05T11:48:33.514414+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "test"
+    },
+    "status": "pending",
+    "title": "Write behavioral tests for children() and parents() graph functions",
+    "version": 1
+  }
+}

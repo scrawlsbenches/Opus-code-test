@@ -1,0 +1,20 @@
+{
+  "_checksum": "35b28786876e1769",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T11:49:16.096901+00:00",
+  "data": {
+    "created_at": "2026-01-05T11:49:09.166171+00:00",
+    "description": "50+ hardcoded status strings across 8 files. Create constants.py and SchemaInspector pattern.",
+    "entity_type": "task",
+    "id": "T-20260105-114909-68226531",
+    "metadata": {},
+    "modified_at": "2026-01-05T11:49:09.166184+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "refactor"
+    },
+    "status": "pending",
+    "title": "Replace hardcoded status values with schema lookups",
+    "version": 1
+  }
+}

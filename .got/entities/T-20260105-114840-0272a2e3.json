@@ -1,0 +1,23 @@
+{
+  "_checksum": "a914a5fd93945f9b",
+  "_written_at": "2026-01-05T11:59:40.414744+00:00",
+  "data": {
+    "created_at": "2026-01-05T11:48:40.625101+00:00",
+    "description": "TDD: Define behavior for dependency analysis and cycle detection.",
+    "entity_type": "task",
+    "id": "T-20260105-114840-0272a2e3",
+    "metadata": {
+      "completed_at": "2026-01-05T11:59:40.386484+00:00",
+      "updated_at": "2026-01-05T11:59:40.386491+00:00"
+    },
+    "modified_at": "2026-01-05T11:59:40.414660+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "test",
+      "retrospective": "Completed behavioral tests for all_dependencies() and cycle_detect(). Fixed all_dependencies() adjacency direction. cycle_detect() was already working correctly."
+    },
+    "status": "completed",
+    "title": "Write behavioral tests for all_dependencies() and cycle_detect() functions",
+    "version": 3
+  }
+}

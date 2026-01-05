@@ -1,0 +1,20 @@
+{
+  "_checksum": "ddff175bc6796f1f",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T11:48:33.398253+00:00",
+  "data": {
+    "created_at": "2026-01-05T11:48:24.493519+00:00",
+    "description": "TDD: Define behavior before verifying implementation. Test transitive graph traversal.",
+    "entity_type": "task",
+    "id": "T-20260105-114824-5e6a4eb2",
+    "metadata": {},
+    "modified_at": "2026-01-05T11:48:24.493526+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "test"
+    },
+    "status": "pending",
+    "title": "Write behavioral tests for ancestors() and descendants() graph functions",
+    "version": 1
+  }
+}

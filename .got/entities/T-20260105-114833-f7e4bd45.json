@@ -1,0 +1,23 @@
+{
+  "_checksum": "131fa0ad546023ff",
+  "_written_at": "2026-01-05T11:59:32.756188+00:00",
+  "data": {
+    "created_at": "2026-01-05T11:48:33.514402+00:00",
+    "description": "TDD: Define behavior before verifying implementation. Test direct relationships.",
+    "entity_type": "task",
+    "id": "T-20260105-114833-f7e4bd45",
+    "metadata": {
+      "completed_at": "2026-01-05T11:59:32.737206+00:00",
+      "updated_at": "2026-01-05T11:59:32.737215+00:00"
+    },
+    "modified_at": "2026-01-05T11:59:32.756119+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "test",
+      "retrospective": "Completed behavioral tests for children() and parents(). Fixed children() to look for edges where entity is TARGET and return SOURCE. Fixed parents() to look for edges where entity is SOURCE and return TARGET."
+    },
+    "status": "completed",
+    "title": "Write behavioral tests for children() and parents() graph functions",
+    "version": 3
+  }
+}

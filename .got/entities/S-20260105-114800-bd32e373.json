@@ -1,0 +1,23 @@
+{
+  "_checksum": "a939ccec173383b6",
+  "_written_at": "2026-01-05T11:48:00.858980+00:00",
+  "data": {
+    "created_at": "2026-01-05T11:48:00.846079+00:00",
+    "entity_type": "sprint",
+    "epic_id": "",
+    "goals": [],
+    "id": "S-20260105-114800-bd32e373",
+    "isolation": [],
+    "metadata": {},
+    "modified_at": "2026-01-05T11:48:00.858886+00:00",
+    "notes": [
+      "Complete behavioral test coverage for graph functions, implement missing functions (exists, type_of), and replace hardcoded values with schema/inspector lookups"
+    ],
+    "number": null,
+    "properties": {},
+    "session_id": "",
+    "status": "available",
+    "title": "Expression System Phase 2: Behavioral Tests & Code Maturation",
+    "version": 2
+  }
+}

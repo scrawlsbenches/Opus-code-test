@@ -205,25 +205,30 @@ class Children(QueryFunction):
         """
         Execute children function.
 
+        Edge semantics: A → DEPENDS_ON → B means "A depends on B"
+        children(B) returns [A] - entities that depend on B.
+        These are entities where B is the TARGET of their DEPENDS_ON edge.
+
         Args:
             manager: GoTManager instance
             args: Positional arguments [entity_id]
             kwargs: Keyword arguments {entity_id: str}
 
         Returns:
-            List of child entities
+            List of child entities (entities that depend on this one)
         """
         entity_id = args[0] if args else kwargs.get('entity_id')
         if not entity_id:
             raise ValueError("entity_id is required")
 
-        # Get edges where this entity is the source (points to children)
+        # Get edges where this entity is the TARGET (things depend on us)
+        # If A → DEPENDS_ON → B, then children(B) returns A
         edges = manager.list_edges()
         child_ids = set()
 
         for edge in edges:
-            if edge.source_id == entity_id and edge.edge_type == "DEPENDS_ON":
-                child_ids.add(edge.target_id)
+            if edge.target_id == entity_id and edge.edge_type == "DEPENDS_ON":
+                child_ids.add(edge.source_id)
 
         # Get all tasks and filter by child IDs
         all_entities = manager.list_all_tasks()
@@ -241,7 +246,7 @@ class Parents(QueryFunction):
             description="Find entities that the specified entity directly depends on",
             required_args=["entity_id"],
             optional_args={},
-            returns="List of entities where to_id = entity_id in DEPENDS_ON edges"
+            returns="List of entities this entity depends on (direct dependencies)"
         )
 
     def execute(
@@ -253,25 +258,30 @@ class Parents(QueryFunction):
         """
         Execute parents function.
 
+        Edge semantics: A → DEPENDS_ON → B means "A depends on B"
+        parents(A) returns [B] - what A depends on.
+        These are entities that are the TARGET of A's DEPENDS_ON edges.
+
         Args:
             manager: GoTManager instance
             args: Positional arguments [entity_id]
             kwargs: Keyword arguments {entity_id: str}
 
         Returns:
-            List of parent entities
+            List of parent entities (what this entity depends on)
         """
         entity_id = args[0] if args else kwargs.get('entity_id')
         if not entity_id:
             raise ValueError("entity_id is required")
 
-        # Get edges where this entity is the target (depends on parents)
+        # Get edges where this entity is the SOURCE (we depend on targets)
+        # If A → DEPENDS_ON → B, then parents(A) returns B
         edges = manager.list_edges()
         parent_ids = set()
 
         for edge in edges:
-            if edge.target_id == entity_id and edge.edge_type == "DEPENDS_ON":
-                parent_ids.add(edge.source_id)
+            if edge.source_id == entity_id and edge.edge_type == "DEPENDS_ON":
+                parent_ids.add(edge.target_id)
 
         # Get all tasks and filter by parent IDs
         all_entities = manager.list_all_tasks()
@@ -280,16 +290,16 @@ class Parents(QueryFunction):
 
 @FunctionRegistry.register("descendants")
 class Descendants(QueryFunction):
-    """Find all descendants (transitive children)."""
+    """Find all descendants (entities that depend on this one, transitively)."""
 
     @classmethod
     def signature(cls) -> FunctionSignature:
         return FunctionSignature(
             name="descendants",
-            description="Find all entities reachable following dependency chains",
+            description="Find all entities that (transitively) depend on the specified entity",
             required_args=["entity_id"],
             optional_args={"max_depth": None},
-            returns="List of all descendant entities (recursive children)"
+            returns="List of all descendant entities (things that depend on us)"
         )
 
     def execute(
@@ -301,13 +311,19 @@ class Descendants(QueryFunction):
         """
         Execute descendants function.
 
+        Edge semantics: A → DEPENDS_ON → B means "A depends on B"
+        descendants(B) returns all entities that (transitively) depend on B.
+
+        We traverse REVERSE through edges where we are the TARGET,
+        following to the SOURCE (things that depend on us).
+
         Args:
             manager: GoTManager instance
             args: Positional arguments [entity_id, max_depth]
             kwargs: Keyword arguments {entity_id: str, max_depth: int}
 
         Returns:
-            List of all descendant entities
+            List of all descendant entities (what depends on us)
         """
         # Parse arguments
         if args:
@@ -320,20 +336,44 @@ class Descendants(QueryFunction):
         if not entity_id:
             raise ValueError("entity_id is required")
 
-        # Use PathFinder to get reachable nodes following DEPENDS_ON edges
-        finder = PathFinder(manager).via_edges("DEPENDS_ON")
-        if max_depth is not None:
-            finder = finder.max_length(max_depth)
+        # Build REVERSE adjacency (from target to source)
+        # If A → DEPENDS_ON → B, then from B we can find A (things that depend on B)
+        edges = manager.list_edges()
+        reverse_adjacency = {}
 
-        # Get all reachable nodes
-        descendant_ids = finder.reachable_from(entity_id)
+        for edge in edges:
+            if edge.edge_type == "DEPENDS_ON":
+                if edge.target_id not in reverse_adjacency:
+                    reverse_adjacency[edge.target_id] = []
+                reverse_adjacency[edge.target_id].append(edge.source_id)
+
+        # BFS to find descendants (what depends on us)
+        visited = set()
+        queue = [entity_id]
+        depth_map = {entity_id: 0}
+
+        while queue:
+            current = queue.pop(0)
+            if current in visited:
+                continue
+            visited.add(current)
+
+            current_depth = depth_map[current]
+            if max_depth is not None and current_depth >= max_depth:
+                continue
+
+            # Add dependents (sources of edges where we're the target)
+            for dependent in reverse_adjacency.get(current, []):
+                if dependent not in visited:
+                    queue.append(dependent)
+                    depth_map[dependent] = current_depth + 1
 
         # Remove the entity itself from results
-        descendant_ids.discard(entity_id)
+        visited.discard(entity_id)
 
         # Get all tasks and filter by descendant IDs
         all_entities = manager.list_all_tasks()
-        return [e for e in all_entities if e.id in descendant_ids]
+        return [e for e in all_entities if e.id in visited]
 
 
 @FunctionRegistry.register("ancestors")
@@ -359,8 +399,11 @@ class Ancestors(QueryFunction):
         """
         Execute ancestors function.
 
-        For ancestors, we need to traverse edges in reverse direction:
-        follow edges where the current entity is the target (to_id).
+        Edge semantics: A → DEPENDS_ON → B means "A depends on B"
+        ancestors(A) returns all entities A (transitively) depends on.
+
+        We traverse FORWARD through edges where we are the SOURCE,
+        following to the TARGET (our dependencies).
 
         Args:
             manager: GoTManager instance
@@ -368,7 +411,7 @@ class Ancestors(QueryFunction):
             kwargs: Keyword arguments {entity_id: str, max_depth: int}
 
         Returns:
-            List of all ancestor entities
+            List of all ancestor entities (what we depend on)
         """
         # Parse arguments
         if args:
@@ -381,18 +424,18 @@ class Ancestors(QueryFunction):
         if not entity_id:
             raise ValueError("entity_id is required")
 
-        # Build reverse adjacency (follow edges backwards)
+        # Build FORWARD adjacency (from source to target)
+        # If A → DEPENDS_ON → B, then from A we can reach B (our dependency)
         edges = manager.list_edges()
-        reverse_adjacency = {}
+        forward_adjacency = {}
 
         for edge in edges:
             if edge.edge_type == "DEPENDS_ON":
-                # Reverse: if A->B, then from B we can reach A
-                if edge.target_id not in reverse_adjacency:
-                    reverse_adjacency[edge.target_id] = []
-                reverse_adjacency[edge.target_id].append(edge.source_id)
+                if edge.source_id not in forward_adjacency:
+                    forward_adjacency[edge.source_id] = []
+                forward_adjacency[edge.source_id].append(edge.target_id)
 
-        # BFS/DFS to find ancestors
+        # BFS to find ancestors (what we depend on)
         visited = set()
         queue = [entity_id]
         depth_map = {entity_id: 0}
@@ -407,11 +450,11 @@ class Ancestors(QueryFunction):
             if max_depth is not None and current_depth >= max_depth:
                 continue
 
-            # Add parents
-            for parent in reverse_adjacency.get(current, []):
-                if parent not in visited:
-                    queue.append(parent)
-                    depth_map[parent] = current_depth + 1
+            # Add dependencies (targets of our DEPENDS_ON edges)
+            for dependency in forward_adjacency.get(current, []):
+                if dependency not in visited:
+                    queue.append(dependency)
+                    depth_map[dependency] = current_depth + 1
 
         # Remove the entity itself from results
         visited.discard(entity_id)
@@ -596,8 +639,12 @@ class AllDependencies(QueryFunction):
         """
         Execute all_dependencies function.
 
+        Edge semantics: A → DEPENDS_ON → B means "A depends on B"
+        all_dependencies(A) returns all entities A (transitively) depends on.
+
         This is semantically equivalent to ancestors() - finds all entities
-        that the given entity depends on, following DEPENDS_ON edges backwards.
+        that the given entity depends on, following DEPENDS_ON edges forward
+        from source to target.
 
         Args:
             manager: GoTManager instance
@@ -611,16 +658,16 @@ class AllDependencies(QueryFunction):
         if not entity_id:
             raise ValueError("entity_id is required")
 
-        # Build reverse adjacency (follow DEPENDS_ON edges backwards)
+        # Build FORWARD adjacency (from source to target)
+        # If A → DEPENDS_ON → B, then from A we can reach B (our dependency)
         edges = manager.list_edges()
-        reverse_adjacency = {}
+        forward_adjacency = {}
 
         for edge in edges:
             if edge.edge_type == "DEPENDS_ON":
-                # If A -> DEPENDS_ON -> B, then from B we can reach dependency A
-                if edge.target_id not in reverse_adjacency:
-                    reverse_adjacency[edge.target_id] = []
-                reverse_adjacency[edge.target_id].append(edge.source_id)
+                if edge.source_id not in forward_adjacency:
+                    forward_adjacency[edge.source_id] = []
+                forward_adjacency[edge.source_id].append(edge.target_id)
 
         # BFS to find all dependencies
         visited = set()
@@ -632,8 +679,8 @@ class AllDependencies(QueryFunction):
                 continue
             visited.add(current)
 
-            # Add dependencies (parents in the dependency graph)
-            for dependency in reverse_adjacency.get(current, []):
+            # Add dependencies (targets of our DEPENDS_ON edges)
+            for dependency in forward_adjacency.get(current, []):
                 if dependency not in visited:
                     queue.append(dependency)
 
@@ -728,3 +775,191 @@ class CycleDetect(QueryFunction):
         # Start DFS from the given entity
         result = dfs_cycle(entity_id, [], set())
         return result if result else []
+
+
+@FunctionRegistry.register("exists")
+class Exists(QueryFunction):
+    """
+    Check if an entity exists in the Graph of Thought.
+
+    Design Reference: docs/design/got-query-audit-and-design.md T-013
+    specifies exists(entity_id) -> bool
+
+    Usage:
+        exists('T-001') -> True if task exists
+        exists('T-NONEXISTENT') -> False
+    """
+
+    @classmethod
+    def signature(cls) -> FunctionSignature:
+        return FunctionSignature(
+            name="exists",
+            description="Check if an entity exists by ID",
+            required_args=["entity_id"],
+            optional_args={},
+            returns="Boolean: True if entity exists, False otherwise"
+        )
+
+    def execute(
+        self,
+        manager: Any,
+        args: List[Any],
+        kwargs: Dict[str, Any]
+    ) -> bool:
+        """
+        Execute exists function.
+
+        Checks all entity stores (tasks, sprints, decisions, etc.)
+        to determine if the given ID exists.
+
+        Args:
+            manager: GoT manager with entity access
+            args: Positional arguments [entity_id]
+            kwargs: Keyword arguments {entity_id: str}
+
+        Returns:
+            True if entity exists, False otherwise
+        """
+        entity_id = args[0] if args else kwargs.get('entity_id')
+        if not entity_id:
+            raise ValueError("entity_id is required")
+
+        # Check tasks
+        if hasattr(manager, 'get_task'):
+            task = manager.get_task(entity_id)
+            if task is not None:
+                return True
+
+        # Check sprints
+        if hasattr(manager, 'get_sprint'):
+            sprint = manager.get_sprint(entity_id)
+            if sprint is not None:
+                return True
+
+        # Check decisions
+        if hasattr(manager, 'get_decision'):
+            decision = manager.get_decision(entity_id)
+            if decision is not None:
+                return True
+
+        # Check epics
+        if hasattr(manager, 'get_epic'):
+            epic = manager.get_epic(entity_id)
+            if epic is not None:
+                return True
+
+        # Check knowledge transfers
+        if hasattr(manager, 'get_knowledge_transfer'):
+            kt = manager.get_knowledge_transfer(entity_id)
+            if kt is not None:
+                return True
+
+        # Check handoffs
+        if hasattr(manager, 'get_handoff'):
+            handoff = manager.get_handoff(entity_id)
+            if handoff is not None:
+                return True
+
+        return False
+
+
+@FunctionRegistry.register("type_of")
+class TypeOf(QueryFunction):
+    """
+    Determine the type of an entity in the Graph of Thought.
+
+    Design Reference: docs/design/got-query-audit-and-design.md T-013
+    specifies type_of(entity_id) -> str
+
+    Usage:
+        type_of('T-001') -> 'task'
+        type_of('S-001') -> 'sprint'
+        type_of('D-001') -> 'decision'
+    """
+
+    @classmethod
+    def signature(cls) -> FunctionSignature:
+        return FunctionSignature(
+            name="type_of",
+            description="Get the type of an entity by ID",
+            required_args=["entity_id"],
+            optional_args={},
+            returns="String: entity type (task, sprint, decision, etc.) or None"
+        )
+
+    def execute(
+        self,
+        manager: Any,
+        args: List[Any],
+        kwargs: Dict[str, Any]
+    ) -> Optional[str]:
+        """
+        Execute type_of function.
+
+        Determines entity type by checking each store and also
+        by examining the ID prefix convention (T-, S-, D-, etc.).
+
+        Args:
+            manager: GoT manager with entity access
+            args: Positional arguments [entity_id]
+            kwargs: Keyword arguments {entity_id: str}
+
+        Returns:
+            Entity type as string, or None if not found
+        """
+        entity_id = args[0] if args else kwargs.get('entity_id')
+        if not entity_id:
+            raise ValueError("entity_id is required")
+
+        # First, try ID prefix convention for efficiency
+        # T- = Task, S- = Sprint, D- = Decision, E- = Edge/Epic
+        # KT- = KnowledgeTransfer, H- = Handoff
+        prefix_map = {
+            'T-': 'task',
+            'S-': 'sprint',
+            'D-': 'decision',
+            'KT-': 'knowledge_transfer',
+            'H-': 'handoff',
+        }
+
+        for prefix, entity_type in prefix_map.items():
+            if entity_id.startswith(prefix):
+                # Verify the entity actually exists with this type
+                getter_name = f'get_{entity_type}'
+                if hasattr(manager, getter_name):
+                    entity = getattr(manager, getter_name)(entity_id)
+                    if entity is not None:
+                        return entity_type
+
+        # Fallback: Check each store explicitly
+        if hasattr(manager, 'get_task'):
+            task = manager.get_task(entity_id)
+            if task is not None:
+                return 'task'
+
+        if hasattr(manager, 'get_sprint'):
+            sprint = manager.get_sprint(entity_id)
+            if sprint is not None:
+                return 'sprint'
+
+        if hasattr(manager, 'get_decision'):
+            decision = manager.get_decision(entity_id)
+            if decision is not None:
+                return 'decision'
+
+        if hasattr(manager, 'get_epic'):
+            epic = manager.get_epic(entity_id)
+            if epic is not None:
+                return 'epic'
+
+        if hasattr(manager, 'get_knowledge_transfer'):
+            kt = manager.get_knowledge_transfer(entity_id)
+            if kt is not None:
+                return 'knowledge_transfer'
+
+        if hasattr(manager, 'get_handoff'):
+            handoff = manager.get_handoff(entity_id)
+            if handoff is not None:
+                return 'handoff'
+
+        return None

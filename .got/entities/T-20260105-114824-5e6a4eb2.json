@@ -1,0 +1,23 @@
+{
+  "_checksum": "a7ff2cb9b010d4c0",
+  "_written_at": "2026-01-05T11:59:25.754242+00:00",
+  "data": {
+    "created_at": "2026-01-05T11:48:24.493519+00:00",
+    "description": "TDD: Define behavior before verifying implementation. Test transitive graph traversal.",
+    "entity_type": "task",
+    "id": "T-20260105-114824-5e6a4eb2",
+    "metadata": {
+      "completed_at": "2026-01-05T11:59:25.738315+00:00",
+      "updated_at": "2026-01-05T11:59:25.738319+00:00"
+    },
+    "modified_at": "2026-01-05T11:59:25.754175+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "test",
+      "retrospective": "Completed behavioral tests for ancestors() and descendants(). Discovered and fixed inverted edge direction semantics - all functions now correctly interpret A \u2192 DEPENDS_ON \u2192 B as 'A depends on B'."
+    },
+    "status": "completed",
+    "title": "Write behavioral tests for ancestors() and descendants() graph functions",
+    "version": 3
+  }
+}

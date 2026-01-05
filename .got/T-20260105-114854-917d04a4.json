@@ -1,0 +1,20 @@
+{
+  "_checksum": "ea72e15b45b2be64",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T11:49:01.050776+00:00",
+  "data": {
+    "created_at": "2026-01-05T11:48:54.254486+00:00",
+    "description": "Design doc specifies exists(entity_id) -> bool. Currently only exists as method, not expression function.",
+    "entity_type": "task",
+    "id": "T-20260105-114854-917d04a4",
+    "metadata": {},
+    "modified_at": "2026-01-05T11:48:54.254494+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Implement missing exists() expression function",
+    "version": 1
+  }
+}

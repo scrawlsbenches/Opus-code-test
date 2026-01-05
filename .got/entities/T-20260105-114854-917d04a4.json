@@ -1,0 +1,23 @@
+{
+  "_checksum": "74c50719d0202290",
+  "_written_at": "2026-01-05T11:59:47.567656+00:00",
+  "data": {
+    "created_at": "2026-01-05T11:48:54.254486+00:00",
+    "description": "Design doc specifies exists(entity_id) -> bool. Currently only exists as method, not expression function.",
+    "entity_type": "task",
+    "id": "T-20260105-114854-917d04a4",
+    "metadata": {
+      "completed_at": "2026-01-05T11:59:47.549323+00:00",
+      "updated_at": "2026-01-05T11:59:47.549332+00:00"
+    },
+    "modified_at": "2026-01-05T11:59:47.567567+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature",
+      "retrospective": "Implemented exists() function. Checks all entity stores (tasks, sprints, decisions, epics, knowledge transfers, handoffs) to determine if an entity ID exists."
+    },
+    "status": "completed",
+    "title": "Implement missing exists() expression function",
+    "version": 3
+  }
+}
