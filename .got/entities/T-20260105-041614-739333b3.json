@@ -1,19 +1,23 @@
 {
-  "_checksum": "996a6094d4726b20",
-  "_written_at": "2026-01-05T04:16:14.032979+00:00",
+  "_checksum": "660173056500a16a",
+  "_written_at": "2026-01-05T05:08:08.813590+00:00",
   "data": {
     "created_at": "2026-01-05T04:16:14.021637+00:00",
     "description": "Replace the ~300 lines of if/elif pattern matching with expr calls.\n\nChanges:\n1. query() method calls natural language translator\n2. Translator converts to expr syntax\n3. Execute via expr infrastructure\n4. Add deprecation warning to CLI\n5. Eventually remove legacy code\n\nFiles to modify:\n- scripts/got_utils.py (query method at lines 2392-2693)\n- cortical/got/cli/query.py\n\nDepends on: Natural language translator complete\n",
     "entity_type": "task",
     "id": "T-20260105-041614-739333b3",
-    "metadata": {},
-    "modified_at": "2026-01-05T04:16:14.032923+00:00",
+    "metadata": {
+      "completed_at": "2026-01-05T05:08:08.795909+00:00",
+      "updated_at": "2026-01-05T05:08:08.795915+00:00"
+    },
+    "modified_at": "2026-01-05T05:08:08.813514+00:00",
     "priority": "low",
     "properties": {
-      "category": "refactor"
+      "category": "refactor",
+      "retrospective": "Replaced 300-line if/elif pattern matching with translator pipeline (translate \u2192 parse \u2192 execute). 85% code reduction. 41 behavioral tests pass. Alpha software - no backward compatibility concerns."
     },
-    "status": "pending",
+    "status": "completed",
     "title": "Deprecate legacy query command, make it wrapper for expr",
-    "version": 2
+    "version": 3
   }
 }
