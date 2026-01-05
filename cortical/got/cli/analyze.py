@@ -17,6 +17,8 @@ These commands showcase the fluent query API for maintainability.
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Dict, Any, List
 
+from ..types import EdgeTypes
+
 if TYPE_CHECKING:
     from scripts.got_utils import TransactionalGoTAdapter
 
@@ -127,7 +129,7 @@ def cmd_analyze_summary(args, manager: "TransactionalGoTAdapter") -> int:
         sprint_tasks = (
             Query(got_manager)
             .tasks()
-            .connected_to(sprint.id, via="CONTAINS")
+            .connected_to(sprint.id, via=EdgeTypes.CONTAINS)
             .execute()
         )
         completed = len([t for t in sprint_tasks if t.status == "completed"])
@@ -184,7 +186,7 @@ def cmd_analyze_dependencies(args, manager: "TransactionalGoTAdapter") -> int:
     upstream = (
         GraphWalker(got_manager)
         .starting_from(task_id)
-        .follow("DEPENDS_ON")
+        .follow(EdgeTypes.DEPENDS_ON)
         .reverse()  # Go from dependent to dependency
         .bfs()
         .max_depth(5)
@@ -219,7 +221,7 @@ def cmd_analyze_dependencies(args, manager: "TransactionalGoTAdapter") -> int:
     downstream = (
         GraphWalker(got_manager)
         .starting_from(task_id)
-        .follow("DEPENDS_ON")
+        .follow(EdgeTypes.DEPENDS_ON)
         .directed()  # Only source->target
         .bfs()
         .max_depth(5)
@@ -252,7 +254,7 @@ def cmd_analyze_dependencies(args, manager: "TransactionalGoTAdapter") -> int:
             issues.append(f"Blocked by incomplete: {dep.title[:40]}")
 
     # Check for circular dependencies
-    path = PathFinder(got_manager).via_edges("DEPENDS_ON").shortest_path(task_id, task_id)
+    path = PathFinder(got_manager).via_edges(EdgeTypes.DEPENDS_ON).shortest_path(task_id, task_id)
     if path and len(path) > 1:
         issues.append(f"CIRCULAR DEPENDENCY detected! Path length: {len(path)}")
 
@@ -289,9 +291,9 @@ def cmd_analyze_patterns(args, manager: "TransactionalGoTAdapter") -> int:
     blocking_pattern = (
         Pattern()
         .node("a", type="task")
-        .edge("BLOCKS", direction="outgoing")
+        .edge(EdgeTypes.BLOCKS, direction="outgoing")
         .node("b", type="task")
-        .edge("BLOCKS", direction="outgoing")
+        .edge(EdgeTypes.BLOCKS, direction="outgoing")
         .node("c", type="task")
     )
 
@@ -314,9 +316,9 @@ def cmd_analyze_patterns(args, manager: "TransactionalGoTAdapter") -> int:
     dep_pattern = (
         Pattern()
         .node("a", type="task")
-        .edge("DEPENDS_ON", direction="incoming")
+        .edge(EdgeTypes.DEPENDS_ON, direction="incoming")
         .node("b", type="task")
-        .edge("DEPENDS_ON", direction="incoming")
+        .edge(EdgeTypes.DEPENDS_ON, direction="incoming")
         .node("c", type="task")
     )
 

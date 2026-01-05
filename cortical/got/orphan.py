@@ -448,15 +448,15 @@ class OrphanDetector:
         # Check for dependency keywords in source
         for keyword in self.DEPENDENCY_KEYWORDS:
             if keyword in source_text:
-                return "DEPENDS_ON", f"Source mentions '{keyword}'"
+                return EdgeTypes.DEPENDS_ON, f"Source mentions '{keyword}'"
 
         # Check for blocking keywords in source
         for keyword in self.BLOCKS_KEYWORDS:
             if keyword in source_text:
-                return "BLOCKS", f"Source mentions '{keyword}'"
+                return EdgeTypes.BLOCKS, f"Source mentions '{keyword}'"
 
         # Default to related
-        return "RELATES_TO", "Similar content"
+        return EdgeTypes.RELATES_TO, "Similar content"
 
     def get_orphan_summary(self) -> str:
         """
