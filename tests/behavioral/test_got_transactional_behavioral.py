@@ -41,6 +41,7 @@ from cortical.got import (
     TransactionError,
     CorruptionError,
 )
+from tests.conftest import _create_tx_manager, _create_got_manager
 
 
 # ============================================================================
@@ -57,13 +58,13 @@ def temp_got_dir(tmp_path):
 @pytest.fixture
 def got_manager(temp_got_dir):
     """Provide a fresh GoT manager for each test."""
-    return GoTManager(temp_got_dir)
+    return _create_got_manager(temp_got_dir)
 
 
 @pytest.fixture
 def tx_manager(temp_got_dir):
     """Provide a low-level transaction manager for advanced tests."""
-    return TransactionManager(temp_got_dir)
+    return _create_tx_manager(temp_got_dir)
 
 
 # ============================================================================

@@ -165,21 +165,120 @@ def pytest_collection_modifyitems(config, items):
 # =============================================================================
 # GOT (GRAPH OF THOUGHT) FIXTURES
 # =============================================================================
-# These shared fixtures prevent the common anti-pattern of each test creating
-# its own GoTManager with expensive disk I/O (~5s per creation).
+# CENTRAL FIXTURE LOCATION for all GoT/TransactionManager tests.
 #
-# GUIDELINES:
-# - Use fresh_got_manager when your test MODIFIES state
-# - Use got_manager_with_sample_tasks for read-mostly tests (class-scoped)
-# - Never create GoTManager directly in tests - use these fixtures!
+# BREAKING CHANGE (2026-01-04): TransactionManager and GoTManager now require
+# dependency injection. Direct instantiation is prohibited.
+#
+# USE THESE FIXTURES - DO NOT CREATE MANAGERS DIRECTLY IN TESTS:
+#   - tmp_got_dir: Just a temporary directory for GoT storage
+#   - fresh_tx_manager: TransactionManager ready to use
+#   - fresh_got_manager: GoTManager ready to use
+#   - got_manager_with_sample_tasks: Pre-populated with test data
+#
+# For tests that need custom components (rare), use the helper functions:
+#   - _create_tx_manager(got_dir) - Standard creation via container
+#   - _create_got_manager(got_dir) - Standard creation via container
 
 import tempfile
 import shutil
 from pathlib import Path
 
 
+def _create_tx_manager(got_dir: Path):
+    """
+    Create TransactionManager via DI container.
+
+    This is the ONLY supported way to create a TransactionManager.
+    All dependencies (store, wal, lock) are properly configured.
+
+    Args:
+        got_dir: Directory for GoT storage
+
+    Returns:
+        Fully configured TransactionManager
+    """
+    from cortical.core.bootstrap import create_container
+    from cortical.got.tx_manager import TransactionManager
+    container = create_container(got_dir=got_dir)
+    return container.resolve(TransactionManager)
+
+
+def _create_got_manager(got_dir: Path):
+    """
+    Create GoTManager via DI container.
+
+    This is the ONLY supported way to create a GoTManager.
+    TransactionManager and all its dependencies are properly configured.
+
+    Args:
+        got_dir: Directory for GoT storage
+
+    Returns:
+        Fully configured GoTManager
+    """
+    from cortical.core.bootstrap import create_container
+    from cortical.got import GoTManager
+    container = create_container(got_dir=got_dir)
+    return container.resolve(GoTManager)
+
+
+def _create_container(got_dir: Path):
+    """
+    Create a DI container for GoT services.
+
+    Use this when you need access to multiple services from the same container.
+
+    Args:
+        got_dir: Directory for GoT storage
+
+    Returns:
+        Configured Container instance
+    """
+    from cortical.core.bootstrap import create_container
+    return create_container(got_dir=got_dir)
+
+
+# =============================================================================
+# PRIMARY FIXTURES - USE THESE IN TESTS
+# =============================================================================
+
 @pytest.fixture
-def fresh_got_manager(tmp_path):
+def tmp_got_dir(tmp_path):
+    """
+    Function-scoped fixture providing a temporary GoT directory.
+
+    Use when you need just the directory path. For most tests,
+    prefer fresh_tx_manager or fresh_got_manager instead.
+
+    Example:
+        def test_something(tmp_got_dir):
+            manager = _create_got_manager(tmp_got_dir)
+    """
+    got_dir = tmp_path / ".got"
+    got_dir.mkdir(parents=True, exist_ok=True)
+    return got_dir
+
+
+@pytest.fixture
+def fresh_tx_manager(tmp_got_dir):
+    """
+    Function-scoped fixture for a fresh, empty TransactionManager.
+
+    Use when your test needs direct access to the transaction layer.
+    Each test gets its own isolated manager.
+
+    Example:
+        def test_transaction(fresh_tx_manager):
+            tx = fresh_tx_manager.begin()
+            # ... do transaction work
+            fresh_tx_manager.commit(tx)
+    """
+    return _create_tx_manager(tmp_got_dir)
+
+
+@pytest.fixture
+def fresh_got_manager(tmp_got_dir):
     """
     Function-scoped fixture for a fresh, empty GoT manager.
 
@@ -191,9 +290,7 @@ def fresh_got_manager(tmp_path):
             task = fresh_got_manager.create_task("My task")
             assert task.title == "My task"
     """
-    from cortical.got import GoTManager
-    got_dir = tmp_path / ".got"
-    return GoTManager(got_dir)
+    return _create_got_manager(tmp_got_dir)
 
 
 @pytest.fixture(scope="class")
@@ -216,11 +313,9 @@ def got_manager_with_sample_tasks(tmp_path_factory):
                 manager, tasks = got_manager_with_sample_tasks
                 results = Query(manager).tasks().where(status="pending").execute()
     """
-    from cortical.got import GoTManager
-
     temp_dir = tmp_path_factory.mktemp("got_sample")
     got_dir = temp_dir / ".got"
-    manager = GoTManager(got_dir)
+    manager = _create_got_manager(got_dir)
 
     # Create sample tasks with variety
     tasks = []
@@ -260,11 +355,9 @@ def got_manager_large(tmp_path_factory):
                 manager, tasks = got_manager_large
                 # Test with 100 tasks
     """
-    from cortical.got import GoTManager
-
     temp_dir = tmp_path_factory.mktemp("got_large")
     got_dir = temp_dir / ".got"
-    manager = GoTManager(got_dir)
+    manager = _create_got_manager(got_dir)
 
     tasks = []
     priorities = ["critical", "high", "medium", "low"]

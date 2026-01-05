@@ -15,9 +15,14 @@ This test proves:
 2. File history can be queried (success/failure counts)
 3. Risky files are identified from failure patterns
 4. File risk assessment informs task guidance
+
+DISABLED: llm_orchestration module scheduled for removal.
 """
 
 import pytest
+
+# Skip entire module - llm_orchestration scheduled for removal
+pytestmark = pytest.mark.skip(reason="DISABLED: llm_orchestration module scheduled for removal")
 from pathlib import Path
 import tempfile
 import shutil

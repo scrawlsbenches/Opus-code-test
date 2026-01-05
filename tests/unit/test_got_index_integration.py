@@ -20,6 +20,7 @@ from cortical.got.api import GoTManager
 from cortical.got.tx_manager import TransactionManager
 from cortical.got.indexer import QueryIndexManager
 from cortical.got.config import DurabilityMode
+from tests.conftest import _create_got_manager
 
 
 class TestIndexTransactionIntegration:
@@ -34,7 +35,7 @@ class TestIndexTransactionIntegration:
     @pytest.fixture
     def manager(self, got_dir):
         """Create a GoTManager with indexing enabled."""
-        return GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        return _create_got_manager(got_dir)
 
     def test_index_updated_after_task_create(self, manager):
         """Index should reflect newly created task."""
@@ -121,7 +122,7 @@ class TestIndexWALLogging:
     @pytest.fixture
     def manager(self, got_dir):
         """Create a GoTManager."""
-        return GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        return _create_got_manager(got_dir)
 
     def test_index_update_logged_to_wal(self, manager, got_dir):
         """Index updates should be logged to WAL for recovery."""
@@ -140,7 +141,7 @@ class TestIndexWALLogging:
     def test_index_rebuild_from_entities_on_recovery(self, got_dir):
         """Indexes should be rebuilt from entities on recovery."""
         # Create manager and add tasks
-        manager1 = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        manager1 = _create_got_manager(got_dir)
         task1 = manager1.create_task("Task 1", status="pending", priority="high")
         task2 = manager1.create_task("Task 2", status="completed", priority="low")
 
@@ -151,7 +152,7 @@ class TestIndexWALLogging:
                 f.unlink()
 
         # Create new manager (should recover/rebuild indexes)
-        manager2 = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        manager2 = _create_got_manager(got_dir)
 
         # Index should be rebuilt
         index = manager2.index_manager
@@ -182,7 +183,7 @@ class TestIndexConcurrency:
         """Index should remain consistent after concurrent transactions."""
         import threading
 
-        manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        manager = _create_got_manager(got_dir)
 
         # Create tasks in parallel threads
         results = []
@@ -229,7 +230,7 @@ class TestIndexTransactionContext:
     @pytest.fixture
     def manager(self, got_dir):
         """Create a GoTManager."""
-        return GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        return _create_got_manager(got_dir)
 
     def test_batch_updates_indexed_atomically(self, manager):
         """Multiple updates in one transaction should be indexed atomically."""

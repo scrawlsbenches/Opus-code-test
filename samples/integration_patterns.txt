@@ -1,0 +1,93 @@
+Integration Patterns: Connecting Systems Reliably
+
+Integration patterns solve recurring problems in system interconnection.
+When services must exchange data, coordinate actions, or share state,
+patterns provide proven approaches. Understanding patterns enables selecting
+appropriate solutions rather than reinventing approaches with known pitfalls.
+
+Request-response patterns synchronize interactions. The caller sends a
+request and waits for a response. Simple and familiar, this pattern suits
+queries and commands requiring immediate confirmation. Drawbacks include
+coupling caller availability to callee availability and blocking during
+response wait.
+
+Asynchronous messaging decouples sender and receiver. Senders publish messages
+without waiting for processing. Receivers consume when ready. Message queues
+buffer between production and consumption rates. This decoupling improves
+resilience: sender failures don't affect receivers and vice versa.
+
+Publish-subscribe broadcasts to multiple consumers. Publishers send messages
+to topics without knowing subscribers. Subscribers register interest in
+topics and receive matching messages. This pattern enables loose coupling:
+new subscribers can join without publisher modification.
+
+Event-driven architecture notifies state changes. Rather than polling for
+updates, systems publish events when state changes. Interested parties react
+to relevant events. Event sourcing extends this pattern to reconstruct state
+from event history, enabling auditing and temporal queries.
+
+Saga patterns coordinate distributed transactions. When operations span
+multiple services, traditional transactions don't apply. Sagas sequence local
+transactions with compensating actions for rollback. Orchestrated sagas use
+central coordinators; choreographed sagas use event reactions.
+
+API gateway patterns centralize cross-cutting concerns. Rather than duplicating
+authentication, rate limiting, and logging in every service, gateways handle
+these concerns at the edge. Services focus on business logic while gateways
+handle infrastructure concerns.
+
+Service mesh patterns externalize communication concerns. Sidecar proxies
+handle service discovery, load balancing, encryption, and observability.
+Application code communicates with local proxies; mesh infrastructure handles
+remote communication complexity. This separation simplifies application code.
+
+Circuit breaker patterns prevent cascade failures. When dependencies fail,
+continued calling wastes resources and delays recovery. Circuit breakers
+detect failure patterns and short-circuit calls, returning fast failures
+instead of slow timeouts. Periodic probes detect recovery.
+
+Bulkhead patterns isolate failure domains. Separate resource pools for
+different consumers prevent one consumer's problems from affecting others.
+Thread pool isolation, connection pool isolation, and instance isolation
+provide different granularities of failure containment.
+
+Retry patterns handle transient failures. Network glitches and temporary
+overload cause failures that succeed on retry. But naive retries can
+overwhelm recovering systems. Exponential backoff, jitter, and retry budgets
+enable helpful retrying without harmful retry storms.
+
+Timeout patterns bound waiting. Every remote call needs a timeout to prevent
+indefinite blocking. Timeout selection balances false failures from premature
+timeout against resource waste from excessive waiting. Deadline propagation
+coordinates timeouts across call chains.
+
+Idempotency patterns enable safe retry. When callers retry uncertain
+operations, idempotent operations produce consistent results regardless of
+repetition. Idempotency keys track completed operations. Exactly-once
+semantics build on idempotent operations with deduplication.
+
+Strangler fig patterns enable incremental migration. Rather than risky
+big-bang rewrites, the strangler fig pattern incrementally replaces legacy
+system pieces. New functionality implements in new system; legacy functionality
+migrates gradually. Eventually the legacy system strangles away entirely.
+
+Anti-corruption layer patterns isolate domain models. When integrating with
+systems using different domain models, translation layers prevent foreign
+concepts from corrupting local models. The anti-corruption layer translates
+between conceptual frameworks.
+
+Data synchronization patterns maintain consistency. Event-carried state
+transfer includes state in events. Change data capture extracts changes from
+databases. Periodic synchronization batches updates. Pattern selection depends
+on consistency requirements and source system capabilities.
+
+Polling patterns check for updates periodically. When push notification is
+unavailable, polling queries for changes. Polling frequency balances freshness
+against resource consumption. Long polling and webhooks offer more efficient
+alternatives when sources support them.
+
+Webhook patterns push notifications efficiently. Sources call registered
+endpoints when events occur. This inversion eliminates polling overhead.
+Webhook reliability requires retry logic, delivery confirmation, and handling
+of unavailable endpoints.
+

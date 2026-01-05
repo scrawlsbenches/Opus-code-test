@@ -11,6 +11,7 @@ So that I can analyze my task graph without external database dependencies.
 import pytest
 from cortical.got.api import GoTManager
 from cortical.got.query_builder import Query, Count, Collect, Avg
+from tests.conftest import _create_tx_manager, _create_got_manager
 
 
 class TestDeveloperFiltersTasksWithFluentQueries:
@@ -30,7 +31,7 @@ class TestDeveloperFiltersTasksWithFluentQueries:
         And the results are accurate
         """
         # Given a task graph with tasks of various statuses and priorities
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         high_pending_1 = manager.create_task(
             title="Build custom indexer",
             priority="high",
@@ -77,7 +78,7 @@ class TestDeveloperFiltersTasksWithFluentQueries:
         Then I get tasks matching either condition
         """
         # Given tasks with different priorities
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         critical = manager.create_task(title="Critical work", priority="critical")
         high = manager.create_task(title="High priority work", priority="high")
         medium = manager.create_task(title="Medium work", priority="medium")
@@ -110,7 +111,7 @@ class TestDeveloperFiltersTasksWithFluentQueries:
         And low priority tasks appear last
         """
         # Given tasks with different priorities
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         low_task = manager.create_task(title="Low", priority="low")
         medium_task = manager.create_task(title="Medium", priority="medium")
         high_task = manager.create_task(title="High", priority="high")
@@ -149,7 +150,7 @@ class TestDeveloperAggregatesTaskStatistics:
         Then I get accurate counts per status
         """
         # Given tasks in various states
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         manager.create_task(title="Task 1", status="pending")
         manager.create_task(title="Task 2", status="pending")
         manager.create_task(title="Task 3", status="pending")
@@ -180,7 +181,7 @@ class TestDeveloperAggregatesTaskStatistics:
         Then I get lists of IDs per priority level
         """
         # Given tasks with different priorities
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         high1 = manager.create_task(title="High 1", priority="high")
         high2 = manager.create_task(title="High 2", priority="high")
         medium1 = manager.create_task(title="Medium 1", priority="medium")
@@ -212,7 +213,7 @@ class TestDeveloperAggregatesTaskStatistics:
         Because our custom query engine supports multiple aggregations
         """
         # Given tasks with custom numeric properties
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         manager.create_task(title="Task 1", status="pending")
         manager.create_task(title="Task 2", status="pending")
         manager.create_task(title="Task 3", status="completed")
@@ -253,7 +254,7 @@ class TestDeveloperPaginatesQueryResults:
         Then I get exactly 3 results
         """
         # Given many tasks in the graph
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         for i in range(10):
             manager.create_task(title=f"Task {i}", status="pending")
 
@@ -278,7 +279,7 @@ class TestDeveloperPaginatesQueryResults:
         Then I get tasks 6, 7, and 8
         """
         # Given 10 tasks
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         tasks = []
         for i in range(10):
             task = manager.create_task(title=f"Task {i:02d}", status="pending")
@@ -316,7 +317,7 @@ class TestDeveloperQueriesConnectedTasks:
         Then I get all sprint tasks
         """
         # Given a sprint with multiple tasks
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         sprint = manager.create_sprint(title="Sprint 1")
         task1 = manager.create_task(title="Task 1")
         task2 = manager.create_task(title="Task 2")

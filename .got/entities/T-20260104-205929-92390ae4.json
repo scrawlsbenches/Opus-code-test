@@ -1,0 +1,19 @@
+{
+  "_checksum": "de0e79bddade35e5",
+  "_written_at": "2026-01-04T20:59:29.758865+00:00",
+  "data": {
+    "created_at": "2026-01-04T20:59:29.743521+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260104-205929-92390ae4",
+    "metadata": {},
+    "modified_at": "2026-01-04T20:59:29.758789+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "refactor"
+    },
+    "status": "pending",
+    "title": "Refactor KnowledgeTransfer from TransactionManager to repository pattern",
+    "version": 2
+  }
+}

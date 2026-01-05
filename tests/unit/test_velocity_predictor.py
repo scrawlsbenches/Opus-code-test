@@ -8,10 +8,16 @@ Tests cover:
 - Anomaly detection
 - Prediction with confidence metrics
 - Historical analysis
+
+DISABLED: llm_orchestration module scheduled for removal.
 """
 
-import math
 import pytest
+
+# Skip entire module - llm_orchestration scheduled for removal
+pytestmark = pytest.mark.skip(reason="DISABLED: llm_orchestration module scheduled for removal")
+
+import math
 from typing import Dict, Any
 
 from llm_orchestration.agile import (

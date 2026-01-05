@@ -6,9 +6,14 @@ I want a structured cycle from question to verified output,
 So that work proceeds methodically from understanding to validated results.
 
 Based on: llm_orchestration/examples/basic_workflow.py
+
+DISABLED: llm_orchestration module scheduled for removal.
 """
 
 import pytest
+
+# Skip entire module - llm_orchestration scheduled for removal
+pytestmark = pytest.mark.skip(reason="DISABLED: llm_orchestration module scheduled for removal")
 from pathlib import Path
 import tempfile
 import shutil

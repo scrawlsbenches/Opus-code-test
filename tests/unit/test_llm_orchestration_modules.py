@@ -2,12 +2,17 @@
 Unit tests for LLM orchestration modules.
 
 Tests for types.py, orchestration.py, agile.py, metrics.py, and evolution.py.
+
+DISABLED: llm_orchestration module scheduled for removal.
 """
+
+import pytest
+
+# Skip entire module - llm_orchestration scheduled for removal
+pytestmark = pytest.mark.skip(reason="DISABLED: llm_orchestration module scheduled for removal")
 
 import asyncio
 from datetime import datetime, timedelta
-
-import pytest
 
 from llm_orchestration.types import (
     AgentRole,

@@ -11,6 +11,7 @@ So that my custom-built graph database maintains consistency.
 import pytest
 from cortical.got.api import GoTManager
 from cortical.got.errors import TransactionError
+from tests.conftest import _create_tx_manager, _create_got_manager
 
 
 class TestDeveloperExecutesAtomicOperations:
@@ -30,7 +31,7 @@ class TestDeveloperExecutesAtomicOperations:
         Then all changes are persisted
         """
         # Given a transaction context
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
 
         # When I create multiple entities within it
         with manager.transaction() as tx:
@@ -57,7 +58,7 @@ class TestDeveloperExecutesAtomicOperations:
         And nothing is persisted
         """
         # Given a transaction that encounters an error
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         task_id = None
 
         try:
@@ -84,7 +85,7 @@ class TestDeveloperExecutesAtomicOperations:
         But no changes are persisted
         """
         # Given a read-only transaction context
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
 
         existing_task = manager.create_task(title="Existing task")
         task_id = None
@@ -114,7 +115,7 @@ class TestDeveloperExecutesAtomicOperations:
         Then the updates are committed atomically
         """
         # Given an existing task
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         task = manager.create_task(title="Original", status="pending")
 
         # When I update it within a transaction
@@ -150,7 +151,7 @@ class TestDeveloperUsesCachingForPerformance:
         And cache hit statistics increase
         """
         # Given a task that's been read once
-        manager = GoTManager(tmp_path / ".got", cache_enabled=True)
+        manager = _create_got_manager(tmp_path / ".got")
         task = manager.create_task(title="Cached task")
 
         # First read populates cache
@@ -174,7 +175,7 @@ class TestDeveloperUsesCachingForPerformance:
         And subsequent reads get fresh data
         """
         # Given a cached task
-        manager = GoTManager(tmp_path / ".got", cache_enabled=True)
+        manager = _create_got_manager(tmp_path / ".got")
         task = manager.create_task(title="Original")
 
         # Read to populate cache
@@ -197,7 +198,7 @@ class TestDeveloperUsesCachingForPerformance:
         Then the cache respects those limits
         """
         # Given a GoT manager
-        manager = GoTManager(tmp_path / ".got", cache_enabled=True)
+        manager = _create_got_manager(tmp_path / ".got")
 
         # When I configure cache TTL and max size
         manager.cache_configure(ttl=300, max_size=1000)
@@ -218,7 +219,7 @@ class TestDeveloperUsesCachingForPerformance:
         And statistics are reset
         """
         # Given a cache with entries
-        manager = GoTManager(tmp_path / ".got", cache_enabled=True)
+        manager = _create_got_manager(tmp_path / ".got")
         task = manager.create_task(title="Task")
         manager.get_task(task.id)  # Populate cache
 
@@ -253,7 +254,7 @@ class TestDeveloperPreloadsEntitiesForFastQueries:
         And I get counts of what was loaded
         """
         # Given a graph with many entities
-        manager = GoTManager(tmp_path / ".got", cache_enabled=True)
+        manager = _create_got_manager(tmp_path / ".got")
         task1 = manager.create_task(title="Task 1")
         task2 = manager.create_task(title="Task 2")
         sprint = manager.create_sprint(title="Sprint 1")
@@ -291,7 +292,7 @@ class TestDeveloperHandlesTransactionFailures:
         And the transaction rolls back
         """
         # Given a transaction
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
 
         # When I try to update a non-existent task
         # Then I get a clear error message
@@ -309,7 +310,7 @@ class TestDeveloperHandlesTransactionFailures:
         Even before commit
         """
         # Given an active transaction
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
 
         with manager.transaction() as tx:
             # When I create an entity

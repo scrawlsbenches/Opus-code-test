@@ -24,7 +24,7 @@ import secrets
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, TYPE_CHECKING
 
 from .types import Entity, KnowledgeTransfer, Edge
 from .transaction import Transaction
@@ -36,6 +36,8 @@ from .errors import TransactionError as GoTTransactionError
 from cortical.cdg.transaction_manager import CDGTransactionManager
 from cortical.cdg.config import CDGConfig, DurabilityMode as CDGDurabilityMode
 from cortical.cdg.errors import TransactionError as CDGTransactionError
+from cortical.cdg.storage import CDGStore
+from cortical.cdg.wal import CDGWALManager
 
 # Import ProcessLock for backward compatibility (re-exported by __init__.py)
 from cortical.utils.locking import ProcessLock
@@ -78,20 +80,53 @@ class TransactionManager:
         so that reads return Task, Decision, Sprint, etc., not base Entity.
     """
 
-    def __init__(self, got_dir: Path, durability: DurabilityMode = DurabilityMode.BALANCED):
+    def __init__(
+        self,
+        got_dir: Path,
+        durability: DurabilityMode = DurabilityMode.BALANCED,
+        *,
+        store: CDGStore,
+        wal: Optional[CDGWALManager] = None,
+        lock: ProcessLock,
+    ):
         """
         Initialize transaction manager.
 
-        Creates directories if needed:
-        - {got_dir}/entities/
-        - {got_dir}/wal/
-
-        Runs recovery on startup.
+        BREAKING CHANGE (2026-01-04):
+            Dependencies must now be injected. Use create_container() from
+            cortical.core.bootstrap to get a properly configured TransactionManager.
 
         Args:
             got_dir: Base directory for GoT storage
             durability: Durability mode controlling fsync behavior
+            store: REQUIRED - Injected CDGStore instance
+            wal: Optional CDGWALManager (None for disabled WAL)
+            lock: REQUIRED - Injected ProcessLock instance
+
+        Raises:
+            TypeError: If required dependencies are missing or wrong type
+
+        Example:
+            # The only supported way to get a TransactionManager:
+            from cortical.core.bootstrap import create_container
+
+            container = create_container(got_dir=Path(".got"))
+            tx_manager = container.resolve(TransactionManager)
         """
+        # Validate required dependencies (no defaults - DI is mandatory)
+        if not isinstance(store, CDGStore):
+            raise TypeError(
+                f"store is required and must be CDGStore instance, got {type(store).__name__}"
+            )
+        if not isinstance(lock, ProcessLock):
+            raise TypeError(
+                f"lock is required and must be ProcessLock instance, got {type(lock).__name__}"
+            )
+        if wal is not None and not isinstance(wal, CDGWALManager):
+            raise TypeError(
+                f"wal must be CDGWALManager instance or None, got {type(wal).__name__}"
+            )
+
         self.got_dir = Path(got_dir)
         self.got_dir.mkdir(parents=True, exist_ok=True)
         self.durability = durability
@@ -102,37 +137,17 @@ class TransactionManager:
         # Override durability mode from GoT config
         cdg_config.durability = _convert_durability(durability)
 
-        # Manually set up CDG components to match GoT's directory structure:
-        #   {got_dir}/entities/       # Entity storage
-        #   {got_dir}/wal/            # Write-ahead log
-        # We can't use CDGTransactionManager.__init__ directly because it hardcodes
-        # wal_dir as store_dir/wal, which would create got_dir/entities/wal.
-        # Instead, we manually create the components.
-
-        from cortical.cdg.storage import CDGStore
-        from cortical.cdg.wal import CDGWALManager
-
-        # Create store in entities/ subdirectory
-        self.store = CDGStore(
-            self.got_dir / "entities",
-            config=cdg_config,
-            entity_factory=_got_entity_factory
-        )
-
-        # Create WAL at same level as entities/ (not inside it)
-        self.wal = None
-        if cdg_config.enable_wal:
-            self.wal = CDGWALManager(self.got_dir / "wal", cdg_config)
-
-        # Create lock
-        self.lock = ProcessLock(self.got_dir / ".got.lock", reentrant=True)
+        # Use injected dependencies (no defaults - container provides all)
+        self.store = store
+        self.wal = wal
+        self.lock = lock
 
         # Active transactions (in-memory only)
         self._active_tx = {}
 
         # Create a minimal CDG transaction manager wrapper
         # We create a CDGTransactionManager but override its store, wal, and lock
-        # with our manually configured ones
+        # with our configured ones (either injected or default)
         self._cdg_tx = CDGTransactionManager.__new__(CDGTransactionManager)
         self._cdg_tx.store_dir = self.got_dir
         self._cdg_tx.config = cdg_config

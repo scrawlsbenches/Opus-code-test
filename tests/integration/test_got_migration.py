@@ -13,6 +13,7 @@ import pytest
 
 from cortical.got import GoTManager
 from scripts.migrate_got import GoTMigrator, MigrationAnalysis, MigrationResult
+from tests.conftest import _create_tx_manager, _create_got_manager
 
 
 class TestGoTMigration:
@@ -193,7 +194,7 @@ class TestGoTMigration:
         assert result.success
 
         # Read back the migrated task (migration strips 'task:' prefix)
-        manager = GoTManager(target_dir)
+        manager = _create_got_manager(target_dir)
         task = manager.get_task("T-20251221-100000-0001")
 
         assert task is not None
@@ -221,7 +222,7 @@ class TestGoTMigration:
         assert result.success
 
         # Read back edges
-        manager = GoTManager(target_dir)
+        manager = _create_got_manager(target_dir)
 
         # We can't easily query edges without a query API,
         # but we can verify they were written by checking the result
@@ -323,7 +324,7 @@ class TestGoTMigration:
         assert result.success
 
         # Verify update was applied (migration strips 'task:' prefix)
-        manager = GoTManager(target_dir)
+        manager = _create_got_manager(target_dir)
         task = manager.get_task("T-TEST-001")
 
         assert task is not None
@@ -415,7 +416,7 @@ class TestGoTMigration:
         assert result.success
 
         # Verify status mappings (migration strips 'task:' prefix)
-        manager = GoTManager(target_dir)
+        manager = _create_got_manager(target_dir)
 
         task1 = manager.get_task("T-TEST-001")
         assert task1.status == "pending"  # deferred → pending

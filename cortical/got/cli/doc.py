@@ -21,6 +21,27 @@ from typing import Dict, List, Optional
 from cortical.got.api import GoTManager
 from cortical.got.types import Document
 from cortical.utils.id_generation import generate_document_id
+from cortical.core.bootstrap import create_container
+
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+def _get_manager(got_dir):
+    """
+    Create a GoTManager instance via DI container.
+
+    This is a separate function to allow easy mocking in tests.
+
+    Args:
+        got_dir: Path to .got directory
+
+    Returns:
+        GoTManager instance
+    """
+    container = create_container(got_dir=got_dir)
+    return container.resolve(GoTManager)
 
 
 # =============================================================================
@@ -176,7 +197,7 @@ def scan_documents(
     Returns:
         Dictionary with scan results
     """
-    manager = GoTManager(got_dir)
+    manager = _get_manager(got_dir)
     project_root = _get_project_root()
 
     results = {
@@ -284,7 +305,7 @@ def list_documents(
     Returns:
         List of Document objects
     """
-    manager = GoTManager(got_dir)
+    manager = _get_manager(got_dir)
     return manager.list_documents(
         doc_type=doc_type,
         tag=tag,
@@ -303,7 +324,7 @@ def show_document(got_dir: Path, doc_id: str) -> Optional[Document]:
     Returns:
         Document object or None
     """
-    manager = GoTManager(got_dir)
+    manager = _get_manager(got_dir)
 
     # Try as direct ID first
     doc = manager.get_document(doc_id)
@@ -333,7 +354,7 @@ def link_document_to_task(
     Returns:
         True if link created successfully
     """
-    manager = GoTManager(got_dir)
+    manager = _get_manager(got_dir)
 
     # Resolve doc_id if it's a path
     doc = manager.get_document(doc_id)
@@ -357,7 +378,7 @@ def link_document_to_task(
 
 def get_tasks_for_document(got_dir: Path, doc_id: str) -> List:
     """Get all tasks linked to a document."""
-    manager = GoTManager(got_dir)
+    manager = _get_manager(got_dir)
 
     # Resolve doc_id if it's a path
     doc = manager.get_document(doc_id)
@@ -372,7 +393,7 @@ def get_tasks_for_document(got_dir: Path, doc_id: str) -> List:
 
 def get_documents_for_task(got_dir: Path, task_id: str) -> List[Document]:
     """Get all documents linked to a task."""
-    manager = GoTManager(got_dir)
+    manager = _get_manager(got_dir)
     return manager.get_documents_for_task(task_id)
 
 
@@ -698,7 +719,7 @@ def main():
     got_dir = project_root / ".got"
 
     # Create manager
-    manager = GoTManager(got_dir)
+    manager = _get_manager(got_dir)
 
     # Create a pseudo doc_command attribute for standalone usage
     args.doc_command = args.command

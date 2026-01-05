@@ -665,7 +665,10 @@ class TransactionalGoTAdapter:
             raise RuntimeError("Transactional backend not available")
 
         self.got_dir = Path(got_dir)
-        self._manager = TxGoTManager(self.got_dir, durability=DurabilityMode.BALANCED)
+        # Use container to get properly configured GoTManager
+        from cortical.core.bootstrap import create_container
+        container = create_container(got_dir=self.got_dir)
+        self._manager = container.resolve(TxGoTManager)
 
         # Compatibility attributes (some commands access these directly)
         self._graph = None  # Lazy-loaded graph for compatibility

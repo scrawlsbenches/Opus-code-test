@@ -1,0 +1,97 @@
+Reliability Engineering: Building Systems That Keep Their Promises
+
+Reliability engineering transforms hope into engineering discipline. Rather
+than assuming systems will work, reliability engineers systematically identify
+failure modes, implement safeguards, and verify that systems maintain service
+under adverse conditions. This discipline enables commitments that systems
+can actually keep.
+
+Error budgets quantify acceptable unreliability. If the SLA promises 99.9%
+availability, the error budget is 0.1% of time. Teams can spend this budget
+on deployments, experiments, or accepted failures. When the budget depletes,
+stability takes priority over features. This framework balances reliability
+against velocity.
+
+Service level indicators measure what matters. An SLI might track request
+latency at the 99th percentile, error rate for user-facing requests, or
+throughput during peak hours. SLIs must be measurable, meaningful to users,
+and actionable by engineers. Abstract metrics that don't reflect user
+experience mislead rather than guide.
+
+Service level objectives set internal targets. SLOs are typically stricter
+than external SLAs to provide margin. If the SLA guarantees 99.9% availability,
+the internal SLO might target 99.95%. This buffer accommodates variance and
+prevents SLA violations when performance temporarily degrades.
+
+Chaos engineering proactively discovers weaknesses. Rather than waiting for
+production failures to reveal problems, chaos experiments inject controlled
+failures. Kill a service instance. Introduce network latency. Exhaust memory.
+Systems that survive controlled chaos demonstrate genuine resilience.
+
+Graceful degradation maintains core function during partial failure. When a
+recommendation service fails, the main application continues serving cached
+recommendations or popular defaults. Users experience reduced functionality
+rather than complete outage. Degradation modes must be explicitly designed
+and tested.
+
+Circuit breakers prevent cascade failures. When a dependency fails, continuing
+to call it wastes resources and delays timeout-based recovery. Circuit breakers
+detect failure patterns and temporarily block calls, allowing fast failure
+and giving the dependency time to recover. Circuits reset after cool-down
+periods.
+
+Retry strategies must be carefully designed. Naive retries can create retry
+storms that overwhelm recovering services. Exponential backoff with jitter
+spreads retry load. Retry budgets limit total retry attempts. Idempotency
+ensures retries don't create duplicate effects. Thoughtful retry design aids
+recovery rather than hindering it.
+
+Timeouts prevent unbounded waiting. Every external call needs a timeout. But
+what timeout value? Too short causes false failures during normal latency
+variance. Too long delays failure detection and consumes resources. Timeout
+tuning requires understanding normal latency distribution and failure impact.
+
+Bulkheads isolate failure domains. Like ship compartments that prevent one
+breach from sinking the vessel, software bulkheads contain failures. Separate
+thread pools for different dependencies prevent one slow dependency from
+exhausting resources needed by others. Resource isolation maintains partial
+function during partial failure.
+
+Load shedding maintains quality under overload. When demand exceeds capacity,
+serving all requests poorly helps no one. Load shedding rejects excess requests
+quickly, maintaining service quality for accepted requests. Admission control
+prioritizes important requests when shedding becomes necessary.
+
+Redundancy eliminates single points of failure. Multiple instances, multiple
+data centers, multiple network paths ensure that individual component failure
+doesn't cause service failure. But redundancy without proper failover testing
+provides false confidence. Regularly exercising failover validates that
+redundancy actually works.
+
+Observability enables rapid diagnosis. When failures occur, engineers need
+visibility into system state. Distributed tracing follows requests across
+services. Structured logging enables query and correlation. Metrics dashboards
+reveal trends and anomalies. Observability investment pays dividends during
+incidents.
+
+Postmortems learn from failures. After incidents, blameless postmortems
+identify contributing factors and preventive measures. Written postmortems
+document learnings for future reference. Action items from postmortems drive
+reliability improvements. Organizations that learn from failures become more
+reliable over time.
+
+Capacity planning prevents overload failures. Understanding growth trends
+and headroom requirements enables proactive scaling. Load testing validates
+capacity estimates. Capacity reviews ensure resources match demand before
+demand exceeds supply. Planned capacity beats reactive scrambling.
+
+On-call practices maintain human reliability. Sustainable on-call rotations
+prevent burnout. Runbooks guide common incident response. Escalation paths
+connect responders with experts. Well-designed on-call enables rapid response
+without sacrificing engineer wellbeing.
+
+Game days practice incident response. Like fire drills, game days simulate
+incidents to practice response procedures. Teams discover gaps in runbooks,
+monitoring, and coordination before real incidents expose them. Regular
+practice builds muscle memory for crisis response.
+

@@ -20,6 +20,7 @@ from cortical.got.query_builder import Query
 from cortical.got.graph_walker import GraphWalker
 from cortical.got.path_finder import PathFinder
 from cortical.got.pattern_matcher import Pattern, PatternMatcher
+from tests.conftest import _create_tx_manager, _create_got_manager
 
 
 class TestQueryToWalkerIntegration:
@@ -30,7 +31,7 @@ class TestQueryToWalkerIntegration:
         """Create a project with task dependencies."""
         temp_dir = tempfile.mkdtemp()
         got_dir = Path(temp_dir) / ".got"
-        manager = GoTManager(got_dir)
+        manager = _create_got_manager(got_dir)
 
         # Create a realistic project structure
         # Sprint 1 tasks
@@ -107,7 +108,7 @@ class TestPatternToPathIntegration:
         """Create a connected graph of tasks."""
         temp_dir = tempfile.mkdtemp()
         got_dir = Path(temp_dir) / ".got"
-        manager = GoTManager(got_dir)
+        manager = _create_got_manager(got_dir)
 
         # Create tasks in a grid pattern
         # A -> B -> C
@@ -183,7 +184,7 @@ class TestMultiToolPipeline:
         """Create a complex project for pipeline testing."""
         temp_dir = tempfile.mkdtemp()
         got_dir = Path(temp_dir) / ".got"
-        manager = GoTManager(got_dir)
+        manager = _create_got_manager(got_dir)
 
         # Create hierarchical structure
         epic = manager.create_task("Epic: User Management", priority="critical")
@@ -272,7 +273,7 @@ class TestSharedManagerConsistency:
         """Create a manager that all tools will share."""
         temp_dir = tempfile.mkdtemp()
         got_dir = Path(temp_dir) / ".got"
-        manager = GoTManager(got_dir)
+        manager = _create_got_manager(got_dir)
 
         task = manager.create_task("Initial task", priority="high")
 
@@ -340,7 +341,7 @@ class TestExplainConsistency:
         """Create manager with test data."""
         temp_dir = tempfile.mkdtemp()
         got_dir = Path(temp_dir) / ".got"
-        manager = GoTManager(got_dir)
+        manager = _create_got_manager(got_dir)
 
         for i in range(10):
             manager.create_task(f"Task {i}", priority="high" if i < 5 else "low")

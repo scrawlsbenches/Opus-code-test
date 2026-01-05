@@ -38,6 +38,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from cortical.utils.id_generation import generate_session_id
 from cortical.got.api import GoTManager
 from cortical.got.types import Task
+from cortical.core.bootstrap import create_container
 
 # Default directories
 MEMORIES_DIR = Path("samples/memories")
@@ -138,7 +139,8 @@ def gather_completed_tasks(got_dir: Path = GOT_DIR) -> List[Task]:
         List of Task objects completed today, sorted by completion time
     """
     try:
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+        manager = container.resolve(GoTManager)
         all_tasks = manager.list_tasks(status="completed")
     except Exception as e:
         print(f"Warning: Could not load GoT tasks: {e}", file=sys.stderr)
@@ -279,7 +281,8 @@ def generate_handoff_document(
 
     # Check for pending tasks from GoT
     try:
-        manager = GoTManager(GOT_DIR)
+        container = create_container(got_dir=GOT_DIR)
+        manager = container.resolve(GoTManager)
         pending = manager.list_tasks(status="pending")
         in_progress = manager.list_tasks(status="in_progress")
 

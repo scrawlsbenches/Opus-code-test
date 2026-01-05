@@ -14,6 +14,7 @@ import shutil
 from pathlib import Path
 
 from cortical.got import GoTManager
+from cortical.core.bootstrap import create_container
 from cortical.got.query_builder import Query, QueryMetrics, enable_query_metrics, disable_query_metrics, get_query_metrics
 
 
@@ -25,7 +26,9 @@ class TestQueryMetrics:
         """Create a manager with some tasks."""
         temp_dir = tempfile.mkdtemp()
         got_dir = Path(temp_dir) / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         # Create tasks
         for i in range(10):
@@ -145,7 +148,9 @@ class TestQueryMetricsWithFilters:
         """Create a manager with tasks of different priorities."""
         temp_dir = tempfile.mkdtemp()
         got_dir = Path(temp_dir) / ".got"
-        manager = GoTManager(got_dir)
+        container = create_container(got_dir=got_dir)
+
+        manager = container.resolve(GoTManager)
 
         for i in range(20):
             priority = ["high", "medium", "low"][i % 3]

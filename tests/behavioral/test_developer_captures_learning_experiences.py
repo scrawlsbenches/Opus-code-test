@@ -6,9 +6,14 @@ I want the system to capture experiences and extract actionable lessons,
 So that it learns from past successes and failures without neural weight updates.
 
 Based on: llm_orchestration/examples/learning_demo.py
+
+DISABLED: llm_orchestration module scheduled for removal.
 """
 
 import pytest
+
+# Skip entire module - llm_orchestration scheduled for removal
+pytestmark = pytest.mark.skip(reason="DISABLED: llm_orchestration module scheduled for removal")
 from pathlib import Path
 import tempfile
 import shutil

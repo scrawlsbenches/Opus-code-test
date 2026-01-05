@@ -1,0 +1,113 @@
+Refactoring Toward Patterns: Evolving Design Through Disciplined Change
+
+Patterns emerge from refactoring more reliably than from upfront design. Code
+written to solve immediate problems develops shape through use. Refactoring
+reveals where patterns would help by making pain points visible. This organic
+approach produces designs that fit actual needs rather than anticipated ones.
+
+The refactoring cycle follows a rhythm: change structure, verify behavior,
+improve clarity. Each small step preserves functionality while improving design.
+Tests provide the safety net that enables confident restructuring. Without tests,
+refactoring risks introducing bugs. With tests, refactoring becomes routine
+maintenance.
+
+Code smells signal refactoring opportunities. Duplicated code suggests extraction.
+Long methods suggest decomposition. Large classes suggest splitting. Feature envy
+suggests moving methods. These smells do not directly indicate patterns, but
+removing smells often reveals where patterns apply.
+
+Switch statements on type codes often precede Strategy or State patterns. When
+the same switch appears in multiple places, the conditional logic begs for
+polymorphism. Extract each case into its own class implementing a common
+interface. Let the type system dispatch instead of switch statements.
+
+The journey from switch to Strategy follows steps. First, recognize the smell:
+similar switches appearing repeatedly. Second, define an interface capturing
+the varying behavior. Third, extract each case into a class implementing that
+interface. Fourth, inject the appropriate implementation rather than switching.
+
+Constructor complexity suggests Factory patterns. When object creation requires
+significant logic, decisions, or multiple steps, extract that logic into factory
+methods or classes. The constructor becomes simple; the factory encapsulates
+creation complexity. Tests can mock factories to control object creation.
+
+Growing parameter lists suggest Parameter Object or Builder patterns. When
+methods accumulate parameters, group related parameters into objects. When
+construction requires many optional parameters, introduce builders that
+accumulate configuration before building. These patterns improve readability
+and enable future extension.
+
+Conditional logic distributing across methods suggests Template Method. When
+subclasses share an algorithm but differ in specific steps, pull the algorithm
+into a base class with abstract methods for varying steps. Subclasses implement
+only their specific variations rather than duplicating the algorithm.
+
+Recursive structures suggest Composite patterns. When code treats individual
+items and collections differently but should treat them uniformly, introduce
+a common interface. Both leaves and composites implement the interface.
+Client code operates uniformly regardless of structure depth.
+
+Notification cascades suggest Observer patterns. When one change triggers
+multiple updates across different objects, the coupling indicates a need for
+decoupling. Introduce a subject that notifies registered observers. Objects
+register interest rather than being hardcoded into notification chains.
+
+Object creation scattered throughout code suggests moving toward dependency
+injection. Each direct instantiation represents a coupling point. Extract
+creation to a composition root. Pass dependencies through constructors.
+The pattern emerges as you centralize creation and inject dependencies.
+
+Adding features through inheritance suggests Decorator as an alternative.
+When subclassing creates combinatorial explosions of feature combinations,
+decorators compose features at runtime. Wrap objects with decorators that
+add behavior. Stack decorators for combined features.
+
+State-dependent behavior scattered across methods suggests State pattern.
+When objects behave differently based on internal state and methods contain
+conditionals checking state, encapsulate each state as an object. Delegate
+state-dependent behavior to the current state object.
+
+Request processing pipelines suggest Chain of Responsibility. When multiple
+handlers might process a request, link handlers in a chain. Each handler
+decides whether to process or pass along. The chain decouples senders from
+receivers and enables dynamic handler configuration.
+
+Refactoring toward patterns differs from designing with patterns. Design
+anticipates needs. Refactoring responds to actual code. Anticipated needs
+may never materialize. Actual code reveals genuine requirements. Refactoring
+grounds pattern selection in evidence rather than speculation.
+
+Test coverage enables refactoring confidence. Each refactoring step should
+preserve all existing tests. When tests fail after refactoring, either the
+refactoring changed behavior incorrectly or tests were too coupled to
+implementation. Fix the problem before proceeding.
+
+Small steps reduce refactoring risk. Rather than transforming code in one
+large change, make many small changes, each preserving behavior. Commit
+frequently. If a step goes wrong, revert to the last good state. Small steps
+make refactoring reversible.
+
+IDE refactoring tools automate common transformations. Extract method, inline
+variable, rename symbol, and move class happen with keyboard shortcuts. These
+automated refactorings reduce error risk and increase speed. Learn your IDE's
+refactoring capabilities; they multiply your effectiveness.
+
+Refactoring time deserves allocation in project schedules. Code that never
+improves degrades through accumulated changes. Regular refactoring maintains
+code health. Schedule refactoring explicitly rather than hoping it happens
+opportunistically.
+
+Pattern catalogs serve as refactoring inspiration. When you recognize a code
+smell, consult pattern catalogs for applicable solutions. The connection between
+smells and patterns guides refactoring direction. Not every smell requires a
+pattern, but patterns often resolve persistent smells.
+
+Document pattern decisions in code. When refactoring toward a pattern, name
+classes and methods to reflect the pattern vocabulary. A class named
+"PricingStrategy" communicates more than "PriceHelper". Pattern names in code
+enable faster comprehension for developers who know the patterns.
+
+The goal remains working software, not pattern collection. Refactor toward
+patterns when patterns clarify and simplify. Stop refactoring when the code
+serves its purpose well enough. Perfect is the enemy of good, and patterns
+can become enemies of simplicity when overapplied.

@@ -13,6 +13,7 @@ import pytest
 from pathlib import Path
 from cortical.got.api import GoTManager
 from cortical.got.errors import TransactionError
+from tests.conftest import _create_tx_manager, _create_got_manager
 
 
 class TestDeveloperCreatesAndUpdatesTasksInGraph:
@@ -32,7 +33,7 @@ class TestDeveloperCreatesAndUpdatesTasksInGraph:
         And I can retrieve it by its generated ID
         """
         # Given a GoT manager instance
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
 
         # When I create a task with a title and priority
         task = manager.create_task(
@@ -64,7 +65,7 @@ class TestDeveloperCreatesAndUpdatesTasksInGraph:
         And the task version is incremented
         """
         # Given an existing task
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         task = manager.create_task(
             title="Build custom caching layer",
             priority="medium",
@@ -101,7 +102,7 @@ class TestDeveloperCreatesAndUpdatesTasksInGraph:
         And I can access them later
         """
         # Given a GoT manager
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
 
         # When I create a task with custom properties dictionary
         task = manager.create_task(
@@ -142,7 +143,7 @@ class TestDeveloperEstablishesTaskRelationships:
         And I can query the relationship
         """
         # Given two tasks A and B
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         task_a = manager.create_task(
             title="Implement custom parser",
             priority="high"
@@ -176,7 +177,7 @@ class TestDeveloperEstablishesTaskRelationships:
         And I can find blockers for the blocked task
         """
         # Given a blocker task and a blocked task
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         blocker = manager.create_task(
             title="Build custom auth system",
             priority="critical"
@@ -208,7 +209,7 @@ class TestDeveloperEstablishesTaskRelationships:
         Then I get all tasks that depend on it
         """
         # Given a foundational task with multiple dependents
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         foundation = manager.create_task(
             title="Build core data structures from scratch",
             priority="critical"
@@ -250,7 +251,7 @@ class TestDeveloperDeletesTasksWithSafetyChecks:
         Because we protect our graph integrity
         """
         # Given a task with dependents
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         foundation = manager.create_task(title="Core module we built")
         dependent = manager.create_task(title="Feature using core module")
         manager.add_dependency(dependent.id, foundation.id)
@@ -274,7 +275,7 @@ class TestDeveloperDeletesTasksWithSafetyChecks:
         Because force deletion cleans up the entire subgraph
         """
         # Given a task with incoming and outgoing edges
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         task_a = manager.create_task(title="Task A")
         task_b = manager.create_task(title="Task B")
         task_c = manager.create_task(title="Task C")
@@ -313,7 +314,7 @@ class TestDeveloperCapturesRelationshipContext:
         And I can retrieve it later
         """
         # Given two tasks
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         task_api = manager.create_task(
             title="Implement custom REST API",
             priority="high"
@@ -349,7 +350,7 @@ class TestDeveloperCapturesRelationshipContext:
         """
         # Given an edge with a detailed reason
         got_path = tmp_path / ".got"
-        manager = GoTManager(got_path)
+        manager = _create_got_manager(got_path)
         task1 = manager.create_task(title="Task 1")
         task2 = manager.create_task(title="Task 2")
         edge = manager.add_edge(
@@ -362,7 +363,7 @@ class TestDeveloperCapturesRelationshipContext:
 
         # When I reload the manager from the same path
         # (transaction commits are auto-persisted)
-        manager2 = GoTManager(got_path)
+        manager2 = _create_got_manager(got_path)
 
         # Then the reason is preserved
         outgoing, _ = manager2.get_edges_for_task(task1_id)
@@ -378,7 +379,7 @@ class TestDeveloperCapturesRelationshipContext:
         Then the reason field is an empty string (not None)
         """
         # Given two tasks
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         task1 = manager.create_task(title="Task 1")
         task2 = manager.create_task(title="Task 2")
 
@@ -399,7 +400,7 @@ class TestDeveloperCapturesRelationshipContext:
         Then each edge preserves its own reason
         """
         # Given multiple tasks with various relationships
-        manager = GoTManager(tmp_path / ".got")
+        manager = _create_got_manager(tmp_path / ".got")
         core = manager.create_task(title="Core module")
         feature_a = manager.create_task(title="Feature A")
         feature_b = manager.create_task(title="Feature B")

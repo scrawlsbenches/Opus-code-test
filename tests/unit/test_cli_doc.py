@@ -808,7 +808,7 @@ class TestShowDocument(unittest.TestCase):
         )
         mock_manager.get_document.return_value = mock_doc
 
-        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+        with patch('cortical.got.cli.doc._get_manager', return_value=mock_manager):
             result = show_document(Path("/fake/.got"), "DOC-001")
 
         self.assertEqual(result, mock_doc)
@@ -830,7 +830,7 @@ class TestShowDocument(unittest.TestCase):
         mock_manager.get_document.return_value = None
         mock_manager.get_document_by_path.return_value = mock_doc
 
-        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+        with patch('cortical.got.cli.doc._get_manager', return_value=mock_manager):
             result = show_document(Path("/fake/.got"), "docs/test.md")
 
         self.assertEqual(result, mock_doc)
@@ -846,7 +846,7 @@ class TestShowDocument(unittest.TestCase):
         mock_manager.get_document.return_value = None
         mock_manager.get_document_by_path.return_value = None
 
-        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+        with patch('cortical.got.cli.doc._get_manager', return_value=mock_manager):
             result = show_document(Path("/fake/.got"), "nonexistent")
 
         self.assertIsNone(result)
@@ -867,7 +867,7 @@ class TestLinkDocumentToTask(unittest.TestCase):
         mock_manager.get_document.return_value = mock_doc
         mock_manager.get_task.return_value = mock_task
 
-        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+        with patch('cortical.got.cli.doc._get_manager', return_value=mock_manager):
             with patch('builtins.print'):
                 result = link_document_to_task(
                     Path("/fake/.got"),
@@ -890,7 +890,7 @@ class TestLinkDocumentToTask(unittest.TestCase):
         mock_manager.get_document.return_value = None
         mock_manager.get_document_by_path.return_value = None
 
-        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+        with patch('cortical.got.cli.doc._get_manager', return_value=mock_manager):
             with patch('builtins.print') as mock_print:
                 result = link_document_to_task(
                     Path("/fake/.got"),
@@ -912,7 +912,7 @@ class TestLinkDocumentToTask(unittest.TestCase):
         mock_manager.get_document.return_value = mock_doc
         mock_manager.get_task.return_value = None
 
-        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+        with patch('cortical.got.cli.doc._get_manager', return_value=mock_manager):
             with patch('builtins.print') as mock_print:
                 result = link_document_to_task(
                     Path("/fake/.got"),
@@ -938,7 +938,7 @@ class TestLinkDocumentToTask(unittest.TestCase):
         mock_manager.get_document_by_path.return_value = mock_doc
         mock_manager.get_task.return_value = mock_task
 
-        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+        with patch('cortical.got.cli.doc._get_manager', return_value=mock_manager):
             with patch('builtins.print'):
                 result = link_document_to_task(
                     Path("/fake/.got"),
@@ -969,7 +969,7 @@ class TestGetTasksForDocument(unittest.TestCase):
         mock_manager.get_document.return_value = mock_doc
         mock_manager.get_tasks_for_document.return_value = mock_tasks
 
-        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+        with patch('cortical.got.cli.doc._get_manager', return_value=mock_manager):
             result = get_tasks_for_document(Path("/fake/.got"), "DOC-001")
 
         self.assertEqual(result, mock_tasks)
@@ -984,7 +984,7 @@ class TestGetTasksForDocument(unittest.TestCase):
         mock_manager.get_document.return_value = None
         mock_manager.get_document_by_path.return_value = None
 
-        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+        with patch('cortical.got.cli.doc._get_manager', return_value=mock_manager):
             result = get_tasks_for_document(Path("/fake/.got"), "DOC-999")
 
         self.assertEqual(result, [])
@@ -1002,7 +1002,7 @@ class TestGetTasksForDocument(unittest.TestCase):
         mock_manager.get_document_by_path.return_value = mock_doc
         mock_manager.get_tasks_for_document.return_value = mock_tasks
 
-        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+        with patch('cortical.got.cli.doc._get_manager', return_value=mock_manager):
             result = get_tasks_for_document(Path("/fake/.got"), "docs/test.md")
 
         self.assertEqual(result, mock_tasks)
@@ -1024,7 +1024,7 @@ class TestGetDocumentsForTask(unittest.TestCase):
 
         mock_manager.get_documents_for_task.return_value = mock_docs
 
-        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+        with patch('cortical.got.cli.doc._get_manager', return_value=mock_manager):
             result = get_documents_for_task(Path("/fake/.got"), "T-001")
 
         self.assertEqual(result, mock_docs)
@@ -1047,7 +1047,7 @@ class TestListDocuments(unittest.TestCase):
 
         mock_manager.list_documents.return_value = mock_docs
 
-        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+        with patch('cortical.got.cli.doc._get_manager', return_value=mock_manager):
             result = list_documents(Path("/fake/.got"))
 
         self.assertEqual(result, mock_docs)
@@ -1065,7 +1065,7 @@ class TestListDocuments(unittest.TestCase):
         mock_manager = MagicMock()
         mock_manager.list_documents.return_value = []
 
-        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+        with patch('cortical.got.cli.doc._get_manager', return_value=mock_manager):
             result = list_documents(
                 Path("/fake/.got"),
                 doc_type="architecture",
@@ -1087,7 +1087,7 @@ class TestListDocuments(unittest.TestCase):
         mock_manager = MagicMock()
         mock_manager.list_documents.return_value = []
 
-        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+        with patch('cortical.got.cli.doc._get_manager', return_value=mock_manager):
             result = list_documents(
                 Path("/fake/.got"),
                 stale_only=True
