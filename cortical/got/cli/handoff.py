@@ -195,13 +195,8 @@ def cmd_handoff_show(args, manager: "TransactionalGoTAdapter") -> int:
 
 def cmd_handoff_list(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got handoff list' command."""
-    # Normalize status alias: in_progress -> accepted (matches task terminology)
-    status = args.status
-    if status == "in_progress":
-        status = "accepted"
-
     # Use manager's handoff method (works with TX backend)
-    handoffs = manager.list_handoffs(status=status)
+    handoffs = manager.list_handoffs(status=args.status)
 
     if not handoffs:
         print("No handoffs found.")
@@ -308,8 +303,7 @@ def setup_handoff_parser(subparsers) -> None:
     handoff_list = handoff_subparsers.add_parser("list", help="List handoffs")
     handoff_list.add_argument(
         "--status",
-        # Note: in_progress is an alias for accepted (matches task terminology)
-        choices=["initiated", "accepted", "in_progress", "completed", "rejected"]
+        choices=["initiated", "accepted", "completed", "rejected"]
     )
     handoff_list.add_argument(
         "--limit", "-n",

@@ -681,5 +681,30 @@ def list_entity_types() -> list:
     return list(ALL_SCHEMAS.keys())
 
 
+def get_valid_statuses(entity_type: str) -> set:
+    """Get valid status values for an entity type from schema.
+
+    Args:
+        entity_type: One of 'task', 'sprint', 'epic', 'handoff', 'knowledge_transfer'
+
+    Returns:
+        Set of valid status strings for this entity type
+
+    Raises:
+        KeyError: If entity type doesn't exist or doesn't have status field
+
+    Example:
+        >>> get_valid_statuses('task')
+        {'pending', 'in_progress', 'completed', 'blocked'}
+    """
+    ensure_schemas_registered()
+    schema = get_schema_for_entity_type(entity_type)
+    if schema is None:
+        raise KeyError(f"Entity type '{entity_type}' does not exist")
+    if 'status' not in schema.fields:
+        raise KeyError(f"Entity type '{entity_type}' does not have a 'status' field")
+    return set(schema.fields['status'].choices)
+
+
 # Auto-register schemas on module import
 ensure_schemas_registered()

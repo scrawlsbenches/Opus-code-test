@@ -12,28 +12,10 @@ This module addresses the CLI gap where users couldn't directly manage edges.
 
 from typing import TYPE_CHECKING, List
 
+from cortical.got.types import VALID_EDGE_TYPES
+
 if TYPE_CHECKING:
     from scripts.got_utils import TransactionalGoTAdapter
-
-
-# All valid edge types from EdgeType enum
-VALID_EDGE_TYPES = [
-    # Semantic edges
-    "REQUIRES", "ENABLES", "CONFLICTS", "SUPPORTS", "REFUTES",
-    "SIMILAR", "CONTAINS", "CONTRADICTS",
-    # Temporal edges
-    "PRECEDES", "TRIGGERS", "BLOCKS",
-    # Epistemic edges
-    "ANSWERS", "RAISES", "EXPLORES", "OBSERVES", "SUGGESTS",
-    # Practical edges
-    "IMPLEMENTS", "TESTS", "DEPENDS_ON", "REFINES", "MOTIVATES", "JUSTIFIES",
-    # Structural edges
-    "HAS_OPTION", "HAS_ASPECT", "PART_OF",
-    # Other
-    "LOCATED_IN", "CAUSED_BY",
-    # Failure tracking
-    "FAILED_ATTEMPT",
-]
 
 
 # =============================================================================

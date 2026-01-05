@@ -50,6 +50,9 @@ from .types import (
     # Type aliases
     SprintGoals,
     EpicPhases,
+    # Edge type constants
+    EdgeTypes,
+    VALID_EDGE_TYPES,
 )
 
 from .transaction import (
@@ -216,6 +219,9 @@ __all__ = [
     'DocumentMetadata',
     'SprintGoals',
     'EpicPhases',
+    # Edge type constants
+    'EdgeTypes',
+    'VALID_EDGE_TYPES',
     # Transaction
     'Transaction',
     'TransactionState',
