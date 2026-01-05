@@ -1,15 +1,17 @@
 {
-  "_checksum": "fbecbdb301228345",
-  "_written_at": "2026-01-05T18:57:58.726283+00:00",
+  "_checksum": "a887bbdff1577a91",
+  "_written_at": "2026-01-05T18:58:10.765868+00:00",
   "data": {
     "code_refs": [],
     "created_at": "2026-01-05T18:56:30.754063+00:00",
     "entity_type": "knowledge_transfer",
     "id": "KT-20260105-185630-4cb99e42",
-    "modified_at": "2026-01-05T18:57:58.726212+00:00",
+    "modified_at": "2026-01-05T18:58:10.765806+00:00",
     "properties": {},
     "related_decisions": [],
-    "related_handoffs": [],
+    "related_handoffs": [
+      "H-20260105-185700-c1619b43"
+    ],
     "related_tasks": [
       "T-20260105-185644-092e3187"
     ],
@@ -21,6 +23,6 @@
     "summary": "Testing the bidirectional CONTINUES edge chain between KT and Handoff entities",
     "tags": [],
     "title": "Test Session: Edge Relationship Validation",
-    "version": 5
+    "version": 7
   }
 }
