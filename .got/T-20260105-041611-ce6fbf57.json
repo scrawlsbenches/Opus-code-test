@@ -1,0 +1,20 @@
+{
+  "_checksum": "a3066f7345e197ff",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T04:16:13.933867+00:00",
+  "data": {
+    "created_at": "2026-01-05T04:16:11.391320+00:00",
+    "description": "Translate legacy query patterns to expr syntax for backwards compatibility.\n\nPattern mappings:\n- 'blocked tasks' \u2192 'status = blocked' OR blocked()\n- 'what blocks T-123' \u2192 parents('T-123')\n- 'tasks in sprint S-001' \u2192 in_sprint('S-001')\n- 'orphan tasks' \u2192 orphan_nodes()\n- etc. (21 patterns total)\n\nImplementation options:\nA. Simple regex-based translator\nB. Small grammar/parser for natural language\nC. Dict-based pattern \u2192 expr mapping\n\nFiles to create:\n- cortical/got/expression/natural_language.py\n\nDepends on: Function calls work in expr\n",
+    "entity_type": "task",
+    "id": "T-20260105-041611-ce6fbf57",
+    "metadata": {},
+    "modified_at": "2026-01-05T04:16:11.391328+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Create natural language to expr translator",
+    "version": 1
+  }
+}
