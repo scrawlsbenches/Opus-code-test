@@ -2444,6 +2444,9 @@ class TransactionalGoTAdapter:
                 result["priority"] = entity.properties["priority"]
             if "status" in entity.properties:
                 result["status"] = entity.properties["status"]
+            # Include blocked_reason as "reason" for blocked task queries
+            if "blocked_reason" in entity.properties:
+                result["reason"] = entity.properties["blocked_reason"]
 
         # Add relation field for relationship queries
         if "blocks" in query_lower or "depends" in query_lower:

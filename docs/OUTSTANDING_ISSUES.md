@@ -73,6 +73,11 @@ Edge type strings (`"DEPENDS_ON"`, `"BLOCKS"`, `"CONTAINS"`) are hardcoded in mu
 - ✅ Updated `cortical/got/expression/functions/filters.py` (1 occurrence)
 - ✅ Updated `cortical/got/orphan.py` (1 occurrence)
 
+**CONTINUATION SESSION (2026-01-05):**
+Validation discovered additional occurrences missed in initial resolution:
+- ✅ Updated `cortical/got/orphan.py` (3 additional occurrences - lines 451, 456, 459)
+- ✅ Updated `cortical/got/cli/analyze.py` (8 occurrences - lines 130, 187, 222, 255, 292, 294, 317, 319)
+
 **All files now use `EdgeTypes` constants instead of string literals.**
 
 **Usage Example:**

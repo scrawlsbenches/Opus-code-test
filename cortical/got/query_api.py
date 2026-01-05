@@ -545,10 +545,11 @@ class QueryAPI:
 
     def get_blocked_tasks(self) -> List[Task]:
         """
-        Get all tasks that are blocked by other tasks.
+        Get all tasks that are blocked.
 
-        A task is blocked if there's a BLOCKS edge pointing to it from
-        an incomplete task.
+        A task is considered blocked if:
+        1. It has status='blocked' (set via block_task()), OR
+        2. There's a BLOCKS edge pointing to it from an incomplete task
 
         Returns:
             List of blocked Task objects
@@ -557,8 +558,16 @@ class QueryAPI:
         if not entities_dir.exists():
             return []
 
-        # Find all tasks that have incoming BLOCKS edges from non-completed tasks
         blocked_tasks = []
+        blocked_ids = set()
+
+        # First: Find tasks with status='blocked'
+        for task in self.find_tasks(status="blocked"):
+            if task.id not in blocked_ids:
+                blocked_tasks.append(task)
+                blocked_ids.add(task.id)
+
+        # Second: Find tasks with incoming BLOCKS edges from non-completed tasks
         for edge_file in entities_dir.glob("E-*.json"):
             try:
                 edge = self._manager._read_edge_file(edge_file)
@@ -570,8 +579,9 @@ class QueryAPI:
                     blocker = self._manager.get_task(edge.source_id)
                     if blocker is not None and blocker.status != "completed":
                         blocked = self._manager.get_task(edge.target_id)
-                        if blocked is not None and blocked not in blocked_tasks:
+                        if blocked is not None and blocked.id not in blocked_ids:
                             blocked_tasks.append(blocked)
+                            blocked_ids.add(blocked.id)
             except (CorruptionError, json.JSONDecodeError, KeyError) as e:
                 logger.warning(f"Skipping corrupted edge file {edge_file}: {e}")
                 continue

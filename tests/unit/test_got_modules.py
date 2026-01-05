@@ -780,9 +780,12 @@ class TestTransactionContext:
     @pytest.fixture
     def mock_tx_manager(self):
         """Create a mock transaction manager."""
+        import threading
         manager = Mock()
         manager.begin.return_value = Mock()
         manager.commit.return_value = Mock(success=True)
+        # Provide a real lock for context manager protocol support
+        manager.lock = threading.Lock()
         return manager
 
     def test_transaction_context_enter(self, mock_tx_manager):
