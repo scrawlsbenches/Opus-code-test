@@ -28,7 +28,7 @@ import threading
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, Set
 
 from .types import EdgeTypes
 
@@ -118,6 +118,15 @@ class QueryIndexManager:
 
         # Rebuild all indexes
         manager.rebuild_all(all_tasks)
+
+    FUTURE ARCHITECTURE NOTE:
+        This GoT-layer index is a transitional solution. Per the CDG distributed
+        graph specification (docs/architecture/DISTRIBUTED_GRAPH_SPECIFICATION.md),
+        indexing should eventually be managed by CDG's IndexManager at the storage
+        layer (cortical/cdg/index.py) with per-partition local indexes that update
+        atomically within transaction commits.
+
+        Design document: docs/design/cdg-transactional-indexing-design.md
     """
 
     # Standard indexes to maintain
@@ -457,3 +466,65 @@ class QueryIndexManager:
         if field_name in self._indexes:
             return list(self._indexes[field_name].values.keys())
         return []
+
+    def mark_needs_rebuild(self) -> None:
+        """
+        Mark index as needing rebuild due to consistency failure.
+
+        Creates a flag file that persists across restarts to ensure
+        rebuild happens even after crash. Call check_and_rebuild_if_needed()
+        on startup with a task loader to perform the actual rebuild.
+
+        FUTURE: When CDG index is implemented, this will be handled at the
+        storage layer with WAL-based recovery. See:
+        docs/design/cdg-transactional-indexing-design.md
+        """
+        with self._write_lock:
+            flag_file = self._index_dir / ".needs_rebuild"
+            try:
+                flag_file.touch()
+                logger.warning("Index marked for rebuild - .needs_rebuild flag created")
+            except OSError as e:
+                logger.error(f"Failed to create rebuild flag: {e}")
+
+    def check_and_rebuild_if_needed(
+        self,
+        task_loader: "Callable[[], List[Any]]",
+        edge_loader: "Optional[Callable[[], List[Any]]]" = None
+    ) -> bool:
+        """
+        Check if rebuild is needed and perform it if so.
+
+        Should be called on startup to ensure index consistency after
+        crashes or failed index updates.
+
+        Args:
+            task_loader: Callable that returns list of all tasks
+            edge_loader: Optional callable that returns list of all edges
+
+        Returns:
+            True if rebuild was performed, False if not needed
+
+        FUTURE: When CDG index is implemented, this will be replaced by
+        CDG's recovery manager which rebuilds indexes as part of WAL replay.
+        See: docs/design/cdg-transactional-indexing-design.md
+        """
+        flag_file = self._index_dir / ".needs_rebuild"
+
+        with self._write_lock:
+            if not flag_file.exists():
+                return False
+
+            logger.info("Index rebuild flag detected - rebuilding from entities...")
+            try:
+                tasks = task_loader()
+                edges = edge_loader() if edge_loader else None
+                self.rebuild_all(tasks, edges)
+
+                # Remove flag after successful rebuild
+                flag_file.unlink(missing_ok=True)
+                logger.info(f"Index rebuild complete - {len(tasks)} tasks indexed")
+                return True
+            except Exception as e:
+                logger.error(f"Index rebuild failed: {e} - flag retained for retry")
+                return False

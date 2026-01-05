@@ -845,16 +845,16 @@ class GoTManager:
         ids_to_invalidate = [task_id] + [edge.id for edge in all_edges]
 
         # Delete atomically within a transaction
+        # NOTE: Index updates now happen inside TransactionContext.__exit__
+        # within the lock scope, ensuring atomicity with the delete.
         with self.transaction() as tx:
             tx.delete_task(task_id, force=force)
 
         # Invalidate cache for deleted entities (after successful commit)
         self._cache_invalidate_many(ids_to_invalidate)
 
-        # Remove task from index
-        if self._index_manager is not None:
-            self._index_manager.remove_task(task_id)
-            self._index_manager.save()
+        # Index update removed - now handled atomically in TransactionContext.__exit__
+        # See: docs/design/cdg-transactional-indexing-design.md
 
     # Sprint management methods
     def create_sprint(
@@ -1497,9 +1497,14 @@ class GoTManager:
         if cached is not None and isinstance(cached, Task):
             return cached
 
-        # Read from disk
-        with open(path, 'r', encoding='utf-8') as f:
-            wrapper = json.load(f)
+        # Read from disk - handle TOCTOU race where file may be deleted
+        # between glob listing and actual read during concurrent operations
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                wrapper = json.load(f)
+        except FileNotFoundError:
+            # File was deleted between listing and read - expected during concurrency
+            return None
 
         # Validate entity file structure
         is_valid, error = validate_entity_file(wrapper)
@@ -1539,9 +1544,14 @@ class GoTManager:
         if cached is not None and isinstance(cached, Edge):
             return cached
 
-        # Read from disk
-        with open(path, 'r', encoding='utf-8') as f:
-            wrapper = json.load(f)
+        # Read from disk - handle TOCTOU race where file may be deleted
+        # between glob listing and actual read during concurrent operations
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                wrapper = json.load(f)
+        except FileNotFoundError:
+            # File was deleted between listing and read - expected during concurrency
+            return None
 
         # Validate entity file structure
         is_valid, error = validate_entity_file(wrapper)
@@ -1581,9 +1591,13 @@ class GoTManager:
         if cached is not None and isinstance(cached, Decision):
             return cached
 
-        # Read from disk
-        with open(path, 'r', encoding='utf-8') as f:
-            wrapper = json.load(f)
+        # Read from disk with TOCTOU protection
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                wrapper = json.load(f)
+        except FileNotFoundError:
+            # File was deleted between listing and read - expected during concurrency
+            return None
 
         # Validate entity file structure
         is_valid, error = validate_entity_file(wrapper)
@@ -1623,9 +1637,13 @@ class GoTManager:
         if cached is not None and isinstance(cached, Sprint):
             return cached
 
-        # Read from disk
-        with open(path, 'r', encoding='utf-8') as f:
-            wrapper = json.load(f)
+        # Read from disk with TOCTOU protection
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                wrapper = json.load(f)
+        except FileNotFoundError:
+            # File was deleted between listing and read - expected during concurrency
+            return None
 
         # Validate entity file structure
         is_valid, error = validate_entity_file(wrapper)
@@ -2109,6 +2127,17 @@ class TransactionContext:
 
         Returns:
             False to propagate exceptions (never swallow them)
+
+        IMPLEMENTATION NOTE:
+            Index updates are performed WITHIN the transaction lock to ensure
+            atomicity of entity changes + index updates. This prevents the race
+            condition where concurrent queries could see stale index entries
+            pointing to deleted entities.
+
+            FUTURE: When CDG index is implemented per the distributed graph
+            specification (docs/architecture/DISTRIBUTED_GRAPH_SPECIFICATION.md),
+            index updates will be handled at the storage layer inside CDG's
+            commit protocol. See: docs/design/cdg-transactional-indexing-design.md
         """
         if self.tx is None:
             return False
@@ -2122,22 +2151,27 @@ class TransactionContext:
             # Read-only mode - rollback
             self.tx_manager.rollback(self.tx, reason="read_only")
         else:
-            # Normal exit - commit
-            result = self.tx_manager.commit(self.tx)
-            if not result.success:
-                raise TransactionError(
-                    f"Transaction commit failed: {result.reason}",
-                    conflicts=result.conflicts
-                )
+            # CRITICAL: Wrap commit + index updates in explicit lock scope
+            # This ensures index is consistent with entity state at all times
+            # The lock is reentrant, so commit() can re-acquire it safely
+            with self.tx_manager.lock:
+                # Normal exit - commit
+                result = self.tx_manager.commit(self.tx)
+                if not result.success:
+                    raise TransactionError(
+                        f"Transaction commit failed: {result.reason}",
+                        conflicts=result.conflicts
+                    )
 
-            # Invalidate cache for all written entities
-            if self._got_manager is not None and self.tx.write_set:
-                written_ids = list(self.tx.write_set.keys())
-                self._got_manager._cache_invalidate_many(written_ids)
+                # Invalidate cache for all written entities
+                if self._got_manager is not None and self.tx.write_set:
+                    written_ids = list(self.tx.write_set.keys())
+                    self._got_manager._cache_invalidate_many(written_ids)
 
-            # Update indexes for task changes after successful commit
-            if self._got_manager is not None and self._task_changes:
-                self._apply_index_updates()
+                # Update indexes WITHIN the lock - atomic with commit
+                if self._got_manager is not None and self._task_changes:
+                    self._apply_index_updates_atomic()
+            # Lock released here - index is guaranteed consistent
 
         return False  # Propagate exceptions
 
@@ -2175,6 +2209,72 @@ class TransactionContext:
 
         # Save indexes after all updates
         self._got_manager._index_manager.save()
+
+    def _apply_index_updates_atomic(self) -> None:
+        """
+        Apply index updates with retry logic.
+
+        MUST be called within transaction lock to ensure atomicity.
+        On persistent failure, marks index for rebuild rather than
+        leaving in inconsistent state.
+
+        FUTURE: When CDG index is implemented, this logic will move to
+        CDG's commit protocol. See: docs/design/cdg-transactional-indexing-design.md
+        """
+        if self._got_manager is None or self._got_manager._index_manager is None:
+            return
+
+        import time
+        max_retries = 3
+        last_error = None
+
+        for attempt in range(max_retries):
+            try:
+                # Apply in-memory index updates
+                for task_id, changes in self._task_changes.items():
+                    if changes.get('is_delete'):
+                        self._got_manager._index_manager.remove_task(task_id)
+                        continue
+
+                    task = self.tx.write_set.get(task_id)
+                    if task is None or not isinstance(task, Task):
+                        continue
+
+                    if changes.get('is_create'):
+                        self._got_manager._index_manager.index_task(
+                            task.id,
+                            status=task.status,
+                            priority=task.priority
+                        )
+                    else:
+                        self._got_manager._index_manager.update_task(
+                            task.id,
+                            old_status=changes.get('old_status'),
+                            new_status=task.status,
+                            old_priority=changes.get('old_priority'),
+                            new_priority=task.priority
+                        )
+
+                # Persist to disk
+                if not self._got_manager._index_manager.save():
+                    raise IOError("Index save returned False")
+
+                return  # Success
+
+            except Exception as e:
+                last_error = e
+                logger.warning(
+                    f"Index update failed (attempt {attempt + 1}/{max_retries}): {e}"
+                )
+                if attempt < max_retries - 1:
+                    time.sleep(0.01 * (2 ** attempt))  # Exponential backoff
+
+        # All retries exhausted - mark for rebuild rather than leaving inconsistent
+        logger.error(
+            f"Index update failed after {max_retries} retries: {last_error}. "
+            "Marking index for rebuild on next startup."
+        )
+        self._got_manager._index_manager.mark_needs_rebuild()
 
     def create_task(self, title: str, **kwargs) -> Task:
         """

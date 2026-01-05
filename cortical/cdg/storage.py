@@ -190,13 +190,28 @@ class CDGStore:
 
         Raises:
             CorruptionError: If checksum verification fails
+
+        Note:
+            Handles TOCTOU race gracefully: if file is deleted between
+            exists() check and read, returns None instead of raising.
+            This is expected during concurrent delete + read operations.
+
+            FUTURE: When CDG index is implemented per the distributed graph
+            specification (docs/architecture/DISTRIBUTED_GRAPH_SPECIFICATION.md),
+            this race condition will be eliminated at the storage layer since
+            index lookups won't return IDs for deleted entities.
         """
         path = self._entity_path(entity_id)
         if not path.exists():
             return None
 
-        wrapper = self._read_and_verify(path)
-        return self.entity_factory(wrapper["data"])
+        try:
+            wrapper = self._read_and_verify(path)
+            return self.entity_factory(wrapper["data"])
+        except FileNotFoundError:
+            # File was deleted between exists() check and read - treat as not found.
+            # This is expected during concurrent delete + read operations.
+            return None
 
     def read_at_version(self, entity_id: str, version: int) -> Optional[Entity]:
         """
