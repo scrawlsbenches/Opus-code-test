@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from cortical.common import Container, ContainerModule, Lifecycle, RealFileSystem, InMemoryFileSystem
+from cortical.common import Container, ContainerModule, Lifecycle, FileSystem
 
 
 @dataclass
@@ -92,8 +92,8 @@ class GoTModule(ContainerModule):
             # Create GoT-specific CDG config
             cdg_config = CDGConfig.for_got()
 
-            # Select filesystem based on use_memory flag
-            filesystem = InMemoryFileSystem() if self.config.use_memory else RealFileSystem()
+            # Resolve FileSystem from container (registered by bootstrap)
+            filesystem = container.resolve(FileSystem)
 
             if self.config.use_memory:
                 # In-memory storage for fast testing

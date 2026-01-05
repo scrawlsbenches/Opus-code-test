@@ -50,7 +50,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from cortical.common import Container
+from cortical.common import Container, FileSystem, RealFileSystem, InMemoryFileSystem
 from cortical.core.modules import CDGModule, GoTModule
 
 
@@ -105,6 +105,11 @@ def create_container(
 
     # Store paths
     container.register_instance(Path, effective_got_dir)
+
+    # Register FileSystem as first-class injectable
+    # This is the single source of truth for I/O strategy
+    filesystem: FileSystem = InMemoryFileSystem() if use_memory else RealFileSystem()
+    container.register_instance(FileSystem, filesystem)
 
     # Apply subsystem modules
     if apply_modules:

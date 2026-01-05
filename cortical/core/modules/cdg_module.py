@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from cortical.common import Container, ContainerModule, Lifecycle, RealFileSystem, InMemoryFileSystem
+from cortical.common import Container, ContainerModule, Lifecycle, FileSystem
 
 
 @dataclass
@@ -88,8 +88,8 @@ class CDGModule(ContainerModule):
         internal_config = CDGInternalConfig()
         container.register_instance(CDGInternalConfig, internal_config)
 
-        # Select filesystem based on use_memory flag
-        filesystem = InMemoryFileSystem() if self.config.use_memory else RealFileSystem()
+        # Resolve FileSystem from container (registered by bootstrap)
+        filesystem = container.resolve(FileSystem)
 
         # Register factory for store (always CDGStore, different filesystem)
         def create_store() -> CDGStore:
