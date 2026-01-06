@@ -18,6 +18,12 @@
 
 **Active:** Scanning for file access issues
 
+**Context Recovery Steps (for new session):**
+1. `git log --oneline -10` - see what's been done
+2. Read this scratchpad - active thinking
+3. Read CLAUDE.md - architectural principles
+4. Check `cortical/got/` for remaining issues
+
 **Files with direct file access found (need review):**
 - claudemd.py - writes CLAUDE.md output, scans sprint/task files
 - query_api.py - scans entity files (fallback pattern)
