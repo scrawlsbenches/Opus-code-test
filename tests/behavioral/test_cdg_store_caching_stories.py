@@ -36,6 +36,10 @@ class SampleEntity:
             "version": self.version,
         }
 
+    def bump_version(self) -> None:
+        """Increment entity version (required by CDGStore.write)."""
+        self.version += 1
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "SampleEntity":
         return cls(

@@ -115,6 +115,8 @@ class CDGStore:
         validate_on_save: bool = True,
         # FileSystem abstraction for testability
         filesystem: Optional[FileSystem] = None,
+        # Caching
+        cache_enabled: bool = False,
     ):
         """
         Initialize store, creating directory structure if needed.
@@ -126,6 +128,7 @@ class CDGStore:
             durability: Legacy parameter for VersionedStore compatibility
             validate_on_save: Legacy parameter for VersionedStore compatibility
             filesystem: FileSystem implementation (defaults to RealFileSystem)
+            cache_enabled: Enable entity caching for read performance
         """
         # FileSystem abstraction - defaults to real disk I/O
         self._fs: FileSystem = filesystem or RealFileSystem()
@@ -179,6 +182,12 @@ class CDGStore:
         # Recover any pending history entries from interrupted writes
         self._recover_pending_history()
 
+        # Entity cache for read performance
+        self._cache_enabled = cache_enabled
+        self._cache: Dict[str, Entity] = {}
+        self._cache_hits = 0
+        self._cache_misses = 0
+
     def current_version(self) -> int:
         """
         Get current global version.
@@ -187,6 +196,53 @@ class CDGStore:
             Current global version number
         """
         return self._version
+
+    # ==================== Cache Methods ====================
+
+    def cache_stats(self) -> Dict[str, Any]:
+        """
+        Get cache statistics.
+
+        Returns:
+            Dictionary with hits, misses, hit_rate, size, and enabled status
+        """
+        total = self._cache_hits + self._cache_misses
+        hit_rate = self._cache_hits / total if total > 0 else 0.0
+        return {
+            'hits': self._cache_hits,
+            'misses': self._cache_misses,
+            'hit_rate': hit_rate,
+            'size': len(self._cache),
+            'enabled': self._cache_enabled,
+        }
+
+    def cache_clear(self) -> None:
+        """Clear all cached entities and reset statistics."""
+        self._cache.clear()
+        self._cache_hits = 0
+        self._cache_misses = 0
+
+    def _cache_get(self, entity_id: str) -> Optional[Entity]:
+        """Get entity from cache, updating hit/miss stats."""
+        if not self._cache_enabled:
+            return None
+        entity = self._cache.get(entity_id)
+        if entity is not None:
+            self._cache_hits += 1
+        return entity
+
+    def _cache_set(self, entity_id: str, entity: Entity) -> None:
+        """Add entity to cache, updating miss stats."""
+        if not self._cache_enabled:
+            return
+        self._cache[entity_id] = entity
+        self._cache_misses += 1
+
+    def _cache_invalidate(self, entity_id: str) -> None:
+        """Remove entity from cache."""
+        self._cache.pop(entity_id, None)
+
+    # ==================== Read Methods ====================
 
     def read(self, entity_id: str) -> Optional[Entity]:
         """
@@ -211,13 +267,21 @@ class CDGStore:
             this race condition will be eliminated at the storage layer since
             index lookups won't return IDs for deleted entities.
         """
+        # Check cache first
+        cached = self._cache_get(entity_id)
+        if cached is not None:
+            return cached
+
         path = self._entity_path(entity_id)
         if not self._fs.exists(path):
             return None
 
         try:
             wrapper = self._read_and_verify(path)
-            return self.entity_factory(wrapper["data"])
+            entity = self.entity_factory(wrapper["data"])
+            # Populate cache on miss
+            self._cache_set(entity_id, entity)
+            return entity
         except FileNotFoundError:
             # File was deleted between exists() check and read - treat as not found.
             # This is expected during concurrent delete + read operations.
@@ -318,6 +382,9 @@ class CDGStore:
                 # Increment global version
                 self._version += 1
                 self._save_version()
+
+                # Invalidate cache for written entity
+                self._cache_invalidate(entity.id)
 
     def apply_writes(self, write_set: Dict[str, Entity]) -> int:
         """
@@ -466,6 +533,9 @@ class CDGStore:
                 # Increment global version
                 self._version += 1
                 self._save_version()
+
+                # Invalidate cache for deleted entity
+                self._cache_invalidate(entity_id)
 
                 return True
 
