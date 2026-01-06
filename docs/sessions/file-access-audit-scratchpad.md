@@ -6,14 +6,22 @@
 
 ## ⚠️ STOP — CONTAINER-FIRST — READ EVERY TIME
 
+**Container** = `cortical/common/container.py` (the DI/IoC class)
+**Bootstrap** = `cortical/core/bootstrap.py` (app-level wiring, NOT for tests)
+
 ```python
-# ✓ CORRECT — resolve from container
+# ✓ PRODUCTION — use bootstrap
 from cortical.core.bootstrap import create_container
 container = create_container()
-index_manager = container.resolve(IndexManager)
+manager = container.resolve(IndexManager)
+
+# ✓ TESTS — use Container directly with test bootstrap
+from tests.fixtures.test_bootstrap import create_test_container
+container = create_test_container()
+manager = container.resolve(IndexManager)
 
 # ✗ WRONG — direct instantiation
-index_manager = IndexManager(store_dir, filesystem)  # NO!
+manager = IndexManager(store_dir, filesystem)  # NO!
 ```
 
 **In docstrings:** Show `container.resolve()`, NOT direct instantiation.
@@ -57,7 +65,9 @@ index_manager = IndexManager(store_dir, filesystem)  # NO!
 
 - CDG Spec: `docs/architecture/DISTRIBUTED_GRAPH_SPECIFICATION.md`
 - GoT Query: `docs/design/got-query-audit-and-design.md`
-- Container: `cortical/core/bootstrap.py` + `cortical/common/container.py`
+- **Container class**: `cortical/common/container.py`
+- **App bootstrap**: `cortical/core/bootstrap.py` (production wiring)
+- **Test bootstrap**: `tests/fixtures/test_bootstrap.py` (test wiring)
 
 ---
 
