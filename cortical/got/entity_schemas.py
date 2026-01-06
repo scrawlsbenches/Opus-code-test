@@ -6,17 +6,17 @@ Defines declarative schemas for validation and migration of:
 - Handoff, KnowledgeTransfer, ClaudeMdLayer, ClaudeMdVersion
 - Team, PersonaProfile, Document
 
-All schemas are registered with the global registry on module import.
+Schemas are registered once at application startup via SchemaModule.
+Schema classes are stored in ALL_SCHEMAS dict for direct lookup.
 
 Usage:
-    from cortical.got.entity_schemas import ensure_schemas_registered
+    # Get schema class directly (no registry needed)
+    from cortical.got.entity_schemas import get_schema_for_entity_type
+    schema = get_schema_for_entity_type('task')
 
-    # Schemas are auto-registered on import, but can be explicitly ensured
-    ensure_schemas_registered()
-
-    # Then use registry
-    from cortical.got.schema import validate_entity, migrate_entity
-    result = validate_entity('task', data)
+    # For registry-dependent operations, pass registry from Container
+    from cortical.got.entity_schemas import get_entity_type_for_prefix
+    entity_type = get_entity_type_for_prefix(registry, 'T-')
 """
 
 from __future__ import annotations
@@ -706,7 +706,6 @@ def get_valid_statuses(entity_type: str) -> set:
         >>> get_valid_statuses('task')
         {'pending', 'in_progress', 'completed', 'blocked'}
     """
-    ensure_schemas_registered()
     schema = get_schema_for_entity_type(entity_type)
     if schema is None:
         raise KeyError(f"Entity type '{entity_type}' does not exist")
@@ -733,17 +732,17 @@ def get_id_prefix(entity_type: str) -> str:
         >>> get_id_prefix('knowledge_transfer')
         'KT-'
     """
-    ensure_schemas_registered()
     schema = get_schema_for_entity_type(entity_type)
     if schema is None:
         raise KeyError(f"Entity type '{entity_type}' does not exist")
     return schema.id_prefix
 
 
-def get_entity_type_for_prefix(prefix: str) -> str:
+def get_entity_type_for_prefix(registry: "SchemaRegistry", prefix: str) -> str:
     """Get the entity type for an ID prefix.
 
     Args:
+        registry: SchemaRegistry instance (from Container)
         prefix: Entity ID prefix (e.g., 'T-', 'E-', 'KT-')
 
     Returns:
@@ -753,35 +752,29 @@ def get_entity_type_for_prefix(prefix: str) -> str:
         KeyError: If prefix doesn't match any entity type
 
     Example:
-        >>> get_entity_type_for_prefix('T-')
+        >>> registry = container.resolve(SchemaRegistry)
+        >>> get_entity_type_for_prefix(registry, 'T-')
         'task'
-        >>> get_entity_type_for_prefix('KT-')
-        'knowledge_transfer'
     """
-    ensure_schemas_registered()
-    registry = get_registry()
     entity_type = registry.get_entity_type_by_prefix(prefix)
     if entity_type is None:
         raise KeyError(f"No entity type found for prefix '{prefix}'")
     return entity_type
 
 
-def list_id_prefixes() -> Dict[str, str]:
+def list_id_prefixes(registry: "SchemaRegistry") -> Dict[str, str]:
     """List all entity ID prefixes and their types.
+
+    Args:
+        registry: SchemaRegistry instance (from Container)
 
     Returns:
         Dict mapping id_prefix to entity_type
 
     Example:
-        >>> prefixes = list_id_prefixes()
+        >>> registry = container.resolve(SchemaRegistry)
+        >>> prefixes = list_id_prefixes(registry)
         >>> prefixes['T-']
         'task'
-        >>> prefixes['KT-']
-        'knowledge_transfer'
     """
-    ensure_schemas_registered()
-    return get_registry().list_prefixes()
-
-
-# Auto-register schemas on module import
-ensure_schemas_registered()
+    return registry.list_prefixes()

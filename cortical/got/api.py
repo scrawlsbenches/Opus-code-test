@@ -46,7 +46,7 @@ from .transaction import Transaction
 from .errors import TransactionError, CorruptionError
 from .config import DurabilityMode
 from .query_api import QueryAPI
-from .schema import SchemaRegistry
+from cortical.cdg.schema import SchemaRegistry
 from .validation import (
     validate_entity_id,
     validate_edge_relationship,
@@ -152,14 +152,10 @@ class GoTManager:
         cache_enabled: bool = True,  # Deprecated: caching now handled by CDGStore
         *,
         tx_manager: TransactionManager,
-        schema_registry: Optional[SchemaRegistry] = None,
+        schema_registry: SchemaRegistry,
     ):
         """
         Initialize GoT manager with injected dependencies.
-
-        BREAKING CHANGE (2026-01-04):
-            TransactionManager must now be injected. Use create_container() from
-            cortical.core.bootstrap to get a properly configured GoTManager.
 
         Args:
             got_dir: Base directory for GoT storage
@@ -167,8 +163,7 @@ class GoTManager:
             cache_enabled: DEPRECATED - Caching is now handled by CDGStore.
                           This parameter is ignored but kept for backwards compatibility.
             tx_manager: REQUIRED - Injected TransactionManager instance
-            schema_registry: Optional SchemaRegistry for entity validation.
-                            If not provided, falls back to global singleton (deprecated).
+            schema_registry: REQUIRED - SchemaRegistry for entity validation (from Container)
 
         Raises:
             TypeError: If required dependencies are missing or wrong type
@@ -180,27 +175,24 @@ class GoTManager:
             container = create_container(got_dir=Path(".got"))
             got_manager = container.resolve(GoTManager)
         """
-        # Validate required dependency
+        # Validate required dependencies
         if not isinstance(tx_manager, TransactionManager):
             raise TypeError(
                 f"tx_manager is required and must be TransactionManager instance, got {type(tx_manager).__name__}"
+            )
+        if not isinstance(schema_registry, SchemaRegistry):
+            raise TypeError(
+                f"schema_registry is required and must be SchemaRegistry instance, got {type(schema_registry).__name__}"
             )
 
         self.got_dir = Path(got_dir)
         self.durability = durability
         self.tx_manager = tx_manager
+        self._schema_registry = schema_registry
         self._sync_manager = None  # Lazy initialization
         self._recovery_manager = None  # Lazy initialization
         self._index_manager = None  # Lazy initialization
         self._query_api = None  # Lazy initialization
-
-        # SchemaRegistry for entity validation
-        # If not injected, fall back to global singleton (deprecated pattern)
-        if schema_registry is not None:
-            self._schema_registry = schema_registry
-        else:
-            from .schema import get_registry
-            self._schema_registry = get_registry()
 
         # Cache is now handled by CDGStore at the storage layer
         # GoTManager delegates cache_stats() and cache_clear() to the store

@@ -30,10 +30,10 @@ from .types import (
 )
 from .errors import ValidationError, CorruptionError
 from .config import DurabilityMode
-from .schema import get_registry
 
 # Import CDGStore for core storage operations
 from cortical.cdg.storage import CDGStore
+from cortical.cdg.schema import SchemaRegistry
 from cortical.cdg.config import DurabilityMode as CDGDurabilityMode
 from cortical.cdg.errors import CorruptionError as CDGCorruptionError
 
@@ -141,6 +141,7 @@ class VersionedStore:
     def __init__(
         self,
         store_dir: Path,
+        schema_registry: SchemaRegistry,
         durability: DurabilityMode = DurabilityMode.BALANCED,
         validate_on_save: bool = True
     ):
@@ -149,20 +150,23 @@ class VersionedStore:
 
         Args:
             store_dir: Directory path for storing entities
+            schema_registry: SchemaRegistry for entity validation (from Container)
             durability: Durability mode controlling fsync behavior
             validate_on_save: If True, validate entities against schemas before saving
                              (default: True for data integrity)
         """
         self.store_dir = Path(store_dir)
+        self._schema_registry = schema_registry
         self.durability = durability
         self.validate_on_save = validate_on_save
 
-        # Create CDGStore with GoT entity factory
+        # Create CDGStore with GoT entity factory and schema registry
         self._cdg_store = CDGStore(
             store_dir=self.store_dir,
             durability=_convert_durability(durability),
             validate_on_save=validate_on_save,
             entity_factory=_got_entity_factory,
+            schema_registry=schema_registry,
         )
 
         # Expose history_dir for backward compatibility
@@ -303,12 +307,11 @@ class VersionedStore:
         if not entity_type:
             return  # Skip validation for unknown types
 
-        # Validate against schema using GoT's registry
-        registry = get_registry()
-        if not registry.has_schema(entity_type):
+        # Validate against schema using injected registry
+        if not self._schema_registry.has_schema(entity_type):
             return  # Skip validation for types without schemas
 
-        result = registry.validate(entity_type, entity.to_dict())
+        result = self._schema_registry.validate(entity_type, entity.to_dict())
         if not result.valid:
             raise ValidationError(
                 f"Entity {entity.id} failed schema validation",

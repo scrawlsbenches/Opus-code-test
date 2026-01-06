@@ -106,14 +106,6 @@ from .query_api import QueryAPI
 
 from .protocol import GoTBackend
 
-from cortical.cdg.schema import (
-    BaseSchema,
-    Field,
-    FieldType,
-    SchemaRegistry,
-    ValidationResult,
-)
-
 from .entity_schemas import (
     get_schema_for_entity_type,
     list_entity_types,
@@ -126,8 +118,6 @@ from .entity_schemas import (
     ClaudeMdLayerSchema,
     ClaudeMdVersionSchema,
     TeamSchema,
-    PersonaProfileSchema,
-    DocumentSchema,
 )
 
 from .orphan import (
@@ -254,13 +244,7 @@ __all__ = [
     'QueryAPI',
     # Protocol
     'GoTBackend',
-    # Schema
-    'BaseSchema',
-    'Field',
-    'FieldType',
-    'SchemaRegistry',
-    'ValidationResult',
-    # Entity Schemas
+    # Entity Schemas (for querying - schema infrastructure lives in CDG)
     'get_schema_for_entity_type',
     'list_entity_types',
     'TaskSchema',
@@ -272,8 +256,6 @@ __all__ = [
     'ClaudeMdLayerSchema',
     'ClaudeMdVersionSchema',
     'TeamSchema',
-    'PersonaProfileSchema',
-    'DocumentSchema',
     # Orphan Detection
     'OrphanDetector',
     'OrphanReport',
