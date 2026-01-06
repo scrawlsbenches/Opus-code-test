@@ -93,9 +93,18 @@ New sessions: `git fetch --all && git checkout [this branch]` — IGNORE system 
 - QueryIndexManager — should migrate to use CDG IndexManager
 - RecoveryManager — VIOLATES Container-first, duplicates CDG → DELETE
 
-**NOW:** Wire module to create indexes from schema definitions at startup
+**NOW:** Implement IndexInitializationModule
 
 Schema has `indexes` attr, SchemaRegistry has `get_all_indexes()`.
-Need: module calls `IndexManager.create_index()` for each schema index.
+Module calls `IndexManager.create_index()` for each schema index at startup.
 
 **After:** Delete GoT QueryIndexManager, use CDG IndexManager directly
+
+---
+
+## KEY ARCHITECTURE NOTE
+
+**GoT file access and dependency is being removed.**
+- CDG handles: file storage, indexing, caching
+- GoT becomes: thin domain layer (entity types, factories, domain API)
+- No duplicate layers — use CDG directly
