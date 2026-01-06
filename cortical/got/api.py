@@ -246,9 +246,8 @@ class GoTManager:
         """
         Iterate entities by ID prefix using CDGStore.
 
-        This method uses the store's iter_entities() method which works
-        with both disk-based and in-memory storage through the FileSystem
-        abstraction.
+        Uses the store's iter_entities() method which works with both
+        disk-based and in-memory storage through the FileSystem abstraction.
 
         Args:
             prefix: Entity ID prefix (e.g., "T-", "E-", "D-", "S-", "H-", etc.)
@@ -256,24 +255,7 @@ class GoTManager:
         Yields:
             Entity objects matching the prefix
         """
-        store = getattr(self.tx_manager, 'store', None)
-        if store is not None and hasattr(store, 'iter_entities'):
-            yield from store.iter_entities(prefix=prefix)
-        else:
-            # Fallback: scan disk directory (for backwards compatibility)
-            entities_dir = self.got_dir / "entities"
-            if not entities_dir.exists():
-                return
-
-            pattern = f"{prefix}*.json"
-            for entity_file in entities_dir.glob(pattern):
-                try:
-                    entity = self._read_entity_file(entity_file, prefix)
-                    if entity is not None:
-                        yield entity
-                except (CorruptionError, json.JSONDecodeError, KeyError) as e:
-                    logger.warning(f"Skipping corrupted file {entity_file}: {e}")
-                    continue
+        yield from self.tx_manager.store.iter_entities(prefix=prefix)
 
     def _read_entity_file(self, entity_file: Path, prefix: str):
         """Read an entity file based on its prefix type."""
@@ -2912,50 +2894,20 @@ class TransactionContext:
             List of matching ClaudeMdLayer objects
         """
         layers = []
-        store = getattr(self.tx_manager, 'store', None)
 
-        if store is not None and hasattr(store, 'iter_entities'):
-            # Use store's iter_entities for in-memory or disk-based iteration
-            for entity in store.iter_entities(prefix="CML"):
-                if not isinstance(entity, ClaudeMdLayer):
-                    continue
+        for entity in self.tx_manager.store.iter_entities(prefix="CML"):
+            if not isinstance(entity, ClaudeMdLayer):
+                continue
 
-                # Apply filters
-                if layer_type and entity.layer_type != layer_type:
-                    continue
-                if freshness_status and entity.freshness_status != freshness_status:
-                    continue
-                if inclusion_rule and entity.inclusion_rule != inclusion_rule:
-                    continue
+            # Apply filters
+            if layer_type and entity.layer_type != layer_type:
+                continue
+            if freshness_status and entity.freshness_status != freshness_status:
+                continue
+            if inclusion_rule and entity.inclusion_rule != inclusion_rule:
+                continue
 
-                layers.append(entity)
-        else:
-            # Fallback: scan disk directory
-            entities_dir = self.got_dir / "entities"
-            for layer_file in entities_dir.glob("CML*.json"):
-                try:
-                    with open(layer_file, 'r') as f:
-                        data = json.load(f)
-
-                    entity_data = data.get("data", data)
-                    if entity_data.get("entity_type") != "claudemd_layer":
-                        continue
-
-                    layer = ClaudeMdLayer.from_dict(entity_data)
-
-                    # Apply filters
-                    if layer_type and layer.layer_type != layer_type:
-                        continue
-                    if freshness_status and layer.freshness_status != freshness_status:
-                        continue
-                    if inclusion_rule and layer.inclusion_rule != inclusion_rule:
-                        continue
-
-                    layers.append(layer)
-
-                except (json.JSONDecodeError, KeyError, CorruptionError) as e:
-                    logger.warning(f"Skipping corrupted layer file {layer_file}: {e}")
-                    continue
+            layers.append(entity)
 
         return layers
 

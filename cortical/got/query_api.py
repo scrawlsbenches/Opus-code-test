@@ -30,13 +30,11 @@ Example:
 
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Any
 
 from .types import Task, Decision, Edge, Sprint, Document, EdgeTypes
-from .errors import CorruptionError
 
 if TYPE_CHECKING:
     from .api import GoTManager
@@ -79,9 +77,8 @@ class QueryAPI:
         """
         Iterate entities by ID prefix using CDGStore.
 
-        This method uses the store's iter_entities() method which works
-        with both disk-based and in-memory storage through the FileSystem
-        abstraction.
+        Uses the store's iter_entities() method which works with both
+        disk-based and in-memory storage through the FileSystem abstraction.
 
         Args:
             prefix: Entity ID prefix (e.g., "T-", "E-", "D-", "S-")
@@ -89,32 +86,7 @@ class QueryAPI:
         Yields:
             Entity objects matching the prefix
         """
-        store = getattr(self._manager.tx_manager, 'store', None)
-        if store is not None and hasattr(store, 'iter_entities'):
-            yield from store.iter_entities(prefix=prefix)
-        else:
-            # Fallback: scan disk directory (for backwards compatibility)
-            entities_dir = self.got_dir / "entities"
-            if not entities_dir.exists():
-                return
-
-            for entity_file in entities_dir.glob(f"{prefix}*.json"):
-                try:
-                    if prefix == "T-":
-                        entity = self._manager._read_task_file(entity_file)
-                    elif prefix == "E-":
-                        entity = self._manager._read_edge_file(entity_file)
-                    elif prefix == "D-":
-                        entity = self._manager._read_decision_file(entity_file)
-                    elif prefix == "S-":
-                        entity = self._manager._read_sprint_file(entity_file)
-                    else:
-                        continue
-                    if entity is not None:
-                        yield entity
-                except (CorruptionError, json.JSONDecodeError, KeyError) as e:
-                    logger.warning(f"Skipping corrupted file {entity_file}: {e}")
-                    continue
+        yield from self._manager.tx_manager.store.iter_entities(prefix=prefix)
 
     def find_tasks(
         self,
