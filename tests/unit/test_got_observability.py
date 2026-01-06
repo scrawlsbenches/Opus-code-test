@@ -32,13 +32,13 @@ class TestGoTCacheObservability:
 
     @pytest.fixture
     def manager_with_cache(self, got_dir):
-        """Create a GoTManager with caching enabled."""
-        return _create_got_manager(got_dir)
+        """Create a GoTManager with caching enabled (disk storage for cache tests)."""
+        return _create_got_manager(got_dir, use_memory=False)
 
     @pytest.fixture
     def manager_no_cache(self, got_dir):
-        """Create a GoTManager with caching disabled."""
-        return _create_got_manager(got_dir)
+        """Create a GoTManager with caching disabled (disk storage for cache tests)."""
+        return _create_got_manager(got_dir, use_memory=False)
 
     def test_cache_stats_initial_state(self, manager_with_cache):
         """Cache stats should show zero activity initially."""

@@ -22,12 +22,15 @@ Storage layout:
 
 from __future__ import annotations
 
+import logging
 import os
 import json
 import time
 import threading
 from pathlib import Path
 from datetime import datetime, timezone
+
+logger = logging.getLogger(__name__)
 from typing import Dict, List, Optional, Callable, Any, Type, TYPE_CHECKING
 
 from cortical.utils.checksums import compute_checksum
@@ -1005,9 +1008,14 @@ class CDGStore:
             # Skip internal files
             if entity_file.name.startswith("_"):
                 continue
-            entity = self.read(entity_file.stem)
-            if entity is not None:
-                entities.append(entity)
+            try:
+                entity = self.read(entity_file.stem)
+                if entity is not None:
+                    entities.append(entity)
+            except CorruptionError as e:
+                # Skip corrupted entities during iteration (graceful degradation)
+                logger.warning(f"Skipping corrupted entity {entity_file.stem}: {e}")
+                continue
         return entities
 
 

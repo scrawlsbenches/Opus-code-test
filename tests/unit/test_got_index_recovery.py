@@ -37,7 +37,7 @@ class TestIndexRecoveryDetection:
         Index initialization is the responsibility of GoTManager, not recovery.
         """
         # Create manager and add tasks WITHOUT accessing index_manager
-        manager = _create_got_manager(got_dir)
+        manager = _create_got_manager(got_dir, use_memory=False)
         manager.create_task("Task 1", status="pending")
         manager.create_task("Task 2", status="completed")
 
@@ -56,7 +56,7 @@ class TestIndexRecoveryDetection:
         recovery situation - there's nothing to recover.
         """
         # Create manager and add tasks
-        manager = _create_got_manager(got_dir)
+        manager = _create_got_manager(got_dir, use_memory=False)
         manager.create_task("Task 1", status="pending")
 
         # Force index creation
@@ -74,7 +74,7 @@ class TestIndexRecoveryDetection:
     def test_needs_recovery_when_indexes_stale(self, got_dir):
         """needs_recovery should return True when indexes are stale."""
         # Create manager and add tasks
-        manager = _create_got_manager(got_dir)
+        manager = _create_got_manager(got_dir, use_memory=False)
         task1 = manager.create_task("Task 1", status="pending")
 
         # Force index creation
@@ -128,7 +128,7 @@ class TestIndexRecoveryExecution:
         from cortical.utils.checksums import compute_checksum
 
         # Create manager and add tasks
-        manager = _create_got_manager(got_dir)
+        manager = _create_got_manager(got_dir, use_memory=False)
         task1 = manager.create_task("Task 1", status="pending", priority="high")
 
         # Force index creation
@@ -161,7 +161,7 @@ class TestIndexRecoveryExecution:
         result = recovery.recover()
 
         # Create new manager to access rebuilt indexes
-        manager2 = _create_got_manager(got_dir)
+        manager2 = _create_got_manager(got_dir, use_memory=False)
         index = manager2.index_manager
 
         # Verify indexes were rebuilt correctly (both tasks should be indexed)
@@ -181,7 +181,7 @@ class TestIndexRecoveryExecution:
         from cortical.utils.checksums import compute_checksum
 
         # Create manager and add tasks
-        manager = _create_got_manager(got_dir)
+        manager = _create_got_manager(got_dir, use_memory=False)
         manager.create_task("Task 1", status="pending")
 
         # Force index creation
@@ -233,7 +233,7 @@ class TestIndexRecoveryResult:
         from cortical.utils.checksums import compute_checksum
 
         # Create manager and add tasks
-        manager = _create_got_manager(got_dir)
+        manager = _create_got_manager(got_dir, use_memory=False)
         manager.create_task("Task 1", status="pending")
 
         # Force index creation
@@ -272,7 +272,7 @@ class TestIndexRecoveryResult:
     def test_recovery_result_indexes_rebuilt_false_when_not_needed(self, got_dir):
         """RecoveryResult.indexes_rebuilt should be False when indexes are intact."""
         # Create manager and add tasks with indexes
-        manager = _create_got_manager(got_dir)
+        manager = _create_got_manager(got_dir, use_memory=False)
         manager.create_task("Task 1", status="pending")
         _ = manager.index_manager  # Create indexes
 
@@ -303,7 +303,7 @@ class TestIndexErrorRecovery:
     def test_recovery_from_corrupted_index_file(self, got_dir):
         """Recovery should rebuild indexes when index file is corrupted."""
         # Create manager and add tasks
-        manager = _create_got_manager(got_dir)
+        manager = _create_got_manager(got_dir, use_memory=False)
         task1 = manager.create_task("Task 1", status="pending", priority="high")
         _ = manager.index_manager
 
@@ -315,7 +315,7 @@ class TestIndexErrorRecovery:
             f.write("not valid json {{{")
 
         # Create new manager - should recover
-        manager2 = _create_got_manager(got_dir)
+        manager2 = _create_got_manager(got_dir, use_memory=False)
         index = manager2.index_manager
 
         # Index should still work after recovery
@@ -325,7 +325,7 @@ class TestIndexErrorRecovery:
     def test_recovery_from_empty_index_file(self, got_dir):
         """Recovery should rebuild indexes when index file is empty."""
         # Create manager and add tasks
-        manager = _create_got_manager(got_dir)
+        manager = _create_got_manager(got_dir, use_memory=False)
         task1 = manager.create_task("Task 1", status="completed", priority="low")
         _ = manager.index_manager
 
@@ -337,7 +337,7 @@ class TestIndexErrorRecovery:
             f.write("")
 
         # Create new manager - should recover
-        manager2 = _create_got_manager(got_dir)
+        manager2 = _create_got_manager(got_dir, use_memory=False)
         index = manager2.index_manager
 
         # Index should still work after recovery
@@ -347,7 +347,7 @@ class TestIndexErrorRecovery:
     def test_recovery_from_partial_index_data(self, got_dir):
         """Recovery should rebuild indexes when index has partial/truncated data."""
         # Create manager and add tasks
-        manager = _create_got_manager(got_dir)
+        manager = _create_got_manager(got_dir, use_memory=False)
         task1 = manager.create_task("Task 1", status="pending")
         task2 = manager.create_task("Task 2", status="in_progress")
         _ = manager.index_manager
@@ -360,7 +360,7 @@ class TestIndexErrorRecovery:
             f.write('{"pending": ["T-incomplete-data"')  # Truncated JSON
 
         # Create new manager - should recover
-        manager2 = _create_got_manager(got_dir)
+        manager2 = _create_got_manager(got_dir, use_memory=False)
         index = manager2.index_manager
 
         # Index should be rebuilt with correct data
@@ -372,7 +372,7 @@ class TestIndexErrorRecovery:
     def test_index_recovered_after_entity_with_corrupted_checksum(self, got_dir):
         """Index should skip entities with corrupted checksums during rebuild."""
         # Create manager and add tasks
-        manager = _create_got_manager(got_dir)
+        manager = _create_got_manager(got_dir, use_memory=False)
         task1 = manager.create_task("Task 1", status="pending")
         task2 = manager.create_task("Task 2", status="pending")
         _ = manager.index_manager
@@ -396,7 +396,7 @@ class TestIndexErrorRecovery:
         result = recovery.recover()
 
         # task2 should be in index, task1 may be skipped due to corruption
-        manager2 = _create_got_manager(got_dir)
+        manager2 = _create_got_manager(got_dir, use_memory=False)
         index = manager2.index_manager
         pending_ids = index.lookup("status", "pending")
 
@@ -410,7 +410,7 @@ class TestIndexErrorRecovery:
         Index initialization is the responsibility of GoTManager, not recovery.
         """
         # Create manager and add tasks (without accessing index_manager)
-        manager = _create_got_manager(got_dir)
+        manager = _create_got_manager(got_dir, use_memory=False)
         task1 = manager.create_task("Task 1", status="pending")
 
         # Ensure no index directory (don't access index_manager)
@@ -431,7 +431,7 @@ class TestIndexErrorRecovery:
         This is the correct way to initialize indexes - not through recovery.
         """
         # Create manager and add tasks (without accessing index_manager)
-        manager = _create_got_manager(got_dir)
+        manager = _create_got_manager(got_dir, use_memory=False)
         task1 = manager.create_task("Task 1", status="pending")
 
         # Ensure no index directory

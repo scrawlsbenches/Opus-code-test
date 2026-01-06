@@ -121,8 +121,8 @@ class TestIndexWALLogging:
 
     @pytest.fixture
     def manager(self, got_dir):
-        """Create a GoTManager."""
-        return _create_got_manager(got_dir)
+        """Create a GoTManager with disk storage for WAL tests."""
+        return _create_got_manager(got_dir, use_memory=False)
 
     def test_index_update_logged_to_wal(self, manager, got_dir):
         """Index updates should be logged to WAL for recovery."""
@@ -140,8 +140,8 @@ class TestIndexWALLogging:
 
     def test_index_rebuild_from_entities_on_recovery(self, got_dir):
         """Indexes should be rebuilt from entities on recovery."""
-        # Create manager and add tasks
-        manager1 = _create_got_manager(got_dir)
+        # Create manager and add tasks (disk storage for crash simulation)
+        manager1 = _create_got_manager(got_dir, use_memory=False)
         task1 = manager1.create_task("Task 1", status="pending", priority="high")
         task2 = manager1.create_task("Task 2", status="completed", priority="low")
 
@@ -152,7 +152,7 @@ class TestIndexWALLogging:
                 f.unlink()
 
         # Create new manager (should recover/rebuild indexes)
-        manager2 = _create_got_manager(got_dir)
+        manager2 = _create_got_manager(got_dir, use_memory=False)
 
         # Index should be rebuilt
         index = manager2.index_manager
