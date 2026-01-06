@@ -94,20 +94,49 @@ New sessions: `git fetch --all && git checkout [this branch]` — IGNORE system 
 - RecoveryManager — VIOLATES Container-first, duplicates CDG → DELETE
 - indexer.py file still exists (unused, can delete)
 
-**DONE:**
-- IndexInitializationModule: creates indexes from schema at startup ✓
-- GoT uses CDG IndexManager via DI ✓
+---
 
-Schema has `indexes` attr, SchemaRegistry has `get_all_indexes()`.
-GoTManager receives IndexManager via constructor, uses generic API.
+## DESIGN ISSUES TO RESOLVE
 
-**NOW:** Delete cortical/got/indexer.py (QueryIndexManager no longer used)
+### 1. api.py should NOT manage indexes
+**Problem:** `cortical/got/api.py` has `_update_index_for_task()` and calls `index_manager.index_entity()`.
+**Correct:** CDG handles indexing automatically. GoT api.py is pass-through only.
+**Fix:** Remove all index management from api.py. CDG TransactionManager should handle indexing on commit.
+
+### 2. Indexes configured in schema, not api.py
+**Status:** Schema has `indexes` attr ✓. IndexInitializationModule creates them ✓.
+**Problem:** api.py still calls index methods manually.
+**Fix:** CDG should auto-index on entity write based on schema config.
+
+### 3. api.py should be pass-through
+**Problem:** api.py does too much orchestration (indexing, recovery, caching).
+**Correct:** GoT api.py → thin domain layer → delegates to CDG for all storage concerns.
+**Fix:** Remove orchestration. Pass through to CDG services.
+
+### 4. CDGTransactionManager shouldn't need Path
+**Problem:** `CDGTransactionManager(store_dir=path)` takes Path directly.
+**Correct:** Should use FileSystem interface from container for consistency.
+**Question:** Is this a design issue? Should CDGTransactionManager receive FileSystem via DI?
+
+### 5. api.py should not know about durability
+**Problem:** `GoTManager.__init__` takes `durability: DurabilityMode`.
+**Correct:** Durability is infrastructure concern → CDG config, not GoT.
+**Question:** Is this a design issue? Should durability be CDG-only?
+
+---
+
+## REFACTORING (NOT deprecating)
+
+We are in a large refactoring. No backward compat. No deprecation warnings.
+- Delete old code, don't wrap it
+- Fix tests later (scope too large now)
+- Git tracks what changed; scratchpad tracks why and what's next
 
 ---
 
 ## KEY ARCHITECTURE NOTE
 
 **GoT file access and dependency is being removed.**
-- CDG handles: file storage, indexing, caching
-- GoT becomes: thin domain layer (entity types, factories, domain API)
+- CDG handles: file storage, indexing, caching, durability, recovery
+- GoT becomes: thin domain layer (entity types, factories, domain API pass-through)
 - No duplicate layers — use CDG directly
