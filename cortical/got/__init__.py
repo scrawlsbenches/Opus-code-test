@@ -8,8 +8,9 @@ Key components:
 - TransactionManager: Main entry point for transactional operations
 - Transaction: Transaction object with snapshot isolation
 - Entity types: Task, Decision, Edge, Sprint, Epic, Handoff
-- VersionedStore: File-based storage with checksums and versioning
 - WALManager: Write-ahead log for crash recovery
+
+Storage is delegated to CDG (Cortical Distributed Graph) layer.
 """
 
 from .errors import (
@@ -60,8 +61,6 @@ from .transaction import (
     TransactionState,
     generate_transaction_id,
 )
-
-from .versioned_store import VersionedStore
 
 from .wal import WALManager
 
@@ -211,8 +210,6 @@ __all__ = [
     'Transaction',
     'TransactionState',
     'generate_transaction_id',
-    # Storage
-    'VersionedStore',
     # WAL
     'WALManager',
     # Transaction Manager

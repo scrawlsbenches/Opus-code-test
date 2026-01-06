@@ -1529,3 +1529,73 @@ class Document(Entity):
             properties=data.get("properties", {}),
             metadata=data.get("metadata", {}),
         )
+
+
+# =============================================================================
+# ENTITY FACTORY
+# =============================================================================
+
+def create_entity_from_dict(data: Dict[str, Any]) -> Entity:
+    """
+    Create the correct Entity subclass based on entity_type.
+
+    This factory dispatches to Task, Decision, Sprint, etc. based on
+    the entity_type field in the data dictionary.
+
+    Args:
+        data: Entity data dictionary with 'entity_type' field
+
+    Returns:
+        Appropriate Entity subclass instance
+
+    Raises:
+        ValueError: If entity_type is missing or unknown
+
+    Example:
+        data = {"id": "T-001", "entity_type": "task", "title": "Fix bug"}
+        entity = create_entity_from_dict(data)  # Returns Task instance
+    """
+    entity_type = data.get("entity_type")
+
+    if not entity_type:
+        entity_id = data.get("id", "<unknown>")
+        raise ValueError(
+            f"Missing entity_type in entity data for {entity_id}. "
+            f"Valid types: {sorted(VALID_ENTITY_TYPES)}"
+        )
+
+    if entity_type not in VALID_ENTITY_TYPES:
+        entity_id = data.get("id", "<unknown>")
+        raise ValueError(
+            f"Unknown entity_type '{entity_type}' for entity {entity_id}. "
+            f"Valid types: {sorted(VALID_ENTITY_TYPES)}"
+        )
+
+    # Dispatch to appropriate class
+    if entity_type == "task":
+        return Task.from_dict(data)
+    elif entity_type == "decision":
+        return Decision.from_dict(data)
+    elif entity_type == "edge":
+        return Edge.from_dict(data)
+    elif entity_type == "sprint":
+        return Sprint.from_dict(data)
+    elif entity_type == "epic":
+        return Epic.from_dict(data)
+    elif entity_type == "handoff":
+        return Handoff.from_dict(data)
+    elif entity_type == "knowledge_transfer":
+        return KnowledgeTransfer.from_dict(data)
+    elif entity_type == "claudemd_layer":
+        return ClaudeMdLayer.from_dict(data)
+    elif entity_type == "claudemd_version":
+        return ClaudeMdVersion.from_dict(data)
+    elif entity_type == "persona_profile":
+        return PersonaProfile.from_dict(data)
+    elif entity_type == "team":
+        return Team.from_dict(data)
+    elif entity_type == "document":
+        return Document.from_dict(data)
+    else:
+        # Fallback - should not reach here due to VALID_ENTITY_TYPES check
+        return Entity.from_dict(data)

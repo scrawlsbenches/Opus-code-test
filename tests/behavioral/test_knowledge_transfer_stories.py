@@ -150,10 +150,11 @@ class TestDeveloperCreatesKnowledgeTransfer:
 
         # And: validation passes after creation
         # The file should pass checksum validation
-        # We verify this by re-reading directly through VersionedStore
-        from cortical.got.versioned_store import VersionedStore
+        # We verify this by re-reading directly through CDGStore
+        from cortical.cdg.storage import CDGStore
+        from cortical.got.types import create_entity_from_dict
 
-        store = VersionedStore(entities_dir)
+        store = CDGStore(entities_dir, entity_factory=create_entity_from_dict)
         # This will raise CorruptionError if checksum is invalid
         validated_kt = store.read(kt_id)
         assert validated_kt is not None

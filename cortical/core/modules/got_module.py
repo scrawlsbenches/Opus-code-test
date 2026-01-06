@@ -78,8 +78,8 @@ class GoTModule(ContainerModule):
         from cortical.got.tx_manager import TransactionManager
         from cortical.got.api import GoTManager
         from cortical.got.indexer import QueryIndexManager
-        from cortical.got.config import DurabilityMode
-        from cortical.got.versioned_store import _got_entity_factory
+        from cortical.got.types import create_entity_from_dict
+        from cortical.got.config import DurabilityMode  # TODO: Centralize in CDG
         from cortical.cdg.storage import CDGStore
         from cortical.cdg.wal import CDGWALManager
         from cortical.cdg.config import CDGConfig
@@ -102,7 +102,7 @@ class GoTModule(ContainerModule):
                 store = CDGStore(
                     self.config.got_dir / "entities",
                     config=cdg_config,
-                    entity_factory=_got_entity_factory,
+                    entity_factory=create_entity_from_dict,
                     filesystem=filesystem,
                     schema_registry=schema_registry,
                 )
@@ -123,7 +123,7 @@ class GoTModule(ContainerModule):
                 store = CDGStore(
                     entities_dir,
                     config=cdg_config,
-                    entity_factory=_got_entity_factory,
+                    entity_factory=create_entity_from_dict,
                     filesystem=filesystem,
                     schema_registry=schema_registry,
                 )

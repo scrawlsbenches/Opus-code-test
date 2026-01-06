@@ -5,21 +5,47 @@
 
 ---
 
-## Goal
+## Current State
 
-Hunt down code accessing files incorrectly (bypassing CDG transactional storage API).
+We've uncovered major redundancy between GoT and CDG:
 
-**Architecture principle:**
-- CDG = foundation layer (handles all file I/O, storage, transactions)
-- GoT = thin facade on CDG (domain logic only, no direct file access)
+**Both layers have:**
+- TransactionManager (GoT wraps CDG)
+- Recovery (CDG has full implementation, GoT adds index rebuilding)
+- VersionedStore (DELETED - CDGStore is the real one)
+
+**What GoT uniquely provides:**
+1. Entity factory (`create_entity_from_dict` in types.py) - dispatches to Task/Decision/Sprint
+2. QueryIndexManager - GoT-specific indexing
+3. Domain types (Task, Decision, Edge, Sprint, etc.)
+4. Higher-level API (GoTManager)
 
 ---
 
-## Current State
+## Architectural Question: How thin should GoT be?
 
-Schema constructor injection is DONE.
+**Option A: Keep GoT's TransactionManager as thin wrapper**
+- Pro: Stable API for existing code
+- Con: Extra layer of indirection
 
-**Next:** Investigate if VersionedStore is redundant with CDG.
+**Option B: Delete GoT's tx_manager.py, use CDGTransactionManager directly**
+- Pro: Less code, clearer architecture
+- Con: Need to update all callers, entity_factory passed differently
+
+**Option C: Hybrid - GoTModule creates CDGTransactionManager with entity factory**
+- GoTModule already does this!
+- Just need to delete the wrapper
+
+---
+
+## Broken Imports Found
+
+`cortical/got/tx_manager.py:32` imports from deleted file:
+```python
+from .versioned_store import _got_entity_factory
+```
+
+This needs immediate fix (use `types.create_entity_from_dict`).
 
 ---
 
@@ -28,37 +54,25 @@ Schema constructor injection is DONE.
 ### Durability Mode
 - GoT has NO business with durability mode
 - Must be configured centrally (in Container/CDG)
-- Push back on any durability config in GoT
-
-### VersionedStore vs CDG
-- Question: Is versioned_store.py redundant now that CDG exists?
-- Need to investigate what it does vs what CDGStore does
-- If redundant, the whole file may be unnecessary
 
 ### got/expression/*
 - Contains half-baked but FANTASTIC ideas
 - Will need to utilize schema more but in a GENERAL way
-- This is harder than it sounds - be careful going down this path!
+- This is harder than it sounds - be careful!
 
 ### got/cli/* Pattern
 - Should have a member variable for Container
-- Query container from member variable in functions
 - DO NOT import cortical.core.bootstrap in functions
-
-### Schema Validation on Missing
-- When schema not found: should we throw exception instead of silent return?
-- Current: `if not registry.has_schema(entity_type): return`
-- Need to decide proper behavior
 
 ---
 
 ## Design Decisions
 
-1. **No backward compatibility** - fix problems directly, don't create shims
-2. **Container-first** - dependencies injected via Container, no globals
-3. **CDG is foundation** - all storage goes through CDG, GoT is facade
+1. **No backward compatibility** - fix problems directly
+2. **Container-first** - dependencies injected via Container
+3. **CDG is foundation** - all storage goes through CDG
 4. **Required parameters** - no optional with fallback to globals
-5. **Centralized configuration** - durability, paths, etc. configured at Container level
+5. **Centralized configuration** - durability, paths at Container level
 
 ---
 
@@ -66,4 +80,4 @@ Schema constructor injection is DONE.
 
 - Don't run tests until user says to
 - Go slow, check in before making changes
-- Store architectural insights in this scratchpad
+- CLAUDE.md discussion deferred

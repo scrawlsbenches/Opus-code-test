@@ -34,11 +34,12 @@ from cortical.got.entity_schemas import get_valid_statuses
 logger = logging.getLogger(__name__)
 
 from .tx_manager import TransactionManager
-from .versioned_store import VersionedStore
 from .wal import WALManager
 from .indexer import QueryIndexManager
-from .types import Task
+from .types import Task, create_entity_from_dict
 from cortical.utils.checksums import compute_checksum, verify_checksum
+from cortical.cdg.storage import CDGStore
+from cortical.cdg.config import CDGConfig
 from .errors import CorruptionError
 
 
@@ -126,7 +127,12 @@ class RecoveryManager:
         self.got_dir.mkdir(parents=True, exist_ok=True)
 
         # Initialize storage and WAL (without triggering TX manager recovery)
-        self.store = VersionedStore(self.got_dir / "entities")
+        # Recovery uses CDGStore directly with entity factory for type dispatch
+        self.store = CDGStore(
+            self.got_dir / "entities",
+            config=CDGConfig.for_got(),
+            entity_factory=create_entity_from_dict,
+        )
         self.wal = WALManager(self.got_dir / "wal")
 
     def needs_recovery(self) -> bool:
