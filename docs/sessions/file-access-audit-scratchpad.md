@@ -4,6 +4,15 @@
 
 ---
 
+## PROTOCOL: UPDATE THIS BEFORE
+
+1. **Before writing significant code** — Document intent first
+2. **Before context compaction** — Capture current state and next steps
+3. **Commit frequently** — Small commits, clear messages, push to branch
+4. **This is NOT a changelog** — Git tracks what; this tracks WHY and WHAT'S NEXT
+
+---
+
 ## CORE RULES
 
 1. **CONTAINER-FIRST** — All deps via `cortical/core/bootstrap.py`. No direct instantiation. Constructor injection only.

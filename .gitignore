@@ -137,13 +137,11 @@ corpus_dev/
 #   - .got/snapshots/       - Compressed graph snapshots (cache, can rebuild)
 #   - .got/tracked/         - Exported task/sprint/epic state
 #   - .got/entities/        - Entity JSON files (tasks, decisions, edges)
-# LOCAL ONLY (transient recovery data, self-healing):
+# LOCAL ONLY (transient recovery data):
 #   - .got/wal/             - Write-ahead logs (crash recovery only)
 #   - .got/chunks/          - Chunk-based storage (local cache)
-#   - .got/entities/_version.json - Version counter (self-healing, computed from entity count)
 .got/wal/
 .got/chunks/
-.got/entities/_version.json
 .got/learning/experiences/
 
 # Ensure git-tracked directories are not ignored
