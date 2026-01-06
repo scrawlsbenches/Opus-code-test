@@ -41,6 +41,9 @@ from .types import Entity
 from .errors import CorruptionError, ValidationError, StorageError
 from .config import CDGConfig, DurabilityMode
 
+if TYPE_CHECKING:
+    from .schema import SchemaRegistry
+
 
 class NoOpLock:
     """
@@ -133,6 +136,8 @@ class CDGStore:
         filesystem: Optional[FileSystem] = None,
         # Caching (enabled by default for performance)
         cache_enabled: bool = True,
+        # Schema registry for validation (injected via Container)
+        schema_registry: Optional["SchemaRegistry"] = None,
     ):
         """
         Initialize store, creating directory structure if needed.
@@ -145,6 +150,8 @@ class CDGStore:
             validate_on_save: Legacy parameter for VersionedStore compatibility
             filesystem: FileSystem implementation (defaults to RealFileSystem)
             cache_enabled: Enable entity caching for read performance
+            schema_registry: SchemaRegistry for entity validation (optional,
+                           injected via Container for schema-aware validation)
         """
         # FileSystem abstraction - defaults to real disk I/O
         self._fs: FileSystem = filesystem or RealFileSystem()
@@ -168,6 +175,10 @@ class CDGStore:
 
         # Entity factory for creating entities from dicts
         self.entity_factory = entity_factory or default_entity_factory
+
+        # Schema registry for validation (injected via Container)
+        # When set, enables schema-based validation on write
+        self._schema_registry: Optional["SchemaRegistry"] = schema_registry
 
         # History directory for MVCC snapshots
         self.history_dir = self.store_dir / "_history"
@@ -700,7 +711,9 @@ class CDGStore:
         """
         Validate entity before writing.
 
-        Override this method for custom validation logic.
+        Performs two levels of validation:
+        1. Basic validation (entity must have an ID)
+        2. Schema validation (if SchemaRegistry is configured)
 
         Args:
             entity: Entity to validate
@@ -717,6 +730,20 @@ class CDGStore:
                 "Entity must have an ID",
                 entity_type=getattr(entity, 'entity_type', 'unknown')
             )
+
+        # Schema validation (when registry is available)
+        if self._schema_registry is not None:
+            entity_type = getattr(entity, 'entity_type', None)
+            if entity_type and self._schema_registry.has_schema(entity_type):
+                # Convert entity to dict for validation
+                entity_data = entity.to_dict()
+                result = self._schema_registry.validate(entity_type, entity_data)
+                if not result.valid:
+                    raise ValidationError(
+                        f"Schema validation failed: {'; '.join(result.errors)}",
+                        entity_id=entity.id,
+                        entity_type=entity_type
+                    )
 
     def _write_with_checksum(
         self, path: Path, data: dict, max_retries: int = 3

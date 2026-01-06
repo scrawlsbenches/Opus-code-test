@@ -405,6 +405,56 @@ class BaseSchema:
         return data
 
 
+class OnDeleteAction(Enum):
+    """Action to take when referenced entity is deleted."""
+    CASCADE = auto()     # Delete referencing entity too
+    SET_NULL = auto()    # Set reference field to None
+    RESTRICT = auto()    # Prevent deletion if references exist
+    NO_ACTION = auto()   # Allow deletion, leave dangling reference
+
+
+@dataclass
+class ReferenceRule:
+    """
+    Generic referential integrity rule.
+
+    Defines how entity references should be validated and what happens
+    when referenced entities are deleted.
+
+    Examples:
+        # Edge must reference existing entities
+        ReferenceRule(
+            field="from_id",
+            must_exist=True,
+            on_delete=OnDeleteAction.CASCADE
+        )
+
+        # Sprint can reference tasks (optional)
+        ReferenceRule(
+            field="task_ids",
+            is_collection=True,
+            must_exist=False,  # Tasks can be deleted
+            on_delete=OnDeleteAction.SET_NULL,
+            target_types=["task"]
+        )
+    """
+
+    field: str
+    """Field name containing the reference (e.g., 'from_id', 'sprint_id')."""
+
+    must_exist: bool = True
+    """If True, referenced entity must exist before write."""
+
+    on_delete: OnDeleteAction = OnDeleteAction.RESTRICT
+    """Action when referenced entity is deleted."""
+
+    target_types: Optional[List[str]] = None
+    """Allowed entity types for reference. None = any type."""
+
+    is_collection: bool = False
+    """If True, field is a list of references (e.g., task_ids)."""
+
+
 class SchemaRegistry:
     """
     Registry for entity schemas.
@@ -413,33 +463,36 @@ class SchemaRegistry:
     - Schema registration by entity type
     - Validation dispatch
     - Migration orchestration
+    - Referential integrity rules
 
     This is the central point for all schema operations in CDG.
     Domain-specific modules (GoT, CEL, etc.) register their schemas here.
 
+    Lifecycle Management:
+        SchemaRegistry is managed by the Container via SchemaModule.
+        Use constructor injection to receive SchemaRegistry:
+
+            class MyService:
+                def __init__(self, schema_registry: SchemaRegistry):
+                    self._registry = schema_registry
+
+        For backward compatibility, get_registry() still works but
+        Container injection is preferred for explicit dependencies.
+
     Usage:
-        registry = get_registry()
+        # Via Container (preferred)
+        registry = container.resolve(SchemaRegistry)
         registry.register('task', TaskSchema)
 
+        # Via global helper (backward compatible)
+        registry = get_registry()
         result = registry.validate('task', data)
-        migrated = registry.migrate('task', data)
     """
 
-    _instance: Optional[SchemaRegistry] = None
-
-    def __new__(cls) -> SchemaRegistry:
-        """Singleton pattern for global registry."""
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._schemas = {}
-            cls._instance._initialized = False
-        return cls._instance
-
     def __init__(self):
-        """Initialize registry (only on first creation)."""
-        if not self._initialized:
-            self._schemas: Dict[str, Type[BaseSchema]] = {}
-            self._initialized = True
+        """Initialize a new schema registry."""
+        self._schemas: Dict[str, Type[BaseSchema]] = {}
+        self._reference_rules: Dict[str, List[ReferenceRule]] = {}
 
     def register(self, entity_type: str, schema: Type[BaseSchema]) -> None:
         """
@@ -605,22 +658,135 @@ class SchemaRegistry:
         }
 
     def clear(self) -> None:
-        """Clear all registered schemas (for testing)."""
+        """Clear all registered schemas and rules (for testing)."""
         self._schemas.clear()
+        self._reference_rules.clear()
+
+    # ─────────────────────────────────────────────────────────────────────
+    # Reference Rule Management
+    # ─────────────────────────────────────────────────────────────────────
+
+    def add_reference_rule(
+        self,
+        entity_type: str,
+        rule: ReferenceRule
+    ) -> None:
+        """
+        Add a referential integrity rule for an entity type.
+
+        Args:
+            entity_type: Entity type the rule applies to
+            rule: The reference rule to add
+
+        Example:
+            registry.add_reference_rule('edge', ReferenceRule(
+                field='from_id',
+                must_exist=True,
+                on_delete=OnDeleteAction.CASCADE
+            ))
+        """
+        if entity_type not in self._reference_rules:
+            self._reference_rules[entity_type] = []
+        self._reference_rules[entity_type].append(rule)
+
+    def get_reference_rules(self, entity_type: str) -> List[ReferenceRule]:
+        """
+        Get all reference rules for an entity type.
+
+        Args:
+            entity_type: Entity type to get rules for
+
+        Returns:
+            List of ReferenceRule objects (empty if none defined)
+        """
+        return self._reference_rules.get(entity_type, [])
+
+    def get_referencing_rules(
+        self,
+        target_type: str
+    ) -> List[Tuple[str, ReferenceRule]]:
+        """
+        Get all rules that reference a given entity type.
+
+        Useful for determining what happens when an entity is deleted.
+
+        Args:
+            target_type: Entity type being referenced
+
+        Returns:
+            List of (entity_type, rule) tuples for rules that target this type
+        """
+        result = []
+        for entity_type, rules in self._reference_rules.items():
+            for rule in rules:
+                if rule.target_types is None or target_type in rule.target_types:
+                    result.append((entity_type, rule))
+        return result
+
+    def get_on_delete_actions(
+        self,
+        target_type: str
+    ) -> Dict[str, List[Tuple[str, OnDeleteAction]]]:
+        """
+        Get on-delete actions grouped by referencing entity type.
+
+        Args:
+            target_type: Entity type being deleted
+
+        Returns:
+            Dict mapping referencing entity_type to list of (field, action) tuples
+        """
+        result: Dict[str, List[Tuple[str, OnDeleteAction]]] = {}
+        for entity_type, rule in self.get_referencing_rules(target_type):
+            if entity_type not in result:
+                result[entity_type] = []
+            result[entity_type].append((rule.field, rule.on_delete))
+        return result
 
 
-# Global registry instance
-_registry = SchemaRegistry()
+# Global registry instance (for backward compatibility)
+# Prefer Container injection for new code
+_registry: Optional[SchemaRegistry] = None
+
+
+def _get_or_create_registry() -> SchemaRegistry:
+    """Get or create the global registry (lazy initialization)."""
+    global _registry
+    if _registry is None:
+        _registry = SchemaRegistry()
+    return _registry
 
 
 def get_registry() -> SchemaRegistry:
-    """Get the global schema registry."""
-    return _registry
+    """
+    Get the global schema registry.
+
+    Note: For new code, prefer Container injection via SchemaModule.
+    This function exists for backward compatibility.
+
+    Returns:
+        The global SchemaRegistry instance
+    """
+    return _get_or_create_registry()
+
+
+def set_registry(registry: SchemaRegistry) -> None:
+    """
+    Set the global schema registry.
+
+    Used by SchemaModule to inject the Container-managed registry
+    into the global for backward compatibility.
+
+    Args:
+        registry: SchemaRegistry instance to use as global
+    """
+    global _registry
+    _registry = registry
 
 
 def register_schema(entity_type: str, schema: Type[BaseSchema]) -> None:
     """Register a schema in the global registry."""
-    _registry.register(entity_type, schema)
+    _get_or_create_registry().register(entity_type, schema)
 
 
 def validate_entity(
@@ -629,7 +795,7 @@ def validate_entity(
     strict: bool = False
 ) -> ValidationResult:
     """Validate data against global registry."""
-    return _registry.validate(entity_type, data, strict=strict)
+    return _get_or_create_registry().validate(entity_type, data, strict=strict)
 
 
 def migrate_entity(
@@ -637,7 +803,7 @@ def migrate_entity(
     data: Dict[str, Any]
 ) -> Tuple[Dict[str, Any], ValidationResult]:
     """Migrate data using global registry."""
-    return _registry.migrate(entity_type, data)
+    return _get_or_create_registry().migrate(entity_type, data)
 
 
 __all__ = [
@@ -647,8 +813,12 @@ __all__ = [
     'ValidationResult',
     'BaseSchema',
     'SchemaRegistry',
+    # Referential Integrity
+    'OnDeleteAction',
+    'ReferenceRule',
     # Functions
     'get_registry',
+    'set_registry',
     'register_schema',
     'validate_entity',
     'migrate_entity',

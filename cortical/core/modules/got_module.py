@@ -93,8 +93,9 @@ class GoTModule(ContainerModule):
             # Create GoT-specific CDG config
             cdg_config = CDGConfig.for_got()
 
-            # Resolve FileSystem from container (registered by bootstrap)
+            # Resolve dependencies from container
             filesystem = container.resolve(FileSystem)
+            schema_registry = container.resolve(SchemaRegistry)
 
             if self.config.use_memory:
                 # In-memory storage for fast testing
@@ -103,6 +104,7 @@ class GoTModule(ContainerModule):
                     config=cdg_config,
                     entity_factory=_got_entity_factory,
                     filesystem=filesystem,
+                    schema_registry=schema_registry,
                 )
                 wal = None
                 # Create a no-op lock for in-memory mode (context manager protocol)
@@ -123,6 +125,7 @@ class GoTModule(ContainerModule):
                     config=cdg_config,
                     entity_factory=_got_entity_factory,
                     filesystem=filesystem,
+                    schema_registry=schema_registry,
                 )
 
                 # Create WAL if enabled

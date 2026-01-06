@@ -654,11 +654,26 @@ ALL_SCHEMAS = {
 _schemas_registered = False
 
 
+def reset_schema_registration() -> None:
+    """
+    Reset the schema registration flag.
+
+    Called by SchemaModule when a new registry is installed, so that
+    ensure_schemas_registered() will re-register schemas to the new registry.
+
+    For internal use only.
+    """
+    global _schemas_registered
+    _schemas_registered = False
+
+
 def ensure_schemas_registered() -> None:
     """
     Ensure all entity schemas are registered in the global registry.
 
-    Safe to call multiple times - only registers once.
+    Safe to call multiple times - only registers once per registry.
+    When a new registry is set via set_registry(), call reset_schema_registration()
+    first to ensure schemas are registered to the new registry.
     """
     global _schemas_registered
     if _schemas_registered:

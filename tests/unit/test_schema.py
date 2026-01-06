@@ -456,11 +456,27 @@ class TestSchemaRegistry:
         schemas = registry.list_schemas()
         assert schemas == {'type1': 1, 'type2': 2}
 
-    def test_singleton_pattern(self):
-        """Test registry is singleton."""
+    def test_registry_is_not_singleton(self):
+        """Test registry instances are independent (no singleton).
+
+        SchemaRegistry lifecycle is now managed by Container.
+        Each call to SchemaRegistry() creates a new instance.
+        Use set_registry() to set the global instance.
+        """
         reg1 = SchemaRegistry()
         reg2 = SchemaRegistry()
-        assert reg1 is reg2
+        # Each call creates a new instance
+        assert reg1 is not reg2
+
+        # They start empty and are independent
+        class TestSchema(BaseSchema):
+            schema_version = 1
+            entity_type = 'test'
+            fields = {}
+
+        reg1.register('test', TestSchema)
+        assert reg1.has_schema('test')
+        assert not reg2.has_schema('test')
 
 
 class TestGlobalFunctions:

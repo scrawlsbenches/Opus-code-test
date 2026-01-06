@@ -22,8 +22,12 @@ from cortical.cdg.schema import (
     ValidationResult,
     BaseSchema,
     SchemaRegistry,
+    # Referential Integrity
+    OnDeleteAction,
+    ReferenceRule,
     # Functions
     get_registry,
+    set_registry,
     register_schema,
     validate_entity,
     migrate_entity,
@@ -36,8 +40,12 @@ __all__ = [
     'ValidationResult',
     'BaseSchema',
     'SchemaRegistry',
+    # Referential Integrity
+    'OnDeleteAction',
+    'ReferenceRule',
     # Functions
     'get_registry',
+    'set_registry',
     'register_schema',
     'validate_entity',
     'migrate_entity',
