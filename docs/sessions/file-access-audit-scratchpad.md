@@ -16,12 +16,27 @@
 
 ## Current State
 
-**Active:** Fixing broken imports from deleted versioned_store.py
+**Active:** Scanning for file access issues
 
-**Next actions:**
-- Fix query_builder.py import (just did)
-- Scan for more file access issues
-- Commit changes with clear message
+**Files with direct file access found (need review):**
+- claudemd.py - writes CLAUDE.md output, scans sprint/task files
+- query_api.py - scans entity files (fallback pattern)
+- api.py - scans entity files (fallback pattern)
+- recovery.py - scans files (legitimate for recovery)
+- cli/* - various utility commands (likely legitimate)
+
+**Fallback pattern (acceptable):**
+```python
+if store.iter_entities available:
+    use store
+else:
+    fallback to disk scan
+```
+
+**claudemd.py analysis:**
+- ContextAnalyzer does direct reads - read-only context gathering
+- Lower priority - not modifying data, designed for resilience
+- Could be refactored to use GoTManager in future
 
 ---
 
