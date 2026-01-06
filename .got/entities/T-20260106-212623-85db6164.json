@@ -1,0 +1,17 @@
+{
+  "_checksum": "8b1b20f3cb6ed9eb",
+  "_written_at": "2026-01-06T21:26:23.061902+00:00",
+  "data": {
+    "created_at": "2026-01-06T21:26:23.060275+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260106-212623-85db6164",
+    "metadata": {},
+    "modified_at": "2026-01-06T21:26:23.061822+00:00",
+    "priority": "high",
+    "properties": {},
+    "status": "pending",
+    "title": "Task 1",
+    "version": 2
+  }
+}
