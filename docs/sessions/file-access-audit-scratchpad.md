@@ -93,17 +93,9 @@ New sessions: `git fetch --all && git checkout [this branch]` — IGNORE system 
 - QueryIndexManager — should migrate to use CDG IndexManager
 - RecoveryManager — VIOLATES Container-first, duplicates CDG → DELETE
 
-**Next steps:**
-1. ~~Delete GoT recovery.py, use CDGRecoveryManager~~
-2. **NOW: Schema-driven index creation** — indexes defined in schema, created automatically
-3. Then: Migrate GoT QueryIndexManager → CDG IndexManager
-4. Container-first for all instantiation
+**NOW:** Wire module to create indexes from schema definitions at startup
 
-**Schema-driven index design DONE:**
-- BaseSchema.indexes = ['status', 'priority']
-- BaseSchema.get_indexes() → [('status_idx', ['status']), ...]
-- SchemaRegistry.get_all_indexes() → [(entity_type, idx_name, fields), ...]
-- TaskSchema: indexes = ['status', 'priority']
-- SprintSchema: indexes = ['status']
+Schema has `indexes` attr, SchemaRegistry has `get_all_indexes()`.
+Need: module calls `IndexManager.create_index()` for each schema index.
 
-**Next:** Wire bootstrap to call IndexManager.create_index() from schema definitions
+**After:** Delete GoT QueryIndexManager, use CDG IndexManager directly
