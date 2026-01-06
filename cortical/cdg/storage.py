@@ -1154,7 +1154,7 @@ class CDGStore:
                 entity = self.read(entity_file.stem)
                 if entity is not None:
                     entities.append(entity)
-            except CorruptionError as e:
+            except (CorruptionError, json.JSONDecodeError) as e:
                 # Skip corrupted entities during iteration (graceful degradation)
                 logger.warning(f"Skipping corrupted entity {entity_file.stem}: {e}")
                 continue
