@@ -1,14 +1,10 @@
 """
 Behavioral tests for CDG IndexManager.
 
-These tests define the expected behavior of the CDG indexing system,
-which generalizes GoT's QueryIndexManager into a reusable CDG component.
-
 Story: As a developer using CDG, I want to create indexes on entity fields
        so that I can efficiently query entities by field values.
 
 Design Reference: docs/architecture/DISTRIBUTED_GRAPH_SPECIFICATION.md (Section 8)
-Replaces: cortical/got/indexer.py (QueryIndexManager)
 
 Testing Strategy: Uses InMemoryFileSystem for fast, isolated tests with no disk I/O.
 """
@@ -58,10 +54,10 @@ class TestIndexManagerCreation:
 
     def test_index_manager_with_namespace(self, fs: InMemoryFileSystem, store_dir: Path):
         """I can create a namespaced IndexManager for domain separation."""
-        manager = IndexManager(store_dir=store_dir, filesystem=fs, namespace="got")
-        assert manager.namespace == "got"
+        manager = IndexManager(store_dir=store_dir, filesystem=fs, namespace="tasks")
+        assert manager.namespace == "tasks"
         # Namespace creates its own subdirectory
-        assert fs.is_dir(store_dir / "indexes" / "got")
+        assert fs.is_dir(store_dir / "indexes" / "tasks")
 
 
 class TestIndexCreation:
@@ -306,27 +302,27 @@ class TestIndexRebuild:
 
 
 class TestRelationshipIndex:
-    """Story: Indexing relationships (like sprint membership)."""
+    """Story: Indexing relationships (like container membership)."""
 
     def test_relationship_index(self, fs: InMemoryFileSystem, store_dir: Path):
         """I can index relationships between entities."""
         manager = IndexManager(store_dir=store_dir, filesystem=fs)
 
-        # Create a relationship index (sprint contains tasks)
+        # Create a relationship index (container holds items)
         manager.create_index(
-            name="sprint_tasks_idx",
-            fields=["sprint_id"],
+            name="container_items_idx",
+            fields=["container_id"],
             index_type=IndexType.HASH,
         )
 
-        # Index task membership in sprints
-        manager.index_entity("T-001", {"sprint_id": "S-001"})
-        manager.index_entity("T-002", {"sprint_id": "S-001"})
-        manager.index_entity("T-003", {"sprint_id": "S-002"})
+        # Index item membership in containers
+        manager.index_entity("ITEM-001", {"container_id": "CONT-001"})
+        manager.index_entity("ITEM-002", {"container_id": "CONT-001"})
+        manager.index_entity("ITEM-003", {"container_id": "CONT-002"})
 
-        # Look up tasks in sprint
-        sprint1_tasks = manager.lookup("sprint_tasks_idx", "S-001")
-        assert sprint1_tasks == {"T-001", "T-002"}
+        # Look up items in container
+        container1_items = manager.lookup("container_items_idx", "CONT-001")
+        assert container1_items == {"ITEM-001", "ITEM-002"}
 
 
 class TestIndexStats:
@@ -364,70 +360,63 @@ class TestContainerIntegration:
         assert isinstance(manager, IndexManager)
 
 
-class TestGoTCompatibility:
-    """Story: CDG IndexManager can replace GoT QueryIndexManager."""
+class TestDomainEntityIndexing:
+    """Story: IndexManager supports common domain entity indexing patterns."""
 
-    def test_got_task_indexing_pattern(self, fs: InMemoryFileSystem, store_dir: Path):
+    def test_multi_field_entity_indexing(self, fs: InMemoryFileSystem, store_dir: Path):
         """
-        The pattern GoT uses for task indexing works with CDG IndexManager.
+        Entities with multiple indexed fields can be queried by any field.
 
-        GoT does:
-            index_manager.index_task(task_id, status=status, priority=priority)
-            index_manager.lookup("status", "pending")
-
-        CDG equivalent:
-            index_manager.index_entity(task_id, {"status": status, "priority": priority})
+        Common pattern for task-like entities:
+            index_manager.index_entity(entity_id, {"status": status, "priority": priority})
             index_manager.lookup("status_idx", "pending")
         """
-        manager = IndexManager(store_dir=store_dir, filesystem=fs, namespace="got")
+        manager = IndexManager(store_dir=store_dir, filesystem=fs, namespace="domain")
 
-        # Create GoT-style indexes
+        # Create indexes for common entity fields
         manager.create_index(name="status_idx", fields=["status"])
         manager.create_index(name="priority_idx", fields=["priority"])
-        manager.create_index(name="sprint_idx", fields=["sprint_id"])
+        manager.create_index(name="container_idx", fields=["container_id"])
 
-        # Index a task (GoT pattern)
+        # Index an entity with multiple fields
         manager.index_entity(
             entity_id="T-001",
             fields={
                 "status": "pending",
                 "priority": "high",
-                "sprint_id": "S-001"
+                "container_id": "C-001"
             }
         )
 
-        # Query patterns GoT uses
-        pending_tasks = manager.lookup("status_idx", "pending")
+        # Query by any indexed field
+        pending_entities = manager.lookup("status_idx", "pending")
         high_priority = manager.lookup("priority_idx", "high")
-        sprint_tasks = manager.lookup("sprint_idx", "S-001")
+        container_entities = manager.lookup("container_idx", "C-001")
 
-        assert "T-001" in pending_tasks
+        assert "T-001" in pending_entities
         assert "T-001" in high_priority
-        assert "T-001" in sprint_tasks
+        assert "T-001" in container_entities
 
-    def test_got_update_pattern(self, fs: InMemoryFileSystem, store_dir: Path):
+    def test_entity_field_update_pattern(self, fs: InMemoryFileSystem, store_dir: Path):
         """
-        GoT's update pattern works with CDG IndexManager.
+        Updating an entity's indexed field moves it between index buckets.
 
-        GoT does:
-            index_manager.update_task(task_id, old_status="pending", new_status="completed")
-
-        CDG equivalent:
-            index_manager.update_entity(task_id, {"status": "pending"}, {"status": "completed"})
+        Common pattern:
+            index_manager.update_entity(entity_id, {"status": "pending"}, {"status": "completed"})
         """
-        manager = IndexManager(store_dir=store_dir, filesystem=fs, namespace="got")
+        manager = IndexManager(store_dir=store_dir, filesystem=fs, namespace="domain")
         manager.create_index(name="status_idx", fields=["status"])
 
-        # Add task
+        # Add entity
         manager.index_entity("T-001", {"status": "pending"})
 
-        # Update task status (GoT pattern)
+        # Update entity status
         manager.update_entity(
             entity_id="T-001",
             old_fields={"status": "pending"},
             new_fields={"status": "completed"}
         )
 
-        # Verify update worked
+        # Verify update moved entity between buckets
         assert "T-001" not in manager.lookup("status_idx", "pending")
         assert "T-001" in manager.lookup("status_idx", "completed")
