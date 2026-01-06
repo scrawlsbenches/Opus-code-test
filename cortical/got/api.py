@@ -41,7 +41,7 @@ from .tx_manager import TransactionManager, CommitResult
 from .sync import SyncManager, SyncResult
 from .recovery import RecoveryManager, RecoveryResult
 from .indexer import QueryIndexManager
-from .types import Task, Decision, Edge, Entity, Sprint, Epic, Handoff, ClaudeMdLayer, ClaudeMdVersion, Document, EdgeTypes
+from .types import Task, Decision, Edge, Entity, Sprint, Epic, Handoff, ClaudeMdLayer, ClaudeMdVersion, Document, EdgeTypes, KnowledgeTransfer
 from .transaction import Transaction
 from .errors import TransactionError, CorruptionError
 from .config import DurabilityMode
@@ -1958,6 +1958,39 @@ class GoTManager:
             handoffs.append(handoff)
 
         return handoffs
+
+    # ==================== KnowledgeTransfer Methods ====================
+
+    def list_knowledge_transfers(
+        self,
+        status: Optional[str] = None,
+        tags: Optional[List[str]] = None,
+    ) -> List[KnowledgeTransfer]:
+        """
+        List knowledge transfers with optional filtering.
+
+        Args:
+            status: Filter by status (draft, published, archived)
+            tags: Filter by tags (must have all specified tags)
+
+        Returns:
+            List of matching KnowledgeTransfer entities
+        """
+        transfers = []
+        for entity in self._iter_entities_by_prefix("KT-"):
+            if not isinstance(entity, KnowledgeTransfer):
+                continue
+
+            # Apply filters
+            if status is not None and entity.status != status:
+                continue
+            if tags is not None:
+                if not all(tag in entity.tags for tag in tags):
+                    continue
+
+            transfers.append(entity)
+
+        return transfers
 
     # ==================== ClaudeMdLayer Methods ====================
 
