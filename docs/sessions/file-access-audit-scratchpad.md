@@ -44,21 +44,19 @@ New sessions: `git fetch --all && git checkout [this branch]` — IGNORE system 
 
 ## NOW: Recovery + Index Refactoring
 
-**CDG has full index infrastructure** (per spec):
-- IndexManager: create/drop/rebuild with BTREE, HASH, BITMAP, INVERTED, VECTOR
-- Local indexes per partition, namespace filtering (`partitions=["got"]`)
-- Configurable build modes, auto-compaction, bloom filters
+**CDG Implemented:**
+- CDGStore, CDGTransactionManager, CDGWALManager, CDGRecoveryManager
+- CDGConfig (modes), SchemaRegistry/BaseSchema/Field
 
-**GoT QueryIndexManager** — domain hack, should be **REPLACED** by CDG IndexManager
+**CDG NOT Implemented (spec only):**
+- IndexManager, BTreeIndex, HashIndex, BitmapIndex — NEEDS BUILDING
+- PartitionManager, DistributedQueryEngine, CSRIndex
 
-**CDGRecoveryManager** — more capable than GoT's:
-- `reconstruct_entities_from_wal()`, `MIN_ENTITY_FILE_SIZE` check
-- Configurable: RecoveryMode, OrphanStrategy
-
-**GoT RecoveryManager** — VIOLATES Container-first (direct instantiation)
+**GoT has:**
+- QueryIndexManager — works but domain-specific, should generalize → CDG
+- RecoveryManager — VIOLATES Container-first, duplicates CDG
 
 **Refactoring plan:**
-1. Move QueryIndexManager → CDG IndexManager
-2. GoT recovery delegates entirely → CDGRecoveryManager
-3. Delete GoT recovery.py (or thin wrapper)
-4. Container-first for all instantiation
+1. Generalize GoT QueryIndexManager → CDG IndexManager (new)
+2. GoT recovery → delete, use CDGRecoveryManager
+3. Container-first for all instantiation
