@@ -62,7 +62,8 @@ from .transaction import (
     generate_transaction_id,
 )
 
-from .wal import WALManager
+# WAL infrastructure from CDG (no GoT wrapper needed)
+from cortical.cdg.wal import CDGWALManager
 
 # Transaction infrastructure from CDG (no GoT wrapper needed)
 from cortical.cdg.transaction_manager import (
@@ -211,8 +212,8 @@ __all__ = [
     'Transaction',
     'TransactionState',
     'generate_transaction_id',
-    # WAL
-    'WALManager',
+    # WAL (from CDG)
+    'CDGWALManager',
     # Transaction Manager
     'TransactionManager',
     'CommitResult',

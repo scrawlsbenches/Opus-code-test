@@ -34,7 +34,7 @@ from cortical.got.entity_schemas import get_valid_statuses
 logger = logging.getLogger(__name__)
 
 from cortical.cdg.transaction_manager import CDGTransactionManager as TransactionManager
-from .wal import WALManager
+from cortical.cdg.wal import CDGWALManager
 from .indexer import QueryIndexManager
 from .types import Task, create_entity_from_dict
 from cortical.utils.checksums import compute_checksum, verify_checksum
@@ -133,7 +133,7 @@ class RecoveryManager:
             config=CDGConfig.for_got(),
             entity_factory=create_entity_from_dict,
         )
-        self.wal = WALManager(self.got_dir / "wal")
+        self.wal = CDGWALManager(self.got_dir / "wal", CDGConfig.for_got())
 
     def needs_recovery(self) -> bool:
         """
