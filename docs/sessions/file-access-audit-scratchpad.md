@@ -16,33 +16,20 @@
 
 ## Current State
 
-**Active:** Scanning for file access issues
+**Status:** AUDIT COMPLETE ✓
 
-**Context Recovery Steps (for new session):**
-1. `git log --oneline -10` - see what's been done
-2. Read this scratchpad - active thinking
-3. Read CLAUDE.md - architectural principles
-4. Check `cortical/got/` for remaining issues
+**Summary of changes (see git log):**
+- Deleted `got/wal.py` → use CDGWALManager directly
+- Removed fallback patterns in `api.py` and `query_api.py`
+- Simplified `_iter_entities_by_prefix` and `list_claudemd_layers`
 
-**Files with direct file access found (need review):**
-- claudemd.py - writes CLAUDE.md output, scans sprint/task files
-- query_api.py - scans entity files (fallback pattern)
-- api.py - scans entity files (fallback pattern)
-- recovery.py - scans files (legitimate for recovery)
-- cli/* - various utility commands (likely legitimate)
+**Remaining file access (ALL ACCEPTABLE):**
+- `recovery.py` - MUST bypass CDG to detect/fix corruption
+- `indexer.py` - Index persistence is separate from entity store
+- `claudemd.py` - Context gathering, generates output files
+- `cli/*` - User-facing display/import operations
 
-**Fallback pattern (acceptable):**
-```python
-if store.iter_entities available:
-    use store
-else:
-    fallback to disk scan
-```
-
-**claudemd.py analysis:**
-- ContextAnalyzer does direct reads - read-only context gathering
-- Lower priority - not modifying data, designed for resilience
-- Could be refactored to use GoTManager in future
+**No critical issues remain.** Architecture is solid.
 
 ---
 
@@ -94,6 +81,19 @@ else:
 - **Deleted:** Updated all imports to use CDGTransactionManager directly
 - Aliased as `TransactionManager` in `__init__.py` for backward compatibility
 
+### wal.py Deletion (2026-01-06)
+- GoT's WALManager was 99% identical to CDGWALManager
+- Only recovery.py was still using it (GoTManager used CDGTransactionManager which uses CDGWALManager)
+- CDGWALManager is superior (deferred sequence commit, entity_data support)
+- **Deleted:** Updated recovery.py to use CDGWALManager directly
+- Updated `__init__.py` exports
+
+### Fallback Pattern Removal (2026-01-06)
+- Removed "backward compatibility" fallbacks in api.py and query_api.py
+- `_iter_entities_by_prefix` now simply calls `tx_manager.store.iter_entities()`
+- `list_claudemd_layers` simplified to use store directly
+- Per user: "NO backward compatibility - fix directly"
+
 ### Recovery Analysis (got/recovery.py vs cdg/recovery.py)
 
 **CDG Recovery is MORE comprehensive:**
@@ -105,7 +105,7 @@ else:
 **GoT Recovery has GoT-specific logic:**
 - `needs_index_recovery()` with GoT QueryIndexManager
 - `rebuild_indexes()` creates Task objects directly
-- Uses GoT's WALManager not CDGWALManager
+- Now uses CDGWALManager (updated 2026-01-06)
 
 **Decision: NOT deleting GoT recovery yet**
 - GoT recovery.py has domain-specific index logic
