@@ -42,21 +42,22 @@ New sessions: `git fetch --all && git checkout [this branch]` — IGNORE system 
 
 ---
 
-## NOW: Recovery + Index Refactoring
+## NOW: Recovery Cleanup + GoT Migration
 
 **CDG Implemented:**
 - CDGStore, CDGTransactionManager, CDGWALManager, CDGRecoveryManager
 - CDGConfig (modes), SchemaRegistry/BaseSchema/Field
+- **IndexManager** — 25 behavioral tests passing, DI-registered
 
 **CDG NOT Implemented (spec only):**
-- IndexManager, BTreeIndex, HashIndex, BitmapIndex — NEEDS BUILDING
+- BTreeIndex (IndexManager has HASH/BITMAP only)
 - PartitionManager, DistributedQueryEngine, CSRIndex
 
-**GoT has:**
-- QueryIndexManager — works but domain-specific, should generalize → CDG
-- RecoveryManager — VIOLATES Container-first, duplicates CDG
+**GoT still has:**
+- QueryIndexManager — should migrate to use CDG IndexManager
+- RecoveryManager — VIOLATES Container-first, duplicates CDG → DELETE
 
-**Refactoring plan:**
-1. Generalize GoT QueryIndexManager → CDG IndexManager (new)
-2. GoT recovery → delete, use CDGRecoveryManager
+**Next steps:**
+1. Delete GoT recovery.py, use CDGRecoveryManager
+2. Migrate GoT QueryIndexManager → CDG IndexManager
 3. Container-first for all instantiation
