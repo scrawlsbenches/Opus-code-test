@@ -25,8 +25,6 @@ from cortical.cdg.schema import (
     ValidationResult,
     OnDeleteAction,
     ReferenceRule,
-    get_registry,
-    set_registry,
 )
 from cortical.cdg.errors import ValidationError
 from cortical.common.filesystem import InMemoryFileSystem
@@ -159,21 +157,6 @@ class TestSchemaRegistryLifecycle:
         # reg1 has it, reg2 doesn't
         assert reg1.has_schema("sample_entity")
         assert not reg2.has_schema("sample_entity")
-
-    def test_global_registry_can_be_replaced(self):
-        """
-        GIVEN a global registry with schemas
-        WHEN a new registry is set via set_registry()
-        THEN the new registry becomes the global
-        """
-        # Create and set a new registry
-        new_registry = SchemaRegistry()
-        new_registry.register("custom", SampleEntitySchema)
-        set_registry(new_registry)
-
-        # Global now points to new registry
-        assert get_registry() is new_registry
-        assert get_registry().has_schema("custom")
 
 
 # ============================================================================

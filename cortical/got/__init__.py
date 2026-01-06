@@ -106,20 +106,15 @@ from .query_api import QueryAPI
 
 from .protocol import GoTBackend
 
-from .schema import (
+from cortical.cdg.schema import (
     BaseSchema,
     Field,
     FieldType,
     SchemaRegistry,
     ValidationResult,
-    get_registry,
-    register_schema,
-    validate_entity,
-    migrate_entity,
 )
 
 from .entity_schemas import (
-    ensure_schemas_registered,
     get_schema_for_entity_type,
     list_entity_types,
     TaskSchema,
@@ -265,12 +260,7 @@ __all__ = [
     'FieldType',
     'SchemaRegistry',
     'ValidationResult',
-    'get_registry',
-    'register_schema',
-    'validate_entity',
-    'migrate_entity',
     # Entity Schemas
-    'ensure_schemas_registered',
     'get_schema_for_entity_type',
     'list_entity_types',
     'TaskSchema',
