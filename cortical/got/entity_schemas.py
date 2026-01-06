@@ -63,6 +63,7 @@ class TaskSchema(BaseSchema):
     """
     schema_version = 1
     entity_type = 'task'
+    id_prefix = 'T-'
 
     fields = {
         **BASE_ENTITY_FIELDS,
@@ -100,6 +101,7 @@ class DecisionSchema(BaseSchema):
     """
     schema_version = 1
     entity_type = 'decision'
+    id_prefix = 'D-'
 
     fields = {
         **BASE_ENTITY_FIELDS,
@@ -130,6 +132,7 @@ class SprintSchema(BaseSchema):
     """
     schema_version = 1
     entity_type = 'sprint'
+    id_prefix = 'S-'
 
     fields = {
         **BASE_ENTITY_FIELDS,
@@ -180,6 +183,7 @@ class EpicSchema(BaseSchema):
     """
     schema_version = 1
     entity_type = 'epic'
+    id_prefix = 'EPIC-'
 
     fields = {
         **BASE_ENTITY_FIELDS,
@@ -226,6 +230,7 @@ class EdgeSchema(BaseSchema):
     """
     schema_version = 1
     entity_type = 'edge'
+    id_prefix = 'E-'
 
     # Valid edge types - imported from types.py (single source of truth)
     # Re-exported here for backward compatibility with code that uses EdgeSchema.EDGE_TYPES
@@ -262,6 +267,7 @@ class HandoffSchema(BaseSchema):
     """
     schema_version = 1
     entity_type = 'handoff'
+    id_prefix = 'H-'
 
     fields = {
         **BASE_ENTITY_FIELDS,
@@ -322,6 +328,7 @@ class KnowledgeTransferSchema(BaseSchema):
     """
     schema_version = 1
     entity_type = 'knowledge_transfer'
+    id_prefix = 'KT-'
 
     fields = {
         **BASE_ENTITY_FIELDS,
@@ -384,6 +391,7 @@ class ClaudeMdLayerSchema(BaseSchema):
     """
     schema_version = 1
     entity_type = 'claudemd_layer'
+    id_prefix = 'CML-'
 
     fields = {
         **BASE_ENTITY_FIELDS,
@@ -455,6 +463,7 @@ class ClaudeMdVersionSchema(BaseSchema):
     """
     schema_version = 1
     entity_type = 'claudemd_version'
+    id_prefix = 'CMV-'
 
     fields = {
         **BASE_ENTITY_FIELDS,
@@ -494,6 +503,7 @@ class TeamSchema(BaseSchema):
     """
     schema_version = 1
     entity_type = 'team'
+    id_prefix = 'TEAM-'
 
     fields = {
         **BASE_ENTITY_FIELDS,
@@ -536,6 +546,7 @@ class PersonaProfileSchema(BaseSchema):
     """
     schema_version = 1
     entity_type = 'persona_profile'
+    id_prefix = 'PP-'
 
     fields = {
         **BASE_ENTITY_FIELDS,
@@ -585,6 +596,7 @@ class DocumentSchema(BaseSchema):
     """
     schema_version = 1
     entity_type = 'document'
+    id_prefix = 'DOC-'
 
     fields = {
         **BASE_ENTITY_FIELDS,
@@ -704,6 +716,74 @@ def get_valid_statuses(entity_type: str) -> set:
     if 'status' not in schema.fields:
         raise KeyError(f"Entity type '{entity_type}' does not have a 'status' field")
     return set(schema.fields['status'].choices)
+
+
+def get_id_prefix(entity_type: str) -> str:
+    """Get the ID prefix for an entity type.
+
+    Args:
+        entity_type: Entity type name (e.g., 'task', 'edge', 'knowledge_transfer')
+
+    Returns:
+        ID prefix string (e.g., 'T-', 'E-', 'KT-')
+
+    Raises:
+        KeyError: If entity type doesn't exist
+
+    Example:
+        >>> get_id_prefix('task')
+        'T-'
+        >>> get_id_prefix('knowledge_transfer')
+        'KT-'
+    """
+    ensure_schemas_registered()
+    schema = get_schema_for_entity_type(entity_type)
+    if schema is None:
+        raise KeyError(f"Entity type '{entity_type}' does not exist")
+    return schema.id_prefix
+
+
+def get_entity_type_for_prefix(prefix: str) -> str:
+    """Get the entity type for an ID prefix.
+
+    Args:
+        prefix: Entity ID prefix (e.g., 'T-', 'E-', 'KT-')
+
+    Returns:
+        Entity type name (e.g., 'task', 'edge', 'knowledge_transfer')
+
+    Raises:
+        KeyError: If prefix doesn't match any entity type
+
+    Example:
+        >>> get_entity_type_for_prefix('T-')
+        'task'
+        >>> get_entity_type_for_prefix('KT-')
+        'knowledge_transfer'
+    """
+    ensure_schemas_registered()
+    registry = get_registry()
+    entity_type = registry.get_entity_type_by_prefix(prefix)
+    if entity_type is None:
+        raise KeyError(f"No entity type found for prefix '{prefix}'")
+    return entity_type
+
+
+def list_id_prefixes() -> Dict[str, str]:
+    """List all entity ID prefixes and their types.
+
+    Returns:
+        Dict mapping id_prefix to entity_type
+
+    Example:
+        >>> prefixes = list_id_prefixes()
+        >>> prefixes['T-']
+        'task'
+        >>> prefixes['KT-']
+        'knowledge_transfer'
+    """
+    ensure_schemas_registered()
+    return get_registry().list_prefixes()
 
 
 # Auto-register schemas on module import

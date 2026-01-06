@@ -14,6 +14,9 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 from datetime import datetime, timezone
 
+# Mark all tests in this module as slow (disk-heavy)
+pytestmark = pytest.mark.slow
+
 
 # =============================================================================
 # FIXTURES

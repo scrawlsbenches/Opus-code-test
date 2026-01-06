@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from cortical.common import Container, ContainerModule, Lifecycle
+from cortical.common import Container, ContainerModule, Lifecycle, FileSystem
 
 
 @dataclass
@@ -36,6 +36,9 @@ class GoTConfig:
     enable_indexing: bool = True
     """Enable query indexing."""
 
+    use_memory: bool = False
+    """Use in-memory storage instead of disk (for testing)."""
+
 
 class GoTModule(ContainerModule):
     """
@@ -47,21 +50,27 @@ class GoTModule(ContainerModule):
     Note: CDGModule should be applied first as GoT depends on CDG services.
     """
 
-    def __init__(self, config: Optional[GoTConfig] = None, got_dir: Optional[Path] = None):
+    def __init__(
+        self,
+        config: Optional[GoTConfig] = None,
+        got_dir: Optional[Path] = None,
+        use_memory: bool = False,
+    ):
         """
         Initialize GoT module.
 
         Args:
             config: GoT configuration (preferred)
             got_dir: Shorthand for got_dir (creates default config)
+            use_memory: Use in-memory storage (for testing)
         """
         if config is not None:
             self.config = config
         elif got_dir is not None:
-            self.config = GoTConfig(got_dir=got_dir)
+            self.config = GoTConfig(got_dir=got_dir, use_memory=use_memory)
         else:
             # Default to .got in current directory
-            self.config = GoTConfig(got_dir=Path(".got"))
+            self.config = GoTConfig(got_dir=Path(".got"), use_memory=use_memory)
 
     def register(self, container: Container) -> None:
         """Register GoT services with the container."""
@@ -83,27 +92,49 @@ class GoTModule(ContainerModule):
             # Create GoT-specific CDG config
             cdg_config = CDGConfig.for_got()
 
-            # Create GoT-specific CDGStore with entity factory for type dispatch
-            # This is separate from CDGModule's generic store
-            entities_dir = self.config.got_dir / "entities"
-            entities_dir.mkdir(parents=True, exist_ok=True)
-            store = CDGStore(
-                entities_dir,
-                config=cdg_config,
-                entity_factory=_got_entity_factory,
-            )
+            # Resolve FileSystem from container (registered by bootstrap)
+            filesystem = container.resolve(FileSystem)
 
-            # Create WAL if enabled
-            if cdg_config.enable_wal:
-                wal_dir = self.config.got_dir / "wal"
-                wal_dir.mkdir(parents=True, exist_ok=True)
-                wal = CDGWALManager(wal_dir, cdg_config)
-            else:
+            if self.config.use_memory:
+                # In-memory storage for fast testing
+                store = CDGStore(
+                    self.config.got_dir / "entities",
+                    config=cdg_config,
+                    entity_factory=_got_entity_factory,
+                    filesystem=filesystem,
+                )
                 wal = None
+                # Create a no-op lock for in-memory mode (context manager protocol)
+                class NoOpLock:
+                    """No-op lock for in-memory storage."""
+                    def __enter__(self): return self
+                    def __exit__(self, *args): pass
+                    def acquire(self, blocking=True, timeout=-1): return True
+                    def release(self): pass
+                lock = NoOpLock()
+            else:
+                # Create GoT-specific CDGStore with entity factory for type dispatch
+                # This is separate from CDGModule's generic store
+                entities_dir = self.config.got_dir / "entities"
+                entities_dir.mkdir(parents=True, exist_ok=True)
+                store = CDGStore(
+                    entities_dir,
+                    config=cdg_config,
+                    entity_factory=_got_entity_factory,
+                    filesystem=filesystem,
+                )
 
-            # Create lock
-            lock_path = self.config.got_dir / ".got.lock"
-            lock = ProcessLock(lock_path)
+                # Create WAL if enabled
+                if cdg_config.enable_wal:
+                    wal_dir = self.config.got_dir / "wal"
+                    wal_dir.mkdir(parents=True, exist_ok=True)
+                    wal = CDGWALManager(wal_dir, cdg_config)
+                else:
+                    wal = None
+
+                # Create lock
+                lock_path = self.config.got_dir / ".got.lock"
+                lock = ProcessLock(lock_path)
 
             return TransactionManager(
                 got_dir=self.config.got_dir,

@@ -211,7 +211,7 @@ class TestMigrationFailures:
         assert result2.edges_migrated == 1
 
         # Verify all entities are present in target
-        manager = _create_got_manager(target_dir)
+        manager = _create_got_manager(target_dir, use_memory=False)
         task = manager.get_task("T-ATOMIC-001")
         assert task is not None
         assert task.title == "Atomic test task"
@@ -327,7 +327,7 @@ class TestMigrationFailures:
         assert result.tasks_migrated == 2
 
         # Verify valid tasks were migrated correctly
-        manager = _create_got_manager(target_dir)
+        manager = _create_got_manager(target_dir, use_memory=False)
 
         task1 = manager.get_task("T-VALID-001")
         assert task1 is not None
@@ -498,7 +498,7 @@ class TestMigrationFailures:
         assert result.tasks_migrated == 2
 
         # Verify tasks
-        manager = _create_got_manager(target_dir)
+        manager = _create_got_manager(target_dir, use_memory=False)
 
         task1 = manager.get_task("T-WAL-001")
         assert task1 is not None
@@ -557,7 +557,7 @@ class TestMigrationFailures:
         assert len(result.errors) == 0
 
         # Verify WAL task was migrated
-        manager = _create_got_manager(target_dir)
+        manager = _create_got_manager(target_dir, use_memory=False)
         task = manager.get_task("T-WAL-ONLY")
         assert task is not None
         assert task.title == "WAL only task"

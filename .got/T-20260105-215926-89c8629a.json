@@ -1,0 +1,18 @@
+{
+  "_checksum": "7a1986e1814fe87f",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-05T21:59:26.889752+00:00",
+  "data": {
+    "created_at": "2026-01-05T21:59:26.247649+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260105-215926-89c8629a",
+    "metadata": {},
+    "modified_at": "2026-01-05T21:59:26.247655+00:00",
+    "priority": "low",
+    "properties": {},
+    "status": "pending",
+    "title": "Task 2",
+    "version": 1
+  }
+}

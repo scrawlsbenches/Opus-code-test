@@ -18,9 +18,12 @@ import time
 import tempfile
 import subprocess
 from pathlib import Path
-from unittest.mock import patch, MagicMock
-
 import pytest
+
+# Mark all tests in this module as slow (disk-heavy)
+pytestmark = pytest.mark.slow
+
+from unittest.mock import patch, MagicMock
 
 # Add scripts to path for GoTProjectManager imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts"))

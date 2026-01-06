@@ -11,6 +11,9 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
+# Mark all tests in this module as slow (disk-heavy)
+pytestmark = pytest.mark.slow
+
 from cortical.got.versioned_store import VersionedStore
 from cortical.got.types import Task, Decision, Edge, Entity
 from cortical.got.errors import CorruptionError

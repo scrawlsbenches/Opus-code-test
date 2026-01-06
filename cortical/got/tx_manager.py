@@ -118,9 +118,11 @@ class TransactionManager:
             raise TypeError(
                 f"store is required and must be CDGStore instance, got {type(store).__name__}"
             )
-        if not isinstance(lock, ProcessLock):
+        # Lock must support context manager protocol (ProcessLock or similar)
+        # For in-memory storage, a no-op lock is acceptable
+        if lock is not None and not hasattr(lock, '__enter__'):
             raise TypeError(
-                f"lock is required and must be ProcessLock instance, got {type(lock).__name__}"
+                f"lock must support context manager protocol, got {type(lock).__name__}"
             )
         if wal is not None and not isinstance(wal, CDGWALManager):
             raise TypeError(
@@ -393,11 +395,29 @@ class TransactionManager:
         Returns:
             List of matching KnowledgeTransfer entities
         """
+        transfers = []
+
+        # Use store's iter_entities if available (works with in-memory storage)
+        if self.store is not None and hasattr(self.store, 'iter_entities'):
+            for entity in self.store.iter_entities(prefix="KT-"):
+                if not isinstance(entity, KnowledgeTransfer):
+                    continue
+
+                # Apply filters
+                if status is not None and entity.status != status:
+                    continue
+                if tags is not None:
+                    if not all(tag in entity.tags for tag in tags):
+                        continue
+
+                transfers.append(entity)
+            return transfers
+
+        # Fallback: scan disk directory
         entities_dir = self.got_dir / "entities"
         if not entities_dir.exists():
             return []
 
-        transfers = []
         for entity_file in entities_dir.glob("KT-*.json"):
             try:
                 tx = self.begin()

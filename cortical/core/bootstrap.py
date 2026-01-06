@@ -50,7 +50,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from cortical.common import Container
+from cortical.common import Container, FileSystem, RealFileSystem, InMemoryFileSystem
 from cortical.core.modules import CDGModule, GoTModule
 
 
@@ -62,6 +62,8 @@ def create_container(
     got_dir: Optional[Path] = None,
     config: Optional[dict] = None,
     apply_modules: bool = True,
+    use_memory: bool = False,
+    **kwargs,
 ) -> Container:
     """
     Create and configure the application container.
@@ -73,6 +75,8 @@ def create_container(
         got_dir: Optional GoT directory path (defaults to .got in cwd)
         config: Optional configuration dictionary
         apply_modules: If True, apply CDG and GoT modules (default: True)
+        use_memory: If True, use in-memory storage instead of disk (for testing)
+        **kwargs: Additional arguments (ignored, for forward compatibility)
 
     Returns:
         Fully configured container
@@ -86,6 +90,9 @@ def create_container(
 
         # Empty container for testing (no modules)
         container = create_container(apply_modules=False)
+
+        # In-memory for fast tests
+        container = create_container(use_memory=True)
     """
     container = Container()
 
@@ -99,10 +106,15 @@ def create_container(
     # Store paths
     container.register_instance(Path, effective_got_dir)
 
+    # Register FileSystem as first-class injectable
+    # This is the single source of truth for I/O strategy
+    filesystem: FileSystem = InMemoryFileSystem() if use_memory else RealFileSystem()
+    container.register_instance(FileSystem, filesystem)
+
     # Apply subsystem modules
     if apply_modules:
-        container.apply_module(CDGModule(got_dir=effective_got_dir))
-        container.apply_module(GoTModule(got_dir=effective_got_dir))
+        container.apply_module(CDGModule(got_dir=effective_got_dir, use_memory=use_memory))
+        container.apply_module(GoTModule(got_dir=effective_got_dir, use_memory=use_memory))
 
     return container
 

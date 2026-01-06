@@ -227,10 +227,10 @@ def test_scan_entities_by_type_skips_corrupted_files(manager, tmp_path, caplog):
     with manager.transaction():
         manager.create_task("Valid Task")
 
-    # Create a corrupted file
-    entities_dir = manager.got_dir / "entities"
-    corrupted_file = entities_dir / "CORRUPTED.json"
-    corrupted_file.write_text("not valid json {{{")
+    # Write a corrupted file directly to the in-memory filesystem
+    store = manager.tx_manager.store
+    corrupted_path = store.store_dir / "CORRUPTED.json"
+    store._fs.write_text(corrupted_path, "not valid json {{{")
 
     query = Query(manager)
 

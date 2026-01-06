@@ -30,6 +30,9 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch, call
 import pytest
 
+# Mark all tests in this module as slow (disk-heavy)
+pytestmark = pytest.mark.slow
+
 from cortical.reasoning import ThoughtGraph, NodeType, EdgeType
 from cortical.reasoning.graph_persistence import GitAutoCommitter
 

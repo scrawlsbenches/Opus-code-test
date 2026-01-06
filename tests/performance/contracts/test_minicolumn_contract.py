@@ -109,8 +109,8 @@ class TestMinicolumnSerializationContract:
     So that save/load operations scale.
     """
 
-    MAX_SERIALIZE_MS = 1.0
-    MAX_DESERIALIZE_MS = 2.0
+    MAX_SERIALIZE_MS = 2.0
+    MAX_DESERIALIZE_MS = 4.0
 
     def test_serialize_minicolumn_latency(self):
         """

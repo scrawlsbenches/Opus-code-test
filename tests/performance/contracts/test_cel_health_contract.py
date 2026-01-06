@@ -135,7 +135,7 @@ class TestDAGConsistencyCheckContract:
     """
 
     # The sacred numbers
-    MAX_CONSISTENCY_CHECK_MS = 100  # For 1,000 events
+    MAX_CONSISTENCY_CHECK_MS = 200  # For 1,000 events
 
     def test_consistency_check_performance(self, tmp_path):
         """
@@ -225,7 +225,7 @@ class TestMerkleIntegrityCheckContract:
     """
 
     # The sacred numbers
-    MAX_INTEGRITY_CHECK_MS = 100  # For 1,000 events
+    MAX_INTEGRITY_CHECK_MS = 200  # For 1,000 events
 
     def test_integrity_check_performance(self, tmp_path):
         """

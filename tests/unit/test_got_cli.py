@@ -21,6 +21,9 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
+# Mark all tests in this module as slow (disk-heavy)
+pytestmark = pytest.mark.slow
+
 # Add scripts to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts"))
 

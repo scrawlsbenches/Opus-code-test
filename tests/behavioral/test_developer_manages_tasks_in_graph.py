@@ -350,7 +350,8 @@ class TestDeveloperCapturesRelationshipContext:
         """
         # Given an edge with a detailed reason
         got_path = tmp_path / ".got"
-        manager = _create_got_manager(got_path)
+        # Use disk storage for persistence test across manager instances
+        manager = _create_got_manager(got_path, use_memory=False)
         task1 = manager.create_task(title="Task 1")
         task2 = manager.create_task(title="Task 2")
         edge = manager.add_edge(
@@ -363,7 +364,7 @@ class TestDeveloperCapturesRelationshipContext:
 
         # When I reload the manager from the same path
         # (transaction commits are auto-persisted)
-        manager2 = _create_got_manager(got_path)
+        manager2 = _create_got_manager(got_path, use_memory=False)
 
         # Then the reason is preserved
         outgoing, _ = manager2.get_edges_for_task(task1_id)

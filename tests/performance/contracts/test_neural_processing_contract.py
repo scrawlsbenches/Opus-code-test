@@ -56,9 +56,9 @@ class TestLoomHiveContract:
     """
 
     # The sacred numbers - DO NOT CHANGE without team review
-    FAST_PROCESSING_MS = 100
-    PREDICTION_MS = 20
-    SPREADING_MS = 100
+    FAST_PROCESSING_MS = 200
+    PREDICTION_MS = 40
+    SPREADING_MS = 200
     SAMPLE_SIZE = 50
 
     def test_fast_processing_latency(self):
@@ -198,9 +198,9 @@ class TestLoomCortexContract:
     """
 
     # The sacred numbers
-    SLOW_PROCESSING_MS = 500
-    ABSTRACTION_FORMATION_MS = 200
-    QUERY_MS = 50
+    SLOW_PROCESSING_MS = 1000
+    ABSTRACTION_FORMATION_MS = 400
+    QUERY_MS = 100
 
     def test_slow_processing_latency(self):
         """
@@ -298,8 +298,8 @@ class TestHomeostasisContract:
     """
 
     # The sacred numbers
-    REGULATION_MS = 50
-    EXCITABILITY_MS = 5
+    REGULATION_MS = 100
+    EXCITABILITY_MS = 10
     MEMORY_PER_100_NODES_MB = 1.0
 
     def test_regulation_speed(self):

@@ -234,6 +234,7 @@ class BaseSchema:
     Subclasses define:
     - schema_version: int - Current schema version
     - entity_type: str - The entity type this schema validates
+    - id_prefix: str - ID prefix for this entity type (e.g., 'T-' for tasks)
     - fields: Dict[str, Field] - Field definitions
     - migrations: Dict[int, Callable] - Version migration functions
 
@@ -241,6 +242,7 @@ class BaseSchema:
         class TaskSchema(BaseSchema):
             schema_version = 2
             entity_type = 'task'
+            id_prefix = 'T-'
             fields = {
                 'id': Field('id', FieldType.STRING, required=True),
                 'title': Field('title', FieldType.STRING, required=True),
@@ -254,6 +256,7 @@ class BaseSchema:
 
     schema_version: int = 1
     entity_type: str = ""
+    id_prefix: str = ""
     fields: Dict[str, Field] = {}
 
     # Schema version field name in data
@@ -536,6 +539,64 @@ class SchemaRegistry:
         return {
             entity_type: schema.schema_version
             for entity_type, schema in self._schemas.items()
+        }
+
+    def get_schema_by_prefix(self, prefix: str) -> Optional[Type[BaseSchema]]:
+        """
+        Get schema for an entity ID prefix.
+
+        Args:
+            prefix: Entity ID prefix (e.g., 'T-', 'E-', 'KT-')
+
+        Returns:
+            Schema class or None if no schema matches the prefix
+        """
+        for schema in self._schemas.values():
+            if hasattr(schema, 'id_prefix') and schema.id_prefix == prefix:
+                return schema
+        return None
+
+    def get_entity_type_by_prefix(self, prefix: str) -> Optional[str]:
+        """
+        Get entity type for an entity ID prefix.
+
+        Args:
+            prefix: Entity ID prefix (e.g., 'T-', 'E-', 'KT-')
+
+        Returns:
+            Entity type string or None if no schema matches the prefix
+        """
+        schema = self.get_schema_by_prefix(prefix)
+        if schema is not None:
+            return schema.entity_type
+        return None
+
+    def get_prefix_for_entity_type(self, entity_type: str) -> Optional[str]:
+        """
+        Get ID prefix for an entity type.
+
+        Args:
+            entity_type: Entity type name (e.g., 'task', 'edge')
+
+        Returns:
+            ID prefix string or None if entity type not registered
+        """
+        schema = self.get_schema(entity_type)
+        if schema is not None and hasattr(schema, 'id_prefix'):
+            return schema.id_prefix
+        return None
+
+    def list_prefixes(self) -> Dict[str, str]:
+        """
+        List all registered entity ID prefixes.
+
+        Returns:
+            Dict mapping id_prefix to entity_type
+        """
+        return {
+            schema.id_prefix: schema.entity_type
+            for schema in self._schemas.values()
+            if hasattr(schema, 'id_prefix') and schema.id_prefix
         }
 
     def clear(self) -> None:

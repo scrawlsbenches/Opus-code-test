@@ -18,6 +18,9 @@ import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch, PropertyMock
 
+# Mark all tests in this module as slow (disk-heavy)
+pytestmark = pytest.mark.slow
+
 from cortical.got import TransactionManager, Task
 from cortical.got.recovery import RecoveryManager, RecoveryResult
 from cortical.utils.checksums import compute_checksum

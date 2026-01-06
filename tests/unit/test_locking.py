@@ -16,6 +16,9 @@ import time
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
+# Mark all tests in this module as slow (disk-heavy)
+pytestmark = pytest.mark.slow
+
 from cortical.utils.locking import ProcessLock
 
 

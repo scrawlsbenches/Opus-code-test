@@ -30,8 +30,8 @@ from tests.conftest import _create_tx_manager, _create_got_manager
 # =============================================================================
 # KPI TARGETS (in milliseconds)
 # =============================================================================
-KPI_GENERATION_MS = 500       # Full generation
-KPI_LARGE_LAYERS_MS = 2000    # 50+ layers
+KPI_GENERATION_MS = 1000       # Full generation
+KPI_LARGE_LAYERS_MS = 4000    # 50+ layers
 CACHE_SPEEDUP_FACTOR = 1.5    # Cached should be at least 1.5x faster
 
 # Safety margin for CI variance

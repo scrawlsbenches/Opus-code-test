@@ -75,6 +75,47 @@ class QueryAPI:
         """Get the GoT directory path."""
         return self._manager.got_dir
 
+    def _iter_entities_by_prefix(self, prefix: str):
+        """
+        Iterate entities by ID prefix using CDGStore.
+
+        This method uses the store's iter_entities() method which works
+        with both disk-based and in-memory storage through the FileSystem
+        abstraction.
+
+        Args:
+            prefix: Entity ID prefix (e.g., "T-", "E-", "D-", "S-")
+
+        Yields:
+            Entity objects matching the prefix
+        """
+        store = getattr(self._manager.tx_manager, 'store', None)
+        if store is not None and hasattr(store, 'iter_entities'):
+            yield from store.iter_entities(prefix=prefix)
+        else:
+            # Fallback: scan disk directory (for backwards compatibility)
+            entities_dir = self.got_dir / "entities"
+            if not entities_dir.exists():
+                return
+
+            for entity_file in entities_dir.glob(f"{prefix}*.json"):
+                try:
+                    if prefix == "T-":
+                        entity = self._manager._read_task_file(entity_file)
+                    elif prefix == "E-":
+                        entity = self._manager._read_edge_file(entity_file)
+                    elif prefix == "D-":
+                        entity = self._manager._read_decision_file(entity_file)
+                    elif prefix == "S-":
+                        entity = self._manager._read_sprint_file(entity_file)
+                    else:
+                        continue
+                    if entity is not None:
+                        yield entity
+                except (CorruptionError, json.JSONDecodeError, KeyError) as e:
+                    logger.warning(f"Skipping corrupted file {entity_file}: {e}")
+                    continue
+
     def find_tasks(
         self,
         status: Optional[str] = None,
@@ -83,7 +124,9 @@ class QueryAPI:
         category: Optional[str] = None,
     ) -> List[Task]:
         """
-        Find tasks matching criteria. Scans disk (no in-memory cache).
+        Find tasks matching criteria.
+
+        Uses the store's iter_entities() method for efficient iteration.
 
         Args:
             status: Filter by status ('pending', 'in_progress', 'completed', etc.)
@@ -94,31 +137,24 @@ class QueryAPI:
         Returns:
             List of matching Task objects
         """
-        entities_dir = self.got_dir / "entities"
-        if not entities_dir.exists():
-            return []
-
         tasks = []
-        for entity_file in entities_dir.glob("T-*.json"):
-            try:
-                task = self._manager._read_task_file(entity_file)
-                if task is None:
-                    continue
 
-                # Apply filters
-                if status is not None and task.status != status:
-                    continue
-                if priority is not None and task.priority != priority:
-                    continue
-                if title_contains is not None and title_contains.lower() not in task.title.lower():
-                    continue
-                if category is not None and task.category != category:
-                    continue
-
-                tasks.append(task)
-            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
-                logger.warning(f"Skipping corrupted task file {entity_file}: {e}")
+        for entity in self._iter_entities_by_prefix("T-"):
+            if not isinstance(entity, Task):
                 continue
+            task = entity
+
+            # Apply filters
+            if status is not None and task.status != status:
+                continue
+            if priority is not None and task.priority != priority:
+                continue
+            if title_contains is not None and title_contains.lower() not in task.title.lower():
+                continue
+            if category is not None and task.category != category:
+                continue
+
+            tasks.append(task)
 
         return tasks
 
@@ -132,23 +168,13 @@ class QueryAPI:
         Returns:
             List of blocking Task objects
         """
-        entities_dir = self.got_dir / "entities"
-        if not entities_dir.exists():
-            return []
-
         # Find all BLOCKS edges pointing to this task
         blocker_ids = []
-        for edge_file in entities_dir.glob("E-*.json"):
-            try:
-                edge = self._manager._read_edge_file(edge_file)
-                if edge is None:
-                    continue
-
-                if edge.edge_type == EdgeTypes.BLOCKS and edge.target_id == task_id:
-                    blocker_ids.append(edge.source_id)
-            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
-                logger.warning(f"Skipping corrupted edge file {edge_file}: {e}")
+        for edge in self._iter_entities_by_prefix("E-"):
+            if not isinstance(edge, Edge):
                 continue
+            if edge.edge_type == EdgeTypes.BLOCKS and edge.target_id == task_id:
+                blocker_ids.append(edge.source_id)
 
         # Load the blocker tasks
         blockers = []
@@ -169,23 +195,13 @@ class QueryAPI:
         Returns:
             List of dependent Task objects
         """
-        entities_dir = self.got_dir / "entities"
-        if not entities_dir.exists():
-            return []
-
         # Find all DEPENDS_ON edges pointing to this task
         dependent_ids = []
-        for edge_file in entities_dir.glob("E-*.json"):
-            try:
-                edge = self._manager._read_edge_file(edge_file)
-                if edge is None:
-                    continue
-
-                if edge.edge_type == EdgeTypes.DEPENDS_ON and edge.target_id == task_id:
-                    dependent_ids.append(edge.source_id)
-            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
-                logger.warning(f"Skipping corrupted edge file {edge_file}: {e}")
+        for edge in self._iter_entities_by_prefix("E-"):
+            if not isinstance(edge, Edge):
                 continue
+            if edge.edge_type == EdgeTypes.DEPENDS_ON and edge.target_id == task_id:
+                dependent_ids.append(edge.source_id)
 
         # Load the dependent tasks
         dependents = []
@@ -227,20 +243,10 @@ class QueryAPI:
         Returns:
             List of all Edge objects
         """
-        entities_dir = self.got_dir / "entities"
-        if not entities_dir.exists():
-            return []
-
         edges = []
-        for edge_file in entities_dir.glob("E-*.json"):
-            try:
-                edge = self._manager._read_edge_file(edge_file)
-                if edge is not None:
-                    edges.append(edge)
-            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
-                logger.warning(f"Skipping corrupted edge file {edge_file}: {e}")
-                continue
-
+        for edge in self._iter_entities_by_prefix("E-"):
+            if isinstance(edge, Edge):
+                edges.append(edge)
         return edges
 
     def list_decisions(self) -> List[Decision]:
@@ -250,20 +256,10 @@ class QueryAPI:
         Returns:
             List of all Decision objects
         """
-        entities_dir = self.got_dir / "entities"
-        if not entities_dir.exists():
-            return []
-
         decisions = []
-        for decision_file in entities_dir.glob("D-*.json"):
-            try:
-                decision = self._manager._read_decision_file(decision_file)
-                if decision is not None:
-                    decisions.append(decision)
-            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
-                logger.warning(f"Skipping corrupted decision file {decision_file}: {e}")
-                continue
-
+        for decision in self._iter_entities_by_prefix("D-"):
+            if isinstance(decision, Decision):
+                decisions.append(decision)
         return decisions
 
     def get_edges_for_task(self, task_id: str) -> Tuple[List[Edge], List[Edge]]:
@@ -276,26 +272,16 @@ class QueryAPI:
         Returns:
             Tuple of (outgoing_edges, incoming_edges)
         """
-        entities_dir = self.got_dir / "entities"
-        if not entities_dir.exists():
-            return ([], [])
-
         outgoing = []
         incoming = []
 
-        for edge_file in entities_dir.glob("E-*.json"):
-            try:
-                edge = self._manager._read_edge_file(edge_file)
-                if edge is None:
-                    continue
-
-                if edge.source_id == task_id:
-                    outgoing.append(edge)
-                elif edge.target_id == task_id:
-                    incoming.append(edge)
-            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
-                logger.warning(f"Skipping corrupted edge file {edge_file}: {e}")
+        for edge in self._iter_entities_by_prefix("E-"):
+            if not isinstance(edge, Edge):
                 continue
+            if edge.source_id == task_id:
+                outgoing.append(edge)
+            elif edge.target_id == task_id:
+                incoming.append(edge)
 
         return (outgoing, incoming)
 
@@ -324,23 +310,13 @@ class QueryAPI:
         Returns:
             List of Task objects in the sprint
         """
-        entities_dir = self.got_dir / "entities"
-        if not entities_dir.exists():
-            return []
-
         # Find all CONTAINS edges from sprint to tasks
         task_ids = []
-        for edge_file in entities_dir.glob("E-*.json"):
-            try:
-                edge = self._manager._read_edge_file(edge_file)
-                if edge is None:
-                    continue
-
-                if edge.edge_type == EdgeTypes.CONTAINS and edge.source_id == sprint_id:
-                    task_ids.append(edge.target_id)
-            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
-                logger.warning(f"Skipping corrupted edge file {edge_file}: {e}")
+        for edge in self._iter_entities_by_prefix("E-"):
+            if not isinstance(edge, Edge):
                 continue
+            if edge.edge_type == EdgeTypes.CONTAINS and edge.source_id == sprint_id:
+                task_ids.append(edge.target_id)
 
         # Load the tasks
         tasks = []
@@ -403,28 +379,14 @@ class QueryAPI:
         Returns:
             List of Document objects linked to the task
         """
-        entities_dir = self.got_dir / "entities"
-        if not entities_dir.exists():
-            return []
-
         # Find all edges from task to documents
         doc_ids = []
-        for edge_file in entities_dir.glob("E-*.json"):
-            try:
-                with open(edge_file, "r") as f:
-                    wrapper = json.load(f)
-
-                data = wrapper.get("data", {})
-                if data.get("entity_type") != "edge":
-                    continue
-
-                edge = Edge.from_dict(data)
-                # Check if edge is from task to a document
-                if edge.source_id == task_id and edge.target_id.startswith("DOC-"):
-                    doc_ids.append(edge.target_id)
-            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
-                logger.warning(f"Skipping corrupted edge file {edge_file}: {e}")
+        for edge in self._iter_entities_by_prefix("E-"):
+            if not isinstance(edge, Edge):
                 continue
+            # Check if edge is from task to a document
+            if edge.source_id == task_id and edge.target_id.startswith("DOC-"):
+                doc_ids.append(edge.target_id)
 
         # Load the documents
         documents = []
@@ -445,28 +407,14 @@ class QueryAPI:
         Returns:
             List of Task objects linked to the document
         """
-        entities_dir = self.got_dir / "entities"
-        if not entities_dir.exists():
-            return []
-
         # Find all edges to this document
         task_ids = []
-        for edge_file in entities_dir.glob("E-*.json"):
-            try:
-                with open(edge_file, "r") as f:
-                    wrapper = json.load(f)
-
-                data = wrapper.get("data", {})
-                if data.get("entity_type") != "edge":
-                    continue
-
-                edge = Edge.from_dict(data)
-                # Check if edge is to this document from a task
-                if edge.target_id == doc_id and edge.source_id.startswith("T-"):
-                    task_ids.append(edge.source_id)
-            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
-                logger.warning(f"Skipping corrupted edge file {edge_file}: {e}")
+        for edge in self._iter_entities_by_prefix("E-"):
+            if not isinstance(edge, Edge):
                 continue
+            # Check if edge is to this document from a task
+            if edge.target_id == doc_id and edge.source_id.startswith("T-"):
+                task_ids.append(edge.source_id)
 
         # Load the tasks
         tasks = []
@@ -492,27 +440,18 @@ class QueryAPI:
         Returns:
             List of matching Sprint objects
         """
-        entities_dir = self.got_dir / "entities"
-        if not entities_dir.exists():
-            return []
-
         sprints = []
-        for sprint_file in entities_dir.glob("S-*.json"):
-            try:
-                sprint = self._manager._read_sprint_file(sprint_file)
-                if sprint is None:
-                    continue
-
-                # Apply filters
-                if status is not None and sprint.status != status:
-                    continue
-                if epic_id is not None and sprint.epic_id != epic_id:
-                    continue
-
-                sprints.append(sprint)
-            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
-                logger.warning(f"Skipping corrupted sprint file {sprint_file}: {e}")
+        for sprint in self._iter_entities_by_prefix("S-"):
+            if not isinstance(sprint, Sprint):
                 continue
+
+            # Apply filters
+            if status is not None and sprint.status != status:
+                continue
+            if epic_id is not None and sprint.epic_id != epic_id:
+                continue
+
+            sprints.append(sprint)
 
         return sprints
 
@@ -554,10 +493,6 @@ class QueryAPI:
         Returns:
             List of blocked Task objects
         """
-        entities_dir = self.got_dir / "entities"
-        if not entities_dir.exists():
-            return []
-
         blocked_tasks = []
         blocked_ids = set()
 
@@ -568,23 +503,18 @@ class QueryAPI:
                 blocked_ids.add(task.id)
 
         # Second: Find tasks with incoming BLOCKS edges from non-completed tasks
-        for edge_file in entities_dir.glob("E-*.json"):
-            try:
-                edge = self._manager._read_edge_file(edge_file)
-                if edge is None:
-                    continue
-
-                if edge.edge_type == EdgeTypes.BLOCKS:
-                    # Check if blocker is not completed
-                    blocker = self._manager.get_task(edge.source_id)
-                    if blocker is not None and blocker.status != "completed":
-                        blocked = self._manager.get_task(edge.target_id)
-                        if blocked is not None and blocked.id not in blocked_ids:
-                            blocked_tasks.append(blocked)
-                            blocked_ids.add(blocked.id)
-            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
-                logger.warning(f"Skipping corrupted edge file {edge_file}: {e}")
+        for edge in self._iter_entities_by_prefix("E-"):
+            if not isinstance(edge, Edge):
                 continue
+
+            if edge.edge_type == EdgeTypes.BLOCKS:
+                # Check if blocker is not completed
+                blocker = self._manager.get_task(edge.source_id)
+                if blocker is not None and blocker.status != "completed":
+                    blocked = self._manager.get_task(edge.target_id)
+                    if blocked is not None and blocked.id not in blocked_ids:
+                        blocked_tasks.append(blocked)
+                        blocked_ids.add(blocked.id)
 
         return blocked_tasks
 

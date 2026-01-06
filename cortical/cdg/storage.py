@@ -22,20 +22,40 @@ Storage layout:
 
 from __future__ import annotations
 
+import logging
 import os
 import json
 import time
 import threading
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import Dict, Optional, Callable, Any, Type
+
+logger = logging.getLogger(__name__)
+from typing import Dict, List, Optional, Callable, Any, Type, TYPE_CHECKING
 
 from cortical.utils.checksums import compute_checksum
 from cortical.utils.locking import ProcessLock
+from cortical.common.filesystem import FileSystem, RealFileSystem, InMemoryFileSystem
 
 from .types import Entity
 from .errors import CorruptionError, ValidationError, StorageError
 from .config import CDGConfig, DurabilityMode
+
+
+class NoOpLock:
+    """
+    No-operation lock for in-memory filesystems.
+
+    Process locking is unnecessary when using InMemoryFileSystem since
+    the data only exists within a single process. This avoids trying to
+    create lock files on paths that don't exist on the real filesystem.
+    """
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return False
 
 
 # Type alias for entity factory functions
@@ -109,6 +129,10 @@ class CDGStore:
         # Legacy parameters for VersionedStore compatibility
         durability: Optional[DurabilityMode] = None,
         validate_on_save: bool = True,
+        # FileSystem abstraction for testability
+        filesystem: Optional[FileSystem] = None,
+        # Caching (enabled by default for performance)
+        cache_enabled: bool = True,
     ):
         """
         Initialize store, creating directory structure if needed.
@@ -119,9 +143,14 @@ class CDGStore:
             entity_factory: Function to create Entity from dict (optional)
             durability: Legacy parameter for VersionedStore compatibility
             validate_on_save: Legacy parameter for VersionedStore compatibility
+            filesystem: FileSystem implementation (defaults to RealFileSystem)
+            cache_enabled: Enable entity caching for read performance
         """
+        # FileSystem abstraction - defaults to real disk I/O
+        self._fs: FileSystem = filesystem or RealFileSystem()
+
         self.store_dir = Path(store_dir)
-        self.store_dir.mkdir(parents=True, exist_ok=True)
+        self._fs.mkdir(self.store_dir, parents=True, exist_ok=True)
 
         # Handle configuration - support both new CDGConfig and legacy parameters
         if config is not None:
@@ -142,31 +171,44 @@ class CDGStore:
 
         # History directory for MVCC snapshots
         self.history_dir = self.store_dir / "_history"
-        self.history_dir.mkdir(exist_ok=True)
+        self._fs.mkdir(self.history_dir, exist_ok=True)
 
         # Pending history directory for crash-safe history writes
         self._pending_history_dir = self.history_dir / "_pending"
-        self._pending_history_dir.mkdir(exist_ok=True)
+        self._fs.mkdir(self._pending_history_dir, exist_ok=True)
+
+        # Determine if we need process locks (not needed for in-memory filesystems)
+        use_process_locks = not isinstance(self._fs, InMemoryFileSystem)
 
         # Process lock for concurrent history file access protection
-        self._history_lock = ProcessLock(self.history_dir / ".history.lock")
+        self._history_lock = ProcessLock(self.history_dir / ".history.lock") if use_process_locks else NoOpLock()
 
         # Thread lock for concurrent version file access protection (within same process)
         self._version_thread_lock = threading.Lock()
 
         # Process lock for cross-process version file protection
-        self._version_lock = ProcessLock(self.store_dir / ".version.lock", reentrant=False)
+        self._version_lock = ProcessLock(self.store_dir / ".version.lock", reentrant=False) if use_process_locks else NoOpLock()
 
         # Write lock for thread-safe write operations (covers entire write transaction)
         self._write_lock = threading.RLock()
 
         # Process lock for cross-process write protection (covers entire write transaction)
-        self._write_process_lock = ProcessLock(self.store_dir / ".write.lock", reentrant=True)
+        self._write_process_lock = ProcessLock(self.store_dir / ".write.lock", reentrant=True) if use_process_locks else NoOpLock()
 
         # Load current version
         self._version = self._load_version()
 
+        # Entity cache for read performance (must be initialized before recovery!)
+        self._cache_enabled = cache_enabled
+        self._cache: Dict[str, Entity] = {}
+        self._cache_timestamps: Dict[str, float] = {}  # entity_id -> last_access_time
+        self._cache_hits = 0
+        self._cache_misses = 0
+        self._cache_ttl: Optional[float] = None  # TTL in seconds (None = no expiration)
+        self._cache_max_size: Optional[int] = None  # Max entries (None = unlimited)
+
         # Recover any pending history entries from interrupted writes
+        # Note: This must be AFTER cache initialization since recovery reads entities
         self._recover_pending_history()
 
     def current_version(self) -> int:
@@ -177,6 +219,99 @@ class CDGStore:
             Current global version number
         """
         return self._version
+
+    # ==================== Cache Methods ====================
+
+    def cache_stats(self) -> Dict[str, Any]:
+        """
+        Get cache statistics.
+
+        Returns:
+            Dictionary with hits, misses, hit_rate, size, enabled status, ttl, and max_size
+        """
+        total = self._cache_hits + self._cache_misses
+        hit_rate = self._cache_hits / total if total > 0 else 0.0
+        return {
+            'hits': self._cache_hits,
+            'misses': self._cache_misses,
+            'hit_rate': hit_rate,
+            'size': len(self._cache),
+            'enabled': self._cache_enabled,
+            'ttl': self._cache_ttl,
+            'max_size': self._cache_max_size,
+        }
+
+    def cache_configure(self, ttl: Optional[float] = None, max_size: Optional[int] = None) -> None:
+        """
+        Configure cache behavior.
+
+        Args:
+            ttl: Time-to-live in seconds for cached entries. None disables TTL.
+            max_size: Maximum number of entries. Oldest entries are evicted when exceeded.
+                     None means unlimited.
+        """
+        self._cache_ttl = ttl
+        self._cache_max_size = max_size
+        # Immediately apply max_size if set and cache exceeds it
+        if max_size is not None and len(self._cache) > max_size:
+            self._evict_lru_entries(len(self._cache) - max_size)
+
+    def cache_clear(self) -> None:
+        """Clear all cached entities and reset statistics."""
+        self._cache.clear()
+        self._cache_timestamps.clear()
+        self._cache_hits = 0
+        self._cache_misses = 0
+
+    def _evict_lru_entries(self, count: int) -> None:
+        """Evict the oldest entries from cache based on access time."""
+        if count <= 0 or not self._cache:
+            return
+        # Sort by timestamp (oldest first)
+        sorted_entries = sorted(self._cache_timestamps.items(), key=lambda x: x[1])
+        # Evict the oldest entries
+        for entity_id, _ in sorted_entries[:count]:
+            self._cache.pop(entity_id, None)
+            self._cache_timestamps.pop(entity_id, None)
+
+    def _cache_get(self, entity_id: str) -> Optional[Entity]:
+        """Get entity from cache, updating hit/miss stats."""
+        if not self._cache_enabled:
+            return None
+        entity = self._cache.get(entity_id)
+        if entity is not None:
+            # Check TTL expiration
+            if self._cache_ttl is not None:
+                timestamp = self._cache_timestamps.get(entity_id, 0)
+                if time.time() - timestamp > self._cache_ttl:
+                    # Entry has expired, remove it
+                    self._cache.pop(entity_id, None)
+                    self._cache_timestamps.pop(entity_id, None)
+                    return None
+            # Update access time and record hit
+            self._cache_timestamps[entity_id] = time.time()
+            self._cache_hits += 1
+        return entity
+
+    def _cache_set(self, entity_id: str, entity: Entity) -> None:
+        """Add entity to cache, updating miss stats."""
+        if not self._cache_enabled:
+            return
+        # Enforce max_size before adding
+        if self._cache_max_size is not None:
+            # If already at max size and this is a new entry, evict one
+            if entity_id not in self._cache and len(self._cache) >= self._cache_max_size:
+                self._evict_lru_entries(1)
+        self._cache[entity_id] = entity
+        self._cache_timestamps[entity_id] = time.time()
+        self._cache_misses += 1
+
+    def _cache_invalidate(self, entity_id: str) -> None:
+        """Remove entity from cache."""
+        self._cache.pop(entity_id, None)
+        self._cache_timestamps.pop(entity_id, None)
+
+    # ==================== Read Methods ====================
 
     def read(self, entity_id: str) -> Optional[Entity]:
         """
@@ -201,13 +336,21 @@ class CDGStore:
             this race condition will be eliminated at the storage layer since
             index lookups won't return IDs for deleted entities.
         """
+        # Check cache first
+        cached = self._cache_get(entity_id)
+        if cached is not None:
+            return cached
+
         path = self._entity_path(entity_id)
-        if not path.exists():
+        if not self._fs.exists(path):
             return None
 
         try:
             wrapper = self._read_and_verify(path)
-            return self.entity_factory(wrapper["data"])
+            entity = self.entity_factory(wrapper["data"])
+            # Populate cache on miss
+            self._cache_set(entity_id, entity)
+            return entity
         except FileNotFoundError:
             # File was deleted between exists() check and read - treat as not found.
             # This is expected during concurrent delete + read operations.
@@ -235,17 +378,19 @@ class CDGStore:
         # Check history for earlier versions
         history_path = self._history_path(entity_id)
 
-        if history_path.exists():
+        if self._fs.exists(history_path):
             # Find entry with highest global_version <= version
             matching_entry = None
-            with open(history_path, 'r', encoding='utf-8') as f:
-                for line in f:
-                    entry = json.loads(line)
-                    gv = entry.get("global_version", 0)
-                    if gv <= version:
-                        matching_entry = entry
-                    else:
-                        break  # History is sorted, can stop early
+            content = self._fs.read_text(history_path)
+            for line in content.splitlines():
+                if not line.strip():
+                    continue
+                entry = json.loads(line)
+                gv = entry.get("global_version", 0)
+                if gv <= version:
+                    matching_entry = entry
+                else:
+                    break  # History is sorted, can stop early
 
             if matching_entry:
                 return self.entity_factory(matching_entry["data"])
@@ -306,6 +451,9 @@ class CDGStore:
                 # Increment global version
                 self._version += 1
                 self._save_version()
+
+                # Invalidate cache for written entity
+                self._cache_invalidate(entity.id)
 
     def apply_writes(self, write_set: Dict[str, Entity]) -> int:
         """
@@ -374,7 +522,7 @@ class CDGStore:
 
                     # Step 4: Rename all temp files to final (atomic on POSIX)
                     for temp_path, final_path in temp_files:
-                        temp_path.rename(final_path)
+                        self._fs.rename(temp_path, final_path)
                         renamed_files.append(final_path)
 
                     # Step 5: Finalize pending history files
@@ -391,18 +539,15 @@ class CDGStore:
                 except Exception:
                     # Rollback: Delete successfully renamed files
                     for final_path in renamed_files:
-                        if final_path.exists():
-                            final_path.unlink()
+                        self._fs.unlink(final_path, missing_ok=True)
 
                     # Clean up remaining temp files
                     for temp_path, _ in temp_files:
-                        if temp_path.exists():
-                            temp_path.unlink()
+                        self._fs.unlink(temp_path, missing_ok=True)
 
                     # Clean up pending history files (writes didn't complete)
                     for _, pending_path in pending_history:
-                        if pending_path.exists():
-                            pending_path.unlink()
+                        self._fs.unlink(pending_path, missing_ok=True)
 
                     raise
 
@@ -416,7 +561,7 @@ class CDGStore:
         Returns:
             True if entity file exists, False otherwise
         """
-        return self._entity_path(entity_id).exists()
+        return self._fs.exists(self._entity_path(entity_id))
 
     def delete(self, entity_id: str) -> bool:
         """
@@ -435,7 +580,7 @@ class CDGStore:
         with self._write_lock:
             with self._write_process_lock:
                 path = self._entity_path(entity_id)
-                if not path.exists():
+                if not self._fs.exists(path):
                     return False
 
                 # Phase 1: Capture and write pending history (crash-safe)
@@ -448,7 +593,7 @@ class CDGStore:
                     pending_path = self._write_pending_history(entity_id, history_entry)
 
                 # Phase 2: Delete file
-                path.unlink()
+                self._fs.unlink(path)
 
                 # Phase 3: Finalize history (move from pending to main)
                 if pending_path is not None:
@@ -457,6 +602,9 @@ class CDGStore:
                 # Increment global version
                 self._version += 1
                 self._save_version()
+
+                # Invalidate cache for deleted entity
+                self._cache_invalidate(entity_id)
 
                 return True
 
@@ -491,7 +639,7 @@ class CDGStore:
                     # Pending files are written BEFORE deletes so crash recovery works
                     for entity_id in delete_set:
                         path = self._entity_path(entity_id)
-                        if path.exists():
+                        if self._fs.exists(path):
                             # Capture history entry with version 0 indicating deletion
                             entry = self._capture_history_entry(
                                 entity_id, self._version, expected_entity_version=0
@@ -503,11 +651,11 @@ class CDGStore:
                     # Step 2: Delete all files (capture data for rollback)
                     for entity_id in delete_set:
                         path = self._entity_path(entity_id)
-                        if path.exists():
+                        if self._fs.exists(path):
                             # Read entity data for potential rollback
-                            entity_data = path.read_text()
+                            entity_data = self._fs.read_text(path)
                             # Delete file
-                            path.unlink()
+                            self._fs.unlink(path)
                             deleted_files.append((entity_id, entity_data, path))
 
                     # Step 3: Finalize pending history files
@@ -520,20 +668,23 @@ class CDGStore:
                         self._version += 1
                         self._save_version()
 
+                    # Step 5: Invalidate cache for all deleted entities
+                    for entity_id, _, _ in deleted_files:
+                        self._cache_invalidate(entity_id)
+
                     return self._version
 
                 except Exception:
                     # Rollback: Restore deleted files
                     for entity_id, entity_data, path in deleted_files:
                         try:
-                            path.write_text(entity_data)
+                            self._fs.write_text(path, entity_data)
                         except Exception:
                             pass  # Best effort rollback
 
                     # Clean up pending history files (deletes didn't complete)
                     for _, pending_path in pending_history:
-                        if pending_path.exists():
-                            pending_path.unlink()
+                        self._fs.unlink(pending_path, missing_ok=True)
 
                     raise
 
@@ -587,20 +738,21 @@ class CDGStore:
             "data": data
         }
 
+        content = json.dumps(wrapper, indent=2, sort_keys=True)
+
         last_error: Optional[Exception] = None
         for attempt in range(max_retries):
             try:
                 # Write the file
-                with open(path, 'w', encoding='utf-8') as f:
-                    json.dump(wrapper, f, indent=2, sort_keys=True)
-                    f.flush()
-                    # Only fsync if durability mode requires it
-                    if self.durability != DurabilityMode.FAST:
-                        os.fsync(f.fileno())
+                self._fs.write_text(path, content)
+
+                # Fsync if durability mode requires it
+                if self.durability != DurabilityMode.FAST:
+                    self._fs.fsync(path)
 
                 # Verify by reading back and checking checksum
-                with open(path, 'r', encoding='utf-8') as f:
-                    read_back = json.load(f)
+                read_back_content = self._fs.read_text(path)
+                read_back = json.loads(read_back_content)
 
                 if read_back.get("_checksum") != checksum:
                     raise CorruptionError(
@@ -647,8 +799,8 @@ class CDGStore:
         Raises:
             CorruptionError: If checksum verification fails
         """
-        with open(path, 'r', encoding='utf-8') as f:
-            wrapper = json.load(f)
+        content = self._fs.read_text(path)
+        wrapper = json.loads(content)
 
         expected_checksum = wrapper.get("_checksum")
         data = wrapper.get("data", {})
@@ -675,8 +827,7 @@ class CDGStore:
         if self.durability == DurabilityMode.FAST:
             return
 
-        with open(path, 'r+', encoding='utf-8') as f:
-            os.fsync(f.fileno())
+        self._fs.fsync(path)
 
     def fsync_all(self) -> None:
         """
@@ -685,13 +836,13 @@ class CDGStore:
         Used by BALANCED mode to sync on transaction commit.
         """
         # Fsync all entity files
-        for entity_file in self.store_dir.glob("*.json"):
+        for entity_file in self._fs.glob(self.store_dir, "*.json"):
             if entity_file.name != "_version.json":
                 self._fsync_file(entity_file)
 
         # Fsync version file
         version_path = self.store_dir / "_version.json"
-        if version_path.exists():
+        if self._fs.exists(version_path):
             self._fsync_file(version_path)
 
     def _save_to_history(self, entity_id: str, global_version: int) -> None:
@@ -703,7 +854,7 @@ class CDGStore:
             global_version: Global version to associate with this snapshot
         """
         path = self._entity_path(entity_id)
-        if not path.exists():
+        if not self._fs.exists(path):
             return
 
         wrapper = self._read_and_verify(path)
@@ -718,9 +869,8 @@ class CDGStore:
         }
 
         with self._history_lock:
-            with open(history_path, 'a', encoding='utf-8') as f:
-                json.dump(history_entry, f, sort_keys=True)
-                f.write('\n')
+            content = json.dumps(history_entry, sort_keys=True) + '\n'
+            self._fs.append_text(history_path, content)
 
     def _capture_history_entry(
         self, entity_id: str, global_version: int, expected_entity_version: int
@@ -741,7 +891,7 @@ class CDGStore:
             History entry dict, or None if entity doesn't exist
         """
         path = self._entity_path(entity_id)
-        if not path.exists():
+        if not self._fs.exists(path):
             return None
 
         wrapper = self._read_and_verify(path)
@@ -770,12 +920,10 @@ class CDGStore:
         """
         pending_path = self._pending_history_dir / f"{entity_id}.pending"
 
-        with open(pending_path, 'w', encoding='utf-8') as f:
-            json.dump(history_entry, f, sort_keys=True)
-            f.write('\n')
-            if self.durability != DurabilityMode.FAST:
-                f.flush()
-                os.fsync(f.fileno())
+        content = json.dumps(history_entry, sort_keys=True) + '\n'
+        self._fs.write_text(pending_path, content)
+        if self.durability != DurabilityMode.FAST:
+            self._fs.fsync(pending_path)
 
         return pending_path
 
@@ -790,14 +938,13 @@ class CDGStore:
             entity_id: Entity identifier
             pending_path: Path to the pending file
         """
-        if not pending_path.exists():
+        if not self._fs.exists(pending_path):
             return
 
         history_path = self._history_path(entity_id)
 
         # Read pending entry
-        with open(pending_path, 'r', encoding='utf-8') as f:
-            entry_line = f.read()
+        entry_line = self._fs.read_text(pending_path)
 
         # Parse to remove the recovery metadata before storing
         entry = json.loads(entry_line.strip())
@@ -805,15 +952,13 @@ class CDGStore:
 
         # Append to main history file
         with self._history_lock:
-            with open(history_path, 'a', encoding='utf-8') as f:
-                json.dump(entry, f, sort_keys=True)
-                f.write('\n')
-                if self.durability != DurabilityMode.FAST:
-                    f.flush()
-                    os.fsync(f.fileno())
+            content = json.dumps(entry, sort_keys=True) + '\n'
+            self._fs.append_text(history_path, content)
+            if self.durability != DurabilityMode.FAST:
+                self._fs.fsync(history_path)
 
         # Remove pending file
-        pending_path.unlink()
+        self._fs.unlink(pending_path)
 
     def _recover_pending_history(self) -> None:
         """
@@ -827,20 +972,20 @@ class CDGStore:
         This ensures history is never lost if crash happens after entity
         write/delete but before history finalization.
         """
-        if not self._pending_history_dir.exists():
+        if not self._fs.exists(self._pending_history_dir):
             return
 
-        for pending_path in self._pending_history_dir.glob("*.pending"):
+        for pending_path in self._fs.glob(self._pending_history_dir, "*.pending"):
             entity_id = pending_path.stem
 
             try:
-                with open(pending_path, 'r', encoding='utf-8') as f:
-                    entry = json.loads(f.read().strip())
+                content = self._fs.read_text(pending_path)
+                entry = json.loads(content.strip())
 
                 expected_version = entry.get("expected_entity_version")
                 if expected_version is None:
                     # Old format pending file, delete it
-                    pending_path.unlink()
+                    self._fs.unlink(pending_path)
                     continue
 
                 entity = self.read(entity_id)
@@ -853,7 +998,7 @@ class CDGStore:
                         self._finalize_pending_history(entity_id, pending_path)
                     else:
                         # Entity still exists, delete didn't complete
-                        pending_path.unlink()
+                        self._fs.unlink(pending_path)
                 else:
                     # This was a write operation
                     # If entity version matches expected, write succeeded → finalize
@@ -861,11 +1006,11 @@ class CDGStore:
                         self._finalize_pending_history(entity_id, pending_path)
                     else:
                         # Version mismatch, write didn't complete
-                        pending_path.unlink()
+                        self._fs.unlink(pending_path)
 
             except (json.JSONDecodeError, OSError):
                 # Corrupted pending file, delete it
-                pending_path.unlink()
+                self._fs.unlink(pending_path, missing_ok=True)
 
     def _persist_history_entry(self, entity_id: str, history_entry: dict) -> None:
         """
@@ -886,13 +1031,11 @@ class CDGStore:
         history_path = self._history_path(entity_id)
 
         with self._history_lock:
-            with open(history_path, 'a', encoding='utf-8') as f:
-                json.dump(entry, f, sort_keys=True)
-                f.write('\n')
-                # fsync history file for durability
-                if self.durability != DurabilityMode.FAST:
-                    f.flush()
-                    os.fsync(f.fileno())
+            content = json.dumps(entry, sort_keys=True) + '\n'
+            self._fs.append_text(history_path, content)
+            # fsync history file for durability
+            if self.durability != DurabilityMode.FAST:
+                self._fs.fsync(history_path)
 
     def _load_version(self) -> int:
         """
@@ -911,32 +1054,32 @@ class CDGStore:
         # Start with stored value (if exists)
         stored_version = 0
         version_path = self.store_dir / "_version.json"
-        if version_path.exists():
+        if self._fs.exists(version_path):
             try:
-                with open(version_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
+                content = self._fs.read_text(version_path)
+                data = json.loads(content)
                 stored_version = data.get("version", 0)
             except (json.JSONDecodeError, OSError):
                 pass
 
         # Count entity files
         entity_count = 0
-        for entity_file in self.store_dir.glob("*.json"):
+        for entity_file in self._fs.glob(self.store_dir, "*.json"):
             if entity_file.name != "_version.json":
                 entity_count += 1
 
         # Find max global_version from history files
         max_history_version = 0
-        if self.history_dir.exists():
-            for history_file in self.history_dir.glob("*.jsonl"):
+        if self._fs.exists(self.history_dir):
+            for history_file in self._fs.glob(self.history_dir, "*.jsonl"):
                 try:
-                    with open(history_file, 'r', encoding='utf-8') as f:
-                        for line in f:
-                            if line.strip():
-                                entry = json.loads(line)
-                                gv = entry.get("global_version", 0)
-                                if gv > max_history_version:
-                                    max_history_version = gv
+                    content = self._fs.read_text(history_file)
+                    for line in content.splitlines():
+                        if line.strip():
+                            entry = json.loads(line)
+                            gv = entry.get("global_version", 0)
+                            if gv > max_history_version:
+                                max_history_version = gv
                 except (json.JSONDecodeError, OSError):
                     continue
 
@@ -963,15 +1106,63 @@ class CDGStore:
             with self._version_lock:
                 # Write to temp first
                 temp_path = version_path.with_suffix('.tmp')
-                with open(temp_path, 'w', encoding='utf-8') as f:
-                    json.dump(data, f, indent=2, sort_keys=True)
+                content = json.dumps(data, indent=2, sort_keys=True)
+                self._fs.write_text(temp_path, content)
 
                 # Fsync (respects durability mode)
                 self._fsync_file(temp_path)
 
                 # Rename (atomic on POSIX)
-                temp_path.rename(version_path)
+                self._fs.rename(temp_path, version_path)
+
+    def list_by_prefix(self, prefix: str) -> List[str]:
+        """
+        List entity IDs matching a prefix by scanning the directory.
+
+        Args:
+            prefix: ID prefix to match (e.g., "T-" for tasks)
+
+        Returns:
+            List of matching entity IDs
+        """
+        if not self._fs.exists(self.store_dir):
+            return []
+        return [
+            f.stem for f in self._fs.glob(self.store_dir, f"{prefix}*.json")
+            if not f.name.startswith("_")  # Skip _version.json etc
+        ]
+
+    def iter_entities(self, prefix: Optional[str] = None) -> List[Entity]:
+        """
+        Iterate over all entities, optionally filtered by prefix.
+
+        Args:
+            prefix: Optional ID prefix to filter (e.g., "T-" for tasks)
+
+        Returns:
+            List of Entity objects
+        """
+        if not self._fs.exists(self.store_dir):
+            return []
+
+        pattern = f"{prefix}*.json" if prefix else "*.json"
+        entities = []
+        for entity_file in self._fs.glob(self.store_dir, pattern):
+            # Skip internal files
+            if entity_file.name.startswith("_"):
+                continue
+            try:
+                entity = self.read(entity_file.stem)
+                if entity is not None:
+                    entities.append(entity)
+            except (CorruptionError, json.JSONDecodeError) as e:
+                # Skip corrupted entities during iteration (graceful degradation)
+                logger.warning(f"Skipping corrupted entity {entity_file.stem}: {e}")
+                continue
+        return entities
 
 
 # Alias for backward compatibility with VersionedStore API
 VersionedStore = CDGStore
+
+

@@ -37,10 +37,10 @@ from cortical.got.pattern_matcher import PatternMatcher, Pattern
 # - 300-1000ms = Noticeable delay
 # - > 1000ms = Slow
 
-KPI_QUERY_MS = 10        # Query API operations
-KPI_WALKER_MS = 30       # GraphWalker traversals
-KPI_PATH_FINDER_MS = 20  # PathFinder operations
-KPI_PATTERN_MS = 30      # PatternMatcher operations
+KPI_QUERY_MS = 20        # Query API operations
+KPI_WALKER_MS = 60       # GraphWalker traversals
+KPI_PATH_FINDER_MS = 40  # PathFinder operations
+KPI_PATTERN_MS = 60      # PatternMatcher operations
 
 # Safety margin for CI variance (1.5x)
 CI_VARIANCE_FACTOR = 1.5

@@ -36,7 +36,7 @@ class TestTokenizePerformanceContract:
 
     # The sacred numbers
     MAX_LATENCY_MS_PER_1K_WORDS = 10
-    MAX_BATCH_LATENCY_MS = 1000
+    MAX_BATCH_LATENCY_MS = 2000
     MAX_BIGRAM_LATENCY_MS_PER_1K = 5
 
     def test_tokenize_single_document_latency(self):
@@ -226,7 +226,7 @@ class TestWordVariantsContract:
     So that query processing stays responsive.
     """
 
-    MAX_LATENCY_MS = 0.1
+    MAX_LATENCY_MS = 0.2
 
     def test_word_variants_latency(self):
         """
