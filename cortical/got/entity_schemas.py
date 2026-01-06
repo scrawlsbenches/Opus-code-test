@@ -23,13 +23,16 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from .schema import (
+from typing import TYPE_CHECKING
+
+from cortical.cdg.schema import (
     BaseSchema,
     Field,
     FieldType,
-    register_schema,
-    get_registry,
 )
+
+if TYPE_CHECKING:
+    from cortical.cdg.schema import SchemaRegistry
 from .types import VALID_EDGE_TYPES
 
 
@@ -651,38 +654,17 @@ ALL_SCHEMAS = {
     'document': DocumentSchema,
 }
 
-_schemas_registered = False
-
-
-def reset_schema_registration() -> None:
+def register_all_schemas(registry: "SchemaRegistry") -> None:
     """
-    Reset the schema registration flag.
+    Register all GoT entity schemas to the given registry.
 
-    Called by SchemaModule when a new registry is installed, so that
-    ensure_schemas_registered() will re-register schemas to the new registry.
+    Called by SchemaModule during container setup.
 
-    For internal use only.
+    Args:
+        registry: SchemaRegistry instance to register schemas to
     """
-    global _schemas_registered
-    _schemas_registered = False
-
-
-def ensure_schemas_registered() -> None:
-    """
-    Ensure all entity schemas are registered in the global registry.
-
-    Safe to call multiple times - only registers once per registry.
-    When a new registry is set via set_registry(), call reset_schema_registration()
-    first to ensure schemas are registered to the new registry.
-    """
-    global _schemas_registered
-    if _schemas_registered:
-        return
-
     for entity_type, schema_class in ALL_SCHEMAS.items():
-        register_schema(entity_type, schema_class)
-
-    _schemas_registered = True
+        registry.register(entity_type, schema_class)
 
 
 def get_schema_for_entity_type(entity_type: str) -> type:

@@ -49,29 +49,14 @@ class SchemaModule(ContainerModule):
 
     def register(self, container: Container) -> None:
         """Register Schema services with the container."""
-        # Import schema infrastructure from CDG (the foundation)
-        from cortical.cdg.schema import SchemaRegistry, set_registry
+        from cortical.cdg.schema import SchemaRegistry
+        from cortical.got.entity_schemas import register_all_schemas
 
-        # Create a fresh registry instance (no singleton)
+        # Create registry instance (Container manages lifecycle)
         registry = SchemaRegistry()
 
-        # Set as the global registry for backward compatibility
-        # This ensures code using get_registry() gets the same instance
-        set_registry(registry)
+        # Register all GoT entity schemas
+        register_all_schemas(registry)
 
-        # Reset the schema registration flag since we have a new registry
-        # This ensures schemas get registered to the new registry
-        from cortical.got.entity_schemas import (
-            ensure_schemas_registered,
-            reset_schema_registration
-        )
-        reset_schema_registration()
-
-        # Import GoT entity schemas to register domain-specific schemas
-        # This populates: TaskSchema, DecisionSchema, SprintSchema, etc.
-        # Must happen AFTER set_registry so schemas register to our instance
-        ensure_schemas_registered()
-
-        # Register in container as an instance (not a factory)
-        # This makes SchemaRegistry injectable through constructor injection
+        # Register in container as singleton
         container.register_instance(SchemaRegistry, registry)

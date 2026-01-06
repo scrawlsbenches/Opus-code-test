@@ -67,11 +67,6 @@ from .schema import (
     ValidationResult,
     OnDeleteAction,
     ReferenceRule,
-    get_registry,
-    set_registry,
-    register_schema,
-    validate_entity,
-    migrate_entity,
 )
 
 __all__ = [
@@ -119,9 +114,4 @@ __all__ = [
     "ValidationResult",
     "OnDeleteAction",
     "ReferenceRule",
-    "get_registry",
-    "set_registry",
-    "register_schema",
-    "validate_entity",
-    "migrate_entity",
 ]

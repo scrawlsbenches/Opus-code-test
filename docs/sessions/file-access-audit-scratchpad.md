@@ -17,25 +17,39 @@ Hunt down code accessing files incorrectly (bypassing CDG transactional storage 
 
 ## Schema Refactoring Status
 
-### Completed
+### Completed (this session)
 - [x] Removed singleton from SchemaRegistry
 - [x] Added ReferenceRule and OnDeleteAction for referential integrity
 - [x] CDGStore receives SchemaRegistry via constructor injection
 - [x] CDGStore._validate_entity() uses SchemaRegistry when available
 - [x] Behavioral tests for CDG schema (16 tests)
+- [x] Removed global registry functions from `cortical/cdg/schema/__init__.py`
+- [x] Deleted `cortical/got/schema.py` re-export shim
+- [x] Changed `ensure_schemas_registered()` → `register_all_schemas(registry)`
+- [x] Updated SchemaModule to use new function
+- [x] Updated `cortical/cdg/__init__.py` exports
 
-### Needs Cleanup (backward compat cruft to remove)
-- [ ] `cortical/cdg/schema/__init__.py`: Remove global registry functions
-  - `_registry` global variable
-  - `get_registry()`
-  - `set_registry()`
-  - `register_schema()`
-  - `validate_entity()`
-  - `migrate_entity()`
-- [ ] `cortical/got/schema.py`: Delete re-export shim entirely
-- [ ] `cortical/got/entity_schemas.py`: Remove `reset_schema_registration()` hack
-- [ ] Update all code using `get_registry()` to use Container injection
-- [ ] Update all imports from `cortical.got.schema` to `cortical.cdg.schema`
+### Code Still Using Removed Functions (BREAKS)
+
+Files that import from deleted `cortical.got.schema`:
+```
+cortical/got/__init__.py - line 109-118: imports schema functions to re-export
+cortical/got/api.py - line 49, 202-203: imports SchemaRegistry, get_registry()
+```
+
+Files using `get_registry()` that needs Container injection:
+```
+cortical/got/query_builder.py - line 890, 894
+cortical/got/versioned_store.py - line 33, 307
+cortical/got/cli/query.py - line 470, 476
+cortical/got/expression/validator.py - line 14, 43
+cortical/got/entity_schemas.py - line 762, 783 (in helper functions)
+```
+
+### Next to Fix (in order)
+1. `cortical/got/__init__.py` - remove schema re-exports
+2. `cortical/got/api.py` - import SchemaRegistry from CDG
+3. Files using `get_registry()` - need to receive SchemaRegistry via constructor
 
 ---
 
@@ -80,11 +94,12 @@ Hunt down code accessing files incorrectly (bypassing CDG transactional storage 
 
 ---
 
-## Next Steps
+## Design Decisions Made
 
-1. Clean up schema backward compat cruft
-2. Find all usages of removed functions and fix them
-3. Return to direct file access list and fix systematically
+1. **No backward compatibility** - fix problems directly, don't create shims
+2. **Container-first** - SchemaRegistry injected via Container, no globals
+3. **Single registration** - schemas registered once at startup, no live changes
+4. **CDG is foundation** - all storage goes through CDG, GoT is facade
 
 ---
 
@@ -92,4 +107,4 @@ Hunt down code accessing files incorrectly (bypassing CDG transactional storage 
 
 - Don't run tests until user says to
 - Go slow, check in before making changes
-- We don't care about backward compatibility - fix the problems
+- Keep this scratchpad updated before context compaction

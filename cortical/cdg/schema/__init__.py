@@ -744,68 +744,6 @@ class SchemaRegistry:
         return result
 
 
-# Global registry instance (for backward compatibility)
-# Prefer Container injection for new code
-_registry: Optional[SchemaRegistry] = None
-
-
-def _get_or_create_registry() -> SchemaRegistry:
-    """Get or create the global registry (lazy initialization)."""
-    global _registry
-    if _registry is None:
-        _registry = SchemaRegistry()
-    return _registry
-
-
-def get_registry() -> SchemaRegistry:
-    """
-    Get the global schema registry.
-
-    Note: For new code, prefer Container injection via SchemaModule.
-    This function exists for backward compatibility.
-
-    Returns:
-        The global SchemaRegistry instance
-    """
-    return _get_or_create_registry()
-
-
-def set_registry(registry: SchemaRegistry) -> None:
-    """
-    Set the global schema registry.
-
-    Used by SchemaModule to inject the Container-managed registry
-    into the global for backward compatibility.
-
-    Args:
-        registry: SchemaRegistry instance to use as global
-    """
-    global _registry
-    _registry = registry
-
-
-def register_schema(entity_type: str, schema: Type[BaseSchema]) -> None:
-    """Register a schema in the global registry."""
-    _get_or_create_registry().register(entity_type, schema)
-
-
-def validate_entity(
-    entity_type: str,
-    data: Dict[str, Any],
-    strict: bool = False
-) -> ValidationResult:
-    """Validate data against global registry."""
-    return _get_or_create_registry().validate(entity_type, data, strict=strict)
-
-
-def migrate_entity(
-    entity_type: str,
-    data: Dict[str, Any]
-) -> Tuple[Dict[str, Any], ValidationResult]:
-    """Migrate data using global registry."""
-    return _get_or_create_registry().migrate(entity_type, data)
-
-
 __all__ = [
     # Types
     'FieldType',
@@ -816,10 +754,4 @@ __all__ = [
     # Referential Integrity
     'OnDeleteAction',
     'ReferenceRule',
-    # Functions
-    'get_registry',
-    'set_registry',
-    'register_schema',
-    'validate_entity',
-    'migrate_entity',
 ]
