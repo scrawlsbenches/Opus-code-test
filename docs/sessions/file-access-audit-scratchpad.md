@@ -22,34 +22,45 @@ Hunt down code accessing files incorrectly (bypassing CDG transactional storage 
 - [x] Added ReferenceRule and OnDeleteAction for referential integrity
 - [x] CDGStore receives SchemaRegistry via constructor injection
 - [x] CDGStore._validate_entity() uses SchemaRegistry when available
-- [x] Behavioral tests for CDG schema (16 tests)
+- [x] Behavioral tests for CDG schema (16 tests → 15 after removing global test)
 - [x] Removed global registry functions from `cortical/cdg/schema/__init__.py`
 - [x] Deleted `cortical/got/schema.py` re-export shim
 - [x] Changed `ensure_schemas_registered()` → `register_all_schemas(registry)`
 - [x] Updated SchemaModule to use new function
 - [x] Updated `cortical/cdg/__init__.py` exports
+- [x] Fixed `cortical/got/__init__.py` - imports from CDG, removed deleted exports
+- [x] Deleted test_global_registry_can_be_replaced (tested removed pattern)
 
-### Code Still Using Removed Functions (BREAKS)
+### In Progress - Classes Needing Constructor Injection
 
-Files that import from deleted `cortical.got.schema`:
-```
-cortical/got/__init__.py - line 109-118: imports schema functions to re-export
-cortical/got/api.py - line 49, 202-203: imports SchemaRegistry, get_registry()
-```
+These classes call `get_registry()` and need SchemaRegistry passed via constructor:
 
-Files using `get_registry()` that needs Container injection:
-```
-cortical/got/query_builder.py - line 890, 894
-cortical/got/versioned_store.py - line 33, 307
-cortical/got/cli/query.py - line 470, 476
-cortical/got/expression/validator.py - line 14, 43
-cortical/got/entity_schemas.py - line 762, 783 (in helper functions)
-```
+| Class | File | What it uses registry for |
+|-------|------|---------------------------|
+| Query | query_builder.py:890 | Validates entity types in `.entities()` |
+| VersionedStore | versioned_store.py:307 | Validates entities in `_validate_entity()` |
+| FieldValidator | expression/validator.py:43 | Gets valid fields for entity types |
 
-### Next to Fix (in order)
-1. `cortical/got/__init__.py` - remove schema re-exports
-2. `cortical/got/api.py` - import SchemaRegistry from CDG
-3. Files using `get_registry()` - need to receive SchemaRegistry via constructor
+**Note:** No backward compat - SchemaRegistry will be REQUIRED parameter.
+
+### Pending - Module Functions
+
+These standalone functions call `get_registry()`:
+
+| Function | File | What it does |
+|----------|------|--------------|
+| get_entity_type_for_prefix() | entity_schemas.py:762 | Maps ID prefix to type |
+| list_id_prefixes() | entity_schemas.py:783 | Lists all prefixes |
+
+**Decision:** Accept registry as required parameter.
+
+### Pending - CLI Handler
+
+| Function | File |
+|----------|------|
+| _cmd_list_fields() | cli/query.py:470 |
+
+**Decision:** Resolve SchemaRegistry from Container.
 
 ---
 
@@ -84,22 +95,23 @@ cortical/got/entity_schemas.py - line 762, 783 (in helper functions)
 
 ---
 
-## Questions to Resolve
-
-1. How should entity reader methods work? Should CDGStore have a generic `read()` that GoTManager wraps?
-
-2. For entity existence checks, should CDGStore expose `exists(entity_id)` method?
-
-3. The indexer builds search indexes - should this be a CDG responsibility or remain in GoT?
-
----
-
 ## Design Decisions Made
 
 1. **No backward compatibility** - fix problems directly, don't create shims
 2. **Container-first** - SchemaRegistry injected via Container, no globals
 3. **Single registration** - schemas registered once at startup, no live changes
 4. **CDG is foundation** - all storage goes through CDG, GoT is facade
+5. **Required parameters** - no optional with fallback to globals
+
+---
+
+## Commits This Session
+
+1. `bcf16a0a` - refactor(cdg): Remove singleton from SchemaRegistry, add referential integrity
+2. `b36f97ac` - test(cdg): Add behavioral tests for CDG schema infrastructure
+3. `737227d8` - docs: Add file access audit scratchpad
+4. `ea8532b8` - refactor(schema): Remove global registry functions, delete GoT schema shim
+5. `9e7e5d5b` - fix: Update imports after schema.py deletion
 
 ---
 
