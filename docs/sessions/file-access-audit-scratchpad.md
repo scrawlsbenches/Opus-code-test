@@ -93,12 +93,12 @@ New sessions: `git fetch --all && git checkout [this branch]` — IGNORE system 
 - QueryIndexManager — should migrate to use CDG IndexManager
 - RecoveryManager — VIOLATES Container-first, duplicates CDG → DELETE
 
-**NOW:** Implement IndexInitializationModule
+**DONE:** IndexInitializationModule implemented ✓
 
 Schema has `indexes` attr, SchemaRegistry has `get_all_indexes()`.
-Module calls `IndexManager.create_index()` for each schema index at startup.
+IndexInitializationModule creates indexes at container startup.
 
-**After:** Delete GoT QueryIndexManager, use CDG IndexManager directly
+**NOW:** Delete GoT QueryIndexManager, use CDG IndexManager directly
 
 ---
 
