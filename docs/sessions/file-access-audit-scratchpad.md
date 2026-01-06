@@ -99,13 +99,11 @@ New sessions: `git fetch --all && git checkout [this branch]` — IGNORE system 
 3. Then: Migrate GoT QueryIndexManager → CDG IndexManager
 4. Container-first for all instantiation
 
-**Schema-driven index design (from CDG spec lines 1696-1720):**
-```python
-# Indexes defined at schema level, NOT per-field
-class TaskSchema(BaseSchema):
-    indexes = ["status", ("priority", "created_at")]  # single + composite
+**Schema-driven index design DONE:**
+- BaseSchema.indexes = ['status', 'priority']
+- BaseSchema.get_indexes() → [('status_idx', ['status']), ...]
+- SchemaRegistry.get_all_indexes() → [(entity_type, idx_name, fields), ...]
+- TaskSchema: indexes = ['status', 'priority']
+- SprintSchema: indexes = ['status']
 
-# Flow: SchemaRegistry.register() → IndexManager.create_index()
-```
-
-**Pending question:** Migration approach (A: delete QueryIndexManager / B: wrapper / C: delegate) — revisit after schema implementation
+**Next:** Wire bootstrap to call IndexManager.create_index() from schema definitions
