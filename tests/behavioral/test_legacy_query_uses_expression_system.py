@@ -31,8 +31,8 @@ def got_path(tmp_path):
 
 @pytest.fixture
 def got_manager(got_path):
-    """Provide an isolated GoT manager for testing."""
-    return _create_got_manager(got_path)
+    """Provide an isolated GoT manager for testing (disk for adapter compatibility)."""
+    return _create_got_manager(got_path, use_memory=False)
 
 
 @pytest.fixture

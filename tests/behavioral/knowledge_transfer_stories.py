@@ -42,8 +42,9 @@ def tx_manager(temp_got_dir):
     Provide a TransactionManager for testing.
 
     Uses BALANCED durability mode for reliable testing.
+    Uses disk storage because some tests check files directly.
     """
-    manager = _create_tx_manager(temp_got_dir)
+    manager = _create_tx_manager(temp_got_dir, use_memory=False)
     return manager
 
 
@@ -979,7 +980,8 @@ class TestSystemMaintainsKnowledgeIntegrity:
         And all fields are preserved correctly
         """
         # Given a knowledge transfer created in one session
-        manager1 = _create_tx_manager(temp_got_dir)
+        # Use disk storage for persistence test across manager instances
+        manager1 = _create_tx_manager(temp_got_dir, use_memory=False)
         kt = manager1.create_knowledge_transfer(
             title="Critical System Knowledge",
             summary="Must not be lost on restart",
@@ -995,7 +997,7 @@ class TestSystemMaintainsKnowledgeIntegrity:
         kt_id = kt.id
 
         # When the system restarts with a new transaction manager
-        manager2 = _create_tx_manager(temp_got_dir)
+        manager2 = _create_tx_manager(temp_got_dir, use_memory=False)
 
         # Then the knowledge transfer is still accessible
         retrieved = manager2.get_knowledge_transfer(kt_id)
