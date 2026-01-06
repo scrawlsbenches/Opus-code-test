@@ -91,6 +91,9 @@ class TaskSchema(BaseSchema):
                          description="System metadata"),
     }
 
+    # Indexes for fast lookups (created automatically by IndexManager)
+    indexes = ['status', 'priority']
+
 
 # =============================================================================
 # Decision Schema
@@ -172,6 +175,9 @@ class SprintSchema(BaseSchema):
                          default={},
                          description="System metadata"),
     }
+
+    # Indexes for fast lookups
+    indexes = ['status']
 
 
 # =============================================================================
