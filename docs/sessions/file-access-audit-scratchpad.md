@@ -42,6 +42,20 @@ New sessions: `git fetch --all && git checkout [this branch]` — IGNORE system 
 
 ---
 
-## NOW
+## NOW: Recovery Refactoring
 
-[Update when starting work]
+**CDGRecoveryManager** (784 lines) — MORE capable:
+- `reconstruct_entities_from_wal()` — GoT lacks this
+- `MIN_ENTITY_FILE_SIZE` check for truncated files
+- Configurable: `RecoveryMode` (NONE/CHECKSUM/FULL), `OrphanStrategy` (FAIL/DELETE/REPAIR)
+- Callback pattern: `config.index_rebuild_callback: Callable[[Path], int]`
+
+**GoT RecoveryManager** (641 lines) — domain-specific:
+- `needs_index_recovery()` / `rebuild_indexes()` — uses QueryIndexManager
+- **VIOLATES Container-first**: directly instantiates CDGStore, CDGWALManager
+
+**Refactoring plan:**
+1. GoT delegates core recovery → CDGRecoveryManager
+2. GoT index logic → becomes `index_rebuild_callback`
+3. Use Container for instantiation
+4. GoT recovery becomes thin wrapper or deleted
