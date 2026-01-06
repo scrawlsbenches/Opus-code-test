@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Optional
 
 from cortical.common import Container, ContainerModule, Lifecycle, FileSystem
+from cortical.got.schema import SchemaRegistry
 
 
 @dataclass
@@ -150,12 +151,14 @@ class GoTModule(ContainerModule):
             lifecycle=Lifecycle.SINGLETON,
         )
 
-        # Register GoTManager with injected TransactionManager
+        # Register GoTManager with injected TransactionManager and SchemaRegistry
         def create_got_manager() -> GoTManager:
             tx_manager = container.resolve(TransactionManager)
+            registry = container.resolve(SchemaRegistry)
             return GoTManager(
                 self.config.got_dir,
                 tx_manager=tx_manager,
+                schema_registry=registry,
             )
 
         container.register(
@@ -165,9 +168,12 @@ class GoTModule(ContainerModule):
         )
 
         # Register QueryIndexManager
+        # Note: QueryIndexManager currently takes got_dir, but should eventually
+        # receive SchemaRegistry for schema-aware indexing
         def create_index_manager() -> QueryIndexManager:
-            tx_manager = container.resolve(TransactionManager)
-            return QueryIndexManager(tx_manager)
+            # Resolve SchemaRegistry for future use
+            # registry = container.resolve(SchemaRegistry)
+            return QueryIndexManager(self.config.got_dir)
 
         container.register(
             QueryIndexManager,

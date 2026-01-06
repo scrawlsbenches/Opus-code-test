@@ -46,6 +46,7 @@ from .transaction import Transaction
 from .errors import TransactionError, CorruptionError
 from .config import DurabilityMode
 from .query_api import QueryAPI
+from .schema import SchemaRegistry
 from .validation import (
     validate_entity_id,
     validate_edge_relationship,
@@ -151,6 +152,7 @@ class GoTManager:
         cache_enabled: bool = True,  # Deprecated: caching now handled by CDGStore
         *,
         tx_manager: TransactionManager,
+        schema_registry: Optional[SchemaRegistry] = None,
     ):
         """
         Initialize GoT manager with injected dependencies.
@@ -165,6 +167,8 @@ class GoTManager:
             cache_enabled: DEPRECATED - Caching is now handled by CDGStore.
                           This parameter is ignored but kept for backwards compatibility.
             tx_manager: REQUIRED - Injected TransactionManager instance
+            schema_registry: Optional SchemaRegistry for entity validation.
+                            If not provided, falls back to global singleton (deprecated).
 
         Raises:
             TypeError: If required dependencies are missing or wrong type
@@ -189,6 +193,14 @@ class GoTManager:
         self._recovery_manager = None  # Lazy initialization
         self._index_manager = None  # Lazy initialization
         self._query_api = None  # Lazy initialization
+
+        # SchemaRegistry for entity validation
+        # If not injected, fall back to global singleton (deprecated pattern)
+        if schema_registry is not None:
+            self._schema_registry = schema_registry
+        else:
+            from .schema import get_registry
+            self._schema_registry = get_registry()
 
         # Cache is now handled by CDGStore at the storage layer
         # GoTManager delegates cache_stats() and cache_clear() to the store
