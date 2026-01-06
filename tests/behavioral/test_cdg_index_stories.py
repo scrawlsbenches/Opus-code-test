@@ -9,11 +9,15 @@ Story: As a developer using CDG, I want to create indexes on entity fields
 
 Design Reference: docs/architecture/DISTRIBUTED_GRAPH_SPECIFICATION.md (Section 8)
 Replaces: cortical/got/indexer.py (QueryIndexManager)
+
+Testing Strategy: Uses InMemoryFileSystem for fast, isolated tests with no disk I/O.
 """
 
 import pytest
 from pathlib import Path
 from typing import Dict, Any, List
+
+from cortical.common.filesystem import InMemoryFileSystem, FileSystem
 
 # These imports will fail until we implement the module
 # That's intentional - RED phase of TDD
@@ -21,38 +25,51 @@ from cortical.cdg.index import (
     IndexManager,
     IndexEntry,
     IndexType,
-    IndexConfig,
 )
+
+
+@pytest.fixture
+def fs() -> InMemoryFileSystem:
+    """Provide in-memory filesystem for testing."""
+    return InMemoryFileSystem()
+
+
+@pytest.fixture
+def store_dir(fs: InMemoryFileSystem) -> Path:
+    """Provide a virtual store directory."""
+    path = Path("/test/store")
+    fs.mkdir(path, parents=True, exist_ok=True)
+    return path
 
 
 class TestIndexManagerCreation:
     """Story: Creating and configuring an IndexManager."""
 
-    def test_create_index_manager_with_store_dir(self, tmp_path: Path):
-        """Given a store directory, I can create an IndexManager."""
-        manager = IndexManager(store_dir=tmp_path)
+    def test_create_index_manager_with_filesystem(self, fs: InMemoryFileSystem, store_dir: Path):
+        """Given a filesystem and store directory, I can create an IndexManager."""
+        manager = IndexManager(store_dir=store_dir, filesystem=fs)
         assert manager is not None
-        assert manager.store_dir == tmp_path
+        assert manager.store_dir == store_dir
 
-    def test_index_manager_creates_index_directory(self, tmp_path: Path):
+    def test_index_manager_creates_index_directory(self, fs: InMemoryFileSystem, store_dir: Path):
         """The IndexManager creates an indexes subdirectory."""
-        manager = IndexManager(store_dir=tmp_path)
-        assert (tmp_path / "indexes").exists()
+        manager = IndexManager(store_dir=store_dir, filesystem=fs)
+        assert fs.is_dir(store_dir / "indexes")
 
-    def test_index_manager_with_namespace(self, tmp_path: Path):
+    def test_index_manager_with_namespace(self, fs: InMemoryFileSystem, store_dir: Path):
         """I can create a namespaced IndexManager for domain separation."""
-        manager = IndexManager(store_dir=tmp_path, namespace="got")
+        manager = IndexManager(store_dir=store_dir, filesystem=fs, namespace="got")
         assert manager.namespace == "got"
         # Namespace creates its own subdirectory
-        assert (tmp_path / "indexes" / "got").exists()
+        assert fs.is_dir(store_dir / "indexes" / "got")
 
 
 class TestIndexCreation:
     """Story: Creating indexes on entity fields."""
 
-    def test_create_simple_index(self, tmp_path: Path):
+    def test_create_simple_index(self, fs: InMemoryFileSystem, store_dir: Path):
         """I can create an index on a single field."""
-        manager = IndexManager(store_dir=tmp_path)
+        manager = IndexManager(store_dir=store_dir, filesystem=fs)
 
         index = manager.create_index(
             name="status_idx",
@@ -64,9 +81,9 @@ class TestIndexCreation:
         assert index.fields == ["status"]
         assert manager.has_index("status_idx")
 
-    def test_create_index_with_type(self, tmp_path: Path):
+    def test_create_index_with_type(self, fs: InMemoryFileSystem, store_dir: Path):
         """I can specify the index type (default is HASH for equality lookups)."""
-        manager = IndexManager(store_dir=tmp_path)
+        manager = IndexManager(store_dir=store_dir, filesystem=fs)
 
         index = manager.create_index(
             name="priority_idx",
@@ -76,9 +93,9 @@ class TestIndexCreation:
 
         assert index.index_type == IndexType.HASH
 
-    def test_create_bitmap_index_for_low_cardinality(self, tmp_path: Path):
+    def test_create_bitmap_index_for_low_cardinality(self, fs: InMemoryFileSystem, store_dir: Path):
         """For low-cardinality fields like status, BITMAP index is efficient."""
-        manager = IndexManager(store_dir=tmp_path)
+        manager = IndexManager(store_dir=store_dir, filesystem=fs)
 
         index = manager.create_index(
             name="status_idx",
@@ -88,9 +105,9 @@ class TestIndexCreation:
 
         assert index.index_type == IndexType.BITMAP
 
-    def test_create_composite_index(self, tmp_path: Path):
+    def test_create_composite_index(self, fs: InMemoryFileSystem, store_dir: Path):
         """I can create a composite index on multiple fields."""
-        manager = IndexManager(store_dir=tmp_path)
+        manager = IndexManager(store_dir=store_dir, filesystem=fs)
 
         index = manager.create_index(
             name="status_priority_idx",
@@ -99,9 +116,9 @@ class TestIndexCreation:
 
         assert index.fields == ["status", "priority"]
 
-    def test_list_indexes(self, tmp_path: Path):
+    def test_list_indexes(self, fs: InMemoryFileSystem, store_dir: Path):
         """I can list all indexes."""
-        manager = IndexManager(store_dir=tmp_path)
+        manager = IndexManager(store_dir=store_dir, filesystem=fs)
         manager.create_index(name="idx1", fields=["field1"])
         manager.create_index(name="idx2", fields=["field2"])
 
@@ -110,9 +127,9 @@ class TestIndexCreation:
         assert len(indexes) == 2
         assert {idx.name for idx in indexes} == {"idx1", "idx2"}
 
-    def test_drop_index(self, tmp_path: Path):
+    def test_drop_index(self, fs: InMemoryFileSystem, store_dir: Path):
         """I can drop an index."""
-        manager = IndexManager(store_dir=tmp_path)
+        manager = IndexManager(store_dir=store_dir, filesystem=fs)
         manager.create_index(name="temp_idx", fields=["temp"])
 
         manager.drop_index("temp_idx")
@@ -124,9 +141,9 @@ class TestIndexOperations:
     """Story: Adding, updating, and removing entities from indexes."""
 
     @pytest.fixture
-    def indexed_manager(self, tmp_path: Path) -> IndexManager:
+    def indexed_manager(self, fs: InMemoryFileSystem, store_dir: Path) -> IndexManager:
         """Create a manager with status and priority indexes."""
-        manager = IndexManager(store_dir=tmp_path)
+        manager = IndexManager(store_dir=store_dir, filesystem=fs)
         manager.create_index(name="status_idx", fields=["status"])
         manager.create_index(name="priority_idx", fields=["priority"])
         return manager
@@ -204,26 +221,26 @@ class TestIndexOperations:
 
 
 class TestIndexPersistence:
-    """Story: Indexes persist across restarts."""
+    """Story: Indexes persist across manager instances (simulated restart)."""
 
-    def test_indexes_persist_to_disk(self, tmp_path: Path):
-        """Index data is saved to disk."""
-        manager = IndexManager(store_dir=tmp_path)
+    def test_indexes_persist_via_save_load(self, fs: InMemoryFileSystem, store_dir: Path):
+        """Index data persists after save and reload."""
+        manager = IndexManager(store_dir=store_dir, filesystem=fs)
         manager.create_index(name="status_idx", fields=["status"])
         manager.index_entity("T-001", {"status": "pending"})
         manager.save()
 
         # Create new manager instance (simulates restart)
-        manager2 = IndexManager(store_dir=tmp_path)
+        manager2 = IndexManager(store_dir=store_dir, filesystem=fs)
 
         # Index definition persists
         assert manager2.has_index("status_idx")
         # Index data persists
         assert "T-001" in manager2.lookup("status_idx", "pending")
 
-    def test_dirty_tracking(self, tmp_path: Path):
+    def test_dirty_tracking(self, fs: InMemoryFileSystem, store_dir: Path):
         """Manager tracks when indexes need saving."""
-        manager = IndexManager(store_dir=tmp_path)
+        manager = IndexManager(store_dir=store_dir, filesystem=fs)
         manager.create_index(name="status_idx", fields=["status"])
 
         assert not manager.is_dirty
@@ -236,28 +253,28 @@ class TestIndexPersistence:
 
         assert not manager.is_dirty
 
-    def test_atomic_save(self, tmp_path: Path):
-        """Save is atomic - partial failures don't corrupt index."""
-        manager = IndexManager(store_dir=tmp_path)
+    def test_save_writes_to_filesystem(self, fs: InMemoryFileSystem, store_dir: Path):
+        """Save writes index data to the filesystem."""
+        manager = IndexManager(store_dir=store_dir, filesystem=fs)
         manager.create_index(name="status_idx", fields=["status"])
         manager.index_entity("T-001", {"status": "pending"})
         manager.save()
 
-        # Verify file exists and is valid JSON
-        index_file = tmp_path / "indexes" / "status_idx.json"
-        assert index_file.exists()
+        # Verify data written to filesystem
+        index_file = store_dir / "indexes" / "status_idx.json"
+        assert fs.exists(index_file)
 
         import json
-        data = json.loads(index_file.read_text())
+        data = json.loads(fs.read_text(index_file))
         assert "pending" in str(data)
 
 
 class TestIndexRebuild:
     """Story: Rebuilding indexes from entity data."""
 
-    def test_rebuild_index_from_entities(self, tmp_path: Path):
+    def test_rebuild_index_from_entities(self, fs: InMemoryFileSystem, store_dir: Path):
         """I can rebuild an index from a list of entities."""
-        manager = IndexManager(store_dir=tmp_path)
+        manager = IndexManager(store_dir=store_dir, filesystem=fs)
         manager.create_index(name="status_idx", fields=["status"])
 
         entities = [
@@ -271,9 +288,9 @@ class TestIndexRebuild:
         assert manager.lookup("status_idx", "pending") == {"T-001", "T-002"}
         assert manager.lookup("status_idx", "completed") == {"T-003"}
 
-    def test_rebuild_all_indexes(self, tmp_path: Path):
+    def test_rebuild_all_indexes(self, fs: InMemoryFileSystem, store_dir: Path):
         """I can rebuild all indexes at once."""
-        manager = IndexManager(store_dir=tmp_path)
+        manager = IndexManager(store_dir=store_dir, filesystem=fs)
         manager.create_index(name="status_idx", fields=["status"])
         manager.create_index(name="priority_idx", fields=["priority"])
 
@@ -291,9 +308,9 @@ class TestIndexRebuild:
 class TestRelationshipIndex:
     """Story: Indexing relationships (like sprint membership)."""
 
-    def test_relationship_index(self, tmp_path: Path):
+    def test_relationship_index(self, fs: InMemoryFileSystem, store_dir: Path):
         """I can index relationships between entities."""
-        manager = IndexManager(store_dir=tmp_path)
+        manager = IndexManager(store_dir=store_dir, filesystem=fs)
 
         # Create a relationship index (sprint contains tasks)
         manager.create_index(
@@ -315,9 +332,9 @@ class TestRelationshipIndex:
 class TestIndexStats:
     """Story: Monitoring index performance."""
 
-    def test_index_stats(self, tmp_path: Path):
+    def test_index_stats(self, fs: InMemoryFileSystem, store_dir: Path):
         """I can get statistics about index usage."""
-        manager = IndexManager(store_dir=tmp_path)
+        manager = IndexManager(store_dir=store_dir, filesystem=fs)
         manager.create_index(name="status_idx", fields=["status"])
         manager.index_entity("T-001", {"status": "pending"})
 
@@ -335,11 +352,12 @@ class TestIndexStats:
 class TestContainerIntegration:
     """Story: IndexManager works with DI container."""
 
-    def test_index_manager_injectable(self, tmp_path: Path):
-        """IndexManager can be resolved from container."""
+    def test_index_manager_injectable(self, fs: InMemoryFileSystem, store_dir: Path):
+        """IndexManager can be resolved from container with filesystem injection."""
         from cortical.core.bootstrap import create_container
 
-        container = create_container(got_dir=tmp_path)
+        # Container should wire up IndexManager with provided filesystem
+        container = create_container(got_dir=store_dir, filesystem=fs)
         manager = container.resolve(IndexManager)
 
         assert manager is not None
@@ -349,7 +367,7 @@ class TestContainerIntegration:
 class TestGoTCompatibility:
     """Story: CDG IndexManager can replace GoT QueryIndexManager."""
 
-    def test_got_task_indexing_pattern(self, tmp_path: Path):
+    def test_got_task_indexing_pattern(self, fs: InMemoryFileSystem, store_dir: Path):
         """
         The pattern GoT uses for task indexing works with CDG IndexManager.
 
@@ -361,7 +379,7 @@ class TestGoTCompatibility:
             index_manager.index_entity(task_id, {"status": status, "priority": priority})
             index_manager.lookup("status_idx", "pending")
         """
-        manager = IndexManager(store_dir=tmp_path, namespace="got")
+        manager = IndexManager(store_dir=store_dir, filesystem=fs, namespace="got")
 
         # Create GoT-style indexes
         manager.create_index(name="status_idx", fields=["status"])
@@ -387,7 +405,7 @@ class TestGoTCompatibility:
         assert "T-001" in high_priority
         assert "T-001" in sprint_tasks
 
-    def test_got_update_pattern(self, tmp_path: Path):
+    def test_got_update_pattern(self, fs: InMemoryFileSystem, store_dir: Path):
         """
         GoT's update pattern works with CDG IndexManager.
 
@@ -397,7 +415,7 @@ class TestGoTCompatibility:
         CDG equivalent:
             index_manager.update_entity(task_id, {"status": "pending"}, {"status": "completed"})
         """
-        manager = IndexManager(store_dir=tmp_path, namespace="got")
+        manager = IndexManager(store_dir=store_dir, filesystem=fs, namespace="got")
         manager.create_index(name="status_idx", fields=["status"])
 
         # Add task
