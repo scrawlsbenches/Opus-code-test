@@ -94,6 +94,9 @@ New sessions: `git fetch --all && git checkout [this branch]` — IGNORE system 
 - RecoveryManager — VIOLATES Container-first, duplicates CDG → DELETE
 
 **Next steps:**
-1. Delete GoT recovery.py, use CDGRecoveryManager
-2. Migrate GoT QueryIndexManager → CDG IndexManager
-3. Container-first for all instantiation
+1. ~~Delete GoT recovery.py, use CDGRecoveryManager~~
+2. **NOW: Schema-driven index creation** — indexes defined in schema, created automatically
+3. Then: Migrate GoT QueryIndexManager → CDG IndexManager
+4. Container-first for all instantiation
+
+**Pending question:** Migration approach (A: delete QueryIndexManager / B: wrapper / C: delegate) — revisit after schema investigation
