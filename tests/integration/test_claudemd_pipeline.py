@@ -31,8 +31,7 @@ class TestClaudeMdLayerCRUD(unittest.TestCase):
         self.got_dir.mkdir()
         (self.got_dir / "entities").mkdir()
 
-        # Use disk storage for integration tests (persistence tests require it)
-        self.manager = _create_got_manager(self.got_dir, use_memory=False)
+        self.manager = _create_got_manager(self.got_dir)
 
     def tearDown(self):
         """Clean up test fixtures."""
@@ -146,8 +145,11 @@ class TestClaudeMdLayerCRUD(unittest.TestCase):
 
     def test_layer_persistence(self):
         """Test layers persist across manager instances."""
-        # Create layer
-        layer = self.manager.create_claudemd_layer(
+        # This test needs disk storage for both managers to test persistence
+        disk_manager = _create_got_manager(self.got_dir, use_memory=False)
+
+        # Create layer with disk-based manager
+        layer = disk_manager.create_claudemd_layer(
             layer_type="core",
             section_id="persistent",
             title="Persistent Layer",
@@ -156,7 +158,7 @@ class TestClaudeMdLayerCRUD(unittest.TestCase):
         )
         layer_id = layer.id
 
-        # Create new manager instance (disk storage for persistence test)
+        # Create new manager instance (also disk-based to read persisted data)
         new_manager = _create_got_manager(self.got_dir, use_memory=False)
 
         # Verify layer still exists
