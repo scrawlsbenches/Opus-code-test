@@ -115,8 +115,8 @@ class CDGStore:
         validate_on_save: bool = True,
         # FileSystem abstraction for testability
         filesystem: Optional[FileSystem] = None,
-        # Caching
-        cache_enabled: bool = False,
+        # Caching (enabled by default for performance)
+        cache_enabled: bool = True,
     ):
         """
         Initialize store, creating directory structure if needed.
@@ -598,6 +598,10 @@ class CDGStore:
                     if deleted_files:
                         self._version += 1
                         self._save_version()
+
+                    # Step 5: Invalidate cache for all deleted entities
+                    for entity_id, _, _ in deleted_files:
+                        self._cache_invalidate(entity_id)
 
                     return self._version
 

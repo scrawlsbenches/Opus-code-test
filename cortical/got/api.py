@@ -133,11 +133,8 @@ class GoTManager:
         # Auto-commits on success, rolls back on exception
 
     Caching:
-        Entity caching is enabled by default for 10-50x faster repeated queries.
-        Cache is automatically invalidated on writes.
-
-        # Disable caching for durability-first use cases
-        manager = GoTManager("/path/to/.got", cache_enabled=False)
+        Entity caching is handled at the CDGStore layer for 10-50x faster
+        repeated queries. Cache is automatically invalidated on writes.
 
         # Get cache statistics
         stats = manager.cache_stats()
@@ -151,7 +148,7 @@ class GoTManager:
         self,
         got_dir: Path,
         durability: DurabilityMode = DurabilityMode.BALANCED,
-        cache_enabled: bool = True,
+        cache_enabled: bool = True,  # Deprecated: caching now handled by CDGStore
         *,
         tx_manager: TransactionManager,
     ):
@@ -165,7 +162,8 @@ class GoTManager:
         Args:
             got_dir: Base directory for GoT storage
             durability: Durability mode controlling fsync behavior (default: BALANCED)
-            cache_enabled: Enable in-memory entity caching for faster reads (default: True)
+            cache_enabled: DEPRECATED - Caching is now handled by CDGStore.
+                          This parameter is ignored but kept for backwards compatibility.
             tx_manager: REQUIRED - Injected TransactionManager instance
 
         Raises:
@@ -192,21 +190,11 @@ class GoTManager:
         self._index_manager = None  # Lazy initialization
         self._query_api = None  # Lazy initialization
 
-        # Entity cache for read performance (10-50x faster for repeated queries)
-        self._cache_enabled = cache_enabled
-        self._entity_cache: Dict[str, Entity] = {}
-        self._cache_timestamps: Dict[str, float] = {}  # entity_id -> timestamp
-        self._cache_access_order: List[str] = []  # LRU tracking (most recent at end)
-        self._cache_hits = 0
-        self._cache_misses = 0
-        self._cache_ttl: Optional[float] = None  # TTL in seconds (None = no expiry)
-        self._cache_max_size: Optional[int] = None  # Max entries (None = unlimited)
-        self._cache_lock = threading.Lock()  # Thread-safety for cache operations
+        # Cache is now handled by CDGStore at the storage layer
+        # GoTManager delegates cache_stats() and cache_clear() to the store
 
-        # Log initialization at debug level
-        cache_status = "enabled" if cache_enabled else "disabled"
         logger.debug(
-            f"GoTManager initialized with durability={durability.value}, cache={cache_status}"
+            f"GoTManager initialized with durability={durability.value}"
         )
 
     @property
@@ -359,151 +347,31 @@ class GoTManager:
         # Save indexes after each update
         self._index_manager.save()
 
-    # ==================== Cache Methods ====================
-
-    def _cache_get(self, entity_id: str) -> Optional[Entity]:
-        """
-        Get entity from cache.
-
-        Checks TTL if configured and evicts expired entries.
-        Updates LRU access order on hit.
-
-        Args:
-            entity_id: Entity identifier
-
-        Returns:
-            Cached entity or None if not cached or expired
-        """
-        if not self._cache_enabled:
-            return None
-
-        with self._cache_lock:
-            entity = self._entity_cache.get(entity_id)
-            if entity is None:
-                return None
-
-            # Check TTL expiration
-            if self._cache_ttl is not None:
-                timestamp = self._cache_timestamps.get(entity_id, 0)
-                if time.time() - timestamp > self._cache_ttl:
-                    # Entry expired, remove it
-                    self._cache_invalidate_locked(entity_id)
-                    return None
-
-            # Update LRU order (move to end = most recently used)
-            if entity_id in self._cache_access_order:
-                self._cache_access_order.remove(entity_id)
-            self._cache_access_order.append(entity_id)
-
-            self._cache_hits += 1
-            return entity
-
-    def _cache_set(self, entity_id: str, entity: Entity) -> None:
-        """
-        Add entity to cache.
-
-        Enforces max size via LRU eviction if configured.
-
-        Args:
-            entity_id: Entity identifier
-            entity: Entity to cache
-        """
-        if not self._cache_enabled:
-            return
-
-        with self._cache_lock:
-            # Enforce max size via LRU eviction
-            if self._cache_max_size is not None:
-                while len(self._entity_cache) >= self._cache_max_size:
-                    if not self._cache_access_order:
-                        break
-                    # Evict least recently used (first in list)
-                    lru_id = self._cache_access_order.pop(0)
-                    self._entity_cache.pop(lru_id, None)
-                    self._cache_timestamps.pop(lru_id, None)
-
-            self._entity_cache[entity_id] = entity
-            self._cache_timestamps[entity_id] = time.time()
-
-            # Update LRU order
-            if entity_id in self._cache_access_order:
-                self._cache_access_order.remove(entity_id)
-            self._cache_access_order.append(entity_id)
-
-            self._cache_misses += 1
-
-    def _cache_invalidate_locked(self, entity_id: str) -> None:
-        """
-        Remove entity from cache (caller holds lock).
-
-        Internal method - use _cache_invalidate() for external calls.
-        """
-        self._entity_cache.pop(entity_id, None)
-        self._cache_timestamps.pop(entity_id, None)
-        if entity_id in self._cache_access_order:
-            self._cache_access_order.remove(entity_id)
-
-    def _cache_invalidate(self, entity_id: str) -> None:
-        """
-        Remove entity from cache.
-
-        Args:
-            entity_id: Entity identifier to invalidate
-        """
-        if not self._cache_enabled:
-            return
-
-        with self._cache_lock:
-            self._cache_invalidate_locked(entity_id)
+    # ==================== Cache Methods (Delegated to CDGStore) ====================
 
     def cache_clear(self) -> None:
-        """Clear all cached entities and reset statistics."""
-        with self._cache_lock:
-            self._entity_cache.clear()
-            self._cache_timestamps.clear()
-            self._cache_access_order.clear()
-            self._cache_hits = 0
-            self._cache_misses = 0
-
-    def cache_configure(
-        self,
-        ttl: Optional[float] = None,
-        max_size: Optional[int] = None
-    ) -> None:
-        """
-        Configure cache TTL and size limits.
-
-        Args:
-            ttl: Time-to-live in seconds for cache entries (None = no expiry)
-            max_size: Maximum number of cached entries (None = unlimited).
-                     When exceeded, least recently used entries are evicted.
-
-        Example:
-            >>> manager.cache_configure(ttl=300, max_size=1000)  # 5 min TTL, 1000 max entries
-        """
-        self._cache_ttl = ttl
-        self._cache_max_size = max_size
+        """Clear the storage layer cache."""
+        store = getattr(self.tx_manager, 'store', None)
+        if store is not None and hasattr(store, 'cache_clear'):
+            store.cache_clear()
 
     def cache_stats(self) -> Dict[str, Any]:
         """
-        Get cache statistics.
+        Get cache statistics from the storage layer.
 
         Returns:
-            Dictionary with hits, misses, hit_rate, size, ttl, and max_size
+            Dictionary with hits, misses, hit_rate, size, and enabled
         """
-        with self._cache_lock:
-            total = self._cache_hits + self._cache_misses
-            hit_rate = self._cache_hits / total if total > 0 else 0.0
-
-            return {
-                'hits': self._cache_hits,
-                'misses': self._cache_misses,
-                'hit_rate': hit_rate,
-                'size': len(self._entity_cache),
-                'enabled': self._cache_enabled,
-                'ttl': self._cache_ttl,
-                'max_size': self._cache_max_size,
-            }
+        store = getattr(self.tx_manager, 'store', None)
+        if store is not None and hasattr(store, 'cache_stats'):
+            return store.cache_stats()
+        return {
+            'hits': 0,
+            'misses': 0,
+            'hit_rate': 0.0,
+            'size': 0,
+            'enabled': False,
+        }
 
     def load_all(self) -> Dict[str, int]:
         """
@@ -524,13 +392,6 @@ class GoTManager:
             # Now all queries will use cached entities
             >>> Query(manager).tasks().execute()  # Sub-millisecond!
         """
-        if not self._cache_enabled:
-            # Enable caching temporarily to allow loading
-            self._cache_enabled = True
-            was_disabled = True
-        else:
-            was_disabled = False
-
         counts = {
             'tasks': 0,
             'decisions': 0,
@@ -540,7 +401,7 @@ class GoTManager:
             'handoffs': 0,
         }
 
-        # Load all tasks
+        # Load all tasks (iterating populates CDGStore cache)
         for task in self.list_all_tasks():
             counts['tasks'] += 1
 
@@ -564,25 +425,7 @@ class GoTManager:
         for handoff in self.list_handoffs():
             counts['handoffs'] += 1
 
-        # If caching was disabled, restore that state but keep the loaded data
-        if was_disabled:
-            # Keep cache enabled so the loaded data is useful
-            pass
-
         return counts
-
-    def _cache_invalidate_many(self, entity_ids: List[str]) -> None:
-        """
-        Remove multiple entities from cache.
-
-        Args:
-            entity_ids: List of entity identifiers to invalidate
-        """
-        if not self._cache_enabled:
-            return
-
-        for entity_id in entity_ids:
-            self._entity_cache.pop(entity_id, None)
 
     # ==================== Transaction Methods ====================
 
@@ -636,7 +479,7 @@ class GoTManager:
         """
         Get a task by ID (read-only).
 
-        Uses cache if enabled for faster repeated reads.
+        Caching is handled at the CDGStore layer.
 
         Args:
             task_id: Task identifier
@@ -644,20 +487,8 @@ class GoTManager:
         Returns:
             Task object or None if not found
         """
-        # Check cache first
-        cached = self._cache_get(task_id)
-        if cached is not None and isinstance(cached, Task):
-            return cached
-
-        # Cache miss - read from storage
         with self.transaction(read_only=True) as tx:
-            task = tx.get_task(task_id)
-
-        # Populate cache on miss
-        if task is not None:
-            self._cache_set(task_id, task)
-
-        return task
+            return tx.get_task(task_id)
 
     def update_task(self, task_id: str, **updates) -> Task:
         """
@@ -675,10 +506,6 @@ class GoTManager:
         """
         with self.transaction() as tx:
             task = tx.update_task(task_id, **updates)
-
-        # Invalidate cache to ensure fresh reads
-        self._cache_invalidate(task_id)
-
         return task
 
     def create_decision(
@@ -767,20 +594,10 @@ class GoTManager:
         Raises:
             TransactionError: If decision not found or has edges (and force=False)
         """
-        # Find all edges connected to this decision for cache invalidation
-        all_edges = self.list_edges()
-        connected_edges = [
-            e for e in all_edges
-            if e.source_id == decision_id or e.target_id == decision_id
-        ]
-        ids_to_invalidate = [decision_id] + [edge.id for edge in connected_edges]
-
         # Delete atomically within a transaction
+        # Cache invalidation is handled automatically by CDGStore
         with self.transaction() as tx:
             tx.delete_decision(decision_id, force=force)
-
-        # Invalidate cache for deleted entities (after successful commit)
-        self._cache_invalidate_many(ids_to_invalidate)
 
     def add_edge(
         self,
@@ -900,15 +717,10 @@ class GoTManager:
         ids_to_invalidate = [task_id] + [edge.id for edge in all_edges]
 
         # Delete atomically within a transaction
-        # NOTE: Index updates now happen inside TransactionContext.__exit__
-        # within the lock scope, ensuring atomicity with the delete.
+        # Cache invalidation is handled automatically by CDGStore
+        # Index updates happen inside TransactionContext.__exit__
         with self.transaction() as tx:
             tx.delete_task(task_id, force=force)
-
-        # Invalidate cache for deleted entities (after successful commit)
-        self._cache_invalidate_many(ids_to_invalidate)
-
-        # Index update removed - now handled atomically in TransactionContext.__exit__
         # See: docs/design/cdg-transactional-indexing-design.md
 
     # Sprint management methods
@@ -1036,8 +848,7 @@ class GoTManager:
             if edge.source_id == sprint_id or edge.target_id == sprint_id:
                 connected_edges.append(edge)
 
-        # Collect IDs for cache invalidation
-        ids_to_invalidate = [sprint_id] + [edge.id for edge in connected_edges]
+        entities_dir = self.got_dir / "entities"
 
         # Delete sprint entity file
         sprint_file = entities_dir / f"{sprint_id}.json"
@@ -1045,13 +856,11 @@ class GoTManager:
             sprint_file.unlink()
 
         # Delete all connected edge files
+        # Cache invalidation is handled automatically by CDGStore
         for edge in connected_edges:
             edge_file = entities_dir / f"{edge.id}.json"
             if edge_file.exists():
                 edge_file.unlink()
-
-        # Invalidate cache for deleted entities
-        self._cache_invalidate_many(ids_to_invalidate)
 
     def add_task_to_sprint(self, task_id: str, sprint_id: str) -> Edge:
         """
@@ -1360,12 +1169,6 @@ class GoTManager:
 
     def _read_document_file(self, file_path: Path) -> Optional[Document]:
         """Read a document entity from file."""
-        # Check cache first
-        entity_id = file_path.stem
-        cached = self._cache_get(entity_id)
-        if cached is not None and isinstance(cached, Document):
-            return cached
-
         # Read from disk
         with open(file_path, "r") as f:
             wrapper = json.load(f)
@@ -1380,12 +1183,7 @@ class GoTManager:
         if data.get("entity_type") != "document":
             return None
 
-        document = Document.from_dict(data)
-
-        # Cache the result
-        self._cache_set(entity_id, document)
-
-        return document
+        return Document.from_dict(data)
 
     def sync(self) -> SyncResult:
         """
@@ -1521,12 +1319,6 @@ class GoTManager:
             json.JSONDecodeError: If file is not valid JSON
             KeyError: If required fields are missing
         """
-        # Check cache first
-        entity_id = path.stem
-        cached = self._cache_get(entity_id)
-        if cached is not None and isinstance(cached, Task):
-            return cached
-
         # Read from disk - handle TOCTOU race where file may be deleted
         # between glob listing and actual read during concurrent operations
         try:
@@ -1546,12 +1338,7 @@ class GoTManager:
         if data.get("entity_type") != "task":
             return None
 
-        task = Task.from_dict(data)
-
-        # Cache the result
-        self._cache_set(entity_id, task)
-
-        return task
+        return Task.from_dict(data)
 
     def _read_edge_file(self, path: Path) -> Optional[Edge]:
         """
@@ -1568,12 +1355,6 @@ class GoTManager:
             json.JSONDecodeError: If file is not valid JSON
             KeyError: If required fields are missing
         """
-        # Check cache first
-        entity_id = path.stem
-        cached = self._cache_get(entity_id)
-        if cached is not None and isinstance(cached, Edge):
-            return cached
-
         # Read from disk - handle TOCTOU race where file may be deleted
         # between glob listing and actual read during concurrent operations
         try:
@@ -1593,12 +1374,7 @@ class GoTManager:
         if data.get("entity_type") != "edge":
             return None
 
-        edge = Edge.from_dict(data)
-
-        # Cache the result
-        self._cache_set(entity_id, edge)
-
-        return edge
+        return Edge.from_dict(data)
 
     def _read_decision_file(self, path: Path) -> Optional[Decision]:
         """
@@ -1615,12 +1391,6 @@ class GoTManager:
             json.JSONDecodeError: If file is not valid JSON
             KeyError: If required fields are missing
         """
-        # Check cache first
-        entity_id = path.stem
-        cached = self._cache_get(entity_id)
-        if cached is not None and isinstance(cached, Decision):
-            return cached
-
         # Read from disk with TOCTOU protection
         try:
             with open(path, 'r', encoding='utf-8') as f:
@@ -1639,12 +1409,7 @@ class GoTManager:
         if data.get("entity_type") != "decision":
             return None
 
-        decision = Decision.from_dict(data)
-
-        # Cache the result
-        self._cache_set(entity_id, decision)
-
-        return decision
+        return Decision.from_dict(data)
 
     def _read_sprint_file(self, path: Path) -> Optional[Sprint]:
         """
@@ -1661,12 +1426,6 @@ class GoTManager:
             json.JSONDecodeError: If file is not valid JSON
             KeyError: If required fields are missing
         """
-        # Check cache first
-        entity_id = path.stem
-        cached = self._cache_get(entity_id)
-        if cached is not None and isinstance(cached, Sprint):
-            return cached
-
         # Read from disk with TOCTOU protection
         try:
             with open(path, 'r', encoding='utf-8') as f:
@@ -1685,12 +1444,7 @@ class GoTManager:
         if data.get("entity_type") != "sprint":
             return None
 
-        sprint = Sprint.from_dict(data)
-
-        # Cache the result
-        self._cache_set(entity_id, sprint)
-
-        return sprint
+        return Sprint.from_dict(data)
 
     def _read_epic_file(self, path: Path) -> Optional[Epic]:
         """
@@ -1707,12 +1461,6 @@ class GoTManager:
             json.JSONDecodeError: If file is not valid JSON
             KeyError: If required fields are missing
         """
-        # Check cache first
-        entity_id = path.stem
-        cached = self._cache_get(entity_id)
-        if cached is not None and isinstance(cached, Epic):
-            return cached
-
         # Read from disk
         with open(path, 'r', encoding='utf-8') as f:
             wrapper = json.load(f)
@@ -1727,12 +1475,7 @@ class GoTManager:
         if data.get("entity_type") != "epic":
             return None
 
-        epic = Epic.from_dict(data)
-
-        # Cache the result
-        self._cache_set(entity_id, epic)
-
-        return epic
+        return Epic.from_dict(data)
 
     def _read_handoff_file(self, path: Path) -> Optional[Handoff]:
         """
@@ -1749,12 +1492,6 @@ class GoTManager:
             json.JSONDecodeError: If file is not valid JSON
             KeyError: If required fields are missing
         """
-        # Check cache first
-        entity_id = path.stem
-        cached = self._cache_get(entity_id)
-        if cached is not None and isinstance(cached, Handoff):
-            return cached
-
         # Read from disk
         with open(path, 'r', encoding='utf-8') as f:
             wrapper = json.load(f)
@@ -1769,12 +1506,7 @@ class GoTManager:
         if data.get("entity_type") != "handoff":
             return None
 
-        handoff = Handoff.from_dict(data)
-
-        # Cache the result
-        self._cache_set(entity_id, handoff)
-
-        return handoff
+        return Handoff.from_dict(data)
 
     # Handoff management methods
     def initiate_handoff(
@@ -2123,12 +1855,6 @@ class GoTManager:
             json.JSONDecodeError: If file is not valid JSON
             KeyError: If required fields are missing
         """
-        # Check cache first
-        entity_id = path.stem
-        cached = self._cache_get(entity_id)
-        if cached is not None and isinstance(cached, ClaudeMdLayer):
-            return cached
-
         # Read from disk
         with open(path, 'r', encoding='utf-8') as f:
             wrapper = json.load(f)
@@ -2143,12 +1869,7 @@ class GoTManager:
         if data.get("entity_type") != "claudemd_layer":
             return None
 
-        layer = ClaudeMdLayer.from_dict(data)
-
-        # Cache the result
-        self._cache_set(entity_id, layer)
-
-        return layer
+        return ClaudeMdLayer.from_dict(data)
 
 
 class TransactionContext:
@@ -2228,10 +1949,7 @@ class TransactionContext:
                         conflicts=result.conflicts
                     )
 
-                # Invalidate cache for all written entities
-                if self._got_manager is not None and self.tx.write_set:
-                    written_ids = list(self.tx.write_set.keys())
-                    self._got_manager._cache_invalidate_many(written_ids)
+                # Cache invalidation is handled automatically by CDGStore on write
 
                 # Update indexes WITHIN the lock - atomic with commit
                 if self._got_manager is not None and self._task_changes:
@@ -3219,13 +2937,9 @@ class TransactionContext:
         if layer is None:
             return False
 
-        # Delete the layer entity file
-        entities_dir = self.tx_manager.got_dir / "entities"
-        layer_file = entities_dir / f"{layer_id}.json"
-        if layer_file.exists():
-            layer_file.unlink()
-            return True
-        return False
+        # Delete through transaction manager (handles cache invalidation)
+        self.tx_manager.delete(self.tx, layer_id)
+        return True
 
     def read(self, entity_id: str) -> Optional[Entity]:
         """
