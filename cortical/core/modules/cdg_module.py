@@ -8,6 +8,7 @@ Services Provided:
     - CDGWALManager: Write-ahead logging
     - CDGTransactionManager: ACID transactions
     - CDGRecoveryManager: Crash recovery
+    - IndexManager: Entity field indexing
 
 Usage:
     from cortical.core.modules import CDGModule
@@ -79,6 +80,7 @@ class CDGModule(ContainerModule):
         from cortical.cdg.wal import CDGWALManager
         from cortical.cdg.transaction_manager import CDGTransactionManager
         from cortical.cdg.recovery import CDGRecoveryManager
+        from cortical.cdg.index import IndexManager
         from cortical.cdg.config import CDGConfig as CDGInternalConfig
 
         # Register configuration
@@ -150,5 +152,18 @@ class CDGModule(ContainerModule):
         container.register(
             CDGRecoveryManager,
             create_recovery,
+            lifecycle=Lifecycle.SINGLETON,
+        )
+
+        # Register index manager factory
+        def create_index_manager() -> IndexManager:
+            return IndexManager(
+                store_dir=self.config.base_dir,
+                filesystem=filesystem,
+            )
+
+        container.register(
+            IndexManager,
+            create_index_manager,
             lifecycle=Lifecycle.SINGLETON,
         )

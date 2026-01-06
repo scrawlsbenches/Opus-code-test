@@ -68,6 +68,12 @@ from .schema import (
     OnDeleteAction,
     ReferenceRule,
 )
+from .index import (
+    IndexManager,
+    IndexEntry,
+    IndexType,
+    IndexStats,
+)
 
 __all__ = [
     # Types
@@ -114,4 +120,9 @@ __all__ = [
     "ValidationResult",
     "OnDeleteAction",
     "ReferenceRule",
+    # Index
+    "IndexManager",
+    "IndexEntry",
+    "IndexType",
+    "IndexStats",
 ]
