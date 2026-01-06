@@ -35,11 +35,27 @@ from typing import Dict, List, Optional, Callable, Any, Type, TYPE_CHECKING
 
 from cortical.utils.checksums import compute_checksum
 from cortical.utils.locking import ProcessLock
-from cortical.common.filesystem import FileSystem, RealFileSystem
+from cortical.common.filesystem import FileSystem, RealFileSystem, InMemoryFileSystem
 
 from .types import Entity
 from .errors import CorruptionError, ValidationError, StorageError
 from .config import CDGConfig, DurabilityMode
+
+
+class NoOpLock:
+    """
+    No-operation lock for in-memory filesystems.
+
+    Process locking is unnecessary when using InMemoryFileSystem since
+    the data only exists within a single process. This avoids trying to
+    create lock files on paths that don't exist on the real filesystem.
+    """
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return False
 
 
 # Type alias for entity factory functions
@@ -161,20 +177,23 @@ class CDGStore:
         self._pending_history_dir = self.history_dir / "_pending"
         self._fs.mkdir(self._pending_history_dir, exist_ok=True)
 
+        # Determine if we need process locks (not needed for in-memory filesystems)
+        use_process_locks = not isinstance(self._fs, InMemoryFileSystem)
+
         # Process lock for concurrent history file access protection
-        self._history_lock = ProcessLock(self.history_dir / ".history.lock")
+        self._history_lock = ProcessLock(self.history_dir / ".history.lock") if use_process_locks else NoOpLock()
 
         # Thread lock for concurrent version file access protection (within same process)
         self._version_thread_lock = threading.Lock()
 
         # Process lock for cross-process version file protection
-        self._version_lock = ProcessLock(self.store_dir / ".version.lock", reentrant=False)
+        self._version_lock = ProcessLock(self.store_dir / ".version.lock", reentrant=False) if use_process_locks else NoOpLock()
 
         # Write lock for thread-safe write operations (covers entire write transaction)
         self._write_lock = threading.RLock()
 
         # Process lock for cross-process write protection (covers entire write transaction)
-        self._write_process_lock = ProcessLock(self.store_dir / ".write.lock", reentrant=True)
+        self._write_process_lock = ProcessLock(self.store_dir / ".write.lock", reentrant=True) if use_process_locks else NoOpLock()
 
         # Load current version
         self._version = self._load_version()
