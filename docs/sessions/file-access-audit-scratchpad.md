@@ -4,6 +4,23 @@
 
 ---
 
+## ⚠️ STOP — CONTAINER-FIRST — READ EVERY TIME
+
+```python
+# ✓ CORRECT — resolve from container
+from cortical.core.bootstrap import create_container
+container = create_container()
+index_manager = container.resolve(IndexManager)
+
+# ✗ WRONG — direct instantiation
+index_manager = IndexManager(store_dir, filesystem)  # NO!
+```
+
+**In docstrings:** Show `container.resolve()`, NOT direct instantiation.
+**Why:** DI/IoC enables testing, swappable backends, clean architecture.
+
+---
+
 ## PROTOCOL: UPDATE THIS BEFORE
 
 1. **Before writing significant code** — Document intent first
@@ -15,7 +32,7 @@
 
 ## CORE RULES
 
-1. **CONTAINER-FIRST** — All deps via `cortical/core/bootstrap.py`. No direct instantiation. Constructor injection only.
+1. **CONTAINER-FIRST** — See above. No exceptions.
 2. **CDG = Foundation** — `cortical/cdg/` is storage layer. GoT is thin domain layer on top.
 3. **NO TWO LAYERS** — Delete wrappers, use CDG directly. No backward compat.
 4. **NO TESTS NOW** — Scope too large, they'll break. Fix later.

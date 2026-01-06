@@ -2,26 +2,27 @@
 CDG Index Manager - Generic entity field indexing.
 
 Provides efficient lookup of entities by field values through various
-index types (HASH, BITMAP, BTREE). Designed for dependency injection
-with FileSystem abstraction for testability.
+index types (HASH, BITMAP, BTREE). Registered in DI container via CDGModule.
 
 Design Reference: docs/architecture/DISTRIBUTED_GRAPH_SPECIFICATION.md (Section 8)
 
-Example:
-    from cortical.cdg.index import IndexManager, IndexType
-    from cortical.common.filesystem import InMemoryFileSystem
+Usage (via Container - the correct way):
+    from cortical.core.bootstrap import create_container
+    from cortical.cdg.index import IndexManager
 
-    fs = InMemoryFileSystem()
-    manager = IndexManager(store_dir=Path("/data"), filesystem=fs)
+    container = create_container()
+    manager = container.resolve(IndexManager)
 
     # Create an index on status field
-    manager.create_index(name="status_idx", fields=["status"], index_type=IndexType.HASH)
+    manager.create_index(name="status_idx", fields=["status"])
 
     # Index an entity
     manager.index_entity("E-001", {"status": "pending"})
 
     # Look up by status
     pending = manager.lookup("status_idx", "pending")  # {"E-001"}
+
+Note: Do NOT instantiate IndexManager directly. Use container.resolve().
 """
 
 from __future__ import annotations
@@ -132,21 +133,16 @@ class IndexManager:
     """
     Manages entity field indexes for efficient lookups.
 
-    Designed for dependency injection - accepts FileSystem abstraction
-    for testability (use InMemoryFileSystem in tests).
+    Registered in DI container via CDGModule. Resolve from container,
+    do not instantiate directly.
 
-    Args:
-        store_dir: Base directory for index storage
-        filesystem: FileSystem implementation (real or in-memory)
-        namespace: Optional namespace for domain separation
+    Usage:
+        from cortical.core.bootstrap import create_container
+        container = create_container()
+        manager = container.resolve(IndexManager)
 
-    Example:
-        # Production
-        manager = IndexManager(Path("./data"), RealFileSystem())
-
-        # Testing
-        fs = InMemoryFileSystem()
-        manager = IndexManager(Path("/test"), fs)
+    For testing, use create_container(use_memory=True) which provides
+    InMemoryFileSystem automatically via DI.
     """
 
     def __init__(

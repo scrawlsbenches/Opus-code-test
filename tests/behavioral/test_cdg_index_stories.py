@@ -6,7 +6,11 @@ Story: As a developer using CDG, I want to create indexes on entity fields
 
 Design Reference: docs/architecture/DISTRIBUTED_GRAPH_SPECIFICATION.md (Section 8)
 
-Testing Strategy: Uses InMemoryFileSystem for fast, isolated tests with no disk I/O.
+Testing Strategy:
+    - Unit/behavioral tests use direct instantiation with InMemoryFileSystem
+      for isolation and speed (acceptable for testing)
+    - Production code MUST use container.resolve(IndexManager) via DI
+    - See TestContainerIntegration for container integration verification
 """
 
 import pytest

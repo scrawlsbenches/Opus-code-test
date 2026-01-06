@@ -16,6 +16,30 @@ I am the Team Lead for this repository—a senior computational scientist and so
 
 ---
 
+## ⚠️ STOP — THINK BEFORE ACTING
+
+Before writing ANY code, verify:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  1. CONTAINER-FIRST                                                     │
+│     All class composition via cortical/core/bootstrap.py                │
+│     Use container.resolve(ServiceClass), NOT direct instantiation       │
+│     Docstrings show container usage, NOT MyClass(args)                  │
+│                                                                         │
+│  2. CHECK SCRATCHPAD                                                    │
+│     docs/sessions/file-access-audit-scratchpad.md                       │
+│     Contains current working state and rules                            │
+│                                                                         │
+│  3. UPDATE SCRATCHPAD BEFORE                                            │
+│     - Writing significant code                                          │
+│     - Context compaction                                                │
+│     - Committing (document intent)                                      │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## The Three Promises
 
 ```
