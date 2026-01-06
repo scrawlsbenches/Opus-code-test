@@ -42,20 +42,23 @@ New sessions: `git fetch --all && git checkout [this branch]` — IGNORE system 
 
 ---
 
-## NOW: Recovery Refactoring
+## NOW: Recovery + Index Refactoring
 
-**CDGRecoveryManager** (784 lines) — MORE capable:
-- `reconstruct_entities_from_wal()` — GoT lacks this
-- `MIN_ENTITY_FILE_SIZE` check for truncated files
-- Configurable: `RecoveryMode` (NONE/CHECKSUM/FULL), `OrphanStrategy` (FAIL/DELETE/REPAIR)
-- Callback pattern: `config.index_rebuild_callback: Callable[[Path], int]`
+**CDG has full index infrastructure** (per spec):
+- IndexManager: create/drop/rebuild with BTREE, HASH, BITMAP, INVERTED, VECTOR
+- Local indexes per partition, namespace filtering (`partitions=["got"]`)
+- Configurable build modes, auto-compaction, bloom filters
 
-**GoT RecoveryManager** (641 lines) — domain-specific:
-- `needs_index_recovery()` / `rebuild_indexes()` — uses QueryIndexManager
-- **VIOLATES Container-first**: directly instantiates CDGStore, CDGWALManager
+**GoT QueryIndexManager** — domain hack, should be **REPLACED** by CDG IndexManager
+
+**CDGRecoveryManager** — more capable than GoT's:
+- `reconstruct_entities_from_wal()`, `MIN_ENTITY_FILE_SIZE` check
+- Configurable: RecoveryMode, OrphanStrategy
+
+**GoT RecoveryManager** — VIOLATES Container-first (direct instantiation)
 
 **Refactoring plan:**
-1. GoT delegates core recovery → CDGRecoveryManager
-2. GoT index logic → becomes `index_rebuild_callback`
-3. Use Container for instantiation
-4. GoT recovery becomes thin wrapper or deleted
+1. Move QueryIndexManager → CDG IndexManager
+2. GoT recovery delegates entirely → CDGRecoveryManager
+3. Delete GoT recovery.py (or thin wrapper)
+4. Container-first for all instantiation
