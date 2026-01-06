@@ -585,15 +585,8 @@ class GoTManager:
         Returns:
             Decision object or None if not found
         """
-        entities_dir = self.got_dir / "entities"
-        decision_file = entities_dir / f"{decision_id}.json"
-        if not decision_file.exists():
-            return None
-        try:
-            return self._read_decision_file(decision_file)
-        except (CorruptionError, json.JSONDecodeError, KeyError) as e:
-            logger.warning(f"Failed to read decision {decision_id}: {e}")
-            return None
+        with self.transaction(read_only=True) as tx:
+            return tx.get_decision(decision_id)
 
     def delete_decision(self, decision_id: str, force: bool = False) -> None:
         """
@@ -840,42 +833,10 @@ class GoTManager:
         Raises:
             TransactionError: If sprint has tasks (and force=False) or sprint not found
         """
-        # Check if sprint exists
-        sprint = self.get_sprint(sprint_id)
-        if sprint is None:
-            raise TransactionError(f"Sprint not found: {sprint_id}")
-
-        # Check for contained tasks unless force is True
-        if not force:
-            tasks = self.get_sprint_tasks(sprint_id)
-            if tasks:
-                task_ids = [task.id for task in tasks]
-                raise TransactionError(
-                    f"Cannot delete sprint {sprint_id}: has tasks {task_ids}. "
-                    "Use force=True to override."
-                )
-
-        # Get all edges connected to this sprint
-        connected_edges = []
-        for edge in self._iter_entities_by_prefix("E-"):
-            if not isinstance(edge, Edge):
-                continue
-            if edge.source_id == sprint_id or edge.target_id == sprint_id:
-                connected_edges.append(edge)
-
-        entities_dir = self.got_dir / "entities"
-
-        # Delete sprint entity file
-        sprint_file = entities_dir / f"{sprint_id}.json"
-        if sprint_file.exists():
-            sprint_file.unlink()
-
-        # Delete all connected edge files
+        # Delete atomically within a transaction
         # Cache invalidation is handled automatically by CDGStore
-        for edge in connected_edges:
-            edge_file = entities_dir / f"{edge.id}.json"
-            if edge_file.exists():
-                edge_file.unlink()
+        with self.transaction() as tx:
+            tx.delete_sprint(sprint_id, force=force)
 
     def add_task_to_sprint(self, task_id: str, sprint_id: str) -> Edge:
         """
@@ -2477,6 +2438,62 @@ class TransactionContext:
         if not isinstance(entity, Sprint):
             return None
         return entity
+
+    def get_sprint_tasks(self, sprint_id: str) -> List[Task]:
+        """
+        Get all tasks in a sprint by finding CONTAINS edges.
+
+        Args:
+            sprint_id: Sprint identifier
+
+        Returns:
+            List of Task objects in the sprint
+        """
+        tasks = []
+        # Find edges where sprint contains tasks
+        edges = self._get_edges_for_entity(sprint_id)
+        for edge in edges:
+            if edge.edge_type == EdgeTypes.CONTAINS and edge.source_id == sprint_id:
+                # Sprint contains this task
+                task = self.get_task(edge.target_id)
+                if task is not None:
+                    tasks.append(task)
+        return tasks
+
+    def delete_sprint(self, sprint_id: str, force: bool = False) -> None:
+        """
+        Delete sprint and all connected edges within transaction.
+
+        Args:
+            sprint_id: Sprint identifier to delete
+            force: If False, raise error if sprint has tasks
+
+        Raises:
+            TransactionError: If sprint has tasks (and force=False) or sprint not found
+        """
+        sprint = self.get_sprint(sprint_id)
+        if sprint is None:
+            raise TransactionError(f"Sprint not found: {sprint_id}")
+
+        # Check for contained tasks unless force is True
+        if not force:
+            tasks = self.get_sprint_tasks(sprint_id)
+            if tasks:
+                task_ids = [task.id for task in tasks]
+                raise TransactionError(
+                    f"Cannot delete sprint {sprint_id}: has tasks {task_ids}. "
+                    "Use force=True to override."
+                )
+
+        # Get all edges connected to this sprint
+        connected_edges = self._get_edges_for_entity(sprint_id)
+
+        # Mark sprint for deletion
+        self.tx_manager.delete(self.tx, sprint_id)
+
+        # Mark all connected edges for deletion
+        for edge in connected_edges:
+            self.tx_manager.delete(self.tx, edge.id)
 
     def create_epic(self, title: str, **kwargs) -> Epic:
         """

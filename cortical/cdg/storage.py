@@ -198,10 +198,7 @@ class CDGStore:
         # Load current version
         self._version = self._load_version()
 
-        # Recover any pending history entries from interrupted writes
-        self._recover_pending_history()
-
-        # Entity cache for read performance
+        # Entity cache for read performance (must be initialized before recovery!)
         self._cache_enabled = cache_enabled
         self._cache: Dict[str, Entity] = {}
         self._cache_timestamps: Dict[str, float] = {}  # entity_id -> last_access_time
@@ -209,6 +206,10 @@ class CDGStore:
         self._cache_misses = 0
         self._cache_ttl: Optional[float] = None  # TTL in seconds (None = no expiration)
         self._cache_max_size: Optional[int] = None  # Max entries (None = unlimited)
+
+        # Recover any pending history entries from interrupted writes
+        # Note: This must be AFTER cache initialization since recovery reads entities
+        self._recover_pending_history()
 
     def current_version(self) -> int:
         """
