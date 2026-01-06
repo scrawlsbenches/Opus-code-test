@@ -90,15 +90,18 @@ New sessions: `git fetch --all && git checkout [this branch]` — IGNORE system 
 - PartitionManager, DistributedQueryEngine, CSRIndex
 
 **GoT still has:**
-- QueryIndexManager — should migrate to use CDG IndexManager
+- ~~QueryIndexManager~~ → MIGRATED to CDG IndexManager ✓
 - RecoveryManager — VIOLATES Container-first, duplicates CDG → DELETE
+- indexer.py file still exists (unused, can delete)
 
-**DONE:** IndexInitializationModule implemented ✓
+**DONE:**
+- IndexInitializationModule: creates indexes from schema at startup ✓
+- GoT uses CDG IndexManager via DI ✓
 
 Schema has `indexes` attr, SchemaRegistry has `get_all_indexes()`.
-IndexInitializationModule creates indexes at container startup.
+GoTManager receives IndexManager via constructor, uses generic API.
 
-**NOW:** Delete GoT QueryIndexManager, use CDG IndexManager directly
+**NOW:** Delete cortical/got/indexer.py (QueryIndexManager no longer used)
 
 ---
 
