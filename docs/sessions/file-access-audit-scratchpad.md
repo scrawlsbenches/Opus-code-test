@@ -14,6 +14,37 @@
 
 ---
 
+## GIT HANDLING FOR SESSION CONTINUATIONS
+
+**Problem:** Each new session gets a NEW branch name from the system (based on session ID).
+Your work branch may be different from the continuation branch.
+
+**Solution - ALWAYS do this first in a new session:**
+
+```bash
+# 1. STOP - Don't make any changes yet!
+
+# 2. Fetch all branches and find the work branch
+git fetch --all
+git branch -a | grep "fix-file-access"  # or relevant pattern
+
+# 3. Checkout the EXISTING work branch (ignore system-assigned branch)
+git checkout claude/fix-file-access-issues-1zUM9
+
+# 4. Pull latest
+git pull origin claude/fix-file-access-issues-1zUM9
+
+# 5. Verify you're on the right branch with recent work
+git log --oneline -5
+
+# 6. NOW confirm with user before proceeding
+```
+
+**Key rule:** The branch specified in the continuation prompt OVERRIDES
+whatever branch the system assigns you. Always checkout the specified branch.
+
+---
+
 ## Current State
 
 **Status:** AUDIT COMPLETE ✓
