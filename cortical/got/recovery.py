@@ -33,7 +33,7 @@ from cortical.got.entity_schemas import get_valid_statuses
 # Module-level logger - configure via logging.getLogger('cortical.got.recovery')
 logger = logging.getLogger(__name__)
 
-from .tx_manager import TransactionManager
+from cortical.cdg.transaction_manager import CDGTransactionManager as TransactionManager
 from .wal import WALManager
 from .indexer import QueryIndexManager
 from .types import Task, create_entity_from_dict

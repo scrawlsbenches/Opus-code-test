@@ -75,88 +75,39 @@ class GoTModule(ContainerModule):
 
     def register(self, container: Container) -> None:
         """Register GoT services with the container."""
-        from cortical.got.tx_manager import TransactionManager
+        from cortical.cdg.transaction_manager import CDGTransactionManager
         from cortical.got.api import GoTManager
         from cortical.got.indexer import QueryIndexManager
         from cortical.got.types import create_entity_from_dict
-        from cortical.got.config import DurabilityMode  # TODO: Centralize in CDG
-        from cortical.cdg.storage import CDGStore
-        from cortical.cdg.wal import CDGWALManager
         from cortical.cdg.config import CDGConfig
-        from cortical.utils.locking import ProcessLock
 
         # Register configuration
         container.register_instance(GoTConfig, self.config)
 
-        # Register TransactionManager with injected dependencies
-        def create_tx_manager() -> TransactionManager:
+        # Register CDGTransactionManager directly (no GoT wrapper)
+        def create_tx_manager() -> CDGTransactionManager:
             # Create GoT-specific CDG config
             cdg_config = CDGConfig.for_got()
 
-            # Resolve dependencies from container
-            filesystem = container.resolve(FileSystem)
-            schema_registry = container.resolve(SchemaRegistry)
-
+            # For in-memory testing, disable WAL
             if self.config.use_memory:
-                # In-memory storage for fast testing
-                store = CDGStore(
-                    self.config.got_dir / "entities",
-                    config=cdg_config,
-                    entity_factory=create_entity_from_dict,
-                    filesystem=filesystem,
-                    schema_registry=schema_registry,
-                )
-                wal = None
-                # Create a no-op lock for in-memory mode (context manager protocol)
-                class NoOpLock:
-                    """No-op lock for in-memory storage."""
-                    def __enter__(self): return self
-                    def __exit__(self, *args): pass
-                    def acquire(self, blocking=True, timeout=-1): return True
-                    def release(self): pass
-                lock = NoOpLock()
-            else:
-                # Create GoT-specific CDGStore with entity factory for type dispatch
-                # This is separate from CDGModule's generic store
-                entities_dir = self.config.got_dir / "entities"
-                entities_dir.mkdir(parents=True, exist_ok=True)
-                store = CDGStore(
-                    entities_dir,
-                    config=cdg_config,
-                    entity_factory=create_entity_from_dict,
-                    filesystem=filesystem,
-                    schema_registry=schema_registry,
-                )
+                cdg_config.enable_wal = False
 
-                # Create WAL if enabled
-                if cdg_config.enable_wal:
-                    wal_dir = self.config.got_dir / "wal"
-                    wal_dir.mkdir(parents=True, exist_ok=True)
-                    wal = CDGWALManager(wal_dir, cdg_config)
-                else:
-                    wal = None
-
-                # Create lock
-                lock_path = self.config.got_dir / ".got.lock"
-                lock = ProcessLock(lock_path)
-
-            return TransactionManager(
-                got_dir=self.config.got_dir,
-                durability=DurabilityMode.BALANCED,
-                store=store,
-                wal=wal,
-                lock=lock,
+            return CDGTransactionManager(
+                store_dir=self.config.got_dir / "entities",
+                config=cdg_config,
+                entity_factory=create_entity_from_dict,
             )
 
         container.register(
-            TransactionManager,
+            CDGTransactionManager,
             create_tx_manager,
             lifecycle=Lifecycle.SINGLETON,
         )
 
-        # Register GoTManager with injected TransactionManager and SchemaRegistry
+        # Register GoTManager with injected CDGTransactionManager and SchemaRegistry
         def create_got_manager() -> GoTManager:
-            tx_manager = container.resolve(TransactionManager)
+            tx_manager = container.resolve(CDGTransactionManager)
             registry = container.resolve(SchemaRegistry)
             return GoTManager(
                 self.config.got_dir,

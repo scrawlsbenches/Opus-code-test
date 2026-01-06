@@ -64,12 +64,13 @@ from .transaction import (
 
 from .wal import WALManager
 
-from .tx_manager import (
-    TransactionManager,
+# Transaction infrastructure from CDG (no GoT wrapper needed)
+from cortical.cdg.transaction_manager import (
+    CDGTransactionManager as TransactionManager,  # Alias for backward compatibility
     CommitResult,
     Conflict,
-    ProcessLock,
 )
+from cortical.utils.locking import ProcessLock
 
 from .recovery import (
     RecoveryManager,

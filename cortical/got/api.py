@@ -37,7 +37,7 @@ from cortical.utils.id_generation import (
     generate_claudemd_version_id,
     generate_document_id,
 )
-from .tx_manager import TransactionManager, CommitResult
+from cortical.cdg.transaction_manager import CDGTransactionManager, CommitResult
 from .sync import SyncManager, SyncResult
 from .recovery import RecoveryManager, RecoveryResult
 from .indexer import QueryIndexManager
@@ -151,7 +151,7 @@ class GoTManager:
         durability: DurabilityMode = DurabilityMode.BALANCED,
         cache_enabled: bool = True,  # Deprecated: caching now handled by CDGStore
         *,
-        tx_manager: TransactionManager,
+        tx_manager: CDGTransactionManager,
         schema_registry: SchemaRegistry,
     ):
         """
@@ -162,7 +162,7 @@ class GoTManager:
             durability: Durability mode controlling fsync behavior (default: BALANCED)
             cache_enabled: DEPRECATED - Caching is now handled by CDGStore.
                           This parameter is ignored but kept for backwards compatibility.
-            tx_manager: REQUIRED - Injected TransactionManager instance
+            tx_manager: REQUIRED - Injected CDGTransactionManager instance
             schema_registry: REQUIRED - SchemaRegistry for entity validation (from Container)
 
         Raises:
@@ -176,9 +176,9 @@ class GoTManager:
             got_manager = container.resolve(GoTManager)
         """
         # Validate required dependencies
-        if not isinstance(tx_manager, TransactionManager):
+        if not isinstance(tx_manager, CDGTransactionManager):
             raise TypeError(
-                f"tx_manager is required and must be TransactionManager instance, got {type(tx_manager).__name__}"
+                f"tx_manager is required and must be CDGTransactionManager instance, got {type(tx_manager).__name__}"
             )
         if not isinstance(schema_registry, SchemaRegistry):
             raise TypeError(
@@ -1862,7 +1862,7 @@ class TransactionContext:
 
     def __init__(
         self,
-        tx_manager: TransactionManager,
+        tx_manager: CDGTransactionManager,
         read_only: bool = False,
         got_manager: Optional['GoTManager'] = None
     ):
@@ -1870,7 +1870,7 @@ class TransactionContext:
         Initialize context.
 
         Args:
-            tx_manager: Transaction manager
+            tx_manager: CDG transaction manager
             read_only: If True, rollback instead of commit on exit
             got_manager: Optional GoTManager for cache invalidation
         """
@@ -2931,7 +2931,7 @@ class TransactionContext:
                 layers.append(entity)
         else:
             # Fallback: scan disk directory
-            entities_dir = self.tx_manager.got_dir / "entities"
+            entities_dir = self.got_dir / "entities"
             for layer_file in entities_dir.glob("CML*.json"):
                 try:
                     with open(layer_file, 'r') as f:
