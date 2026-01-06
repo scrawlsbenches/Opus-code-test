@@ -5,15 +5,23 @@
 
 ---
 
+## WORKFLOW NOTES (for context preservation)
+
+1. **DON'T track "done" here** - commit often with clear messages instead
+2. **Use subagents** to check git messages regularly (`git log --oneline -10`)
+3. **Preserve context window** - scratchpad is for active thinking, not history
+4. **We're refactoring while figuring out how to refactor** - iterative process
+
+---
+
 ## Current State
 
-**DONE:**
-- Deleted VersionedStore (redundant with CDGStore)
-- Deleted tx_manager.py (redundant with CDGTransactionManager)
-- Updated GoTManager and TransactionContext to use CDGTransactionManager directly
-- Updated imports in api.py, got_module.py, __init__.py, recovery.py
+**Active:** Fixing broken imports from deleted versioned_store.py
 
-**Next:** Investigate GoT's recovery.py redundancy with CDG recovery
+**Next actions:**
+- Fix query_builder.py import (just did)
+- Scan for more file access issues
+- Commit changes with clear message
 
 ---
 
@@ -51,7 +59,7 @@
 
 - TransactionManager → CDGTransactionManager (DONE - GoT wrapper deleted)
 - VersionedStore → CDGStore (DONE - GoT version deleted)
-- Recovery → CDGRecoveryManager (exists, GoT version may be redundant - TO INVESTIGATE)
+- Recovery → CDGRecoveryManager (INVESTIGATED - see notes below)
 - Schema → CDG schema (DONE)
 
 ---
@@ -64,6 +72,25 @@
 - Per user: no two layers needed
 - **Deleted:** Updated all imports to use CDGTransactionManager directly
 - Aliased as `TransactionManager` in `__init__.py` for backward compatibility
+
+### Recovery Analysis (got/recovery.py vs cdg/recovery.py)
+
+**CDG Recovery is MORE comprehensive:**
+- Has `reconstruct_entities_from_wal()` (GoT lacks this)
+- Has `MIN_ENTITY_FILE_SIZE` check for truncated files
+- Configurable via CDGConfig (recovery_mode, orphan_strategy)
+- Uses proper WAL logging via `self.wal.log()`
+
+**GoT Recovery has GoT-specific logic:**
+- `needs_index_recovery()` with GoT QueryIndexManager
+- `rebuild_indexes()` creates Task objects directly
+- Uses GoT's WALManager not CDGWALManager
+
+**Decision: NOT deleting GoT recovery yet**
+- GoT recovery.py has domain-specific index logic
+- Would need to refactor to use callback pattern like CDG
+- Lower priority than other file access issues
+- Could delegate core recovery to CDG and add GoT index layer
 
 ---
 
