@@ -59,6 +59,17 @@ from .recovery import (
     RecoveryResult,
     RepairResult,
 )
+from .schema import (
+    SchemaRegistry,
+    BaseSchema,
+    Field,
+    FieldType,
+    ValidationResult,
+    get_registry,
+    register_schema,
+    validate_entity,
+    migrate_entity,
+)
 
 __all__ = [
     # Types
@@ -97,4 +108,14 @@ __all__ = [
     "IsolationLevel",
     "RecoveryMode",
     "OrphanStrategy",
+    # Schema
+    "SchemaRegistry",
+    "BaseSchema",
+    "Field",
+    "FieldType",
+    "ValidationResult",
+    "get_registry",
+    "register_schema",
+    "validate_entity",
+    "migrate_entity",
 ]

@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Optional
 
 from cortical.common import Container, ContainerModule, Lifecycle, FileSystem
-from cortical.got.schema import SchemaRegistry
+from cortical.cdg.schema import SchemaRegistry
 
 
 @dataclass
