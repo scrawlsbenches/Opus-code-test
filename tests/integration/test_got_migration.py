@@ -194,7 +194,7 @@ class TestGoTMigration:
         assert result.success
 
         # Read back the migrated task (migration strips 'task:' prefix)
-        manager = _create_got_manager(target_dir)
+        manager = _create_got_manager(target_dir, use_memory=False)
         task = manager.get_task("T-20251221-100000-0001")
 
         assert task is not None
@@ -222,7 +222,7 @@ class TestGoTMigration:
         assert result.success
 
         # Read back edges
-        manager = _create_got_manager(target_dir)
+        manager = _create_got_manager(target_dir, use_memory=False)
 
         # We can't easily query edges without a query API,
         # but we can verify they were written by checking the result
@@ -324,7 +324,7 @@ class TestGoTMigration:
         assert result.success
 
         # Verify update was applied (migration strips 'task:' prefix)
-        manager = _create_got_manager(target_dir)
+        manager = _create_got_manager(target_dir, use_memory=False)
         task = manager.get_task("T-TEST-001")
 
         assert task is not None
@@ -416,7 +416,7 @@ class TestGoTMigration:
         assert result.success
 
         # Verify status mappings (migration strips 'task:' prefix)
-        manager = _create_got_manager(target_dir)
+        manager = _create_got_manager(target_dir, use_memory=False)
 
         task1 = manager.get_task("T-TEST-001")
         assert task1.status == "pending"  # deferred → pending

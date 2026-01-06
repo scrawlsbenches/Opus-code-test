@@ -31,7 +31,8 @@ class TestClaudeMdLayerCRUD(unittest.TestCase):
         self.got_dir.mkdir()
         (self.got_dir / "entities").mkdir()
 
-        self.manager = _create_got_manager(self.got_dir)
+        # Use disk storage for integration tests (persistence tests require it)
+        self.manager = _create_got_manager(self.got_dir, use_memory=False)
 
     def tearDown(self):
         """Clean up test fixtures."""
@@ -155,8 +156,8 @@ class TestClaudeMdLayerCRUD(unittest.TestCase):
         )
         layer_id = layer.id
 
-        # Create new manager instance
-        new_manager = _create_got_manager(self.got_dir)
+        # Create new manager instance (disk storage for persistence test)
+        new_manager = _create_got_manager(self.got_dir, use_memory=False)
 
         # Verify layer still exists
         fetched = new_manager.get_claudemd_layer(layer_id)

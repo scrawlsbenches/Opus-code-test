@@ -545,8 +545,8 @@ class TestWALRecovery:
         """
         got_dir = tmp_path / "got"
 
-        # First manager
-        manager1 = _create_tx_manager(got_dir)
+        # First manager - needs disk storage for WAL crash recovery testing
+        manager1 = _create_tx_manager(got_dir, use_memory=False)
 
         # Begin transaction and write
         tx1 = manager1.begin()
@@ -567,8 +567,8 @@ class TestWALRecovery:
         tx_id = tx1.id
         del manager1
 
-        # Create new manager (triggers recovery)
-        manager2 = _create_tx_manager(got_dir)
+        # Create new manager (triggers recovery) - needs disk storage to read WAL
+        manager2 = _create_tx_manager(got_dir, use_memory=False)
 
         # Recovery should have rolled back the preparing transaction
         recovery = manager2.recover()
