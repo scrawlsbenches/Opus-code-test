@@ -153,11 +153,8 @@ from .query_builder import (
     disable_syntax_validation,
 )
 
-from .indexer import (
-    QueryIndexManager,
-    IndexEntry,
-    IndexStats,
-)
+# Indexing is now provided by CDG IndexManager
+# Import from cortical.cdg.index for IndexManager, IndexEntry, IndexStats
 
 from .graph_walker import GraphWalker, WalkerPlan
 
@@ -284,10 +281,8 @@ __all__ = [
     'QueryValidationError',
     'enable_syntax_validation',
     'disable_syntax_validation',
-    # Query Indexing
-    'QueryIndexManager',
-    'IndexEntry',
-    'IndexStats',
+    # Query Indexing moved to cortical.cdg.index
+    # (Import IndexManager, IndexEntry, IndexStats from there)
     # Graph Walker
     'GraphWalker',
     'WalkerPlan',

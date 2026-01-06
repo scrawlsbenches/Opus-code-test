@@ -40,7 +40,7 @@ from cortical.utils.id_generation import (
 from cortical.cdg.transaction_manager import CDGTransactionManager, CommitResult
 from .sync import SyncManager, SyncResult
 from .recovery import RecoveryManager, RecoveryResult
-from .indexer import QueryIndexManager
+from cortical.cdg.index import IndexManager
 from .types import Task, Decision, Edge, Entity, Sprint, Epic, Handoff, ClaudeMdLayer, ClaudeMdVersion, Document, EdgeTypes, KnowledgeTransfer
 from .transaction import Transaction
 from .errors import TransactionError, CorruptionError
@@ -153,6 +153,7 @@ class GoTManager:
         *,
         tx_manager: CDGTransactionManager,
         schema_registry: SchemaRegistry,
+        index_manager: IndexManager,
     ):
         """
         Initialize GoT manager with injected dependencies.
@@ -164,6 +165,7 @@ class GoTManager:
                           This parameter is ignored but kept for backwards compatibility.
             tx_manager: REQUIRED - Injected CDGTransactionManager instance
             schema_registry: REQUIRED - SchemaRegistry for entity validation (from Container)
+            index_manager: REQUIRED - CDG IndexManager for field indexing (from Container)
 
         Raises:
             TypeError: If required dependencies are missing or wrong type
@@ -184,14 +186,18 @@ class GoTManager:
             raise TypeError(
                 f"schema_registry is required and must be SchemaRegistry instance, got {type(schema_registry).__name__}"
             )
+        if not isinstance(index_manager, IndexManager):
+            raise TypeError(
+                f"index_manager is required and must be IndexManager instance, got {type(index_manager).__name__}"
+            )
 
         self.got_dir = Path(got_dir)
         self.durability = durability
         self.tx_manager = tx_manager
         self._schema_registry = schema_registry
+        self._index_manager = index_manager  # Injected CDG IndexManager
         self._sync_manager = None  # Lazy initialization
         self._recovery_manager = None  # Lazy initialization
-        self._index_manager = None  # Lazy initialization
         self._query_api = None  # Lazy initialization
 
         # Cache is now handled by CDGStore at the storage layer
@@ -216,17 +222,13 @@ class GoTManager:
         return self._recovery_manager
 
     @property
-    def index_manager(self) -> QueryIndexManager:
+    def index_manager(self) -> IndexManager:
         """
-        Get index manager (lazy initialization with rebuild).
+        Get the CDG IndexManager (injected via constructor).
 
-        The index manager is initialized lazily and rebuilds indexes
-        from entities on first access to ensure consistency.
+        Indexes are created automatically by IndexInitializationModule
+        based on schema definitions (e.g., TaskSchema.indexes).
         """
-        if self._index_manager is None:
-            self._index_manager = QueryIndexManager(self.got_dir)
-            # Rebuild indexes from entities to ensure consistency
-            self._rebuild_indexes()
         return self._index_manager
 
     @property
@@ -284,13 +286,18 @@ class GoTManager:
         if self._index_manager is None:
             return
 
-        # Get all tasks and edges for index rebuild
+        # Get all tasks for index rebuild
         tasks = self.list_all_tasks()
-        edges = self.list_edges()
+
+        # Convert Task objects to dicts for CDG IndexManager
+        entity_dicts = [
+            {"id": t.id, "status": t.status, "priority": t.priority}
+            for t in tasks
+        ]
 
         # Rebuild indexes
-        self._index_manager.rebuild_all(tasks, edges)
-        logger.debug(f"Rebuilt indexes: {len(tasks)} tasks, {len(edges)} edges")
+        self._index_manager.rebuild_all(entity_dicts)
+        logger.debug(f"Rebuilt indexes: {len(tasks)} tasks")
 
     def _update_index_for_task(
         self,
@@ -302,6 +309,9 @@ class GoTManager:
         """
         Update index when a task changes.
 
+        Uses CDG IndexManager with index names from schema definitions.
+        Index names follow pattern: {entity_type}_{field}_idx
+
         Args:
             task: The task that changed
             old_status: Previous status (for update operations)
@@ -312,22 +322,27 @@ class GoTManager:
             return
 
         if is_delete:
-            self._index_manager.remove_task(task.id)
+            # Remove from all indexes
+            self._index_manager.remove_entity(task.id)
         elif old_status is not None or old_priority is not None:
-            # Update operation
-            self._index_manager.update_task(
-                task.id,
-                old_status=old_status,
-                new_status=task.status,
-                old_priority=old_priority,
-                new_priority=task.priority
-            )
+            # Update operation - track old and new field values
+            old_fields = {}
+            new_fields = {}
+
+            if old_status is not None:
+                old_fields["status"] = old_status
+            new_fields["status"] = task.status
+
+            if old_priority is not None:
+                old_fields["priority"] = old_priority
+            new_fields["priority"] = task.priority
+
+            self._index_manager.update_entity(task.id, old_fields, new_fields)
         else:
-            # Create operation
-            self._index_manager.index_task(
+            # Create operation - add to all relevant indexes
+            self._index_manager.index_entity(
                 task.id,
-                status=task.status,
-                priority=task.priority
+                {"status": task.status, "priority": task.priority}
             )
 
         # Save indexes after each update
@@ -1921,14 +1936,14 @@ class TransactionContext:
         return False  # Propagate exceptions
 
     def _apply_index_updates(self) -> None:
-        """Apply all tracked task changes to the index."""
+        """Apply all tracked task changes to the index using CDG IndexManager."""
         if self._got_manager is None or self._got_manager._index_manager is None:
             return
 
         for task_id, changes in self._task_changes.items():
             if changes.get('is_delete'):
-                # Task was deleted - remove from index
-                self._got_manager._index_manager.remove_task(task_id)
+                # Task was deleted - remove from all indexes
+                self._got_manager._index_manager.remove_entity(task_id)
                 continue
 
             task = self.tx.write_set.get(task_id)
@@ -1936,20 +1951,23 @@ class TransactionContext:
                 continue
 
             if changes.get('is_create'):
-                # New task - add to index
-                self._got_manager._index_manager.index_task(
+                # New task - add to relevant indexes
+                self._got_manager._index_manager.index_entity(
                     task.id,
-                    status=task.status,
-                    priority=task.priority
+                    {"status": task.status, "priority": task.priority}
                 )
             else:
-                # Update task - update index with old/new values
-                self._got_manager._index_manager.update_task(
-                    task.id,
-                    old_status=changes.get('old_status'),
-                    new_status=task.status,
-                    old_priority=changes.get('old_priority'),
-                    new_priority=task.priority
+                # Update task - update indexes with old/new values
+                old_fields = {}
+                new_fields = {"status": task.status, "priority": task.priority}
+
+                if changes.get('old_status') is not None:
+                    old_fields["status"] = changes['old_status']
+                if changes.get('old_priority') is not None:
+                    old_fields["priority"] = changes['old_priority']
+
+                self._got_manager._index_manager.update_entity(
+                    task.id, old_fields, new_fields
                 )
 
         # Save indexes after all updates
@@ -1957,14 +1975,11 @@ class TransactionContext:
 
     def _apply_index_updates_atomic(self) -> None:
         """
-        Apply index updates with retry logic.
+        Apply index updates with retry logic using CDG IndexManager.
 
         MUST be called within transaction lock to ensure atomicity.
-        On persistent failure, marks index for rebuild rather than
-        leaving in inconsistent state.
-
-        FUTURE: When CDG index is implemented, this logic will move to
-        CDG's commit protocol. See: docs/design/cdg-transactional-indexing-design.md
+        On persistent failure, logs error. CDG IndexManager handles
+        recovery via its own mechanisms.
         """
         if self._got_manager is None or self._got_manager._index_manager is None:
             return
@@ -1978,7 +1993,7 @@ class TransactionContext:
                 # Apply in-memory index updates
                 for task_id, changes in self._task_changes.items():
                     if changes.get('is_delete'):
-                        self._got_manager._index_manager.remove_task(task_id)
+                        self._got_manager._index_manager.remove_entity(task_id)
                         continue
 
                     task = self.tx.write_set.get(task_id)
@@ -1986,23 +2001,25 @@ class TransactionContext:
                         continue
 
                     if changes.get('is_create'):
-                        self._got_manager._index_manager.index_task(
+                        self._got_manager._index_manager.index_entity(
                             task.id,
-                            status=task.status,
-                            priority=task.priority
+                            {"status": task.status, "priority": task.priority}
                         )
                     else:
-                        self._got_manager._index_manager.update_task(
-                            task.id,
-                            old_status=changes.get('old_status'),
-                            new_status=task.status,
-                            old_priority=changes.get('old_priority'),
-                            new_priority=task.priority
+                        old_fields = {}
+                        new_fields = {"status": task.status, "priority": task.priority}
+
+                        if changes.get('old_status') is not None:
+                            old_fields["status"] = changes['old_status']
+                        if changes.get('old_priority') is not None:
+                            old_fields["priority"] = changes['old_priority']
+
+                        self._got_manager._index_manager.update_entity(
+                            task.id, old_fields, new_fields
                         )
 
                 # Persist to disk
-                if not self._got_manager._index_manager.save():
-                    raise IOError("Index save returned False")
+                self._got_manager._index_manager.save()
 
                 return  # Success
 
@@ -2014,12 +2031,12 @@ class TransactionContext:
                 if attempt < max_retries - 1:
                     time.sleep(0.01 * (2 ** attempt))  # Exponential backoff
 
-        # All retries exhausted - mark for rebuild rather than leaving inconsistent
+        # All retries exhausted - log error
+        # CDG IndexManager will rebuild on next startup if needed
         logger.error(
             f"Index update failed after {max_retries} retries: {last_error}. "
-            "Marking index for rebuild on next startup."
+            "Index may need rebuild."
         )
-        self._got_manager._index_manager.mark_needs_rebuild()
 
     def create_task(self, title: str, **kwargs) -> Task:
         """

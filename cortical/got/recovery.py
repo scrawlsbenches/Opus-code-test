@@ -35,7 +35,6 @@ logger = logging.getLogger(__name__)
 
 from cortical.cdg.transaction_manager import CDGTransactionManager as TransactionManager
 from cortical.cdg.wal import CDGWALManager
-from .indexer import QueryIndexManager
 from .types import Task, create_entity_from_dict
 from cortical.utils.checksums import compute_checksum, verify_checksum
 from cortical.cdg.storage import CDGStore
@@ -212,69 +211,30 @@ class RecoveryManager:
         if not disk_task_ids:
             return False  # No tasks, indexes don't need recovery
 
-        # Check if indexes are stale by comparing with entities
-        index_manager = QueryIndexManager(self.got_dir)
-
-        # Get all task IDs from index
-        indexed_task_ids = set()
-        for status in get_valid_statuses('task'):
-            indexed_task_ids.update(index_manager.lookup("status", status))
-
-        # Check if there are tasks on disk not in the index
-        missing_from_index = disk_task_ids - indexed_task_ids
-        if missing_from_index:
-            logger.debug(
-                "Index recovery needed: %d task(s) not indexed: %s",
-                len(missing_from_index),
-                list(missing_from_index)[:5]  # Show first 5
-            )
-            return True
-
-        return False
+        # TODO: RecoveryManager should be deleted - CDG handles recovery
+        # For now, always return True if there are tasks - safe default
+        # Index checking previously used QueryIndexManager which is removed
+        return True
 
     def rebuild_indexes(self) -> int:
         """
         Rebuild all indexes from current entities.
 
+        NOTE: This method is deprecated. Index rebuilding should be done via
+        CDG IndexManager which is managed by the DI container. Use:
+            index_manager = container.resolve(IndexManager)
+            index_manager.rebuild_all(entities)
+
         Returns:
-            Number of tasks indexed
+            0 (deprecated - always returns 0)
         """
-        index_manager = QueryIndexManager(self.got_dir)
-
-        # Get all tasks from entity store
-        tasks = []
-        entity_files = list(self.store.store_dir.glob("T-*.json"))
-
-        for entity_file in entity_files:
-            if entity_file.name.startswith("_") or entity_file.suffix == ".tmp":
-                continue
-
-            try:
-                data = self.store._read_and_verify(entity_file)
-                if data.get("entity_type") == "task":
-                    task = Task(
-                        id=data["id"],
-                        title=data.get("title", ""),
-                        status=data.get("status", "pending"),
-                        priority=data.get("priority", "medium"),
-                        description=data.get("description", ""),
-                        properties=data.get("properties", {}),
-                    )
-                    tasks.append(task)
-            except (CorruptionError, json.JSONDecodeError, KeyError, FileNotFoundError) as e:
-                logger.warning(
-                    "Skipping entity %s during index rebuild: %s: %s",
-                    entity_file.name, type(e).__name__, e
-                )
-                continue
-
-        # Rebuild indexes
-        edges = []  # No edges for now - just tasks
-        index_manager.rebuild_all(tasks, edges)
-        index_manager.save()
-
-        logger.info("Rebuilt indexes: %d tasks indexed", len(tasks))
-        return len(tasks)
+        # TODO: RecoveryManager should be deleted - CDG handles recovery
+        # Index rebuilding now uses CDG IndexManager via container
+        logger.warning(
+            "RecoveryManager.rebuild_indexes() is deprecated. "
+            "Use CDG IndexManager from container instead."
+        )
+        return 0
 
     def recover(self) -> RecoveryResult:
         """

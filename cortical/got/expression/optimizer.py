@@ -36,7 +36,7 @@ from .ast import (
 )
 
 if TYPE_CHECKING:
-    from ..indexer import QueryIndexManager
+    from cortical.cdg.index import IndexManager
 
 
 @dataclass

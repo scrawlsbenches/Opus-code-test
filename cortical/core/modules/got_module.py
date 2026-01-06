@@ -6,13 +6,16 @@ Registers GoT services for task, decision, and knowledge management.
 Services Provided:
     - TransactionManager: ACID transactions for GoT entities
     - GoTManager: High-level API for tasks, decisions, edges
-    - QueryIndexManager: Search and query indexing
+
+Note: Indexing is handled by CDG IndexManager (registered by CDGModule).
+GoT uses CDG IndexManager via DI - no separate GoT indexer needed.
 
 Usage:
     from cortical.core.modules import GoTModule
 
     container = Container()
     container.apply_module(CDGModule(got_dir=Path(".got")))  # CDG first
+    container.apply_module(IndexInitializationModule())      # Creates indexes
     container.apply_module(GoTModule(got_dir=Path(".got")))
 
     tx_manager = container.resolve(TransactionManager)
@@ -76,8 +79,8 @@ class GoTModule(ContainerModule):
     def register(self, container: Container) -> None:
         """Register GoT services with the container."""
         from cortical.cdg.transaction_manager import CDGTransactionManager
+        from cortical.cdg.index import IndexManager
         from cortical.got.api import GoTManager
-        from cortical.got.indexer import QueryIndexManager
         from cortical.got.types import create_entity_from_dict
         from cortical.cdg.config import CDGConfig
 
@@ -105,32 +108,21 @@ class GoTModule(ContainerModule):
             lifecycle=Lifecycle.SINGLETON,
         )
 
-        # Register GoTManager with injected CDGTransactionManager and SchemaRegistry
+        # Register GoTManager with injected dependencies
+        # Note: IndexManager comes from CDGModule, created before GoTModule
         def create_got_manager() -> GoTManager:
             tx_manager = container.resolve(CDGTransactionManager)
             registry = container.resolve(SchemaRegistry)
+            index_manager = container.resolve(IndexManager)
             return GoTManager(
                 self.config.got_dir,
                 tx_manager=tx_manager,
                 schema_registry=registry,
+                index_manager=index_manager,
             )
 
         container.register(
             GoTManager,
             create_got_manager,
-            lifecycle=Lifecycle.SINGLETON,
-        )
-
-        # Register QueryIndexManager
-        # Note: QueryIndexManager currently takes got_dir, but should eventually
-        # receive SchemaRegistry for schema-aware indexing
-        def create_index_manager() -> QueryIndexManager:
-            # Resolve SchemaRegistry for future use
-            # registry = container.resolve(SchemaRegistry)
-            return QueryIndexManager(self.config.got_dir)
-
-        container.register(
-            QueryIndexManager,
-            create_index_manager,
             lifecycle=Lifecycle.SINGLETON,
         )
