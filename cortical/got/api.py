@@ -355,12 +355,25 @@ class GoTManager:
         if store is not None and hasattr(store, 'cache_clear'):
             store.cache_clear()
 
+    def cache_configure(self, ttl: Optional[float] = None, max_size: Optional[int] = None) -> None:
+        """
+        Configure cache behavior.
+
+        Args:
+            ttl: Time-to-live in seconds for cached entries. None disables TTL.
+            max_size: Maximum number of entries. Oldest entries are evicted when exceeded.
+                     None means unlimited.
+        """
+        store = getattr(self.tx_manager, 'store', None)
+        if store is not None and hasattr(store, 'cache_configure'):
+            store.cache_configure(ttl=ttl, max_size=max_size)
+
     def cache_stats(self) -> Dict[str, Any]:
         """
         Get cache statistics from the storage layer.
 
         Returns:
-            Dictionary with hits, misses, hit_rate, size, and enabled
+            Dictionary with hits, misses, hit_rate, size, enabled, ttl, and max_size
         """
         store = getattr(self.tx_manager, 'store', None)
         if store is not None and hasattr(store, 'cache_stats'):
@@ -371,6 +384,8 @@ class GoTManager:
             'hit_rate': 0.0,
             'size': 0,
             'enabled': False,
+            'ttl': None,
+            'max_size': None,
         }
 
     def load_all(self) -> Dict[str, int]:

@@ -185,8 +185,11 @@ class CDGStore:
         # Entity cache for read performance
         self._cache_enabled = cache_enabled
         self._cache: Dict[str, Entity] = {}
+        self._cache_timestamps: Dict[str, float] = {}  # entity_id -> last_access_time
         self._cache_hits = 0
         self._cache_misses = 0
+        self._cache_ttl: Optional[float] = None  # TTL in seconds (None = no expiration)
+        self._cache_max_size: Optional[int] = None  # Max entries (None = unlimited)
 
     def current_version(self) -> int:
         """
@@ -204,7 +207,7 @@ class CDGStore:
         Get cache statistics.
 
         Returns:
-            Dictionary with hits, misses, hit_rate, size, and enabled status
+            Dictionary with hits, misses, hit_rate, size, enabled status, ttl, and max_size
         """
         total = self._cache_hits + self._cache_misses
         hit_rate = self._cache_hits / total if total > 0 else 0.0
@@ -214,13 +217,42 @@ class CDGStore:
             'hit_rate': hit_rate,
             'size': len(self._cache),
             'enabled': self._cache_enabled,
+            'ttl': self._cache_ttl,
+            'max_size': self._cache_max_size,
         }
+
+    def cache_configure(self, ttl: Optional[float] = None, max_size: Optional[int] = None) -> None:
+        """
+        Configure cache behavior.
+
+        Args:
+            ttl: Time-to-live in seconds for cached entries. None disables TTL.
+            max_size: Maximum number of entries. Oldest entries are evicted when exceeded.
+                     None means unlimited.
+        """
+        self._cache_ttl = ttl
+        self._cache_max_size = max_size
+        # Immediately apply max_size if set and cache exceeds it
+        if max_size is not None and len(self._cache) > max_size:
+            self._evict_lru_entries(len(self._cache) - max_size)
 
     def cache_clear(self) -> None:
         """Clear all cached entities and reset statistics."""
         self._cache.clear()
+        self._cache_timestamps.clear()
         self._cache_hits = 0
         self._cache_misses = 0
+
+    def _evict_lru_entries(self, count: int) -> None:
+        """Evict the oldest entries from cache based on access time."""
+        if count <= 0 or not self._cache:
+            return
+        # Sort by timestamp (oldest first)
+        sorted_entries = sorted(self._cache_timestamps.items(), key=lambda x: x[1])
+        # Evict the oldest entries
+        for entity_id, _ in sorted_entries[:count]:
+            self._cache.pop(entity_id, None)
+            self._cache_timestamps.pop(entity_id, None)
 
     def _cache_get(self, entity_id: str) -> Optional[Entity]:
         """Get entity from cache, updating hit/miss stats."""
@@ -228,6 +260,16 @@ class CDGStore:
             return None
         entity = self._cache.get(entity_id)
         if entity is not None:
+            # Check TTL expiration
+            if self._cache_ttl is not None:
+                timestamp = self._cache_timestamps.get(entity_id, 0)
+                if time.time() - timestamp > self._cache_ttl:
+                    # Entry has expired, remove it
+                    self._cache.pop(entity_id, None)
+                    self._cache_timestamps.pop(entity_id, None)
+                    return None
+            # Update access time and record hit
+            self._cache_timestamps[entity_id] = time.time()
             self._cache_hits += 1
         return entity
 
@@ -235,12 +277,19 @@ class CDGStore:
         """Add entity to cache, updating miss stats."""
         if not self._cache_enabled:
             return
+        # Enforce max_size before adding
+        if self._cache_max_size is not None:
+            # If already at max size and this is a new entry, evict one
+            if entity_id not in self._cache and len(self._cache) >= self._cache_max_size:
+                self._evict_lru_entries(1)
         self._cache[entity_id] = entity
+        self._cache_timestamps[entity_id] = time.time()
         self._cache_misses += 1
 
     def _cache_invalidate(self, entity_id: str) -> None:
         """Remove entity from cache."""
         self._cache.pop(entity_id, None)
+        self._cache_timestamps.pop(entity_id, None)
 
     # ==================== Read Methods ====================
 
