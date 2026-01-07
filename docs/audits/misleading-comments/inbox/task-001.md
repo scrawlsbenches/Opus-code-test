@@ -20,11 +20,13 @@
 
 | When | Action |
 |------|--------|
-| Before starting | Rename this file to `task-001.claimed.md`, update manifest |
+| Before starting | Rename this file to `task-001.claimed.md` |
 | Every 30 min OR 10 findings | Write `outbox/result-task-001-partial.md` |
 | If confused | STOP, write `questions/question-task-001.md` |
 | If blocked | STOP, write `problems/problem-task-001.md` |
-| When done | Write `outbox/result-task-001.md`, update manifest |
+| When done | Write `outbox/result-task-001.md`, STOP |
+
+**DO NOT update manifest.md** - the coordinator does that.
 
 ---
 
@@ -50,7 +52,7 @@
 4. If comment references a feature, check if feature exists
 5. Use `git blame` to see when comment was written
 6. Write results to `outbox/result-task-001.md`
-7. Update `manifest.md` task status
+7. STOP - coordinator will update manifest
 
 ---
 
@@ -71,10 +73,10 @@
 - [ ] Each finding has assessment with reasoning
 - [ ] Referenced documents verified
 - [ ] Results written to outbox
-- [ ] Manifest updated
 - [ ] "What Went Wrong" section filled (even if empty)
 - [ ] "Where I Got Confused" section filled (even if empty)
 - [ ] "Questions for Human" section filled (even if empty)
+- [ ] STOPPED after writing results (did not touch manifest)
 
 ---
 
@@ -99,8 +101,8 @@ Then rename this file to `task-001.claimed.md`
    - What you were trying to do
    - What confused you
    - What you need to proceed
-3. Update manifest to show task is blocked
-4. WAIT for human response
+3. STOP and WAIT for coordinator/human response
+4. DO NOT update manifest - coordinator does that
 
 ---
 
@@ -114,5 +116,5 @@ Then rename this file to `task-001.claimed.md`
    - What went wrong
    - Any error messages
    - What state things are in now
-3. Update manifest to show task has problem
-4. WAIT for human response
+3. STOP and WAIT for coordinator/human response
+4. DO NOT update manifest - coordinator does that

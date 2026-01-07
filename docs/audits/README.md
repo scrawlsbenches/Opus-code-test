@@ -64,13 +64,35 @@ docs/audits/
 
 | When | Action | Where |
 |------|--------|-------|
-| **Before starting** | Claim task, update manifest | Rename to `.claimed.md` |
+| **Before starting** | Claim task | Rename to `.claimed.md` |
 | **Every 30 min OR 10 findings** | Write partial results | `outbox/result-{id}-partial.md` |
 | **When confused** | STOP, write question | `questions/question-{id}.md` |
 | **When blocked** | STOP, write problem | `problems/problem-{id}.md` |
-| **When done** | Final results, update manifest | `outbox/result-{id}.md` |
+| **When done** | Final results, STOP | `outbox/result-{id}.md` |
 
 **Hard rule:** If confused or blocked, **STOP IMMEDIATELY** and write to questions/ or problems/. Do not try to figure it out alone.
+
+---
+
+## CRITICAL: Manifest Ownership
+
+**Only the coordinating agent updates manifest.md.** This prevents race conditions.
+
+| Agent Type | Can Update Manifest? | What They Do Instead |
+|------------|---------------------|----------------------|
+| **Coordinator** | YES | Reads outbox/, updates manifest |
+| **Sub-agent** | NO | Writes to outbox/, questions/, problems/ only |
+
+**Sub-agents:**
+1. Rename task file to claim (atomic operation)
+2. Write results to their own files
+3. **STOP** - do not touch manifest.md
+
+**Coordinator:**
+1. Spawns sub-agents with specific tasks
+2. Monitors outbox/, questions/, problems/
+3. Updates manifest.md after collecting results
+4. Resolves questions, handles problems
 
 ---
 
