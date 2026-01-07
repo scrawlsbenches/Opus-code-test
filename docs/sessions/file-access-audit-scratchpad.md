@@ -77,6 +77,26 @@ The system generates a unique branch name per session (e.g., `claude/refactor-co
 This is designed for isolated tasks, but for ongoing work we need to continue on the SAME branch.
 The continuation prompt must explicitly override this behavior.
 
+### Pushing Changes (IMPORTANT)
+
+The system only allows pushing to the **session-assigned** branch, not the work branch.
+You'll get a 403 error if you try to push directly to the work branch.
+
+**Solution:** Push your local work branch TO the session-assigned branch:
+
+```bash
+# This will FAIL with 403:
+git push -u origin claude/fix-file-access-issues-1zUM9
+
+# This WORKS - push local branch to session branch:
+git push -u origin claude/fix-file-access-issues-1zUM9:claude/refactor-cortical-codebase-omD09
+#                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#                  local work branch                  session-assigned branch (from prompt)
+```
+
+**Key insight:** Work locally on the persistent branch, but push to the session branch.
+The next session will need to merge/pull from whatever branch you pushed to.
+
 ---
 
 ## Current State
