@@ -80,6 +80,8 @@ class CDGModule(ContainerModule):
         from cortical.cdg.transaction_manager import CDGTransactionManager
         from cortical.cdg.recovery import CDGRecoveryManager
         from cortical.cdg.config import CDGConfig as CDGInternalConfig
+        from cortical.cdg.index_manager import CDGIndexManager
+        from cortical.cdg.schema import SchemaRegistry
 
         # Register configuration
         container.register_instance(CDGConfig, self.config)
@@ -91,12 +93,33 @@ class CDGModule(ContainerModule):
         # Resolve FileSystem from container (registered by bootstrap)
         filesystem = container.resolve(FileSystem)
 
+        # Resolve SchemaRegistry (registered by SchemaModule, applied before CDGModule)
+        schema_registry = container.resolve(SchemaRegistry)
+
+        # Create CDGIndexManager for schema-based indexes
+        index_dir = self.config.base_dir / "entities"
+        if not self.config.use_memory:
+            index_dir.mkdir(parents=True, exist_ok=True)
+        index_manager = CDGIndexManager(
+            store_dir=index_dir,
+            schema_registry=schema_registry,
+            config=internal_config,
+            filesystem=filesystem,
+        )
+        container.register_instance(CDGIndexManager, index_manager)
+
         # Register factory for store (always CDGStore, different filesystem)
         def create_store() -> CDGStore:
             entities_dir = self.config.base_dir / "entities"
             if not self.config.use_memory:
                 entities_dir.mkdir(parents=True, exist_ok=True)
-            return CDGStore(entities_dir, config=internal_config, filesystem=filesystem)
+            return CDGStore(
+                entities_dir,
+                config=internal_config,
+                filesystem=filesystem,
+                schema_registry=schema_registry,
+                index_manager=index_manager,
+            )
 
         container.register_factory("cdg_store", create_store)
 
@@ -145,6 +168,7 @@ class CDGModule(ContainerModule):
             return CDGRecoveryManager(
                 store_dir=self.config.base_dir,
                 config=internal_config,
+                index_manager=index_manager,
             )
 
         container.register(
