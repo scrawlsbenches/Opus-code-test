@@ -1,0 +1,19 @@
+{
+  "_checksum": "72b6c11466b7eac4",
+  "_written_at": "2026-01-07T00:05:24.445569+00:00",
+  "data": {
+    "created_at": "2026-01-07T00:05:24.432813+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260107-000524-7752d9d0",
+    "metadata": {},
+    "modified_at": "2026-01-07T00:05:24.445497+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Test task for functional testing",
+    "version": 2
+  }
+}
