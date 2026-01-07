@@ -41,10 +41,10 @@ deleted modules. Running them wastes time and produces noise.
 
 ## 🔧 KNOWN ISSUES TO FIX
 
-### Dual CDGConfig Issue
-`cdg_module.py` defines its own `CDGConfig` (simple) and imports `CDGInternalConfig`
-from `cdg/config.py` (full). This is confusing redundancy.
-**FIX:** Remove cdg_module.py's CDGConfig, use the real one from cdg/config.py.
+### Dual CDGConfig Issue - FIXED
+~~`cdg_module.py` defines its own `CDGConfig` (simple) and imports `CDGInternalConfig`
+from `cdg/config.py` (full). This is confusing redundancy.~~
+**DONE:** Removed duplicate CDGConfig from cdg_module.py, now uses real CDGConfig.
 
 ### Index Callbacks in CDGConfig
 `index_rebuild_callback` and `index_stale_callback` exist only for GoT's
