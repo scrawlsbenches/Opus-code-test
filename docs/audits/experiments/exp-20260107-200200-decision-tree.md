@@ -1,129 +1,219 @@
 # Experiment: exp-20260107-200200-decision-tree
 
 ## Algorithm
-**Name:** Decision Tree (ID3/C4.5 style)
+**Name:** Decision Tree for Comment Classification
 **Expected complexity:** O(n × m × log n) build where n=samples, m=features; O(depth) classify
 **Required operations:**
-- `fit(X: List[Dict], y: List[str])` - Build tree from labeled data
-- `predict(x: Dict) -> str` - Classify a single example
-- `print_tree()` - Human-readable tree representation
+- `fit(X: List[Dict], y: List[str])` - Build tree from labeled audit findings
+- `predict(x: Dict) -> str` - Classify a comment as misleading/accurate
+- `print_tree()` - Human-readable tree showing decision rules
 - Information gain calculation for splits
 
+## Codebase Application
+
+**Problem:** We have 29 labeled audit findings (16 accurate, 10 misleading, 2 unknown). We want to build a classifier that can predict if a new comment is misleading.
+
+**Features to extract from comments:**
+- `has_see_ref`: Does it contain "See:" followed by a path?
+- `has_future`: Does it contain "FUTURE:" marker?
+- `has_todo`: Does it contain "TODO:" marker?
+- `has_will_be`: Does it contain "will be" phrase?
+- `ref_file_exists`: If it references a file, does that file exist?
+- `has_specific_date`: Does it mention a specific date or version?
+
+**Use Case:** When a new comment is found, automatically predict its likely category.
+
 ## Hypothesis
-**I expect:** The agent will implement a working decision tree but may struggle with the information gain calculation
-**Because:** Decision trees require understanding entropy and information gain formulas. The recursive structure is straightforward but the math is error-prone.
+**I expect:** The agent will implement a working decision tree that produces interpretable rules
+**Because:** Decision trees are well-documented, and the feature extraction from our audit data is straightforward. The math (entropy/IG) is error-prone.
 
 ## Task Prompt (Given to Agent)
 
 ```
-Implement a Decision Tree classifier from scratch in Python.
+Implement a Decision Tree classifier to categorize comments in the Cortical codebase.
 
-A decision tree recursively splits data based on features that maximize information gain.
-This is the foundation of interpretable machine learning.
+Context: We audited the codebase and found 29 comments with these categories:
+- misleading: 10 (references non-existent files, speculation as fact)
+- accurate: 16 (correctly describes unimplemented features)
+- unknown: 2 (needs more context)
+
+Your tree should learn rules like:
+- IF has_see_ref=True AND ref_file_exists=False THEN misleading
+- IF has_todo=True AND describes_current_state=True THEN accurate
 
 Requirements:
-1. NO external libraries except typing and math (no sklearn, no numpy, no pandas)
-2. Must use information gain (entropy-based) for split selection
-3. Must handle categorical features (not numeric ranges)
+1. NO external libraries except typing and math
+2. Use information gain (entropy-based) for split selection
+3. Handle categorical features only
 4. Must handle these operations:
 
-class DecisionTree:
+from typing import Dict, List, Optional
+import math
+
+class CommentDecisionTree:
+    def __init__(self, max_depth: Optional[int] = None):
+        """Initialize tree. max_depth=None means no limit."""
+        self.max_depth = max_depth
+        self.tree = None
+
     def fit(self, X: List[Dict[str, str]], y: List[str]) -> None:
         """
-        Build the decision tree from training data.
-        X: List of feature dictionaries, e.g., [{"color": "red", "size": "big"}, ...]
-        y: List of labels, e.g., ["apple", "apple", "orange", ...]
+        Build decision tree from labeled comment features.
+        X: List of feature dicts, e.g., [{"has_see_ref": "yes", "ref_exists": "no"}, ...]
+        y: List of labels, e.g., ["misleading", "accurate", ...]
         """
         pass
 
     def predict(self, x: Dict[str, str]) -> str:
-        """Classify a single example."""
+        """Classify a single comment based on its features."""
         pass
 
     def print_tree(self, indent: int = 0) -> str:
-        """Return human-readable tree representation."""
+        """
+        Return human-readable tree showing decision rules.
+        Format:
+        has_see_ref:
+          yes -> ref_exists:
+            no -> misleading
+            yes -> accurate
+          no -> has_todo:
+            yes -> accurate
+            no -> unknown
+        """
         pass
 
-Helper functions you'll need:
-- entropy(labels) -> float: Calculate entropy of a label distribution
-- information_gain(data, labels, feature) -> float: Calculate IG for splitting on feature
+Helper functions needed:
+- entropy(labels: List[str]) -> float
+- information_gain(X, y, feature) -> float
 
 Formulas:
 - Entropy: H(S) = -Σ p(x) * log2(p(x)) for each class x
+  Handle p=0: define 0 * log2(0) = 0
 - Information Gain: IG(S, A) = H(S) - Σ (|Sv|/|S|) * H(Sv) for each value v of attribute A
 
-Test cases that MUST pass:
+Test cases using REAL audit data patterns:
 
-# Test 1: Simple AND logic
+# Test 1: Learn from audit-like data
 X = [
-    {"a": "T", "b": "T"},
-    {"a": "T", "b": "F"},
-    {"a": "F", "b": "T"},
-    {"a": "F", "b": "F"},
+    # Misleading: references file that doesn't exist
+    {"has_see_ref": "yes", "ref_exists": "no", "has_future": "yes"},
+    {"has_see_ref": "yes", "ref_exists": "no", "has_future": "yes"},
+    {"has_see_ref": "yes", "ref_exists": "no", "has_future": "no"},
+    # Accurate: TODO that correctly identifies missing feature
+    {"has_see_ref": "no", "ref_exists": "na", "has_future": "no"},
+    {"has_see_ref": "no", "ref_exists": "na", "has_future": "no"},
+    # Accurate: references file that exists
+    {"has_see_ref": "yes", "ref_exists": "yes", "has_future": "no"},
 ]
-y = ["T", "F", "F", "F"]  # a AND b
-tree = DecisionTree()
-tree.fit(X, y)
-assert tree.predict({"a": "T", "b": "T"}) == "T"
-assert tree.predict({"a": "T", "b": "F"}) == "F"
-assert tree.predict({"a": "F", "b": "T"}) == "F"
+y = ["misleading", "misleading", "misleading", "accurate", "accurate", "accurate"]
 
-# Test 2: Weather/Play tennis classic dataset
-X = [
-    {"outlook": "sunny", "humidity": "high"},
-    {"outlook": "sunny", "humidity": "high"},
-    {"outlook": "overcast", "humidity": "high"},
-    {"outlook": "rain", "humidity": "high"},
-    {"outlook": "rain", "humidity": "normal"},
-    {"outlook": "overcast", "humidity": "normal"},
-    {"outlook": "sunny", "humidity": "normal"},
-]
-y = ["no", "no", "yes", "yes", "yes", "yes", "yes"]
-tree = DecisionTree()
+tree = CommentDecisionTree()
 tree.fit(X, y)
-# Sunny + high humidity should be "no"
-assert tree.predict({"outlook": "sunny", "humidity": "high"}) == "no"
-# Overcast should always be "yes"
-assert tree.predict({"outlook": "overcast", "humidity": "high"}) == "yes"
 
-# Test 3: Print tree should show structure
+# Should classify new comments correctly
+assert tree.predict({"has_see_ref": "yes", "ref_exists": "no", "has_future": "yes"}) == "misleading"
+assert tree.predict({"has_see_ref": "no", "ref_exists": "na", "has_future": "no"}) == "accurate"
+assert tree.predict({"has_see_ref": "yes", "ref_exists": "yes", "has_future": "no"}) == "accurate"
+
+# Test 2: Tree structure is interpretable
 tree_str = tree.print_tree()
-assert "outlook" in tree_str.lower() or "humidity" in tree_str.lower()
+assert "has_see_ref" in tree_str.lower() or "ref_exists" in tree_str.lower()
+assert "misleading" in tree_str.lower()
+assert "accurate" in tree_str.lower()
+# Should show hierarchy with indentation
+assert "\n" in tree_str
 
-# Test 4: Single class (pure node)
+# Test 3: Handles pure nodes (all same class)
 X = [{"a": "1"}, {"a": "2"}, {"a": "3"}]
 y = ["same", "same", "same"]
-tree = DecisionTree()
+tree = CommentDecisionTree()
 tree.fit(X, y)
 assert tree.predict({"a": "1"}) == "same"
+assert tree.predict({"a": "999"}) == "same"  # Unknown value, still same class
 
-Write the complete implementation with entropy and information gain calculations.
-Include comments explaining the algorithm at each step.
+# Test 4: Handles unknown feature values at prediction
+X = [{"color": "red"}, {"color": "blue"}]
+y = ["apple", "sky"]
+tree = CommentDecisionTree()
+tree.fit(X, y)
+# What happens with unseen value?
+result = tree.predict({"color": "green"})
+assert result in ["apple", "sky"]  # Should return majority or handle gracefully
+
+# Test 5: Entropy calculation edge cases
+# If you expose entropy function for testing:
+# assert entropy(["a", "a", "a"]) == 0.0  # Pure
+# assert abs(entropy(["a", "b"]) - 1.0) < 0.001  # Balanced binary
+
+# Test 6: Depth limiting
+tree = CommentDecisionTree(max_depth=1)
+X = [
+    {"a": "1", "b": "x"},
+    {"a": "1", "b": "y"},
+    {"a": "2", "b": "x"},
+    {"a": "2", "b": "y"},
+]
+y = ["yes", "no", "no", "yes"]
+tree.fit(X, y)
+tree_str = tree.print_tree()
+# With depth=1, should only split on one feature
+lines = [l for l in tree_str.split("\n") if l.strip()]
+# Count indentation levels - should be limited
+
+# Test 7: Real audit scenario
+# Simulate the actual finding that triggered our audit
+X_real = [
+    # The original misleading comment (See: + file doesn't exist)
+    {"has_see_ref": "yes", "ref_exists": "no", "has_will_be": "yes", "has_future": "yes"},
+    # A TODO that correctly identifies unimplemented feature
+    {"has_see_ref": "no", "ref_exists": "na", "has_will_be": "no", "has_future": "no"},
+]
+y_real = ["misleading", "accurate"]
+
+tree = CommentDecisionTree()
+tree.fit(X_real, y_real)
+
+# The original comment features
+original_comment_features = {
+    "has_see_ref": "yes",
+    "ref_exists": "no",  # docs/design/cdg-transactional-indexing-design.md doesn't exist
+    "has_will_be": "yes",  # "this will be handled"
+    "has_future": "yes"   # "FUTURE:"
+}
+assert tree.predict(original_comment_features) == "misleading"
+
+Write the complete implementation with comments explaining entropy and IG.
+Include handling for:
+- log2(0) case in entropy
+- Unknown feature values at prediction time
+- Empty feature dictionaries
 ```
 
 ## Success Criteria
 - [ ] fit(), predict(), print_tree() implemented
-- [ ] Entropy calculation correct
-- [ ] Information gain calculation correct
-- [ ] All 4 test cases pass
-- [ ] Tree structure is interpretable
+- [ ] Entropy handles p=0 (no crash, returns 0 contribution)
+- [ ] Information gain selects best split
+- [ ] All 7 test cases pass
+- [ ] Tree output shows clear decision path
+- [ ] Unknown feature values handled gracefully
+- [ ] max_depth parameter works
 
 ## Failure Criteria
-- [ ] Wrong entropy formula (e.g., missing log2, wrong sign)
-- [ ] Information gain doesn't find best split
-- [ ] Infinite recursion (no base case)
-- [ ] Can't handle pure nodes
+- [ ] Wrong entropy formula (missing log2, wrong sign, crashes on p=0)
+- [ ] IG doesn't find best split
+- [ ] Infinite recursion (no base case for pure nodes)
+- [ ] Crashes on unknown feature values
 - [ ] Uses numpy/sklearn
 
 ## Prediction
 Before running: **PARTIAL**
 Confidence: **MEDIUM**
-Reasoning: The recursive structure is standard, but entropy/IG math has many opportunities for errors (log of 0, wrong base, forgetting proportions).
+Reasoning: Entropy math has pitfalls (log of 0). Unknown feature handling is often forgotten. The real audit data scenario adds practical complexity.
 
 ## Actual Result
 Status: [NOT YET RUN]
 Operations implemented: [X/3]
-Tests passed: [X/4]
+Tests passed: [X/7]
 Notes:
 
 ## Agent Output
@@ -141,5 +231,34 @@ Notes:
 **Root cause:**
 **Learning:**
 
-## Recommendations
+## Integration Plan
 
+After successful implementation:
+1. Extract features from all 29 audit findings
+2. Train classifier on labeled data
+3. Use to predict category for new comments found in codebase
+4. Add to `docs/audits/` as automated classification tool
+
+## Feature Extraction Helper
+
+```python
+def extract_features(comment_text: str, file_refs: List[str]) -> Dict[str, str]:
+    """Extract features from a comment for classification."""
+    import os
+
+    features = {
+        "has_see_ref": "yes" if "see:" in comment_text.lower() else "no",
+        "has_future": "yes" if "future:" in comment_text.lower() else "no",
+        "has_todo": "yes" if "todo:" in comment_text.lower() else "no",
+        "has_will_be": "yes" if "will be" in comment_text.lower() else "no",
+        "has_fixme": "yes" if "fixme:" in comment_text.lower() else "no",
+    }
+
+    # Check if referenced files exist
+    if file_refs:
+        features["ref_exists"] = "yes" if all(os.path.exists(f) for f in file_refs) else "no"
+    else:
+        features["ref_exists"] = "na"
+
+    return features
+```
