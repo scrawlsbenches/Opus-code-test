@@ -134,102 +134,82 @@ Update the scratchpad's "Previous session branch" in this template before ending
 
 ## Current State
 
-**Status:** AUDIT COMPLETE ✓
+**Status:** REFACTORING PHASE 2 - Recovery & Duplication
 
-**Summary of changes (see git log):**
+**Completed (Phase 1):**
 - Deleted `got/wal.py` → use CDGWALManager directly
+- Deleted `got/tx_manager.py` → use CDGTransactionManager directly
+- Deleted `got/versioned_store.py` → use CDGStore directly
 - Removed fallback patterns in `api.py` and `query_api.py`
-- Simplified `_iter_entities_by_prefix` and `list_claudemd_layers`
-
-**Remaining file access (ALL ACCEPTABLE):**
-- `recovery.py` - MUST bypass CDG to detect/fix corruption
-- `indexer.py` - Index persistence is separate from entity store
-- `claudemd.py` - Context gathering, generates output files
-- `cli/*` - User-facing display/import operations
-
-**No critical issues remain.** Architecture is solid.
+- Schema moved to `cdg/schema/`
 
 ---
 
-## CRITICAL NOTES
+## ⚠️ PRIORITY TASK LIST (in order)
 
-### DO NOT UPDATE TESTS
-- Wait until fully done
-- User will say when ready for testing
-- Tests will catch issues - let them break for now
+### 1. RECOVERY MODULE CONSOLIDATION [CRITICAL - ACTIVE BUGS]
 
-### CDG Architecture Philosophy
-- CDG = clean, generic solution built on first principles
-- Being built over time as needed
-- CDGTransactionManager IS generic enough for GoT
-- **NO TWO LAYERS** - don't maintain wrappers
+**GoT recovery.py has BUGS that can cause data loss:**
 
-### When Dealing with GoT
-- **ALWAYS consider moving functionality DOWN to CDG**
-- Prefer refactoring GoT into CDG over maintaining two versions
-- GoT should be thin domain layer on top of CDG
+| Bug | Location | Impact |
+|-----|----------|--------|
+| Direct WAL file append | Lines 612-624 | No locking, no fsync - crash corrupts WAL |
+| Missing `reconstruct_entities_from_wal()` | N/A | Loses data after crash-after-commit |
+| ADOPTED entry format mismatch | Lines 507-509 | Doesn't handle CDG's new format |
+| String vs Enum strategy | Line 527 | Type confusion, called with wrong value |
+
+**Duplication:** 350 lines (44% of combined 1425 lines)
+
+**Action:** Consolidate NOW. GoT delegates to CDG for core recovery, keeps only index logic.
+
+### 2. FIX TEST IMPORTS [MECHANICAL]
+
+13 files, ~37 broken imports. Estimated 2 hours.
+Blocked until recovery consolidation complete (may change more imports).
+
+### 3. VALIDATION RULE EXTRACTION [TECHNICAL DEBT]
+
+**Current state:** 9 if/elif blocks in `_validate_entity_specific()` (lines 406-508)
+- Each entity type repeats same pattern
+- Adding new type requires modifying function
+- Rules embedded in code, not visible at a glance
+
+**Target:** Extract to `ENTITY_SCHEMAS` data structure
+- Declarative rules
+- Adding new entity = adding dict entry
+- ~90 lines → ~60 lines
+
+### 4. GRAPH TRAVERSAL CONSOLIDATION [DUPLICATION]
+
+3 overlapping utilities:
+- `GraphWalker` (642 lines)
+- `PathFinder` (646 lines)
+- `PatternMatcher` (739 lines)
+
+Could share base class for traversal logic.
 
 ---
 
-## What GoT Uniquely Provides (keep in GoT)
+## Recovery Consolidation Plan
 
-1. **Entity types** - Task, Decision, Edge, Sprint, etc. (domain models)
-2. **Entity factory** - `create_entity_from_dict()` dispatches to correct type
-3. **QueryIndexManager** - GoT-specific indexing (consider: generic version for CDG?)
-4. **GoTManager** - high-level domain API
-5. **Domain logic** - orphan detection, etc.
+**Strategy:** GoT recovery becomes thin wrapper around CDG recovery
 
----
+1. Move `RecoveryResult` and `RepairResult` to `cortical/common/`
+2. GoT recovery takes CDGRecoveryManager as dependency
+3. GoT only adds: `needs_index_recovery()`, `rebuild_indexes()`
+4. Delete duplicated methods, delegate to CDG
+5. Fix the bugs (use WAL.log(), handle ADOPTED format)
 
-## What Should Move to CDG / Already in CDG
+**CDG has that GoT lacks:**
+- `reconstruct_entities_from_wal()` - CRITICAL
+- `MIN_ENTITY_FILE_SIZE` check
+- RecoveryMode enum (configurable)
+- OrphanStrategy enum (type-safe)
+- Proper WAL logging in repair_orphans()
 
-- TransactionManager → CDGTransactionManager (DONE - GoT wrapper deleted)
-- VersionedStore → CDGStore (DONE - GoT version deleted)
-- Recovery → CDGRecoveryManager (INVESTIGATED - see notes below)
-- Schema → CDG schema (DONE)
-
----
-
-## Completed Tasks
-
-### tx_manager.py Deletion
-- Was a wrapper around CDGTransactionManager
-- Had broken import from deleted versioned_store.py
-- Per user: no two layers needed
-- **Deleted:** Updated all imports to use CDGTransactionManager directly
-- Aliased as `TransactionManager` in `__init__.py` for backward compatibility
-
-### wal.py Deletion (2026-01-06)
-- GoT's WALManager was 99% identical to CDGWALManager
-- Only recovery.py was still using it (GoTManager used CDGTransactionManager which uses CDGWALManager)
-- CDGWALManager is superior (deferred sequence commit, entity_data support)
-- **Deleted:** Updated recovery.py to use CDGWALManager directly
-- Updated `__init__.py` exports
-
-### Fallback Pattern Removal (2026-01-06)
-- Removed "backward compatibility" fallbacks in api.py and query_api.py
-- `_iter_entities_by_prefix` now simply calls `tx_manager.store.iter_entities()`
-- `list_claudemd_layers` simplified to use store directly
-- Per user: "NO backward compatibility - fix directly"
-
-### Recovery Analysis (got/recovery.py vs cdg/recovery.py)
-
-**CDG Recovery is MORE comprehensive:**
-- Has `reconstruct_entities_from_wal()` (GoT lacks this)
-- Has `MIN_ENTITY_FILE_SIZE` check for truncated files
-- Configurable via CDGConfig (recovery_mode, orphan_strategy)
-- Uses proper WAL logging via `self.wal.log()`
-
-**GoT Recovery has GoT-specific logic:**
-- `needs_index_recovery()` with GoT QueryIndexManager
-- `rebuild_indexes()` creates Task objects directly
-- Now uses CDGWALManager (updated 2026-01-06)
-
-**Decision: NOT deleting GoT recovery yet**
-- GoT recovery.py has domain-specific index logic
-- Would need to refactor to use callback pattern like CDG
-- Lower priority than other file access issues
-- Could delegate core recovery to CDG and add GoT index layer
+**GoT has that's unique:**
+- `needs_index_recovery()` - real implementation (CDG is placeholder)
+- `rebuild_indexes()` - GoT domain-specific
 
 ---
 
