@@ -187,9 +187,9 @@ from pathlib import Path
 
 def _create_tx_manager(got_dir: Path, use_memory: bool = True):
     """
-    Create TransactionManager via DI container.
+    Create CDGTransactionManager via DI container.
 
-    This is the ONLY supported way to create a TransactionManager.
+    This is the ONLY supported way to create a transaction manager.
     All dependencies (store, wal, lock) are properly configured.
 
     Args:
@@ -198,12 +198,12 @@ def _create_tx_manager(got_dir: Path, use_memory: bool = True):
                     Set to False for tests that need disk persistence.
 
     Returns:
-        Fully configured TransactionManager
+        Fully configured CDGTransactionManager
     """
     from cortical.core.bootstrap import create_container
-    from cortical.got.tx_manager import TransactionManager
+    from cortical.cdg.transaction_manager import CDGTransactionManager
     container = create_container(got_dir=got_dir, use_memory=use_memory)
-    return container.resolve(TransactionManager)
+    return container.resolve(CDGTransactionManager)
 
 
 def _create_got_manager(got_dir: Path, use_memory: bool = True):

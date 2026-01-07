@@ -488,7 +488,6 @@ class TestDeveloperBootstrapsCortical:
         from cortical.cdg.storage import CDGStore
         from cortical.cdg.wal import CDGWALManager
         from cortical.cdg.transaction_manager import CDGTransactionManager
-        from cortical.got.tx_manager import TransactionManager
         from cortical.got.api import GoTManager
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -505,15 +504,11 @@ class TestDeveloperBootstrapsCortical:
             assert wal is not None
             assert isinstance(wal, CDGWALManager)
 
-            cdg_tx = container.resolve(CDGTransactionManager)
-            assert cdg_tx is not None
-            assert isinstance(cdg_tx, CDGTransactionManager)
+            tx_manager = container.resolve(CDGTransactionManager)
+            assert tx_manager is not None
+            assert isinstance(tx_manager, CDGTransactionManager)
 
             # Resolve GoT services
-            tx_manager = container.resolve(TransactionManager)
-            assert tx_manager is not None
-            assert isinstance(tx_manager, TransactionManager)
-
             got_manager = container.resolve(GoTManager)
             assert got_manager is not None
             assert isinstance(got_manager, GoTManager)
@@ -522,7 +517,7 @@ class TestDeveloperBootstrapsCortical:
             store2 = container.resolve(CDGStore)
             assert store is store2
 
-            tx_manager2 = container.resolve(TransactionManager)
+            tx_manager2 = container.resolve(CDGTransactionManager)
             assert tx_manager is tx_manager2
 
 
@@ -540,20 +535,16 @@ class TestDeveloperMigratestoContainer:
     So that we enforce loose coupling throughout the system.
     """
 
-    def test_scenario_got_transaction_manager_requires_injection(self):
+    def test_scenario_cdg_transaction_manager_requires_injection(self):
         """
-        Scenario: TransactionManager requires injected dependencies
+        Scenario: CDGTransactionManager requires injected dependencies
 
-        Given the new TransactionManager
+        Given the CDGTransactionManager
         When I try to create it without dependencies
         Then I get a clear error about required dependencies
         Because direct instantiation without DI is prohibited
         """
-        from cortical.got.tx_manager import TransactionManager
-        from cortical.cdg.storage import CDGStore
-        from cortical.cdg.wal import CDGWALManager
-        from cortical.cdg.config import CDGConfig
-        from cortical.utils.locking import ProcessLock
+        from cortical.cdg.transaction_manager import CDGTransactionManager
         import tempfile
         from pathlib import Path
 
@@ -562,31 +553,31 @@ class TestDeveloperMigratestoContainer:
 
             # Direct instantiation without dependencies should raise TypeError
             with pytest.raises(TypeError) as excinfo:
-                TransactionManager(got_dir)
+                CDGTransactionManager(got_dir)
 
             # Error message should mention required dependencies
             assert "store" in str(excinfo.value).lower() or "required" in str(excinfo.value).lower()
 
-    def test_scenario_got_transaction_manager_works_with_injection(self):
+    def test_scenario_cdg_transaction_manager_works_with_injection(self):
         """
-        Scenario: TransactionManager works when dependencies are injected
+        Scenario: CDGTransactionManager works when dependencies are injected
 
-        Given the new TransactionManager with required injection
+        Given the CDGTransactionManager with required injection
         When I create it with proper dependencies from the container
         Then it works correctly
         Because container-first architecture is enforced
         """
         from cortical.core.bootstrap import create_container
-        from cortical.got.tx_manager import TransactionManager
+        from cortical.cdg.transaction_manager import CDGTransactionManager
         import tempfile
         from pathlib import Path
 
         with tempfile.TemporaryDirectory() as tmpdir:
             got_dir = Path(tmpdir)
 
-            # Get TransactionManager through the container (the only supported way)
+            # Get CDGTransactionManager through the container (the only supported way)
             container = create_container(got_dir=got_dir)
-            tx_mgr = container.resolve(TransactionManager)
+            tx_mgr = container.resolve(CDGTransactionManager)
 
             # Should work
             assert tx_mgr is not None

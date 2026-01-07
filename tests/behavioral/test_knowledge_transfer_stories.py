@@ -202,9 +202,9 @@ class TestDeveloperCreatesKnowledgeTransfer:
 
         # And: I attempt to read it
         # Then: a CorruptionError is raised
-        from cortical.got.versioned_store import VersionedStore
+        from cortical.cdg.storage import CDGStore
 
-        store = VersionedStore(entities_dir)
+        store = CDGStore(entities_dir)
 
         with pytest.raises(CorruptionError) as exc_info:
             store.read(kt_id)
@@ -271,9 +271,9 @@ class TestDeveloperCreatesKnowledgeTransfer:
         assert retrieved["sections"]["New Insights"] == "Additional learnings discovered later"
 
         # And: validation passes for the updated data
-        from cortical.got.versioned_store import VersionedStore
+        from cortical.cdg.storage import CDGStore
 
-        store = VersionedStore(entities_dir)
+        store = CDGStore(entities_dir)
         validated_kt = store.read(kt_id)  # Will raise if checksum invalid
         assert validated_kt is not None
         assert "New Insights" in validated_kt.sections
