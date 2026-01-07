@@ -13,11 +13,20 @@
 
 ---
 
+## CURRENT FOCUS: Fix test import errors
+
+4 test files have broken imports from refactoring:
+- `tests/unit/got/test_config.py` - unknown error
+- `tests/unit/test_query_builder_entities.py` - `ensure_schemas_registered` missing
+- `tests/unit/test_schema.py` - imports from `cortical.got.schema` (moved to `cdg/schema`)
+- `tests/unit/test_generate_book.py` - missing `yaml` module (low priority)
+
+---
+
 ## QUEUED
 
-1. Test import errors (4 files)
-2. test_field_validator.py missing registry
-3. Smoke test using real .got/
+1. test_field_validator.py - all tests missing registry argument
+2. Smoke test using real .got/ instead of temp dir
 
 ---
 
