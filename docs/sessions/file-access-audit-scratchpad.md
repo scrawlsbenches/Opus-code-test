@@ -7,35 +7,54 @@
 
 ## CURRENT FOCUS: Configuration Consolidation
 
-Working through configuration architecture decisions one at a time.
+Investigating implementation status of CDGConfig fields before making decisions.
 
 ---
 
-## CONFIGURATION ISSUES FOUND
+## KEY CLARIFICATIONS FROM USER
 
-1. **Two GoTConfigs** - different files, different purposes, same name
-2. **Two DurabilityMode enums** - incompatible (RELAXED vs FAST)
-3. **CDGConfig** - 23 fields with factory methods hiding defaults
-4. **Path flow** - actually well-structured, bootstrap is entry point
-
----
-
-## DECISIONS TO MAKE (one at a time)
-
-- [ ] **Q1:** CDGConfig's 23 fields - keep all, trim, or split?
-- [ ] **Q2:** DurabilityMode naming - RELAXED or FAST?
-- [ ] **Q3:** `use_memory` - config field or separate concern?
-- [ ] **Q4:** Paths in config - only base_dir, all explicit, or path factory?
+- **GoT should NOT know about storage details** - CDG handles all storage
+- **CDG's DurabilityMode is correct** - GoT's version should be removed/aliased
+- **One question at a time** - iterate through decisions, potentially implement missing features
 
 ---
 
-## USER DIRECTION
+## INVESTIGATION RESULTS (completed)
 
-- ONE config object (test version + production version)
-- NO `.default()` methods - explicit defaults visible in bootstrap
-- All paths visible in container setup
-- IoC is first-class citizen
-- Pass classes into constructors, not primitives
+| Feature | Status | Notes |
+|---------|--------|-------|
+| partition_count/strategy | NOT IMPLEMENTED | Placeholder only |
+| isolation_level | PARTIAL | Only SNAPSHOT works, READ_COMMITTED is placeholder |
+| transaction_timeout_seconds | NOT IMPLEMENTED | Placeholder only |
+| wal_archive_enabled/threshold | NOT IMPLEMENTED | Manual truncate_before() exists |
+| history_retention_days | NOT IMPLEMENTED | No cleanup mechanism |
+| super_node_* thresholds | NOT IMPLEMENTED | Placeholder only |
+| encryption_enabled | NOT IMPLEMENTED | Correct - should not be |
+| read_cache_max_items | IMPLEMENTED BUT NOT WIRED | Cache works, config ignored |
+| write_buffer_size | NOT IMPLEMENTED | Placeholder only |
+
+**Summary:** Most CDGConfig "tuning" fields are placeholders. Core functionality works:
+- durability, validate_on_write, strict_edge_types ✓
+- transactions_enabled, enable_wal, recovery_mode ✓
+- orphan_strategy, auto_recover_on_startup, enable_history ✓
+
+---
+
+## DECISIONS MADE
+
+- [x] CDG durability is the correct enum
+- [x] GoT should not know storage details
+- [x] DurabilityMode consolidated: GoT re-exports CDG's version
+- [x] Added RELAXED alias to CDG's DurabilityMode for backward compatibility
+- [x] CDG storage updated to treat FAST and RELAXED as equivalent (no fsync)
+
+---
+
+## DECISIONS PENDING (one at a time, after investigation)
+
+- [ ] Which CDGConfig fields to keep in unified config
+- [ ] How to structure paths
+- [ ] Test container setup
 
 ---
 
@@ -52,4 +71,3 @@ Working through configuration architecture decisions one at a time.
 
 - **CDG owns:** storage, transactions, WAL, recovery, indexes
 - **GoT is:** thin domain layer, NO file I/O
-- **FileSystem abstraction:** InMemoryFileSystem for tests, RealFileSystem for production

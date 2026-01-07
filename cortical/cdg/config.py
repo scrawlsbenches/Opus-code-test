@@ -29,7 +29,7 @@ class DurabilityMode(Enum):
 
     Controls the trade-off between write performance and data safety:
 
-    - FAST: No fsync, maximum performance, data loss possible on crash
+    - FAST/RELAXED: No fsync, maximum performance, data loss possible on crash
     - BALANCED: Fsync on commit, good balance of safety and performance
     - PARANOID: Fsync on every write, maximum safety, slower writes
 
@@ -37,8 +37,11 @@ class DurabilityMode(Enum):
     - Development: FAST (quick iteration, data is disposable)
     - Testing: BALANCED (catch timing issues, reasonable performance)
     - Production: BALANCED or PARANOID (based on data criticality)
+
+    Note: RELAXED is an alias for FAST (same value "relaxed" for backward compatibility).
     """
     FAST = "fast"           # No fsync, maximum performance
+    RELAXED = "relaxed"     # Alias for FAST (backward compatibility)
     BALANCED = "balanced"   # Fsync on commit
     PARANOID = "paranoid"   # Fsync on every write
 

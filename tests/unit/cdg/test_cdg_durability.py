@@ -15,8 +15,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from cortical.cdg import CDGWALManager, CDGStore
-from cortical.cdg.config import CDGConfig
-from cortical.got import DurabilityMode
+from cortical.cdg.config import CDGConfig, DurabilityMode
 
 
 class TestParanoidMode(unittest.TestCase):
@@ -44,17 +43,18 @@ class TestParanoidMode(unittest.TestCase):
         self.assertGreater(mock_fsync.call_count, 0)
 
     @patch('os.fsync')
-    def test_paranoid_mode_fsyncs_on_sequence(self, mock_fsync):
-        """Test that PARANOID mode calls fsync when saving sequence."""
+    def test_paranoid_mode_fsyncs_on_commit(self, mock_fsync):
+        """Test that PARANOID mode calls fsync when committing transaction."""
         wal = CDGWALManager(self.wal_dir, CDGConfig(durability=DurabilityMode.PARANOID))
 
         # Clear any fsync calls from __init__
         mock_fsync.reset_mock()
 
-        # Next sequence increments and saves
-        seq = wal._next_seq()
+        # Full transaction: begin + commit (which persists sequence)
+        wal.log_tx_begin("tx1", snapshot_version=0)
+        wal.log_tx_commit("tx1", version=1)
 
-        # Should have called fsync for sequence file
+        # Should have called fsync for WAL entries (PARANOID mode)
         self.assertGreater(mock_fsync.call_count, 0)
 
 
