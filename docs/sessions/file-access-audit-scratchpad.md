@@ -64,6 +64,59 @@ git push -u origin HEAD
 **Key insight:** Each session uses its own branch. Merge previous work in.
 Push normally to your session branch - no special syntax needed.
 
+### Complete Continuation Prompt Template (COPY-PASTE THIS)
+
+```markdown
+Continue refactoring work on the Cortical codebase.
+
+**Previous session branch:** `claude/refactor-cortical-codebase-omD09`
+
+## First Steps (DO THIS BEFORE ANYTHING ELSE)
+
+1. Merge previous work into your session branch:
+
+git fetch origin claude/refactor-cortical-codebase-omD09
+git merge origin/claude/refactor-cortical-codebase-omD09
+git log --oneline -5  # verify you have the history
+
+2. Read the scratchpad:
+
+cat docs/sessions/file-access-audit-scratchpad.md
+
+## Current State
+
+**File Access Audit:** COMPLETE ✓
+
+Completed refactoring:
+- Deleted `got/wal.py` → using CDGWALManager directly
+- Deleted `got/tx_manager.py` → using CDGTransactionManager directly
+- Deleted `got/versioned_store.py` → using CDGStore directly
+- Removed backward-compatibility fallbacks in api.py and query_api.py
+
+Remaining file access (all acceptable):
+- `recovery.py` - Must bypass CDG to detect/fix corruption
+- `indexer.py` - Index persistence separate from entity store
+- `claudemd.py` - Context gathering, output files
+- `cli/*` - User-facing display/import
+
+## Key Principles (from scratchpad)
+
+1. **Container-first** - DI for all dependencies
+2. **No backward compatibility** - fix directly, no fallbacks
+3. **CDG is foundation** - GoT is thin domain layer
+4. **Move functionality to CDG** when possible
+
+## When Done
+
+Push to YOUR session branch (the one the system assigned you):
+
+git push -u origin HEAD
+
+Update the scratchpad's "Previous session branch" in this template before ending.
+```
+
+**Remember:** Update the branch name in the template above before ending your session!
+
 ---
 
 ## Current State
