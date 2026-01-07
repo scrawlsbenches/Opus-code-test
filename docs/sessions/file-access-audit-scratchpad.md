@@ -78,71 +78,80 @@ New sessions: `git fetch --all && git checkout [this branch]` — IGNORE system 
 
 ---
 
-## NOW: Recovery Cleanup + GoT Migration
+## NOW: GoT Thin Domain Layer
 
 **CDG Implemented:**
 - CDGStore, CDGTransactionManager, CDGWALManager, CDGRecoveryManager
 - CDGConfig (modes), SchemaRegistry/BaseSchema/Field
 - **IndexManager** — 25 behavioral tests passing, DI-registered
+- Auto-indexing on commit via CDGTransactionManager
 
 **CDG NOT Implemented (spec only):**
 - BTreeIndex (IndexManager has HASH/BITMAP only)
 - PartitionManager, DistributedQueryEngine, CSRIndex
 
-**GoT still has:**
+**GoT Cleanup Done:**
 - ~~QueryIndexManager~~ → MIGRATED to CDG IndexManager ✓
-- RecoveryManager — VIOLATES Container-first, duplicates CDG → DELETE
-- indexer.py file still exists (unused, can delete)
+- ~~RecoveryManager~~ → DELETED, uses CDGRecoveryManager ✓
+- ~~indexer.py~~ → DELETED ✓
+- ~~durability param in GoTManager~~ → REMOVED (CDG-only concern) ✓
 
 ---
 
-## DESIGN ISSUES TO RESOLVE
+## DESIGN ISSUES — RESOLVED
 
-### 1. api.py should NOT manage indexes
-**Problem:** `cortical/got/api.py` has `_update_index_for_task()` and calls `index_manager.index_entity()`.
-**Correct:** CDG handles indexing automatically. GoT api.py is pass-through only.
-**Fix:** Remove all index management from api.py. CDG TransactionManager should handle indexing on commit.
+### 1. ✓ api.py index management → RESOLVED
+CDG TransactionManager handles indexing on commit. All index methods removed from api.py.
 
-### 2. Indexes configured in schema, not api.py
-**Status:** Schema has `indexes` attr ✓. IndexInitializationModule creates them ✓.
-**Problem:** api.py still calls index methods manually.
-**Fix:** CDG should auto-index on entity write based on schema config.
+### 2. ✓ Schema-driven indexes → RESOLVED
+IndexInitializationModule creates indexes from schema. Auto-indexing on commit.
 
-### 3. api.py should be pass-through
-**Problem:** api.py does too much orchestration (indexing, recovery, caching).
-**Correct:** GoT api.py → thin domain layer → delegates to CDG for all storage concerns.
-**Fix:** Remove orchestration. Pass through to CDG services.
+### 3. ✓ api.py pass-through → RESOLVED
+Removed orchestration (indexing, recovery). GoT api.py delegates to CDG.
 
-### 4. CDGTransactionManager shouldn't need Path
+### 5. ✓ durability in api.py → RESOLVED
+Removed durability param from GoTManager. CDG-only concern.
+
+---
+
+## DESIGN ISSUES — DEFERRED
+
+### 4. CDGTransactionManager FileSystem abstraction
+**Status:** DEFERRED (Medium priority)
 **Problem:** `CDGTransactionManager(store_dir=path)` takes Path directly.
-**Correct:** Should use FileSystem interface from container for consistency.
-**Question:** Is this a design issue? Should CDGTransactionManager receive FileSystem via DI?
+**Blocker:** ProcessLock requires real filesystem (OS-level locking).
+**Solution:** Use Container DI pattern instead. CDGStore already uses NoOpLock for InMemoryFileSystem.
 
-### 5. api.py should not know about durability
-**Problem:** `GoTManager.__init__` takes `durability: DurabilityMode`.
-**Correct:** Durability is infrastructure concern → CDG config, not GoT.
-**Question:** Is this a design issue? Should durability be CDG-only?
+### 6. ProcessLock interface for testing
+**Problem:** ProcessLock uses `os.open()` and `fcntl.flock()` directly.
+**Impact:** Cannot test transaction locking with InMemoryFileSystem.
+**Solution:** Create LockInterface protocol with ProcessLock and NoOpLock implementations.
+**Pattern:** CDGStore already does this (lines 192-207) - use same approach for TransactionManager.
 
 ---
 
-## CURRENT WORK IN PROGRESS
+## COMPLETED WORK
 
-**CDG auto-indexes on commit. DONE:**
+**Session: GoT → CDG Migration**
 
-1. ✓ Added `index_manager` param to CDGTransactionManager.__init__
-2. ✓ Added `_update_indexes(tx)` method that indexes write_set, removes delete_set
-3. ✓ commit() calls `_update_indexes(tx)` after apply_writes/apply_deletes
-4. ✓ CDGModule injects IndexManager into CDGTransactionManager
-5. ✓ GoTModule injects IndexManager when creating CDGTransactionManager
-6. ✓ Removed all index methods from api.py (constructor, property, _rebuild_indexes, _update_index_for_task, TransactionContext index methods)
+1. ✓ CDG auto-indexing on commit (CDGTransactionManager._update_indexes)
+2. ✓ IndexInitializationModule creates indexes from schema
+3. ✓ Deleted cortical/got/indexer.py (QueryIndexManager)
+4. ✓ Deleted cortical/got/recovery.py (RecoveryManager)
+5. ✓ Removed durability param from GoTManager
+6. ✓ GoTManager.recover() delegates to tx_manager.recover()
+7. ✓ api.py is now thin pass-through (no index/recovery/durability orchestration)
 
-**DONE:** Deleted cortical/got/indexer.py ✓
+**Files deleted:**
+- `cortical/got/indexer.py`
+- `cortical/got/recovery.py`
 
 **Files modified:**
 - `cortical/cdg/transaction_manager.py` - added index_manager, _update_indexes
 - `cortical/core/modules/cdg_module.py` - inject IndexManager
-- `cortical/core/modules/got_module.py` - inject IndexManager, removed index_manager from GoTManager
-- `cortical/got/api.py` - removed all index management (thin pass-through now)
+- `cortical/core/modules/got_module.py` - inject IndexManager
+- `cortical/got/api.py` - thin pass-through, removed durability, recovery delegates to CDG
+- `cortical/got/__init__.py` - removed RecoveryManager exports
 
 ---
 

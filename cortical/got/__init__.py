@@ -73,11 +73,8 @@ from cortical.cdg.transaction_manager import (
 )
 from cortical.utils.locking import ProcessLock
 
-from .recovery import (
-    RecoveryManager,
-    RecoveryResult,
-    RepairResult,
-)
+# Recovery is handled by CDG layer - import RecoveryResult for backward compat
+from cortical.cdg.recovery import RecoveryResult
 
 from .sync import (
     SyncManager,
@@ -216,10 +213,8 @@ __all__ = [
     'CommitResult',
     'Conflict',
     'ProcessLock',
-    # Recovery
-    'RecoveryManager',
+    # Recovery (from CDG layer)
     'RecoveryResult',
-    'RepairResult',
     # Sync
     'SyncManager',
     'SyncResult',

@@ -38,13 +38,13 @@ from cortical.utils.id_generation import (
     generate_document_id,
 )
 from cortical.cdg.transaction_manager import CDGTransactionManager, CommitResult
+from cortical.cdg.recovery import CDGRecoveryManager, RecoveryResult
 from .sync import SyncManager, SyncResult
-from .recovery import RecoveryManager, RecoveryResult
 # Indexing handled by CDGTransactionManager automatically on commit
+# Recovery handled by CDGRecoveryManager (no GoT wrapper needed)
 from .types import Task, Decision, Edge, Entity, Sprint, Epic, Handoff, ClaudeMdLayer, ClaudeMdVersion, Document, EdgeTypes, KnowledgeTransfer
 from .transaction import Transaction
 from .errors import TransactionError, CorruptionError
-from .config import DurabilityMode
 from .query_api import QueryAPI
 from cortical.cdg.schema import SchemaRegistry
 from .validation import (
@@ -148,7 +148,6 @@ class GoTManager:
     def __init__(
         self,
         got_dir: Path,
-        durability: DurabilityMode = DurabilityMode.BALANCED,
         cache_enabled: bool = True,  # Deprecated: caching now handled by CDGStore
         *,
         tx_manager: CDGTransactionManager,
@@ -159,10 +158,10 @@ class GoTManager:
 
         GoTManager is a thin domain layer - pass-through to CDG services.
         Indexing is handled automatically by CDGTransactionManager on commit.
+        Recovery is handled by CDGRecoveryManager (no GoT wrapper needed).
 
         Args:
             got_dir: Base directory for GoT storage
-            durability: Durability mode (DESIGN ISSUE: should be CDG config)
             cache_enabled: DEPRECATED - ignored
             tx_manager: REQUIRED - CDGTransactionManager instance
             schema_registry: REQUIRED - SchemaRegistry for validation
@@ -182,11 +181,9 @@ class GoTManager:
             )
 
         self.got_dir = Path(got_dir)
-        self.durability = durability  # DESIGN ISSUE: should be CDG config only
         self.tx_manager = tx_manager
         self._schema_registry = schema_registry
         self._sync_manager = None
-        self._recovery_manager = None
         self._query_api = None
 
         logger.debug(f"GoTManager initialized")
@@ -198,12 +195,8 @@ class GoTManager:
             self._sync_manager = SyncManager(self.got_dir)
         return self._sync_manager
 
-    @property
-    def recovery_manager(self) -> RecoveryManager:
-        """Get recovery manager (lazy initialization)."""
-        if self._recovery_manager is None:
-            self._recovery_manager = RecoveryManager(self.got_dir)
-        return self._recovery_manager
+    # Recovery is handled by CDGRecoveryManager - no GoT property needed
+    # Use tx_manager.recover() or resolve CDGRecoveryManager from container
 
     # Indexing is handled by CDGTransactionManager automatically on commit
     # No index_manager property needed here
@@ -1085,12 +1078,15 @@ class GoTManager:
 
     def recover(self) -> RecoveryResult:
         """
-        Run recovery procedures.
+        Run recovery procedures via CDG layer.
+
+        Delegates to CDGTransactionManager which uses CDGRecoveryManager.
+        Recovery is automatically run on startup if configured.
 
         Returns:
             RecoveryResult with recovery details
         """
-        return self.recovery_manager.recover()
+        return self.tx_manager.recover()
 
     def find_tasks(
         self,
