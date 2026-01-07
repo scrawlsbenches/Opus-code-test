@@ -467,13 +467,13 @@ def _print_result_item(item: Any) -> None:
 
 def _cmd_list_fields(args) -> int:
     """List available fields for an entity type."""
-    from cortical.got.schema import get_registry
-    from cortical.got.entity_schemas import ensure_schemas_registered
+    from cortical.core.bootstrap import get_container
+    from cortical.cdg.schema import SchemaRegistry
 
-    ensure_schemas_registered()
+    container = get_container()
+    registry = container.resolve(SchemaRegistry)
 
     entity_type = getattr(args, 'type', 'task')
-    registry = get_registry()
 
     schema = registry.get_schema(entity_type)
     if schema is not None:

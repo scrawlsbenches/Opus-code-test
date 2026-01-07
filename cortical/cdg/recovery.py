@@ -30,8 +30,6 @@ from __future__ import annotations
 
 import json
 import logging
-import time
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
 
@@ -43,63 +41,14 @@ from .wal import CDGWALManager
 from .config import CDGConfig, RecoveryMode, OrphanStrategy
 from .errors import CorruptionError
 from cortical.utils.checksums import compute_checksum
+from cortical.common.recovery_types import RecoveryResult, RepairResult
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from .index_manager import CDGIndexManager
 
-@dataclass
-class RecoveryResult:
-    """
-    Result of crash recovery operation with detailed diagnostics.
-
-    Attributes:
-        success: True if recovery completed without corruption
-        recovered_transactions: Number of incomplete transactions recovered
-        rolled_back: List of transaction IDs that were rolled back
-        corrupted_entities: List of entity IDs with checksum mismatches
-        corrupted_wal_entries: Count of WAL entries with invalid checksums
-        orphans_detected: List of entity IDs found without WAL records
-        orphans_repaired: Number of orphans that were repaired (adopted)
-        reconstructed_entities: List of entity IDs reconstructed from WAL
-        indexes_rebuilt: True if indexes were rebuilt during recovery
-        actions_taken: Human-readable log of recovery actions
-    """
-
-    success: bool
-    recovered_transactions: int
-    rolled_back: List[str] = field(default_factory=list)
-    corrupted_entities: List[str] = field(default_factory=list)
-    corrupted_wal_entries: int = 0
-    orphans_detected: List[str] = field(default_factory=list)
-    orphans_repaired: int = 0
-    reconstructed_entities: List[str] = field(default_factory=list)
-    indexes_rebuilt: bool = False
-    actions_taken: List[str] = field(default_factory=list)
-
-    def add_action(self, action: str) -> None:
-        """
-        Log a recovery action.
-
-        Args:
-            action: Human-readable description of action taken
-        """
-        self.actions_taken.append(action)
-
-
-@dataclass
-class RepairResult:
-    """
-    Result of orphan entity repair operation.
-
-    Attributes:
-        success: True if repair completed without errors
-        repaired_count: Number of orphaned entities repaired
-        repaired_entities: List of entity IDs that were repaired
-        errors: List of error messages encountered during repair
-    """
-
-    success: bool
-    repaired_count: int
-    repaired_entities: List[str] = field(default_factory=list)
-    errors: List[str] = field(default_factory=list)
+# Re-export for backward compatibility
+__all__ = ['CDGRecoveryManager', 'RecoveryResult', 'RepairResult']
 
 
 class CDGRecoveryManager:
@@ -126,7 +75,8 @@ class CDGRecoveryManager:
         self,
         store_dir: Path,
         config: CDGConfig,
-        entity_factory: Optional[EntityFactory] = None
+        entity_factory: Optional[EntityFactory] = None,
+        index_manager: Optional["CDGIndexManager"] = None,
     ):
         """
         Initialize recovery manager.
@@ -135,16 +85,21 @@ class CDGRecoveryManager:
             store_dir: Base directory for CDG storage
             config: CDG configuration controlling recovery behavior
             entity_factory: Optional factory for creating domain-specific entities
+            index_manager: Optional index manager for schema-based index recovery
         """
         self.store_dir = Path(store_dir)
         self.store_dir.mkdir(parents=True, exist_ok=True)
         self.config = config
 
+        # Index manager for schema-based index recovery
+        self._index_manager = index_manager
+
         # Initialize storage (without triggering transaction manager recovery)
         self.store = CDGStore(
             self.store_dir,
             config=config,
-            entity_factory=entity_factory
+            entity_factory=entity_factory,
+            index_manager=index_manager,
         )
 
         # Initialize WAL if enabled
@@ -199,15 +154,23 @@ class CDGRecoveryManager:
         """
         Check if indexes need to be rebuilt.
 
-        This is a placeholder that always returns False since index
-        recovery is handled via the optional index_rebuild_callback.
+        Uses CDGIndexManager to determine if indexes are stale.
+        Returns False if no index manager is configured.
 
         Returns:
-            False (indexes handled externally)
+            True if indexes are stale and need rebuilding
         """
-        # Index rebuilding is delegated to the callback if provided
-        # We don't have direct knowledge of index structure here
-        return False
+        if self._index_manager is None:
+            return False
+
+        try:
+            return self._index_manager.needs_rebuild()
+        except Exception as e:
+            logger.warning(
+                "Index manager needs_rebuild check failed: %s: %s",
+                type(e).__name__, e
+            )
+            return True  # Assume rebuild needed on error
 
     def recover(self) -> RecoveryResult:
         """
@@ -315,12 +278,19 @@ class CDGRecoveryManager:
         if corrupted_wal_count > 0:
             result.add_action(f"Found {corrupted_wal_count} corrupted WAL entry/entries")
 
-        # Step 7: Rebuild indexes if callback provided
-        if self.config.index_rebuild_callback:
+        # Step 7: Rebuild indexes (prefer CDGIndexManager, fall back to callback)
+        if self._index_manager is not None:
             try:
-                task_count = self.config.index_rebuild_callback(self.store_dir)
+                def entity_iterator():
+                    """Yield (entity_type, entity_data) tuples for indexing."""
+                    for entity in self.store.iter_entities():
+                        entity_type = getattr(entity, 'entity_type', None)
+                        if entity_type:
+                            yield (entity_type, entity.to_dict())
+
+                entity_count = self._index_manager.rebuild_all(entity_iterator)
                 result.indexes_rebuilt = True
-                result.add_action(f"Rebuilt indexes: {task_count} task(s) indexed")
+                result.add_action(f"Rebuilt indexes: {entity_count} entities indexed")
             except Exception as e:
                 result.success = False
                 result.add_action(f"Index rebuild failed: {e}")
@@ -497,11 +467,14 @@ class CDGRecoveryManager:
             op = entry.get('op')
             data = entry.get('data', {})
 
-            if op == 'WRITE' and 'entity_data' in data:
-                # Store WRITE entry with entity_data for potential reconstruction
-                if tx_id not in tx_writes:
-                    tx_writes[tx_id] = []
-                tx_writes[tx_id].append(data)
+            if op == 'WRITE':
+                # Store WRITE entries for reconstruction OR deletion tracking
+                # Entries with entity_data can be reconstructed
+                # Entries with new_version == -1 are deletions (no entity_data)
+                if 'entity_data' in data or data.get('new_version') == -1:
+                    if tx_id not in tx_writes:
+                        tx_writes[tx_id] = []
+                    tx_writes[tx_id].append(data)
 
             elif op == 'TX_COMMIT':
                 committed_txs.add(tx_id)
@@ -510,7 +483,17 @@ class CDGRecoveryManager:
                 # Transaction was aborted/rolled back, discard its writes
                 tx_writes.pop(tx_id, None)
 
-        # For each committed transaction, check if entities need reconstruction
+        # First pass: collect all deleted entity IDs from committed transactions
+        # This ensures we don't reconstruct entities that were later deleted
+        deleted_entities: set[str] = set()
+        for tx_id in committed_txs:
+            for write_entry in tx_writes.get(tx_id, []):
+                entity_id = write_entry.get('entity_id')
+                expected_version = write_entry.get('new_version')
+                if entity_id and expected_version == -1:
+                    deleted_entities.add(entity_id)
+
+        # Second pass: reconstruct entities that need it (excluding deleted ones)
         for tx_id in committed_txs:
             write_entries = tx_writes.get(tx_id, [])
 
@@ -519,11 +502,16 @@ class CDGRecoveryManager:
                 entity_data = write_entry.get('entity_data')
                 expected_version = write_entry.get('new_version')
 
-                if not entity_id or not entity_data:
+                # Skip if no entity_id or if this is a deletion entry
+                if not entity_id or expected_version == -1:
                     continue
 
-                # Skip deletions (new_version == -1)
-                if expected_version == -1:
+                # Skip entities that were deleted in a later transaction
+                if entity_id in deleted_entities:
+                    continue
+
+                # Skip if no entity_data to reconstruct from
+                if not entity_data:
                     continue
 
                 # Check if entity needs reconstruction

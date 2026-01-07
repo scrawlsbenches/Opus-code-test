@@ -1,0 +1,15 @@
+{
+  "_checksum": "1d1955fb85ec58b9",
+  "_written_at": "2026-01-07T10:20:33.764108+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2026-01-07T10:20:33.752011+00:00",
+    "entity_type": "decision",
+    "id": "D-20260107-102033-46d444bf",
+    "modified_at": "2026-01-07T10:20:33.764041+00:00",
+    "properties": {},
+    "rationale": "Testing CLI functionality during mental model session",
+    "title": "Exercised got_utils CLI",
+    "version": 2
+  }
+}

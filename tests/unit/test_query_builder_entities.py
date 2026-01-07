@@ -13,7 +13,6 @@ from pathlib import Path
 from unittest.mock import Mock, MagicMock, patch
 from cortical.got import GoTManager
 from cortical.got.query_builder import Query, QueryValidationError
-from cortical.got.entity_schemas import ensure_schemas_registered
 from tests.conftest import _create_got_manager
 
 
@@ -30,9 +29,6 @@ def test_entities_normalizes_to_lowercase(manager):
     WHEN creating query with entities()
     THEN should normalize to lowercase
     """
-    # Ensure schemas registered for validation
-    ensure_schemas_registered()
-
     query = Query(manager).entities('TASK')
     assert query._entity_type_str == 'task'
 

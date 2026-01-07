@@ -32,6 +32,11 @@ from .filesystem import (
     InMemoryFileSystem,
 )
 
+from .recovery_types import (
+    RecoveryResult,
+    RepairResult,
+)
+
 __all__ = [
     # Container
     'Container',
@@ -43,4 +48,7 @@ __all__ = [
     'FileSystem',
     'RealFileSystem',
     'InMemoryFileSystem',
+    # Recovery
+    'RecoveryResult',
+    'RepairResult',
 ]

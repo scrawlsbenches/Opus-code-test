@@ -7,16 +7,12 @@ Tests schema definitions, field validation, migrations, and registry.
 import pytest
 from typing import Dict, Any
 
-from cortical.got.schema import (
+from cortical.cdg.schema import (
     BaseSchema,
     Field,
     FieldType,
     SchemaRegistry,
     ValidationResult,
-    get_registry,
-    register_schema,
-    validate_entity,
-    migrate_entity,
 )
 
 
@@ -456,35 +452,49 @@ class TestSchemaRegistry:
         schemas = registry.list_schemas()
         assert schemas == {'type1': 1, 'type2': 2}
 
-    def test_singleton_pattern(self):
-        """Test registry is singleton."""
+    def test_registry_is_not_singleton(self):
+        """Test registry instances are independent (no singleton).
+
+        SchemaRegistry lifecycle is now managed by Container.
+        Each call to SchemaRegistry() creates a new instance.
+        Use set_registry() to set the global instance.
+        """
         reg1 = SchemaRegistry()
         reg2 = SchemaRegistry()
-        assert reg1 is reg2
+        # Each call creates a new instance
+        assert reg1 is not reg2
 
-
-class TestGlobalFunctions:
-    """Tests for module-level convenience functions."""
-
-    @pytest.fixture(autouse=True)
-    def clear_registry(self):
-        """Clear global registry before each test."""
-        get_registry().clear()
-        yield
-        get_registry().clear()
-
-    def test_register_schema(self):
-        """Test global register_schema function."""
+        # They start empty and are independent
         class TestSchema(BaseSchema):
             schema_version = 1
             entity_type = 'test'
             fields = {}
 
-        register_schema('test', TestSchema)
-        assert get_registry().has_schema('test')
+        reg1.register('test', TestSchema)
+        assert reg1.has_schema('test')
+        assert not reg2.has_schema('test')
 
-    def test_validate_entity(self):
-        """Test global validate_entity function."""
+
+class TestRegistryMethods:
+    """Tests for SchemaRegistry methods (formerly global functions)."""
+
+    @pytest.fixture
+    def registry(self):
+        """Create a fresh registry for each test."""
+        return SchemaRegistry()
+
+    def test_register_schema(self, registry):
+        """Test registry.register() method."""
+        class TestSchema(BaseSchema):
+            schema_version = 1
+            entity_type = 'test'
+            fields = {}
+
+        registry.register('test', TestSchema)
+        assert registry.has_schema('test')
+
+    def test_validate_entity(self, registry):
+        """Test registry.validate() method."""
         class TestSchema(BaseSchema):
             schema_version = 1
             entity_type = 'test'
@@ -492,12 +502,12 @@ class TestGlobalFunctions:
                 'name': Field('name', FieldType.STRING, required=True),
             }
 
-        register_schema('test', TestSchema)
-        result = validate_entity('test', {'name': 'hello'})
+        registry.register('test', TestSchema)
+        result = registry.validate('test', {'name': 'hello'})
         assert result.valid
 
-    def test_migrate_entity(self):
-        """Test global migrate_entity function."""
+    def test_migrate_entity(self, registry):
+        """Test registry.migrate() method."""
         class TestSchema(BaseSchema):
             schema_version = 2
             entity_type = 'test'
@@ -508,9 +518,9 @@ class TestGlobalFunctions:
                 data['v2'] = True
                 return data
 
-        register_schema('test', TestSchema)
+        registry.register('test', TestSchema)
         data = {'id': '123', '_schema_version': 1}
-        migrated, result = migrate_entity('test', data)
+        migrated, result = registry.migrate('test', data)
 
         assert result.migrated
         assert migrated['v2'] is True

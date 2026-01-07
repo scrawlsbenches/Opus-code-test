@@ -1,0 +1,102 @@
+# Audit: Misleading Comments
+
+*Audit ID: misleading-comments-2026-01-07*
+*Created: 2026-01-07*
+*Status: SETUP*
+
+---
+
+## Goal
+
+Find and assess comments that could mislead developers or AI agents into believing things that aren't true, such as:
+- Features that are "planned" but will never happen
+- References to documents that don't exist
+- Stale TODOs that are done or abandoned
+- Aspirational statements presented as commitments
+
+## Trigger
+
+Agent was misled by this comment in `cortical/cdg/storage.py:342`:
+```python
+# FUTURE: When CDG index is implemented per the distributed graph
+# specification (docs/architecture/DISTRIBUTED_GRAPH_SPECIFICATION.md),
+```
+
+The spec exists but there's no evidence of implementation. Agent presented this as a "planned fix" when it's just speculation.
+
+---
+
+## Scope
+
+### In Scope
+- `cortical/` directory (all Python files)
+- Comment patterns: `FUTURE:`, `TODO:`, `FIXME:`, `PLANNED:`, `HACK:`, `XXX:`, `TEMPORARY:`, `WORKAROUND:`
+- References to documents (check if they exist)
+- Comments containing "will be", "should be", "planned to"
+
+### Out of Scope
+- `tests/` directory (test comments are less critical)
+- `docs/` directory (documentation is separate concern)
+- `.git/`, `__pycache__/`, virtual environments
+- Third-party code
+
+### Boundaries
+- Max 50 findings per task
+- If more, truncate and note for follow-up task
+
+---
+
+## Success Criteria
+
+1. All comments matching patterns in scope are catalogued
+2. Each finding has: file, line, content, assessment, notes
+3. Referenced documents are verified (exist/don't exist)
+4. Findings categorized: accurate | stale | misleading | unknown
+5. Human has reviewed and made decisions
+
+---
+
+## Tasks
+
+| Task ID | Directory | Pattern | Status | Claimed By | Result |
+|---------|-----------|---------|--------|------------|--------|
+| task-001 | `cortical/cdg/` | All patterns | pending | - | - |
+| task-002 | `cortical/got/` | All patterns | pending | - | - |
+| task-003 | `cortical/core/` | All patterns | pending | - | - |
+| task-004 | `cortical/common/` | All patterns | pending | - | - |
+| task-005 | `cortical/` (remaining) | All patterns | pending | - | - |
+
+---
+
+## Progress Log
+
+| Timestamp | Event | Agent/Human | Notes |
+|-----------|-------|-------------|-------|
+| 2026-01-07 | Audit created | Agent | Triggered by misleading FUTURE: comment |
+| | | | |
+
+---
+
+## Decisions
+
+See `decisions.md` for human decisions on findings.
+
+---
+
+## Conflicts
+
+None yet.
+
+---
+
+## Final Status
+
+*To be filled when audit completes*
+
+- Total findings:
+- Accurate:
+- Stale:
+- Misleading:
+- Fixed:
+- Deferred:
+- Accepted (no change):

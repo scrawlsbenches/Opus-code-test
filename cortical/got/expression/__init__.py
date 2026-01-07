@@ -98,7 +98,14 @@ def validate(expression, entity_type=None):
     if expression is None:
         return
 
-    validator = FieldValidator(entity_type=entity_type)
+    # Resolve SchemaRegistry from container for field validation
+    from cortical.core.bootstrap import get_container
+    from cortical.cdg.schema import SchemaRegistry
+
+    container = get_container()
+    registry = container.resolve(SchemaRegistry)
+
+    validator = FieldValidator(registry, entity_type=entity_type)
     validator.validate_expression(expression)
 
 

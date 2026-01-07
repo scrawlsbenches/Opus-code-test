@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from cortical.utils.locking import ProcessLock
+from cortical.common.filesystem import FileSystem
 from .types import Entity
 from .errors import TransactionError, ConflictError
 from .storage import CDGStore, EntityFactory
@@ -90,7 +91,8 @@ class CDGTransactionManager:
         self,
         store_dir: Path,
         config: Optional[CDGConfig] = None,
-        entity_factory: Optional[EntityFactory] = None
+        entity_factory: Optional[EntityFactory] = None,
+        filesystem: Optional[FileSystem] = None,
     ):
         """
         Initialize transaction manager.
@@ -105,18 +107,20 @@ class CDGTransactionManager:
             store_dir: Base directory for CDG storage
             config: CDG configuration (uses defaults if not provided)
             entity_factory: Optional factory for creating domain-specific entities
+            filesystem: FileSystem implementation (defaults to RealFileSystem).
+                       Pass InMemoryFileSystem for test isolation.
         """
         self.store_dir = Path(store_dir)
-        self.store_dir.mkdir(parents=True, exist_ok=True)
 
         # Use provided config or create default
         self.config = config or CDGConfig()
 
-        # Initialize storage
+        # Initialize storage with filesystem abstraction
         self.store = CDGStore(
             self.store_dir,
             config=self.config,
-            entity_factory=entity_factory
+            entity_factory=entity_factory,
+            filesystem=filesystem,
         )
 
         # Initialize WAL if enabled
@@ -331,7 +335,8 @@ class CDGTransactionManager:
 
             # Step 4: Fsync WAL to ensure commit is durable BEFORE modifying entities
             # This is critical: WAL must be durable before we change entity files
-            if self.wal:
+            # Skip for RELAXED mode (no durability guarantees)
+            if self.wal and self.config.durability != DurabilityMode.RELAXED:
                 self.wal.fsync_now()
 
             # Step 5: Apply writes and deletes to entity files

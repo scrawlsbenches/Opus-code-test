@@ -41,6 +41,10 @@ from .types import Entity
 from .errors import CorruptionError, ValidationError, StorageError
 from .config import CDGConfig, DurabilityMode
 
+if TYPE_CHECKING:
+    from .schema import SchemaRegistry
+    from .index_manager import CDGIndexManager
+
 
 class NoOpLock:
     """
@@ -126,13 +130,14 @@ class CDGStore:
         store_dir: Path,
         config: Optional[CDGConfig] = None,
         entity_factory: Optional[EntityFactory] = None,
-        # Legacy parameters for VersionedStore compatibility
-        durability: Optional[DurabilityMode] = None,
-        validate_on_save: bool = True,
         # FileSystem abstraction for testability
         filesystem: Optional[FileSystem] = None,
         # Caching (enabled by default for performance)
         cache_enabled: bool = True,
+        # Schema registry for validation (injected via Container)
+        schema_registry: Optional["SchemaRegistry"] = None,
+        # Index manager for schema-based indexes (injected via Container)
+        index_manager: Optional["CDGIndexManager"] = None,
     ):
         """
         Initialize store, creating directory structure if needed.
@@ -141,10 +146,12 @@ class CDGStore:
             store_dir: Directory path for storing entities
             config: CDG configuration (optional, creates default if not provided)
             entity_factory: Function to create Entity from dict (optional)
-            durability: Legacy parameter for VersionedStore compatibility
-            validate_on_save: Legacy parameter for VersionedStore compatibility
             filesystem: FileSystem implementation (defaults to RealFileSystem)
             cache_enabled: Enable entity caching for read performance
+            schema_registry: SchemaRegistry for entity validation (optional,
+                           injected via Container for schema-aware validation)
+            index_manager: CDGIndexManager for schema-based indexes (optional,
+                          injected via Container for indexed field maintenance)
         """
         # FileSystem abstraction - defaults to real disk I/O
         self._fs: FileSystem = filesystem or RealFileSystem()
@@ -152,22 +159,23 @@ class CDGStore:
         self.store_dir = Path(store_dir)
         self._fs.mkdir(self.store_dir, parents=True, exist_ok=True)
 
-        # Handle configuration - support both new CDGConfig and legacy parameters
-        if config is not None:
-            self.config = config
-        else:
-            # Create config from legacy parameters or defaults
-            self.config = CDGConfig(
-                durability=durability or DurabilityMode.BALANCED,
-                validate_on_write=validate_on_save,
-            )
+        # Configuration - use provided config or create default
+        self.config = config or CDGConfig()
 
-        # For legacy compatibility
+        # Convenience aliases (used throughout storage code)
         self.durability = self.config.durability
         self.validate_on_save = self.config.validate_on_write
 
         # Entity factory for creating entities from dicts
         self.entity_factory = entity_factory or default_entity_factory
+
+        # Schema registry for validation (injected via Container)
+        # When set, enables schema-based validation on write
+        self._schema_registry: Optional["SchemaRegistry"] = schema_registry
+
+        # Index manager for schema-based indexes (injected via Container)
+        # When set, maintains indexes on write/delete based on schema configuration
+        self._index_manager: Optional["CDGIndexManager"] = index_manager
 
         # History directory for MVCC snapshots
         self.history_dir = self.store_dir / "_history"
@@ -455,6 +463,18 @@ class CDGStore:
                 # Invalidate cache for written entity
                 self._cache_invalidate(entity.id)
 
+                # Update indexes (failure logged but doesn't fail the write)
+                if self._index_manager is not None:
+                    try:
+                        old_data = current_entity.to_dict() if current_entity else None
+                        entity_type = getattr(entity, 'entity_type', None)
+                        if entity_type:
+                            self._index_manager.update_index(
+                                entity_type, entity.id, old_data, entity.to_dict()
+                            )
+                    except Exception as e:
+                        logger.warning(f"Index update failed for {entity.id}: {e}")
+
     def apply_writes(self, write_set: Dict[str, Entity]) -> int:
         """
         Atomically apply a set of writes.
@@ -491,12 +511,16 @@ class CDGStore:
                 temp_files = []
                 renamed_files = []  # Track successful renames for rollback
                 pending_history = []  # (entity_id, pending_path) for crash-safe history
+                old_entity_data = {}  # Capture old data for index updates
 
                 try:
                     # Step 1: Capture history and write to pending files (crash-safe)
                     # Pending files are written BEFORE entity writes so crash recovery works
                     for entity_id, entity in write_set.items():
                         current_entity = self.read(entity_id)
+                        # Capture old data for index updates
+                        if current_entity is not None:
+                            old_entity_data[entity_id] = current_entity.to_dict()
                         if current_entity is not None:
                             expected_version = current_entity.version + 1
                             entry = self._capture_history_entry(
@@ -533,6 +557,22 @@ class CDGStore:
                     # Step 6: Update global version
                     self._version += 1
                     self._save_version()
+
+                    # Step 7: Update indexes and invalidate cache
+                    # Index failures are logged but don't fail the transaction
+                    for entity_id, entity in write_set.items():
+                        self._cache_invalidate(entity_id)
+                        if self._index_manager is not None:
+                            try:
+                                entity_type = getattr(entity, 'entity_type', None)
+                                if entity_type:
+                                    self._index_manager.update_index(
+                                        entity_type, entity_id,
+                                        old_entity_data.get(entity_id),
+                                        entity.to_dict()
+                                    )
+                            except Exception as e:
+                                logger.warning(f"Index update failed for {entity_id}: {e}")
 
                     return self._version
 
@@ -583,6 +623,11 @@ class CDGStore:
                 if not self._fs.exists(path):
                     return False
 
+                # Capture entity before deletion for index updates
+                entity = self.read(entity_id)
+                old_data = entity.to_dict() if entity else None
+                entity_type = getattr(entity, 'entity_type', None) if entity else None
+
                 # Phase 1: Capture and write pending history (crash-safe)
                 # Use version 0 as expected_entity_version to indicate deletion
                 pending_path = None
@@ -605,6 +650,15 @@ class CDGStore:
 
                 # Invalidate cache for deleted entity
                 self._cache_invalidate(entity_id)
+
+                # Update indexes (failure logged but doesn't fail the delete)
+                if self._index_manager is not None and entity_type:
+                    try:
+                        self._index_manager.update_index(
+                            entity_type, entity_id, old_data, None
+                        )
+                    except Exception as e:
+                        logger.warning(f"Index update failed for deleted {entity_id}: {e}")
 
                 return True
 
@@ -633,6 +687,7 @@ class CDGStore:
             with self._write_process_lock:
                 deleted_files = []  # Track for rollback: (entity_id, entity_data, path)
                 pending_history = []  # Track pending history: (entity_id, pending_path)
+                deleted_entities = []  # Track for index updates: (entity_id, entity_type, old_data)
 
                 try:
                     # Step 1: Capture history and write to pending files (crash-safe)
@@ -640,6 +695,12 @@ class CDGStore:
                     for entity_id in delete_set:
                         path = self._entity_path(entity_id)
                         if self._fs.exists(path):
+                            # Capture entity for index updates before deletion
+                            entity = self.read(entity_id)
+                            if entity:
+                                entity_type = getattr(entity, 'entity_type', None)
+                                deleted_entities.append((entity_id, entity_type, entity.to_dict()))
+
                             # Capture history entry with version 0 indicating deletion
                             entry = self._capture_history_entry(
                                 entity_id, self._version, expected_entity_version=0
@@ -668,9 +729,20 @@ class CDGStore:
                         self._version += 1
                         self._save_version()
 
-                    # Step 5: Invalidate cache for all deleted entities
+                    # Step 5: Invalidate cache and update indexes for all deleted entities
+                    # Index failures are logged but don't fail the transaction
                     for entity_id, _, _ in deleted_files:
                         self._cache_invalidate(entity_id)
+
+                    if self._index_manager is not None:
+                        for entity_id, entity_type, old_data in deleted_entities:
+                            if entity_type:
+                                try:
+                                    self._index_manager.update_index(
+                                        entity_type, entity_id, old_data, None
+                                    )
+                                except Exception as e:
+                                    logger.warning(f"Index update failed for deleted {entity_id}: {e}")
 
                     return self._version
 
@@ -700,7 +772,9 @@ class CDGStore:
         """
         Validate entity before writing.
 
-        Override this method for custom validation logic.
+        Performs two levels of validation:
+        1. Basic validation (entity must have an ID)
+        2. Schema validation (if SchemaRegistry is configured)
 
         Args:
             entity: Entity to validate
@@ -717,6 +791,20 @@ class CDGStore:
                 "Entity must have an ID",
                 entity_type=getattr(entity, 'entity_type', 'unknown')
             )
+
+        # Schema validation (when registry is available)
+        if self._schema_registry is not None:
+            entity_type = getattr(entity, 'entity_type', None)
+            if entity_type and self._schema_registry.has_schema(entity_type):
+                # Convert entity to dict for validation
+                entity_data = entity.to_dict()
+                result = self._schema_registry.validate(entity_type, entity_data)
+                if not result.valid:
+                    raise ValidationError(
+                        f"Schema validation failed: {'; '.join(result.errors)}",
+                        entity_id=entity.id,
+                        entity_type=entity_type
+                    )
 
     def _write_with_checksum(
         self, path: Path, data: dict, max_retries: int = 3
@@ -746,8 +834,9 @@ class CDGStore:
                 # Write the file
                 self._fs.write_text(path, content)
 
-                # Fsync if durability mode requires it
-                if self.durability != DurabilityMode.FAST:
+                # Fsync if PARANOID mode (immediate durability per write)
+                # BALANCED mode syncs at commit time via fsync_all() instead
+                if self.durability == DurabilityMode.PARANOID:
                     self._fs.fsync(path)
 
                 # Verify by reading back and checking checksum
@@ -823,8 +912,9 @@ class CDGStore:
         Args:
             path: File path to sync
         """
-        # Skip fsync if FAST mode
-        if self.durability == DurabilityMode.FAST:
+        # Skip fsync if RELAXED mode (no fsync at all)
+        # BALANCED and PARANOID both use this for batch fsync at commit
+        if self.durability == DurabilityMode.RELAXED:
             return
 
         self._fs.fsync(path)
@@ -922,7 +1012,8 @@ class CDGStore:
 
         content = json.dumps(history_entry, sort_keys=True) + '\n'
         self._fs.write_text(pending_path, content)
-        if self.durability != DurabilityMode.FAST:
+        # Only fsync for PARANOID (BALANCED syncs at commit)
+        if self.durability == DurabilityMode.PARANOID:
             self._fs.fsync(pending_path)
 
         return pending_path
@@ -954,7 +1045,8 @@ class CDGStore:
         with self._history_lock:
             content = json.dumps(entry, sort_keys=True) + '\n'
             self._fs.append_text(history_path, content)
-            if self.durability != DurabilityMode.FAST:
+            # Only fsync for PARANOID (BALANCED syncs at commit)
+            if self.durability == DurabilityMode.PARANOID:
                 self._fs.fsync(history_path)
 
         # Remove pending file
@@ -1011,31 +1103,6 @@ class CDGStore:
             except (json.JSONDecodeError, OSError):
                 # Corrupted pending file, delete it
                 self._fs.unlink(pending_path, missing_ok=True)
-
-    def _persist_history_entry(self, entity_id: str, history_entry: dict) -> None:
-        """
-        Persist a previously captured history entry (legacy direct append).
-
-        NOTE: For crash-safe history, use _write_pending_history + _finalize_pending_history.
-        This method is kept for backward compatibility but does NOT guarantee
-        history persistence on crash between entity write and history write.
-
-        Args:
-            entity_id: Entity identifier
-            history_entry: History entry dict from _capture_history_entry
-        """
-        # Remove recovery metadata if present
-        entry = dict(history_entry)
-        entry.pop("expected_entity_version", None)
-
-        history_path = self._history_path(entity_id)
-
-        with self._history_lock:
-            content = json.dumps(entry, sort_keys=True) + '\n'
-            self._fs.append_text(history_path, content)
-            # fsync history file for durability
-            if self.durability != DurabilityMode.FAST:
-                self._fs.fsync(history_path)
 
     def _load_version(self) -> int:
         """

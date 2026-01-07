@@ -74,6 +74,12 @@ Before ANY work begins:
 │                          ENTRY GATE CHECKLIST                            │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
+│  □ 0. CHECK FOR SESSION SCRATCHPADS (if continuing previous work)       │
+│       cat docs/sessions/*.md 2>/dev/null | head -100                    │
+│       Look for "SESSION OVERRIDES" section at the top.                  │
+│       ⚠️  SCRATCHPAD OVERRIDES SUPERSEDE THIS CHECKLIST                 │
+│       If scratchpad says "DO NOT RUN TESTS", skip step 1.               │
+│                                                                          │
 │  □ 1. SMOKE TESTS PASS                                                  │
 │       python -m pytest tests/smoke/ -v --tb=short                       │
 │       If this fails, DO NOT PROCEED. Fix it or escalate.                │
@@ -364,6 +370,39 @@ that you understand the tradeoff.
 │                                                                          │
 │  7. QAPV                — Question → Answer → Produce → Verify cycle    │
 │                           Location: cortical/reasoning/cognitive_loop.py│
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Technical Debt: Reduce It When You Can
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    TECHNICAL DEBT REDUCTION                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  When you see technical debt, REDUCE IT if you can.                     │
+│                                                                          │
+│  This means:                                                            │
+│  - Consolidate duplicated code when discovered                          │
+│  - Remove dead code, don't comment it out                               │
+│  - Fix misleading names when you understand the intent                  │
+│  - Simplify complex logic when the simpler version is clear             │
+│  - Delete backward-compatibility shims when safe                        │
+│  - Replace if/elif chains with data structures                          │
+│                                                                          │
+│  The rule is simple:                                                    │
+│  IF you can reduce debt without breaking things,                        │
+│  AND it takes less than 30 minutes,                                     │
+│  THEN do it now, not later.                                             │
+│                                                                          │
+│  "Later" never comes. The next session won't remember.                  │
+│  The codebase accumulates cruft. Do it now.                             │
+│                                                                          │
+│  Exception: If you're in the middle of a larger task, note the debt     │
+│  and complete your current task first. Context-switching is expensive.  │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```

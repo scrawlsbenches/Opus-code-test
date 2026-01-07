@@ -64,7 +64,7 @@ def paranoid_wal_manager(temp_wal_dir):
 def fast_wal_manager(temp_wal_dir):
     """Provide a WAL manager with fast mode for performance tests."""
     config = CDGConfig(
-        durability=DurabilityMode.FAST,
+        durability=DurabilityMode.RELAXED,
         enable_wal=True,
         transactions_enabled=True
     )
@@ -572,7 +572,7 @@ class TestDeveloperHandlesConcurrentWrites:
         """
         # Given a WAL manager
         config = CDGConfig(
-            durability=DurabilityMode.FAST,  # Fast for test performance
+            durability=DurabilityMode.RELAXED,  # Fast for test performance
             enable_wal=True,
             transactions_enabled=True
         )

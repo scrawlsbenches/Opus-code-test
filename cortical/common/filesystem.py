@@ -78,6 +78,18 @@ class FileSystem(Protocol):
         """
         ...
 
+    def iterdir(self, path: Path) -> Iterator[Path]:
+        """
+        Iterate over directory contents.
+
+        Args:
+            path: Directory path to iterate
+
+        Returns:
+            Iterator of Path objects for directory contents
+        """
+        ...
+
     # =========================================================================
     # File Operations
     # =========================================================================
@@ -182,6 +194,9 @@ class RealFileSystem:
 
     def glob(self, path: Path, pattern: str) -> List[Path]:
         return list(path.glob(pattern))
+
+    def iterdir(self, path: Path) -> Iterator[Path]:
+        return path.iterdir()
 
     def read_text(self, path: Path) -> str:
         return path.read_text(encoding='utf-8')
@@ -306,6 +321,33 @@ class InMemoryFileSystem:
                         results.append(Path(file_path))
 
         return sorted(set(results))
+
+    def iterdir(self, path: Path) -> Iterator[Path]:
+        """Iterate over directory contents."""
+        path_str = self._normalize(path)
+        if path_str not in self._dirs:
+            raise FileNotFoundError(f"Directory not found: {path}")
+
+        # Find all files and dirs that are direct children of this directory
+        children = set()
+        prefix = path_str.rstrip("/") + "/"
+
+        # Check files
+        for file_path in self._files.keys():
+            if file_path.startswith(prefix):
+                # Get the immediate child name
+                remainder = file_path[len(prefix):]
+                if "/" not in remainder:
+                    children.add(file_path)
+
+        # Check directories
+        for dir_path in self._dirs:
+            if dir_path.startswith(prefix) and dir_path != path_str:
+                remainder = dir_path[len(prefix):]
+                if "/" not in remainder:
+                    children.add(dir_path)
+
+        return iter(sorted(Path(p) for p in children))
 
     def read_text(self, path: Path) -> str:
         path_str = self._normalize(path)
