@@ -147,20 +147,18 @@ Update the scratchpad's "Previous session branch" in this template before ending
 
 ## ⚠️ PRIORITY TASK LIST (in order)
 
-### 1. RECOVERY MODULE CONSOLIDATION [CRITICAL - ACTIVE BUGS]
+### 1. RECOVERY MODULE CONSOLIDATION [DONE ✓]
 
-**GoT recovery.py has BUGS that can cause data loss:**
+**COMPLETED 2026-01-07:**
+- Deleted `cortical/got/recovery.py` entirely
+- Created `cortical/common/recovery_types.py` (shared RecoveryResult, RepairResult)
+- Implemented `CDGRecoveryManager.needs_index_recovery()` with callback pattern
+- Added `index_stale_callback` to CDGConfig
+- GoTManager provides callbacks: `_is_index_stale()`, `_rebuild_indexes_callback()`
+- GoT now uses CDGRecoveryManager directly (configured with callbacks)
 
-| Bug | Location | Impact |
-|-----|----------|--------|
-| Direct WAL file append | Lines 612-624 | No locking, no fsync - crash corrupts WAL |
-| Missing `reconstruct_entities_from_wal()` | N/A | Loses data after crash-after-commit |
-| ADOPTED entry format mismatch | Lines 507-509 | Doesn't handle CDG's new format |
-| String vs Enum strategy | Line 527 | Type confusion, called with wrong value |
-
-**Duplication:** 350 lines (44% of combined 1425 lines)
-
-**Action:** Consolidate NOW. GoT delegates to CDG for core recovery, keeps only index logic.
+**Line reduction:** 641 → 0 (got/recovery.py deleted)
+**Bugs fixed:** All 4 bugs eliminated by delegation to CDG
 
 ### 2. FIX TEST IMPORTS [MECHANICAL]
 

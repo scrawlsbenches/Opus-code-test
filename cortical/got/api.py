@@ -38,9 +38,12 @@ from cortical.utils.id_generation import (
     generate_document_id,
 )
 from cortical.cdg.transaction_manager import CDGTransactionManager, CommitResult
+from cortical.cdg.recovery import CDGRecoveryManager
+from cortical.cdg.config import CDGConfig
+from cortical.common.recovery_types import RecoveryResult
 from .sync import SyncManager, SyncResult
-from .recovery import RecoveryManager, RecoveryResult
 from .indexer import QueryIndexManager
+from .entity_schemas import get_valid_statuses
 from .types import Task, Decision, Edge, Entity, Sprint, Epic, Handoff, ClaudeMdLayer, ClaudeMdVersion, Document, EdgeTypes, KnowledgeTransfer
 from .transaction import Transaction
 from .errors import TransactionError, CorruptionError
@@ -209,11 +212,84 @@ class GoTManager:
         return self._sync_manager
 
     @property
-    def recovery_manager(self) -> RecoveryManager:
+    def recovery_manager(self) -> CDGRecoveryManager:
         """Get recovery manager (lazy initialization)."""
         if self._recovery_manager is None:
-            self._recovery_manager = RecoveryManager(self.got_dir)
+            # Configure CDG recovery with GoT's index callbacks
+            config = CDGConfig.for_got()
+            config.index_stale_callback = self._is_index_stale
+            config.index_rebuild_callback = self._rebuild_indexes_callback
+
+            self._recovery_manager = CDGRecoveryManager(
+                store_dir=self.got_dir / "entities",
+                config=config,
+                entity_factory=lambda d: d  # GoT uses its own entity factory
+            )
         return self._recovery_manager
+
+    def _is_index_stale(self) -> bool:
+        """
+        Check if indexes are stale (callback for CDG recovery).
+
+        Returns True if:
+        - Index directory exists with files
+        - There are tasks on disk not in the index
+        """
+        index_dir = self.got_dir / "indexes"
+        if not index_dir.exists():
+            return False
+
+        index_files = list(index_dir.glob("*.json"))
+        if not index_files:
+            return False
+
+        # Get all task IDs from disk
+        entity_dir = self.got_dir / "entities"
+        entity_files = list(entity_dir.glob("T-*.json"))
+        disk_task_ids = set()
+
+        for entity_file in entity_files:
+            if entity_file.name.startswith("_") or entity_file.suffix == ".tmp":
+                continue
+            disk_task_ids.add(entity_file.stem)
+
+        if not disk_task_ids:
+            return False
+
+        # Check if indexes are stale by comparing with entities
+        temp_index_manager = QueryIndexManager(self.got_dir)
+        indexed_task_ids = set()
+        for status in get_valid_statuses('task'):
+            indexed_task_ids.update(temp_index_manager.lookup("status", status))
+
+        # Check if there are tasks on disk not in the index
+        missing_from_index = disk_task_ids - indexed_task_ids
+        if missing_from_index:
+            logger.debug(
+                "Index stale: %d task(s) not indexed",
+                len(missing_from_index)
+            )
+            return True
+
+        return False
+
+    def _rebuild_indexes_callback(self, store_dir) -> int:
+        """
+        Rebuild indexes (callback for CDG recovery).
+
+        Returns the number of tasks indexed.
+        """
+        tasks = self.list_all_tasks()
+        edges = self.list_edges()
+
+        if self._index_manager is None:
+            self._index_manager = QueryIndexManager(self.got_dir)
+
+        self._index_manager.rebuild_all(tasks, edges)
+        self._index_manager.save()
+
+        logger.info("Rebuilt indexes: %d tasks, %d edges", len(tasks), len(edges))
+        return len(tasks)
 
     @property
     def index_manager(self) -> QueryIndexManager:

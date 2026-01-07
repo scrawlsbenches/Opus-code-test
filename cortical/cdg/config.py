@@ -167,6 +167,11 @@ class CDGConfig:
     # Signature: Callable[[Path], int] where Path is store_dir, returns count
     index_rebuild_callback: Optional[Callable[[Any], int]] = None
 
+    # Index stale check callback (for GoT integration)
+    # Called to check if indexes need rebuilding
+    # Signature: Callable[[], bool] returns True if indexes are stale
+    index_stale_callback: Optional[Callable[[], bool]] = None
+
     # Storage optimization
     compression_enabled: bool = False
     encryption_enabled: bool = False

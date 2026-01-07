@@ -73,11 +73,12 @@ from cortical.cdg.transaction_manager import (
 )
 from cortical.utils.locking import ProcessLock
 
-from .recovery import (
-    RecoveryManager,
+# Recovery types from common (RecoveryManager is now CDGRecoveryManager)
+from cortical.common.recovery_types import (
     RecoveryResult,
     RepairResult,
 )
+from cortical.cdg.recovery import CDGRecoveryManager as RecoveryManager
 
 from .sync import (
     SyncManager,

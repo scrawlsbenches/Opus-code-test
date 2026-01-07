@@ -144,15 +144,23 @@ class CDGRecoveryManager:
         """
         Check if indexes need to be rebuilt.
 
-        This is a placeholder that always returns False since index
-        recovery is handled via the optional index_rebuild_callback.
+        Uses the index_stale_callback from config if provided.
+        If no callback is configured, returns False.
 
         Returns:
-            False (indexes handled externally)
+            True if indexes are stale and need rebuilding
         """
-        # Index rebuilding is delegated to the callback if provided
-        # We don't have direct knowledge of index structure here
-        return False
+        if self.config.index_stale_callback is None:
+            return False
+
+        try:
+            return self.config.index_stale_callback()
+        except Exception as e:
+            logger.warning(
+                "Index stale check failed: %s: %s",
+                type(e).__name__, e
+            )
+            return False
 
     def recover(self) -> RecoveryResult:
         """
