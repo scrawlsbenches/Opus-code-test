@@ -166,3 +166,4 @@ benchmarks/codebase_slm/corpus/
 # PRISM model backups (created by train_augmented.py safeguards)
 # These are local recovery copies, not meant for git
 benchmarks/codebase_slm/models/backups/
+docs/audits/audit_index.pkl
