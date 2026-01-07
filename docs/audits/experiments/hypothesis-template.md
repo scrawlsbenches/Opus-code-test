@@ -1,4 +1,6 @@
-# Experiment: {experiment-id}
+# Experiment: {YYYYMMDD}-{HHMMSS}-{hypothesis-slug}
+
+Filename: `exp-{YYYYMMDD}-{HHMMSS}-{hypothesis-slug}.md`
 
 *Date:*
 *Coordinator:*

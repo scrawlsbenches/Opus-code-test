@@ -27,19 +27,48 @@ docs/audits/
 ├── README.md                      # You are here
 ├── misleading-comments/           # Specific audit type
 │   ├── inbox/                     # Tasks waiting for agents
-│   │   └── task-{id}.md          # One task per file
+│   │   └── task-{timestamp}-{descriptor}.md
 │   ├── outbox/                    # Completed results
-│   │   └── result-{id}.md        # One result per task
+│   │   └── result-{timestamp}-{descriptor}.md
 │   ├── questions/                 # Agent needs human input (STOP AND WAIT)
-│   │   └── question-{id}.md      # Question requiring human decision
+│   │   └── question-{timestamp}-{descriptor}.md
 │   ├── problems/                  # Something went wrong (STOP AND REPORT)
-│   │   └── problem-{id}.md       # Error, blocker, or confusion
+│   │   └── problem-{timestamp}-{descriptor}.md
 │   ├── parking-lot/               # Out-of-scope findings
-│   │   └── finding-{id}.md       # Issues found but not in scope
+│   │   └── finding-{timestamp}-{descriptor}.md
 │   ├── manifest.md                # State tracking (SINGLE SOURCE OF TRUTH)
 │   └── decisions.md               # Human decisions on findings
 └── {other-audit-type}/            # Same structure for other audits
 ```
+
+### ID Format (CRITICAL - Prevents File Conflicts)
+
+All files use timestamp-based unique IDs:
+
+```
+{type}-{YYYYMMDD}-{HHMMSS}-{descriptor}.md
+```
+
+| Component | Format | Example |
+|-----------|--------|---------|
+| type | File type prefix | `task`, `result`, `exp`, `question` |
+| timestamp | `YYYYMMDD-HHMMSS` | `20260107-143052` |
+| descriptor | Kebab-case slug | `cdg-comments`, `stopping-triggers` |
+
+**Examples:**
+```
+task-20260107-143052-cdg-comments.md
+result-20260107-143052-cdg-comments.md
+result-20260107-143052-cdg-comments-partial.md
+exp-20260107-150000-explicit-stopping.md
+question-20260107-151230-category-definitions.md
+```
+
+**Why timestamps?**
+- **Never conflicts** - Each creation gets unique timestamp
+- **Chronologically sorted** - `ls` shows order naturally
+- **Re-runnable** - Same experiment, new timestamp = new file
+- **Traceable** - Results link to tasks via matching timestamp
 
 ---
 
@@ -65,10 +94,10 @@ docs/audits/
 | When | Action | Where |
 |------|--------|-------|
 | **Before starting** | Claim task | Rename to `.claimed.md` |
-| **Every 30 min OR 10 findings** | Write partial results | `outbox/result-{id}-partial.md` |
-| **When confused** | STOP, write question | `questions/question-{id}.md` |
-| **When blocked** | STOP, write problem | `problems/problem-{id}.md` |
-| **When done** | Final results, STOP | `outbox/result-{id}.md` |
+| **Every 30 min OR 10 findings** | Write partial results | `outbox/result-{timestamp}-{descriptor}-partial.md` |
+| **When confused** | STOP, write question | `questions/question-{timestamp}-{descriptor}.md` |
+| **When blocked** | STOP, write problem | `problems/problem-{timestamp}-{descriptor}.md` |
+| **When done** | Final results, STOP | `outbox/result-{timestamp}-{descriptor}.md` |
 
 **Hard rule:** If confused or blocked, **STOP IMMEDIATELY** and write to questions/ or problems/. Do not try to figure it out alone.
 
@@ -111,9 +140,9 @@ docs/audits/
 ### Phase 2: Discovery (Sub-Agents)
 
 Each agent:
-1. Claims ONE task from `inbox/` (rename to `inbox/task-{id}.claimed.md`)
+1. Claims ONE task from `inbox/` (rename to add `.claimed.md` suffix)
 2. Executes the bounded task
-3. Writes results to `outbox/result-{id}.md`
+3. Writes results to `outbox/result-{same-timestamp}-{same-descriptor}.md`
 4. Updates `manifest.md` to mark task complete
 5. If finds out-of-scope issues, writes to `parking-lot/`
 
@@ -224,16 +253,18 @@ If audit finds overwhelming number of issues:
 ### Agent Makes Mistake
 
 Results are never deleted. If a result is wrong:
-1. Add correction as new file: `outbox/result-{id}-correction.md`
-2. Reference the original
+1. Add correction as new file: `outbox/result-{timestamp}-{descriptor}-correction.md`
+2. Reference the original result file
 3. Explain what was wrong and why
 
 ---
 
 ## Task File Format
 
+Filename: `task-{YYYYMMDD}-{HHMMSS}-{descriptor}.md`
+
 ```markdown
-# Task: {task-id}
+# Task: {YYYYMMDD}-{HHMMSS}-{descriptor}
 
 ## Scope
 - **Directory:** `cortical/cdg/`
@@ -244,7 +275,7 @@ Results are never deleted. If a result is wrong:
 1. Search for pattern in directory
 2. For each match, record: file, line, content, assessment
 3. Check if any referenced documents exist
-4. Write results to `outbox/result-{task-id}.md`
+4. Write results to `outbox/result-{SAME-TIMESTAMP}-{SAME-DESCRIPTOR}.md`
 
 ## Success Criteria
 - All matches in scope examined
@@ -254,7 +285,7 @@ Results are never deleted. If a result is wrong:
 
 ## Claimed By
 - Agent: (fill when claiming)
-- Timestamp: (fill when claiming)
+- Claimed At: (fill when claiming)
 - Status: pending | in-progress | complete | abandoned
 ```
 
@@ -262,10 +293,13 @@ Results are never deleted. If a result is wrong:
 
 ## Result File Format
 
+Filename: `result-{YYYYMMDD}-{HHMMSS}-{descriptor}.md` (matches task timestamp)
+
 ```markdown
-# Result: {task-id}
+# Result: {YYYYMMDD}-{HHMMSS}-{descriptor}
 
 ## Summary
+- **Task:** task-{SAME-TIMESTAMP}-{SAME-DESCRIPTOR}.md
 - **Files scanned:** N
 - **Matches found:** N
 - **Findings:** N accurate, N stale, N misleading, N unknown
@@ -297,7 +331,7 @@ Results are never deleted. If a result is wrong:
 
 ## Completed By
 - Agent: (fill when completing)
-- Timestamp: (fill when completing)
+- Completed At: (fill when completing)
 - Session/Branch: (fill with current branch)
 ```
 
@@ -388,4 +422,5 @@ For large issues that can't be fixed atomically:
 
 | Date | Change | Author |
 |------|--------|--------|
+| 2026-01-07 | Timestamp-based IDs to prevent file conflicts | Agent (claude/recover-code-review-fixes-makvR) |
 | 2026-01-07 | Initial creation | Agent (claude/code-review-fixes-J4A3H) |
