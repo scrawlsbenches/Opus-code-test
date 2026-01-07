@@ -32,12 +32,16 @@ class CommentMarkerTrie:
         """Initialize empty trie for comment markers."""
         self.root = CommentMarkerNode()
 
-    def insert(self, marker: str, count: int = 1) -> None:
+    def insert(self, marker: str, count: int = 1, accumulate: bool = False) -> None:
         """
         Add a comment marker to the trie.
 
         marker: The marker text (e.g., "FUTURE:", "TODO:")
-        count: How many times this marker appears
+        count: Count value for this marker
+        accumulate: If True, add to existing count; if False (default), set count
+
+        Note: Default behavior sets/replaces count for backwards compatibility.
+        Use accumulate=True when counting multiple occurrences incrementally.
 
         Stores lowercase internally for case-insensitive matching.
         Complexity: O(m) where m = len(marker)
@@ -54,7 +58,10 @@ class CommentMarkerTrie:
 
         # Mark end of marker and update count
         current.is_end_of_marker = True
-        current.count = count
+        if accumulate:
+            current.count += count
+        else:
+            current.count = count
 
     def search(self, marker: str) -> bool:
         """

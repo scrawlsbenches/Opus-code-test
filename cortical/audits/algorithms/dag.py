@@ -95,26 +95,33 @@ class TaskDAG:
         If A -> B, then A appears before B in result.
         Handles disconnected components.
         Raises ValueError if graph has cycle (shouldn't happen if add_dependency works).
+
+        Uses Kahn's algorithm with a heap for O(V + E log V) complexity
+        and deterministic ordering (lexicographically smallest node processed first).
         """
+        import heapq
+
         if not self._nodes:
             return []
 
-        # Kahn's algorithm using in-degree
+        # Kahn's algorithm using in-degree with heap for deterministic ordering
         in_degree = {node: len(self._reverse[node]) for node in self._nodes}
-        queue = [node for node in self._nodes if in_degree[node] == 0]
+        # Use a min-heap for O(log n) insertion and O(log n) extraction
+        # This gives deterministic ordering (smallest node ID first) efficiently
+        heap = [node for node in self._nodes if in_degree[node] == 0]
+        heapq.heapify(heap)  # O(n)
         result = []
 
-        while queue:
-            # Sort to ensure deterministic ordering for nodes with same in-degree
-            queue.sort()
-            current = queue.pop(0)
+        while heap:
+            # Pop smallest node - O(log n) vs O(n) for list.pop(0)
+            current = heapq.heappop(heap)
             result.append(current)
 
             # Reduce in-degree for all neighbors
             for neighbor in self._edges[current]:
                 in_degree[neighbor] -= 1
                 if in_degree[neighbor] == 0:
-                    queue.append(neighbor)
+                    heapq.heappush(heap, neighbor)  # O(log n) vs O(n log n) for sort
 
         # If not all nodes processed, there's a cycle
         if len(result) != len(self._nodes):

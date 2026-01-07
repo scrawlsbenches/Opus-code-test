@@ -71,7 +71,11 @@ class CommentClassifier:
         Return the most likely class for the comment.
 
         Uses log-space computation to avoid underflow.
+        Returns "unknown" if classifier hasn't been trained.
         """
+        if not self._class_counts:
+            return "unknown"
+
         log_probs = {}
 
         for class_label in self._class_counts:
@@ -102,7 +106,11 @@ class CommentClassifier:
 
         Uses log-sum-exp trick to convert log probabilities back to probabilities
         without overflow/underflow.
+        Returns empty dict if classifier hasn't been trained.
         """
+        if not self._class_counts:
+            return {}
+
         log_probs = {}
 
         for class_label in self._class_counts:
