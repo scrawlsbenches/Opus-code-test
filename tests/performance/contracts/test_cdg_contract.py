@@ -495,7 +495,7 @@ class TestCDGWALContract:
         from cortical.cdg.wal import CDGWALManager
         from cortical.cdg.config import CDGConfig, DurabilityMode
 
-        config = CDGConfig(durability=DurabilityMode.FAST)
+        config = CDGConfig(durability=DurabilityMode.RELAXED)
         wal = CDGWALManager(temp_cdg_dir / "wal", config)
 
         latencies = []
@@ -522,7 +522,7 @@ class TestCDGWALContract:
         from cortical.cdg.wal import CDGWALManager
         from cortical.cdg.config import CDGConfig, DurabilityMode
 
-        config = CDGConfig(durability=DurabilityMode.FAST)
+        config = CDGConfig(durability=DurabilityMode.RELAXED)
         wal = CDGWALManager(temp_cdg_dir / "wal", config)
 
         latencies = []
@@ -554,7 +554,7 @@ class TestCDGWALContract:
         from cortical.cdg.wal import CDGWALManager
         from cortical.cdg.config import CDGConfig, DurabilityMode
 
-        config = CDGConfig(durability=DurabilityMode.FAST)
+        config = CDGConfig(durability=DurabilityMode.RELAXED)
         wal = CDGWALManager(temp_cdg_dir / "wal", config)
 
         # Measure throughput over 2 seconds
@@ -844,7 +844,7 @@ class TestCDGTransactionContract:
 
         # Use FAST mode to isolate commit logic from fsync overhead
         config = CDGConfig.for_got()
-        config.durability = DurabilityMode.FAST
+        config.durability = DurabilityMode.RELAXED
         manager = CDGTransactionManager(temp_cdg_dir, config)
 
         latencies = []
@@ -895,7 +895,7 @@ class TestCDGTransactionContract:
 
         # Use FAST mode to isolate commit logic from fsync overhead
         config = CDGConfig.for_got()
-        config.durability = DurabilityMode.FAST
+        config.durability = DurabilityMode.RELAXED
         manager = CDGTransactionManager(temp_cdg_dir, config)
 
         latencies = []
@@ -978,7 +978,7 @@ class TestCDGRecoveryContract:
 
         config = CDGConfig(
             recovery_mode=RecoveryMode.FULL,
-            durability=DurabilityMode.FAST,
+            durability=DurabilityMode.RELAXED,
             enable_wal=True
         )
 

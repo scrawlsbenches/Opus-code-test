@@ -335,7 +335,8 @@ class CDGTransactionManager:
 
             # Step 4: Fsync WAL to ensure commit is durable BEFORE modifying entities
             # This is critical: WAL must be durable before we change entity files
-            if self.wal:
+            # Skip for RELAXED mode (no durability guarantees)
+            if self.wal and self.config.durability != DurabilityMode.RELAXED:
                 self.wal.fsync_now()
 
             # Step 5: Apply writes and deletes to entity files

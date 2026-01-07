@@ -1,7 +1,7 @@
 # CDG Layer Migration - Working Scratchpad
 
 *Session: 2026-01-07*
-*Branch: claude/refactor-cortical-codebase-OZ8em*
+*Branch: claude/code-review-fixes-J4A3H*
 
 ---
 
@@ -20,31 +20,26 @@
 1. Fixed `use_memory=True` test isolation bug
 2. Consolidated DurabilityMode: GoT now re-exports from CDG
 3. Traced all CDGConfig fields - found only 6 of 23+ are actually used
-4. **Found critical bugs in DurabilityMode implementation**
+4. **FIXED: DurabilityMode bugs** (see details below)
 
-### Critical bugs found (NOT YET FIXED):
+### DurabilityMode Bugs - FIXED ✓
 
-**BALANCED mode double-fsyncs entities** - This is wrong and wasteful:
-- storage.py:838 fsyncs each entity write
-- THEN transaction_manager:374 calls fsync_all() again
+**Problem:** BALANCED mode was double-fsyncing entities:
+- storage.py:838 fsynced each entity write (because `not in (FAST, RELAXED)`)
+- THEN transaction_manager:374 called fsync_all() again
 
-**The root cause:** storage.py checks `not in (FAST, RELAXED)` which means both PARANOID and BALANCED fsync per-write. BALANCED should only fsync at commit time.
+**Fixes applied:**
 
-### Changes needed (approved plan):
-
-1. **storage.py** (4 locations: 838, 915, 1013, 1045)
-   - Change: `if self.durability not in (FAST, RELAXED)`
-   - To: `if self.durability == DurabilityMode.PARANOID`
+1. **storage.py** (4 locations: 839, 917, 1016, 1049)
+   - Changed: `if self.durability not in (FAST, RELAXED)` → `if self.durability == DurabilityMode.PARANOID`
+   - NOTE: Line 917 (_fsync_file) changed to `== RELAXED` to preserve fsync_all behavior for BALANCED
 
 2. **transaction_manager.py** (line 339)
-   - Change: `if self.wal: self.wal.fsync_now()`
-   - To: `if self.wal and self.config.durability != DurabilityMode.RELAXED: self.wal.fsync_now()`
+   - Changed: `if self.wal:` → `if self.wal and self.config.durability != DurabilityMode.RELAXED:`
 
-3. **Remove FAST enum** - Keep only RELAXED (more descriptive)
-   - Update CDGConfig.for_high_performance() to use RELAXED
-   - Update any tests using FAST
-
-4. **Behavioral tests** - Verify each mode works correctly
+3. **Removed FAST enum** - Only RELAXED remains (clearer naming)
+   - Updated CDGConfig.for_high_performance() to use RELAXED
+   - Updated all tests using FAST to use RELAXED
 
 ### Correct behavior after fix:
 

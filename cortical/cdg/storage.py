@@ -834,8 +834,9 @@ class CDGStore:
                 # Write the file
                 self._fs.write_text(path, content)
 
-                # Fsync if durability mode requires it (skip for FAST/RELAXED)
-                if self.durability not in (DurabilityMode.FAST, DurabilityMode.RELAXED):
+                # Fsync if PARANOID mode (immediate durability per write)
+                # BALANCED mode syncs at commit time via fsync_all() instead
+                if self.durability == DurabilityMode.PARANOID:
                     self._fs.fsync(path)
 
                 # Verify by reading back and checking checksum
@@ -911,8 +912,9 @@ class CDGStore:
         Args:
             path: File path to sync
         """
-        # Skip fsync if FAST/RELAXED mode (both mean no fsync)
-        if self.durability in (DurabilityMode.FAST, DurabilityMode.RELAXED):
+        # Skip fsync if RELAXED mode (no fsync at all)
+        # BALANCED and PARANOID both use this for batch fsync at commit
+        if self.durability == DurabilityMode.RELAXED:
             return
 
         self._fs.fsync(path)
@@ -1010,7 +1012,8 @@ class CDGStore:
 
         content = json.dumps(history_entry, sort_keys=True) + '\n'
         self._fs.write_text(pending_path, content)
-        if self.durability not in (DurabilityMode.FAST, DurabilityMode.RELAXED):
+        # Only fsync for PARANOID (BALANCED syncs at commit)
+        if self.durability == DurabilityMode.PARANOID:
             self._fs.fsync(pending_path)
 
         return pending_path
@@ -1042,7 +1045,8 @@ class CDGStore:
         with self._history_lock:
             content = json.dumps(entry, sort_keys=True) + '\n'
             self._fs.append_text(history_path, content)
-            if self.durability not in (DurabilityMode.FAST, DurabilityMode.RELAXED):
+            # Only fsync for PARANOID (BALANCED syncs at commit)
+            if self.durability == DurabilityMode.PARANOID:
                 self._fs.fsync(history_path)
 
         # Remove pending file

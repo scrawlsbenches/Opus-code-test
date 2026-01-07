@@ -29,14 +29,13 @@ class TestDurabilityMode(unittest.TestCase):
         self.assertEqual(DurabilityMode.BALANCED.value, "balanced")
         self.assertEqual(DurabilityMode.RELAXED.value, "relaxed")
 
-    def test_durability_mode_has_four_values(self):
-        """Test that DurabilityMode has exactly 4 modes (FAST and RELAXED are both no-fsync)."""
+    def test_durability_mode_has_three_values(self):
+        """Test that DurabilityMode has exactly 3 modes."""
         modes = list(DurabilityMode)
-        self.assertEqual(len(modes), 4)
+        self.assertEqual(len(modes), 3)
         self.assertIn(DurabilityMode.PARANOID, modes)
         self.assertIn(DurabilityMode.BALANCED, modes)
         self.assertIn(DurabilityMode.RELAXED, modes)
-        self.assertIn(DurabilityMode.FAST, modes)
 
 
 class TestGoTConfig(unittest.TestCase):
