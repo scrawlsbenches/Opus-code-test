@@ -165,9 +165,9 @@ Update the scratchpad's "Previous session branch" in this template before ending
 3. ✅ Integrate IndexManager with CDGStore (update indexes on write)
 4. ✅ Integrate IndexManager with CDGRecoveryManager
 5. ✅ Mark callbacks DEPRECATED in CDGConfig (kept for backward compat)
-6. ⬜ Wire CDGIndexManager into GoT bootstrap/container
-7. ⬜ Update GoT entity schemas with `indexed=True` on queryable fields
-8. ⬜ Remove QueryIndexManager usage from GoTManager
+6. ✅ Wire CDGIndexManager into CDGModule (bootstrap)
+7. ✅ Update GoT entity schemas with `indexed=True` on queryable fields
+8. ⬜ Remove QueryIndexManager usage from GoTManager (future work)
 
 **CDGIndexManager API:**
 ```python
@@ -178,12 +178,25 @@ class CDGIndexManager:
     def needs_rebuild(self) -> bool
 ```
 
-### 2. FIX TEST IMPORTS [MECHANICAL]
+### 2. REMOVE QUERYINDEXMANAGER FROM GOT [CLEANUP]
+
+GoT still uses its own QueryIndexManager in `got/indexer.py`, which is now
+redundant with CDGIndexManager. This involves:
+
+- Remove `_is_index_stale()`, `_rebuild_indexes_callback()` from api.py
+- Remove `_index_manager` property and related methods from api.py
+- Remove manual index updates from TransactionContext
+- Update queries to use `container.resolve(CDGIndexManager)` instead
+
+**Note:** CDGStore already calls CDGIndexManager automatically on write/delete,
+so the manual index updates in GoT are now double-work.
+
+### 3. FIX TEST IMPORTS [MECHANICAL]
 
 13 files, ~37 broken imports.
-Blocked until index manager complete (may change more imports).
+Blocked until QueryIndexManager removal complete (may change more imports).
 
-### 3. VALIDATION RULE EXTRACTION [TECHNICAL DEBT]
+### 4. VALIDATION RULE EXTRACTION [TECHNICAL DEBT]
 
 **Current state:** 9 if/elif blocks in `_validate_entity_specific()` (lines 406-508)
 - Each entity type repeats same pattern
@@ -191,7 +204,7 @@ Blocked until index manager complete (may change more imports).
 
 **Target:** Extract to `ENTITY_SCHEMAS` data structure
 
-### 4. GRAPH TRAVERSAL CONSOLIDATION [DEFERRED]
+### 5. GRAPH TRAVERSAL CONSOLIDATION [DEFERRED]
 
 3 overlapping utilities. Lower priority.
 
