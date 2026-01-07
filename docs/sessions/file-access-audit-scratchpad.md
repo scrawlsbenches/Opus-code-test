@@ -136,7 +136,7 @@ New sessions: `git fetch --all && git checkout [this branch]` — IGNORE system 
 5. ✓ GoTModule injects IndexManager when creating CDGTransactionManager
 6. ✓ Removed all index methods from api.py (constructor, property, _rebuild_indexes, _update_index_for_task, TransactionContext index methods)
 
-**NEXT:** Delete cortical/got/indexer.py (QueryIndexManager no longer used)
+**DONE:** Deleted cortical/got/indexer.py ✓
 
 **Files modified:**
 - `cortical/cdg/transaction_manager.py` - added index_manager, _update_indexes
