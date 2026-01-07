@@ -467,11 +467,14 @@ class CDGRecoveryManager:
             op = entry.get('op')
             data = entry.get('data', {})
 
-            if op == 'WRITE' and 'entity_data' in data:
-                # Store WRITE entry with entity_data for potential reconstruction
-                if tx_id not in tx_writes:
-                    tx_writes[tx_id] = []
-                tx_writes[tx_id].append(data)
+            if op == 'WRITE':
+                # Store WRITE entries for reconstruction OR deletion tracking
+                # Entries with entity_data can be reconstructed
+                # Entries with new_version == -1 are deletions (no entity_data)
+                if 'entity_data' in data or data.get('new_version') == -1:
+                    if tx_id not in tx_writes:
+                        tx_writes[tx_id] = []
+                    tx_writes[tx_id].append(data)
 
             elif op == 'TX_COMMIT':
                 committed_txs.add(tx_id)
@@ -480,7 +483,17 @@ class CDGRecoveryManager:
                 # Transaction was aborted/rolled back, discard its writes
                 tx_writes.pop(tx_id, None)
 
-        # For each committed transaction, check if entities need reconstruction
+        # First pass: collect all deleted entity IDs from committed transactions
+        # This ensures we don't reconstruct entities that were later deleted
+        deleted_entities: set[str] = set()
+        for tx_id in committed_txs:
+            for write_entry in tx_writes.get(tx_id, []):
+                entity_id = write_entry.get('entity_id')
+                expected_version = write_entry.get('new_version')
+                if entity_id and expected_version == -1:
+                    deleted_entities.add(entity_id)
+
+        # Second pass: reconstruct entities that need it (excluding deleted ones)
         for tx_id in committed_txs:
             write_entries = tx_writes.get(tx_id, [])
 
@@ -489,11 +502,16 @@ class CDGRecoveryManager:
                 entity_data = write_entry.get('entity_data')
                 expected_version = write_entry.get('new_version')
 
-                if not entity_id or not entity_data:
+                # Skip if no entity_id or if this is a deletion entry
+                if not entity_id or expected_version == -1:
                     continue
 
-                # Skip deletions (new_version == -1)
-                if expected_version == -1:
+                # Skip entities that were deleted in a later transaction
+                if entity_id in deleted_entities:
+                    continue
+
+                # Skip if no entity_data to reconstruct from
+                if not entity_data:
                     continue
 
                 # Check if entity needs reconstruction
