@@ -64,6 +64,12 @@ actively used by bootstrap.py. Either remove it or fix the comment.
 ~~**Problem:** `update_index()` modifies `self._indexes` without locks.~~
 **DONE:** Added `threading.RLock()` to CDGIndexManager, wrapped all index modifications.
 
+**Note on Process Locks:** Thread locks are sufficient for now because:
+- `update_index()` is called from CDGStore write methods which have `_write_process_lock`
+- `rebuild_all()` is called from recovery (typically single-process)
+- `persist()` happens at shutdown
+If multi-process direct access to CDGIndexManager becomes needed, add ProcessLock then.
+
 ### 2. Index Updates NOT in try/except Blocks - FIXED ✓
 ~~**Problem:** If `update_index()` raises, entity is written but index is corrupt.~~
 **DONE:** Wrapped all index updates in try/except, failures logged but don't fail the write.
@@ -249,18 +255,41 @@ class CDGIndexManager:
     def needs_rebuild(self) -> bool
 ```
 
-### 2. REMOVE QUERYINDEXMANAGER FROM GOT [CLEANUP]
+### 2. REMOVE QUERYINDEXMANAGER FROM GOT [IN PROGRESS]
 
-GoT still uses its own QueryIndexManager in `got/indexer.py`, which is now
-redundant with CDGIndexManager. This involves:
+**Problem:** GoT has QueryIndexManager doing redundant work. CDGStore now calls
+CDGIndexManager automatically on write/delete, so GoT's manual index updates
+are DOUBLE-WORK.
 
-- Remove `_is_index_stale()`, `_rebuild_indexes_callback()` from api.py
-- Remove `_index_manager` property and related methods from api.py
-- Remove manual index updates from TransactionContext
-- Update queries to use `container.resolve(CDGIndexManager)` instead
+**Files to modify:**
 
-**Note:** CDGStore already calls CDGIndexManager automatically on write/delete,
-so the manual index updates in GoT are now double-work.
+1. **got/api.py** - Remove index management methods:
+   - `_is_index_stale()` - DELETE
+   - `_rebuild_indexes_callback()` - DELETE
+   - `_index_manager` property - DELETE
+   - `_configure_index_callbacks()` - DELETE
+   - Any manual `_indexer.update()` calls in transaction handling
+
+2. **got/indexer.py** - Eventually DELETE entirely:
+   - QueryIndexManager class - obsolete
+   - All index file I/O - CDGIndexManager handles this
+
+3. **got/query_api.py** - Update to use CDGIndexManager:
+   - Replace `self._indexer.lookup()` with `container.resolve(CDGIndexManager).lookup()`
+   - Or pass CDGIndexManager via constructor
+
+4. **CDGConfig** - Remove legacy callbacks:
+   - `index_rebuild_callback` - DELETE
+   - `index_stale_callback` - DELETE
+
+**Implementation order:**
+1. ⬜ Find all usages of QueryIndexManager/indexer in GoT
+2. ⬜ Update query_api.py to use CDGIndexManager.lookup()
+3. ⬜ Remove index update calls from api.py transaction handling
+4. ⬜ Remove index callback configuration from api.py
+5. ⬜ Remove legacy callbacks from CDGConfig
+6. ⬜ Delete got/indexer.py (or keep as facade if needed)
+7. ⬜ Verify got_utils.py validate still works
 
 ### 3. FIX TEST IMPORTS [MECHANICAL]
 
