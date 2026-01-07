@@ -30,12 +30,47 @@ docs/audits/
 │   │   └── task-{id}.md          # One task per file
 │   ├── outbox/                    # Completed results
 │   │   └── result-{id}.md        # One result per task
+│   ├── questions/                 # Agent needs human input (STOP AND WAIT)
+│   │   └── question-{id}.md      # Question requiring human decision
+│   ├── problems/                  # Something went wrong (STOP AND REPORT)
+│   │   └── problem-{id}.md       # Error, blocker, or confusion
 │   ├── parking-lot/               # Out-of-scope findings
 │   │   └── finding-{id}.md       # Issues found but not in scope
 │   ├── manifest.md                # State tracking (SINGLE SOURCE OF TRUTH)
 │   └── decisions.md               # Human decisions on findings
 └── {other-audit-type}/            # Same structure for other audits
 ```
+
+---
+
+## CRITICAL: Task Constraints
+
+**Agents take on more than they can complete.** These constraints prevent that:
+
+| Constraint | Limit | Why |
+|------------|-------|-----|
+| **Maximum duration** | 2-4 hours | Context compacts, attention drifts |
+| **Maximum scope** | ONE directory | Prevents scope creep |
+| **Maximum findings** | 50 per task | Forces chunking |
+| **Stop point** | After limit OR confusion | Don't push through confusion |
+
+**Hard rule:** If you hit ANY limit, **STOP and report**. Do not continue.
+
+---
+
+## CRITICAL: Check-In Requirements
+
+**Agents don't check in.** These requirements force visibility:
+
+| When | Action | Where |
+|------|--------|-------|
+| **Before starting** | Claim task, update manifest | Rename to `.claimed.md` |
+| **Every 30 min OR 10 findings** | Write partial results | `outbox/result-{id}-partial.md` |
+| **When confused** | STOP, write question | `questions/question-{id}.md` |
+| **When blocked** | STOP, write problem | `problems/problem-{id}.md` |
+| **When done** | Final results, update manifest | `outbox/result-{id}.md` |
+
+**Hard rule:** If confused or blocked, **STOP IMMEDIATELY** and write to questions/ or problems/. Do not try to figure it out alone.
 
 ---
 
@@ -213,6 +248,8 @@ Results are never deleted. If a result is wrong:
 - **Matches found:** N
 - **Findings:** N accurate, N stale, N misleading, N unknown
 - **Truncated:** yes/no
+- **Duration:** X minutes
+- **Check-ins written:** N
 
 ## Findings
 
@@ -224,9 +261,22 @@ Results are never deleted. If a result is wrong:
 ## Out-of-Scope (moved to parking-lot)
 - (list any findings that were out of scope)
 
+## What Went Wrong (REQUIRED - even if empty)
+- (Describe any errors, unexpected situations, or things that didn't work)
+- (If nothing went wrong, write "Nothing went wrong")
+
+## Where I Got Confused (REQUIRED - even if empty)
+- (Describe any points of confusion, ambiguity, or uncertainty)
+- (If no confusion, write "No confusion encountered")
+
+## Questions for Human (REQUIRED - even if empty)
+- (List any questions that arose during the task)
+- (If no questions, write "No questions")
+
 ## Completed By
 - Agent: (fill when completing)
 - Timestamp: (fill when completing)
+- Session/Branch: (fill with current branch)
 ```
 
 ---

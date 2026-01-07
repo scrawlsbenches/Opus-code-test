@@ -2,12 +2,40 @@
 
 *Audit: misleading-comments-2026-01-07*
 
+---
+
+## CONSTRAINTS (Read First)
+
+| Constraint | Limit |
+|------------|-------|
+| **Maximum duration** | 2 hours |
+| **Maximum findings** | 50 |
+| **Scope** | `cortical/cdg/` only |
+
+**If you hit ANY limit: STOP and write partial results.**
+
+---
+
+## Check-In Requirements
+
+| When | Action |
+|------|--------|
+| Before starting | Rename this file to `task-001.claimed.md`, update manifest |
+| Every 30 min OR 10 findings | Write `outbox/result-task-001-partial.md` |
+| If confused | STOP, write `questions/question-task-001.md` |
+| If blocked | STOP, write `problems/problem-task-001.md` |
+| When done | Write `outbox/result-task-001.md`, update manifest |
+
+---
+
 ## Scope
 
 - **Directory:** `cortical/cdg/`
 - **Patterns:** `FUTURE:|TODO:|FIXME:|PLANNED:|HACK:|XXX:|TEMPORARY:|WORKAROUND:`
 - **Also check:** Comments with "will be", "should be", "planned to"
-- **Max findings:** 50 (truncate if more)
+- **Max findings:** 50 (STOP if more)
+
+---
 
 ## Instructions
 
@@ -20,8 +48,11 @@
    - Notes explaining the assessment
 3. If comment references a document, verify the document exists
 4. If comment references a feature, check if feature exists
-5. Write results to `outbox/result-task-001.md`
-6. Update `manifest.md` task status
+5. Use `git blame` to see when comment was written
+6. Write results to `outbox/result-task-001.md`
+7. Update `manifest.md` task status
+
+---
 
 ## Critical Questions to Ask
 
@@ -31,29 +62,57 @@
 - When was this comment written? (use git blame)
 - What would happen if someone believed this comment?
 
+---
+
 ## Success Criteria
 
 - [ ] All .py files in `cortical/cdg/` scanned
-- [ ] All pattern matches recorded
+- [ ] All pattern matches recorded (up to 50)
 - [ ] Each finding has assessment with reasoning
 - [ ] Referenced documents verified
 - [ ] Results written to outbox
 - [ ] Manifest updated
+- [ ] "What Went Wrong" section filled (even if empty)
+- [ ] "Where I Got Confused" section filled (even if empty)
+- [ ] "Questions for Human" section filled (even if empty)
+
+---
 
 ## Claiming This Task
 
 Before starting, update this section:
 
-- **Claimed By:** (agent session ID)
+- **Claimed By:** (agent session ID or branch name)
 - **Claimed At:** (timestamp)
 - **Status:** pending
 
 Then rename this file to `task-001.claimed.md`
 
-## Completion
+---
 
-When done:
+## If You Get Confused
 
-1. Write results to `outbox/result-task-001.md`
-2. Update manifest.md
-3. Rename this file to `task-001.complete.md`
+**DO NOT push through confusion.** Instead:
+
+1. STOP what you're doing
+2. Write `questions/question-task-001.md` with:
+   - What you were trying to do
+   - What confused you
+   - What you need to proceed
+3. Update manifest to show task is blocked
+4. WAIT for human response
+
+---
+
+## If Something Goes Wrong
+
+**DO NOT try to fix it alone.** Instead:
+
+1. STOP what you're doing
+2. Write `problems/problem-task-001.md` with:
+   - What you were trying to do
+   - What went wrong
+   - Any error messages
+   - What state things are in now
+3. Update manifest to show task has problem
+4. WAIT for human response

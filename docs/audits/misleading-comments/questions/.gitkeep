@@ -1,0 +1,3 @@
+# This file exists so git tracks this directory.
+# Agents write question files here when they need human input.
+# Format: question-{task-id}.md
