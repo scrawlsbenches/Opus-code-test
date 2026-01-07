@@ -13,23 +13,6 @@
 
 ---
 
-## CURRENT FOCUS: Task delete investigation
-
-**Problem**: `got_utils.py task delete` doesn't remove file from disk
-
-**Code path**:
-- cli/task.py:408 → api.py:635 → transaction_manager.py:344 → storage.py:719
-- storage.py:719 calls `self._fs.unlink(path)` - should delete
-
-**Symptoms**: Deleted task file reappears in `.got/entities/`
-
-**To investigate**:
-- Is transaction committing?
-- Is unlink actually called?
-- Is something recreating the file?
-
----
-
 ## QUEUED
 
 1. Test import errors (4 files)
