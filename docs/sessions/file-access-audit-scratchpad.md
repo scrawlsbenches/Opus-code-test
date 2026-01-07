@@ -5,6 +5,62 @@
 
 ---
 
+## HANDOFF FOR NEW THREAD
+
+### What was done this session:
+1. Fixed `use_memory=True` test isolation bug
+2. Consolidated DurabilityMode: GoT now re-exports from CDG
+3. Traced all CDGConfig fields - found only 6 of 23+ are actually used
+4. **Found critical bugs in DurabilityMode implementation**
+
+### Critical bugs found (NOT YET FIXED):
+
+**BALANCED mode double-fsyncs entities** - This is wrong and wasteful:
+- storage.py:838 fsyncs each entity write
+- THEN transaction_manager:374 calls fsync_all() again
+
+**The root cause:** storage.py checks `not in (FAST, RELAXED)` which means both PARANOID and BALANCED fsync per-write. BALANCED should only fsync at commit time.
+
+### Changes needed (approved plan):
+
+1. **storage.py** (4 locations: 838, 915, 1013, 1045)
+   - Change: `if self.durability not in (FAST, RELAXED)`
+   - To: `if self.durability == DurabilityMode.PARANOID`
+
+2. **transaction_manager.py** (line 339)
+   - Change: `if self.wal: self.wal.fsync_now()`
+   - To: `if self.wal and self.config.durability != DurabilityMode.RELAXED: self.wal.fsync_now()`
+
+3. **Remove FAST enum** - Keep only RELAXED (more descriptive)
+   - Update CDGConfig.for_high_performance() to use RELAXED
+   - Update any tests using FAST
+
+4. **Behavioral tests** - Verify each mode works correctly
+
+### Correct behavior after fix:
+
+| Component | PARANOID | BALANCED | RELAXED |
+|-----------|----------|----------|---------|
+| WAL entry | fsync | flush | flush |
+| WAL on commit | fsync | fsync | NO |
+| Entity write | fsync | NO | NO |
+| fsync_all post-commit | NO | YES | NO |
+
+### Key files:
+- `cortical/cdg/storage.py` - Main storage, has the bugs
+- `cortical/cdg/transaction_manager.py` - Commit logic
+- `cortical/cdg/config.py` - DurabilityMode enum
+- `cortical/cdg/wal.py` - WAL fsync logic
+- `tests/unit/cdg/test_cdg_durability.py` - Durability tests
+
+### User guidance:
+- Go slow, one step at a time
+- Explain thinking before making changes
+- This is a sensitive area - need behavioral tests
+- Use scratchpad to track work
+
+---
+
 ## CURRENT FOCUS: DurabilityMode Analysis
 
 We need to understand how DurabilityMode SHOULD work vs how it DOES work.
