@@ -1450,3 +1450,7 @@
 {"seq":1450,"ts":"2026-01-07T10:21:45.941799+00:00","tx":"TX-20260107-102145-2cb9709c","op":"WRITE","data":{"entity_id":"T-20260107-102026-db4cefaf","old_version":2,"new_version":-1},"checksum":"8a3150b29ef91046"}
 {"seq":1451,"ts":"2026-01-07T10:21:45.943611+00:00","tx":"TX-20260107-102145-2cb9709c","op":"TX_PREPARE","data":{},"checksum":"87ac179fd1e3b0d5"}
 {"seq":1452,"ts":"2026-01-07T10:21:45.944803+00:00","tx":"TX-20260107-102145-2cb9709c","op":"TX_COMMIT","data":{"version":2020},"checksum":"0de3400a58f1262b"}
+{"seq":1453,"ts":"2026-01-07T10:43:27.207228+00:00","tx":"TX-20260107-104327-07d59535","op":"TX_BEGIN","data":{"snapshot":2026},"checksum":"6e9bbffabe986f83"}
+{"seq":1454,"ts":"2026-01-07T10:43:27.208501+00:00","tx":"TX-20260107-104327-07d59535","op":"WRITE","data":{"entity_id":"T-20260107-104327-b2367905","old_version":0,"new_version":1,"entity_data":{"id":"T-20260107-104327-b2367905","entity_type":"task","version":1,"created_at":"2026-01-07T10:43:27.207792+00:00","modified_at":"2026-01-07T10:43:27.207797+00:00","title":"Delete test task","status":"pending","priority":"low","description":"","properties":{"category":"feature"},"metadata":{}}},"checksum":"7d1a1c349cc2293f"}
+{"seq":1455,"ts":"2026-01-07T10:43:27.209933+00:00","tx":"TX-20260107-104327-07d59535","op":"TX_PREPARE","data":{},"checksum":"136eb552c6638a20"}
+{"seq":1456,"ts":"2026-01-07T10:43:27.210922+00:00","tx":"TX-20260107-104327-07d59535","op":"TX_COMMIT","data":{"version":2027},"checksum":"4223ab086f9a0723"}
