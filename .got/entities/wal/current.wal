@@ -1468,3 +1468,9 @@
 {"seq":1468,"ts":"2026-01-07T10:46:16.978012+00:00","tx":"TX-20260107-104616-3de49a72","op":"WRITE","data":{"entity_id":"T-20260107-104616-b211c052","old_version":0,"new_version":1,"entity_data":{"id":"T-20260107-104616-b211c052","entity_type":"task","version":1,"created_at":"2026-01-07T10:46:16.977131+00:00","modified_at":"2026-01-07T10:46:16.977139+00:00","title":"Delete permanence test","status":"pending","priority":"low","description":"","properties":{"category":"feature"},"metadata":{}}},"checksum":"7d75aa47de864fff"}
 {"seq":1469,"ts":"2026-01-07T10:46:16.979722+00:00","tx":"TX-20260107-104616-3de49a72","op":"TX_PREPARE","data":{},"checksum":"50234b41ba1c892e"}
 {"seq":1470,"ts":"2026-01-07T10:46:16.980771+00:00","tx":"TX-20260107-104616-3de49a72","op":"TX_COMMIT","data":{"version":2031},"checksum":"1fab13828cb91f70"}
+{"seq":1471,"ts":"2026-01-07T10:46:33.588487+00:00","tx":"TX-20260107-104633-3daa80f0","op":"TX_BEGIN","data":{"snapshot":2031},"checksum":"33dd2a3dfbb78ade"}
+{"seq":1472,"ts":"2026-01-07T10:46:33.590145+00:00","tx":"TX-20260107-104633-3daa80f0","op":"TX_ROLLBACK","data":{"reason":"read_only"},"checksum":"b250619f0e051f6e"}
+{"seq":1473,"ts":"2026-01-07T10:46:33.804642+00:00","tx":"TX-20260107-104633-828655a6","op":"TX_BEGIN","data":{"snapshot":2031},"checksum":"be8e95d21c6d53ac"}
+{"seq":1474,"ts":"2026-01-07T10:46:33.813587+00:00","tx":"TX-20260107-104633-828655a6","op":"WRITE","data":{"entity_id":"T-20260107-104616-b211c052","old_version":2,"new_version":-1},"checksum":"6abb3d7fdb050a25"}
+{"seq":1475,"ts":"2026-01-07T10:46:33.815252+00:00","tx":"TX-20260107-104633-828655a6","op":"TX_PREPARE","data":{},"checksum":"3440110630d007e8"}
+{"seq":1476,"ts":"2026-01-07T10:46:33.816309+00:00","tx":"TX-20260107-104633-828655a6","op":"TX_COMMIT","data":{"version":2033},"checksum":"f2f280ec049a9633"}
