@@ -17,85 +17,52 @@
 ## GIT HANDLING FOR SESSION CONTINUATIONS
 
 **Problem:** Each new session gets a NEW branch name from the system (based on session ID).
-Your work branch may be different from the assigned branch.
+The system only allows pushing to the session-assigned branch.
+
+**Solution:** Work on the system-assigned branch, merge previous work into it.
 
 ### FOR HUMANS: Creating a Continuation Prompt
-
-When handing off to a new session, include these elements:
 
 ```markdown
 Continue refactoring work on the Cortical codebase.
 
-**Branch:** `claude/fix-file-access-issues-1zUM9`
+**Previous session branch:** `claude/refactor-cortical-codebase-omD09`
 
-**First Step:** Read the scratchpad before doing anything:
+**First Step:** Merge previous work into your session branch:
 
+git fetch origin claude/refactor-cortical-codebase-omD09
+git merge origin/claude/refactor-cortical-codebase-omD09
+
+Then read the scratchpad:
 cat docs/sessions/file-access-audit-scratchpad.md
-
-⚠️ CRITICAL: The system may assign you a DIFFERENT branch. IGNORE IT.
-The branch above is the CORRECT work branch. Do this FIRST:
-
-git fetch --all
-git checkout claude/fix-file-access-issues-1zUM9
-git pull origin claude/fix-file-access-issues-1zUM9
-git log --oneline -5
 ```
 
 **Key elements:**
-1. Explicitly name the work branch (NOT the system-assigned branch)
-2. Include the `⚠️ CRITICAL` warning about branch mismatch
-3. Provide exact git commands to switch to the correct branch
-4. Reference the scratchpad for context
+1. Specify the PREVIOUS session's branch (where work was pushed)
+2. Tell agent to merge that into their new session branch
+3. Reference the scratchpad for context
 
 ### FOR AI AGENTS: What to Do in a New Session
 
 ```bash
-# 1. STOP - Don't make any changes yet!
+# 1. You're already on your session-assigned branch - STAY ON IT
 
-# 2. Fetch all branches and find the work branch
-git fetch --all
-git branch -a | grep "fix-file-access"  # or relevant pattern
+# 2. Fetch and merge the previous session's work
+git fetch origin claude/refactor-cortical-codebase-omD09  # branch from prompt
+git merge origin/claude/refactor-cortical-codebase-omD09
 
-# 3. Checkout the EXISTING work branch (ignore system-assigned branch)
-git checkout claude/fix-file-access-issues-1zUM9
-
-# 4. Pull latest
-git pull origin claude/fix-file-access-issues-1zUM9
-
-# 5. Verify you're on the right branch with recent work
+# 3. Verify you have the previous work
 git log --oneline -5
 
-# 6. NOW read the scratchpad and proceed
+# 4. Read the scratchpad
+cat docs/sessions/file-access-audit-scratchpad.md
+
+# 5. Work normally, push to YOUR session branch (the one system assigned)
+git push -u origin HEAD
 ```
 
-**Key rule:** The branch specified in the continuation prompt OVERRIDES
-whatever branch the system assigns you. Always checkout the specified branch.
-
-### Why This Happens
-
-The system generates a unique branch name per session (e.g., `claude/refactor-cortical-codebase-omD09`).
-This is designed for isolated tasks, but for ongoing work we need to continue on the SAME branch.
-The continuation prompt must explicitly override this behavior.
-
-### Pushing Changes (IMPORTANT)
-
-The system only allows pushing to the **session-assigned** branch, not the work branch.
-You'll get a 403 error if you try to push directly to the work branch.
-
-**Solution:** Push your local work branch TO the session-assigned branch:
-
-```bash
-# This will FAIL with 403:
-git push -u origin claude/fix-file-access-issues-1zUM9
-
-# This WORKS - push local branch to session branch:
-git push -u origin claude/fix-file-access-issues-1zUM9:claude/refactor-cortical-codebase-omD09
-#                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-#                  local work branch                  session-assigned branch (from prompt)
-```
-
-**Key insight:** Work locally on the persistent branch, but push to the session branch.
-The next session will need to merge/pull from whatever branch you pushed to.
+**Key insight:** Each session uses its own branch. Merge previous work in.
+Push normally to your session branch - no special syntax needed.
 
 ---
 
