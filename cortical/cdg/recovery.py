@@ -154,36 +154,23 @@ class CDGRecoveryManager:
         """
         Check if indexes need to be rebuilt.
 
-        Uses CDGIndexManager if available, otherwise falls back to
-        index_stale_callback from config for backward compatibility.
-        If neither is configured, returns False.
+        Uses CDGIndexManager to determine if indexes are stale.
+        Returns False if no index manager is configured.
 
         Returns:
             True if indexes are stale and need rebuilding
         """
-        # Prefer CDGIndexManager (schema-based indexes)
-        if self._index_manager is not None:
-            try:
-                return self._index_manager.needs_rebuild()
-            except Exception as e:
-                logger.warning(
-                    "Index manager needs_rebuild check failed: %s: %s",
-                    type(e).__name__, e
-                )
-                return True  # Assume rebuild needed on error
-
-        # Fall back to callback for backward compatibility
-        if self.config.index_stale_callback is None:
+        if self._index_manager is None:
             return False
 
         try:
-            return self.config.index_stale_callback()
+            return self._index_manager.needs_rebuild()
         except Exception as e:
             logger.warning(
-                "Index stale check failed: %s: %s",
+                "Index manager needs_rebuild check failed: %s: %s",
                 type(e).__name__, e
             )
-            return False
+            return True  # Assume rebuild needed on error
 
     def recover(self) -> RecoveryResult:
         """
@@ -304,16 +291,6 @@ class CDGRecoveryManager:
                 entity_count = self._index_manager.rebuild_all(entity_iterator)
                 result.indexes_rebuilt = True
                 result.add_action(f"Rebuilt indexes: {entity_count} entities indexed")
-            except Exception as e:
-                result.success = False
-                result.add_action(f"Index rebuild failed: {e}")
-                logger.error("Index rebuild failed: %s: %s", type(e).__name__, e)
-        elif self.config.index_rebuild_callback:
-            # Fall back to callback for backward compatibility
-            try:
-                task_count = self.config.index_rebuild_callback(self.store_dir)
-                result.indexes_rebuilt = True
-                result.add_action(f"Rebuilt indexes: {task_count} task(s) indexed")
             except Exception as e:
                 result.success = False
                 result.add_action(f"Index rebuild failed: {e}")

@@ -20,7 +20,7 @@ PRESETS:
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, Callable, Any
+from typing import Optional
 
 
 class DurabilityMode(Enum):
@@ -161,11 +161,6 @@ class CDGConfig:
     # History settings (for MVCC)
     enable_history: bool = True
     history_retention_days: int = 30
-
-    # Index callbacks - TO BE REMOVED when QueryIndexManager is removed from GoT
-    # CDGIndexManager now handles indexing, these are only used by legacy GoT code
-    index_rebuild_callback: Optional[Callable[[Any], int]] = None
-    index_stale_callback: Optional[Callable[[], bool]] = None
 
     # Storage optimization
     compression_enabled: bool = False

@@ -255,41 +255,31 @@ class CDGIndexManager:
     def needs_rebuild(self) -> bool
 ```
 
-### 2. REMOVE QUERYINDEXMANAGER FROM GOT [IN PROGRESS]
+### 2. REMOVE QUERYINDEXMANAGER FROM GOT [MOSTLY COMPLETE]
 
 **Problem:** GoT has QueryIndexManager doing redundant work. CDGStore now calls
 CDGIndexManager automatically on write/delete, so GoT's manual index updates
 are DOUBLE-WORK.
 
-**Files to modify:**
+**Completed (2026-01-07):**
+1. ✅ Removed from api.py:
+   - `_is_index_stale()`, `_rebuild_indexes_callback()`, `index_manager` property
+   - `_rebuild_indexes()`, `_update_index_for_task()`
+   - `_task_changes` tracking in TransactionContext
+   - `_apply_index_updates()`, `_apply_index_updates_atomic()`
+   - Index callback configuration in recovery_manager property
+2. ✅ Removed from CDGConfig:
+   - `index_rebuild_callback`, `index_stale_callback` fields
+3. ✅ Updated recovery.py:
+   - Removed fallback code using legacy callbacks
+4. ✅ Updated got/__init__.py:
+   - Removed QueryIndexManager, IndexEntry, IndexStats exports
+5. ✅ Verified got_utils.py validate works
 
-1. **got/api.py** - Remove index management methods:
-   - `_is_index_stale()` - DELETE
-   - `_rebuild_indexes_callback()` - DELETE
-   - `_index_manager` property - DELETE
-   - `_configure_index_callbacks()` - DELETE
-   - Any manual `_indexer.update()` calls in transaction handling
-
-2. **got/indexer.py** - Eventually DELETE entirely:
-   - QueryIndexManager class - obsolete
-   - All index file I/O - CDGIndexManager handles this
-
-3. **got/query_api.py** - Update to use CDGIndexManager:
-   - Replace `self._indexer.lookup()` with `container.resolve(CDGIndexManager).lookup()`
-   - Or pass CDGIndexManager via constructor
-
-4. **CDGConfig** - Remove legacy callbacks:
-   - `index_rebuild_callback` - DELETE
-   - `index_stale_callback` - DELETE
-
-**Implementation order:**
-1. ⬜ Find all usages of QueryIndexManager/indexer in GoT
-2. ⬜ Update query_api.py to use CDGIndexManager.lookup()
-3. ⬜ Remove index update calls from api.py transaction handling
-4. ⬜ Remove index callback configuration from api.py
-5. ⬜ Remove legacy callbacks from CDGConfig
-6. ⬜ Delete got/indexer.py (or keep as facade if needed)
-7. ⬜ Verify got_utils.py validate still works
+**Remaining:**
+- `got/indexer.py` still exists but is no longer imported by api.py or __init__.py
+- Can be deleted in future cleanup, or kept for reference
+- `expression/optimizer.py` has TYPE_CHECKING import (harmless)
 
 ### 3. FIX TEST IMPORTS [MECHANICAL]
 
