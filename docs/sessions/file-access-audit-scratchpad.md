@@ -5,10 +5,70 @@
 
 ---
 
-## CURRENT FOCUS: CDGStore Configuration Confusion
+## CURRENT FOCUS: DurabilityMode Analysis
 
-We are confused about what CDGStore actually uses from CDGConfig.
-We need to understand exactly what is implemented before making changes.
+We need to understand how DurabilityMode SHOULD work vs how it DOES work.
+
+---
+
+## DurabilityMode: HOW IT SHOULD WORK
+
+For a transactional system, durability controls when data survives a crash:
+
+| Mode | Meaning | When to use |
+|------|---------|-------------|
+| PARANOID | fsync every write immediately | Maximum safety, slowest |
+| BALANCED | fsync on commit only | Good safety, recommended |
+| FAST | no fsync | Maximum speed, data loss on crash |
+
+---
+
+## DurabilityMode: HOW IT ACTUALLY WORKS (BUGS FOUND)
+
+### Current behavior matrix:
+
+| Component | PARANOID | BALANCED | FAST/RELAXED |
+|-----------|----------|----------|--------------|
+| WAL entry (wal.py:196) | fsync | flush only | flush only |
+| WAL on commit (wal.fsync_now) | called | called | called |
+| Entity write (storage.py:838) | fsync | **fsync** | no fsync |
+| fsync_all post-commit (tx_mgr:374) | NO | YES | NO |
+
+### BUGS:
+
+1. **BALANCED double-fsyncs entities:**
+   - storage.py:838 fsyncs each entity write (because not FAST/RELAXED)
+   - THEN transaction_manager:374 calls fsync_all() again
+   - This is wasteful and wrong!
+
+2. **BALANCED should NOT fsync per-write:**
+   - storage.py:838 checks `not in (FAST, RELAXED)`
+   - This means PARANOID and BALANCED both fsync per-write
+   - BALANCED should only fsync at commit time!
+
+3. **storage.py check is wrong:**
+   ```python
+   # CURRENT (wrong):
+   if self.durability not in (DurabilityMode.FAST, DurabilityMode.RELAXED):
+       self._fs.fsync(path)
+
+   # SHOULD BE:
+   if self.durability == DurabilityMode.PARANOID:
+       self._fs.fsync(path)
+   ```
+
+4. **FAST and RELAXED are duplicates:**
+   - Two enum values: FAST="fast", RELAXED="relaxed"
+   - Identical behavior everywhere
+   - Confusing, should be one or the other
+
+---
+
+## WHAT NEEDS TO CHANGE:
+
+1. **storage.py**: Change fsync check to only fsync for PARANOID
+2. **Remove duplicate enum**: Keep RELAXED (more descriptive), remove FAST
+3. **Update tests**: Ensure behavioral tests cover correct fsync behavior
 
 ---
 
