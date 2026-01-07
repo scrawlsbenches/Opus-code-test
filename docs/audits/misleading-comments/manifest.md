@@ -60,7 +60,7 @@ The spec exists but there's no evidence of implementation. Agent presented this 
 
 | Task ID | Directory | Pattern | Status | Claimed By | Result |
 |---------|-----------|---------|--------|------------|--------|
-| 20260107-120000-cdg-comments | `cortical/cdg/` | All patterns | complete | Agent | result-20260107-120000-cdg-comments.md |
+| 20260107-120000-cdg-comments | `cortical/cdg/` | All patterns | complete | Agent (v2 re-run) | result-20260107-120000-cdg-comments-v2.md |
 | 20260107-120100-got-comments | `cortical/got/` | All patterns | complete | Agent (v2 template) | result-20260107-120100-got-comments.md |
 | 20260107-120200-core-comments | `cortical/core/` | All patterns | complete | Agent (v2) | result-20260107-120200-core-comments.md |
 | 20260107-120300-common-comments | `cortical/common/` | All patterns | complete | Agent (v2) | result-20260107-120300-common-comments.md |
@@ -95,26 +95,27 @@ None yet.
 
 | Metric | Count |
 |--------|-------|
-| **Total findings** | 20 |
-| **Accurate** | 11 (55%) |
+| **Total findings** | 29 |
+| **Accurate** | 16 (55%) |
 | **Stale** | 0 (0%) |
-| **Misleading** | 7 (35%) |
-| **Unknown** | 2 (10%) |
+| **Misleading** | 10 (34%) |
+| **Unknown** | 2 (7%) |
+| **Unreviewed** | 1 (3%) |
 
 ### Breakdown by Directory
 
 | Directory | Findings | Accurate | Misleading | Unknown |
 |-----------|----------|----------|------------|---------|
-| cortical/cdg/ | 0* | 0 | 0 | 0 |
+| cortical/cdg/ | 9 | 5 | 3 | 0 |
 | cortical/got/ | 5 | 2 | 3 | 0 |
 | cortical/core/ | 3 | 2 | 1 | 0 |
 | cortical/common/ | 1 | 0 | 1 | 0 |
 | cortical/ (remaining) | 11 | 7 | 2 | 2 |
 
-*cdg/ audit was run with v1 template before guardrails; results may be less reliable.
+All tasks run with v2 template (cdg/ re-run 2026-01-07).
 
 ### Next Steps
 
-- [ ] Human review of 7 misleading comments
+- [ ] Human review of 10 misleading comments
 - [ ] Decide: fix, defer, or accept each
 - [ ] Human review of 2 unknown comments (need context)
