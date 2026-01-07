@@ -162,12 +162,22 @@ class CDGConfig:
     enable_history: bool = True
     history_retention_days: int = 30
 
-    # Index callback (for GoT integration)
+    # DEPRECATED: Index callbacks for legacy GoT integration
+    # These callbacks are superseded by CDGIndexManager which uses schema-based
+    # index configuration (Field.indexed=True). CDGRecoveryManager prefers
+    # CDGIndexManager when available, falling back to these callbacks only
+    # for backward compatibility. These fields will be removed in a future version.
+    #
+    # Migration: Use CDGIndexManager instead:
+    #   - Define indexed fields in schema: Field("status", FieldType.STRING, indexed=True)
+    #   - Pass index_manager to CDGRecoveryManager constructor
+    #
+    # Index callback (for GoT integration) - DEPRECATED
     # Called during recovery to rebuild indexes
     # Signature: Callable[[Path], int] where Path is store_dir, returns count
     index_rebuild_callback: Optional[Callable[[Any], int]] = None
 
-    # Index stale check callback (for GoT integration)
+    # Index stale check callback (for GoT integration) - DEPRECATED
     # Called to check if indexes need rebuilding
     # Signature: Callable[[], bool] returns True if indexes are stale
     index_stale_callback: Optional[Callable[[], bool]] = None

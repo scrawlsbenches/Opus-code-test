@@ -161,12 +161,13 @@ Update the scratchpad's "Previous session branch" in this template before ending
 
 **Implementation plan:**
 1. ✅ Add `indexed` and `index_type` to Field in `cdg/schema/__init__.py`
-2. 🔄 Create `cortical/cdg/index_manager.py` with CDGIndexManager
-3. ⬜ Integrate IndexManager with CDGStore (update indexes on write)
-4. ⬜ Integrate IndexManager with CDGRecoveryManager
-5. ⬜ Remove `index_stale_callback` and `index_rebuild_callback` from CDGConfig
-6. ⬜ Remove `_is_index_stale()`, `_rebuild_indexes_callback()` from GoTManager
+2. ✅ Create `cortical/cdg/index_manager.py` with CDGIndexManager
+3. ✅ Integrate IndexManager with CDGStore (update indexes on write)
+4. ✅ Integrate IndexManager with CDGRecoveryManager
+5. ✅ Mark callbacks DEPRECATED in CDGConfig (kept for backward compat)
+6. ⬜ Wire CDGIndexManager into GoT bootstrap/container
 7. ⬜ Update GoT entity schemas with `indexed=True` on queryable fields
+8. ⬜ Remove QueryIndexManager usage from GoTManager
 
 **CDGIndexManager API:**
 ```python
