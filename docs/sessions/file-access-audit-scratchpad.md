@@ -66,9 +66,55 @@ For a transactional system, durability controls when data survives a crash:
 
 ## WHAT NEEDS TO CHANGE:
 
-1. **storage.py**: Change fsync check to only fsync for PARANOID
-2. **Remove duplicate enum**: Keep RELAXED (more descriptive), remove FAST
-3. **Update tests**: Ensure behavioral tests cover correct fsync behavior
+### 1. storage.py (4 locations)
+Change fsync checks to only fsync for PARANOID:
+```python
+# Lines 838, 1013, 1045: Change from:
+if self.durability not in (DurabilityMode.FAST, DurabilityMode.RELAXED):
+# To:
+if self.durability == DurabilityMode.PARANOID:
+
+# Line 915: Change from:
+if self.durability in (DurabilityMode.FAST, DurabilityMode.RELAXED):
+    return
+# To:
+if self.durability != DurabilityMode.PARANOID:
+    return
+```
+
+### 2. transaction_manager.py (line 339)
+WAL fsync on commit should respect durability mode:
+```python
+# Currently (unconditional):
+if self.wal:
+    self.wal.fsync_now()
+
+# Should be:
+if self.wal and self.config.durability != DurabilityMode.RELAXED:
+    self.wal.fsync_now()
+```
+
+### 3. Remove FAST enum value
+- Keep RELAXED (more descriptive of what it means)
+- Remove FAST from DurabilityMode
+- Update any code using FAST to use RELAXED
+- Update CDGConfig.for_high_performance() to use RELAXED
+
+### 4. Update behavioral tests
+- Verify PARANOID fsyncs every write
+- Verify BALANCED only fsyncs at commit
+- Verify RELAXED never fsyncs
+
+---
+
+## CORRECT BEHAVIOR AFTER FIX:
+
+| Component | PARANOID | BALANCED | RELAXED |
+|-----------|----------|----------|---------|
+| WAL entry | fsync | flush | flush |
+| WAL on commit | fsync | fsync | NO |
+| Entity write | fsync | NO | NO |
+| fsync_all post-commit | NO | YES | NO |
 
 ---
 
