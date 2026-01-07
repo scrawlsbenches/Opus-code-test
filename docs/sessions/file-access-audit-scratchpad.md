@@ -76,10 +76,51 @@ That's it. Only 2 fields from CDGConfig are used by CDGStore.
 
 ---
 
+## TRACE RESULTS: Where Config Fields Are Used Across CDG
+
+### USED (in other CDG files, not storage.py):
+
+| Field | Where Used | File:Line |
+|-------|------------|-----------|
+| `enable_wal` | WAL creation | transaction_manager.py:128, recovery.py:107 |
+| `recovery_mode` | Recovery behavior | recovery.py:124, 179, 199, 203 |
+| `orphan_strategy` | Orphan handling | recovery.py:251, 663, 675 |
+| `auto_recover_on_startup` | Startup recovery | transaction_manager.py:139 |
+
+### NOT USED ANYWHERE IN CDG (pure placeholders):
+
+| Field | Status |
+|-------|--------|
+| `enable_history` | NOT USED |
+| `strict_edge_types` | NOT USED |
+| `isolation_level` | NOT USED (only SNAPSHOT implemented) |
+| `partition_count` | NOT USED |
+| `partition_strategy` | NOT USED |
+| `super_node_*` | NOT USED |
+| `write_buffer_size` | NOT USED |
+| `read_cache_enabled` | NOT USED (separate constructor param) |
+| `read_cache_max_items` | NOT USED |
+| `wal_archive_enabled` | NOT USED |
+| `wal_archive_threshold` | NOT USED |
+| `history_retention_days` | NOT USED |
+| `compression_enabled` | NOT USED |
+| `encryption_enabled` | NOT USED |
+| `transaction_timeout_seconds` | NOT USED |
+| `transactions_enabled` | Only validated in config.py:201, not used |
+
+### SUMMARY:
+
+- **storage.py uses:** durability, validate_on_write (2 fields)
+- **transaction_manager.py uses:** enable_wal, auto_recover_on_startup (2 fields)
+- **recovery.py uses:** enable_wal, recovery_mode, orphan_strategy (3 fields)
+- **Total USED:** 6 fields
+- **Total PLACEHOLDER:** 16+ fields
+
+---
+
 ## NEXT STEPS:
 
-- [ ] Trace where enable_wal, transactions_enabled, recovery_mode are used
-- [ ] Decide: remove placeholder config fields OR implement them
+- [ ] Decide: remove placeholder config fields OR document as "future"
 - [ ] Decide: wire cache config OR remove from CDGConfig
 
 ---
