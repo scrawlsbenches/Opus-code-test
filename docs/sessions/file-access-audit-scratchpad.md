@@ -51,6 +51,42 @@ from `cdg/config.py` (full). This is confusing redundancy.~~
 QueryIndexManager. CDGIndexManager replaces this.
 **FIX:** Remove when QueryIndexManager is removed from GoT.
 
+### got_dir Parameter Mismatch
+`cdg_module.py` has `got_dir` parameter with comment "will be removed" but it's
+actively used by bootstrap.py. Either remove it or fix the comment.
+**FIX:** Update bootstrap.py to use `base_dir` instead, then remove `got_dir`.
+
+---
+
+## 🚨 CRITICAL ISSUES FROM CODE REVIEW (2026-01-07)
+
+### 1. CDGIndexManager Has NO Thread Safety - FIXED ✓
+~~**Problem:** `update_index()` modifies `self._indexes` without locks.~~
+**DONE:** Added `threading.RLock()` to CDGIndexManager, wrapped all index modifications.
+
+### 2. Index Updates NOT in try/except Blocks - FIXED ✓
+~~**Problem:** If `update_index()` raises, entity is written but index is corrupt.~~
+**DONE:** Wrapped all index updates in try/except, failures logged but don't fail the write.
+
+### 3. External Product Reference - FIXED ✓
+~~**Problem:** Says "Like SQL Server column indexes" - violates generic comments rule.~~
+**DONE:** Removed SQL Server reference from docstring.
+
+### 4. Defensive getattr() Not Needed - FIXED ✓
+~~**Problem:** Uses `getattr(field, 'indexed', False)` but we control schema.~~
+**DONE:** Changed to direct `field.indexed` access.
+
+### 5. Missing Indexes on GoT Schemas - FIXED ✓
+**DONE:** Added `indexed=True` to:
+- HandoffSchema: source_agent, target_agent, task_id
+- KnowledgeTransferSchema: session_id
+- ClaudeMdLayerSchema: layer_type, freshness_status, inclusion_rule
+
+### 6. Dead/Legacy Code to Remove [REMAINING]
+- `remove_from_index()` in index_manager.py (never called) - **Keep for now, may be useful**
+- `_persist_history_entry()` in storage.py (legacy, not crash-safe)
+- Legacy parameters `durability`, `validate_on_save` in CDGStore.__init__
+
 ---
 
 ## WORKFLOW NOTES (for context preservation)
@@ -191,7 +227,7 @@ Update the scratchpad's "Previous session branch" in this template before ending
 
 **Architecture decision (from user):**
 - Indexes should be maintained by CDG, NOT GoT
-- Indexes configured in schema via `Field(indexed=True)` (like SQL Server column indexes)
+- Indexes configured in schema via `Field(indexed=True)`
 - GoT is a query/facade layer - NO file I/O for index maintenance
 
 **Implementation plan:**
@@ -250,7 +286,7 @@ Blocked until QueryIndexManager removal complete (may change more imports).
 **CDG owns infrastructure:**
 - Storage, transactions, WAL
 - Recovery (ALL of it)
-- Indexes (schema-based, like SQL Server)
+- Indexes (schema-based via Field(indexed=True))
 
 **GoT is thin domain layer:**
 - Query/facade over CDG

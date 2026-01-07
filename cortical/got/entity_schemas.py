@@ -282,11 +282,14 @@ class HandoffSchema(BaseSchema):
     fields = {
         **BASE_ENTITY_FIELDS,
         'source_agent': Field('source_agent', FieldType.STRING, required=True,
+                             indexed=True,  # CDGIndexManager maintains source agent index
                              description="Initiating agent ID"),
         'target_agent': Field('target_agent', FieldType.STRING, required=True,
+                             indexed=True,  # CDGIndexManager maintains target agent index
                              description="Receiving agent ID"),
         'task_id': Field('task_id', FieldType.STRING, required=False,
                         default='',
+                        indexed=True,  # CDGIndexManager maintains task index
                         description="Associated task ID"),
         'status': Field('status', FieldType.ENUM, required=True,
                        choices=['initiated', 'accepted', 'completed', 'rejected'],
@@ -347,6 +350,7 @@ class KnowledgeTransferSchema(BaseSchema):
                       description="Knowledge transfer document title"),
         'session_id': Field('session_id', FieldType.STRING, required=False,
                            default='',
+                           indexed=True,  # CDGIndexManager maintains session index
                            description="Associated session identifier"),
         'session_date': Field('session_date', FieldType.STRING, required=False,
                              default='',
@@ -410,6 +414,7 @@ class ClaudeMdLayerSchema(BaseSchema):
         'layer_type': Field('layer_type', FieldType.ENUM, required=False,
                            choices=['core', 'operational', 'contextual', 'persona', 'ephemeral', ''],
                            default='',
+                           indexed=True,  # CDGIndexManager maintains layer type index
                            description="Layer type classification"),
         'layer_number': Field('layer_number', FieldType.INTEGER, required=False,
                              default=0,
@@ -426,6 +431,7 @@ class ClaudeMdLayerSchema(BaseSchema):
         'freshness_status': Field('freshness_status', FieldType.ENUM, required=False,
                                  choices=['fresh', 'stale', 'regenerating'],
                                  default='fresh',
+                                 indexed=True,  # CDGIndexManager maintains freshness index
                                  description="Content freshness status"),
         'freshness_decay_days': Field('freshness_decay_days', FieldType.INTEGER, required=False,
                                      default=0,
@@ -439,6 +445,7 @@ class ClaudeMdLayerSchema(BaseSchema):
         'inclusion_rule': Field('inclusion_rule', FieldType.ENUM, required=False,
                                choices=['always', 'context', 'user_pref'],
                                default='always',
+                               indexed=True,  # CDGIndexManager maintains inclusion rule index
                                description="When to include this layer"),
         'context_modules': Field('context_modules', FieldType.LIST, required=False,
                                 default=[],

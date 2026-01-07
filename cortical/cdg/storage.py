@@ -475,14 +475,17 @@ class CDGStore:
                 # Invalidate cache for written entity
                 self._cache_invalidate(entity.id)
 
-                # Update indexes
+                # Update indexes (failure logged but doesn't fail the write)
                 if self._index_manager is not None:
-                    old_data = current_entity.to_dict() if current_entity else None
-                    entity_type = getattr(entity, 'entity_type', None)
-                    if entity_type:
-                        self._index_manager.update_index(
-                            entity_type, entity.id, old_data, entity.to_dict()
-                        )
+                    try:
+                        old_data = current_entity.to_dict() if current_entity else None
+                        entity_type = getattr(entity, 'entity_type', None)
+                        if entity_type:
+                            self._index_manager.update_index(
+                                entity_type, entity.id, old_data, entity.to_dict()
+                            )
+                    except Exception as e:
+                        logger.warning(f"Index update failed for {entity.id}: {e}")
 
     def apply_writes(self, write_set: Dict[str, Entity]) -> int:
         """
@@ -568,16 +571,20 @@ class CDGStore:
                     self._save_version()
 
                     # Step 7: Update indexes and invalidate cache
+                    # Index failures are logged but don't fail the transaction
                     for entity_id, entity in write_set.items():
                         self._cache_invalidate(entity_id)
                         if self._index_manager is not None:
-                            entity_type = getattr(entity, 'entity_type', None)
-                            if entity_type:
-                                self._index_manager.update_index(
-                                    entity_type, entity_id,
-                                    old_entity_data.get(entity_id),
-                                    entity.to_dict()
-                                )
+                            try:
+                                entity_type = getattr(entity, 'entity_type', None)
+                                if entity_type:
+                                    self._index_manager.update_index(
+                                        entity_type, entity_id,
+                                        old_entity_data.get(entity_id),
+                                        entity.to_dict()
+                                    )
+                            except Exception as e:
+                                logger.warning(f"Index update failed for {entity_id}: {e}")
 
                     return self._version
 
@@ -656,11 +663,14 @@ class CDGStore:
                 # Invalidate cache for deleted entity
                 self._cache_invalidate(entity_id)
 
-                # Update indexes (remove entity from all indexes)
+                # Update indexes (failure logged but doesn't fail the delete)
                 if self._index_manager is not None and entity_type:
-                    self._index_manager.update_index(
-                        entity_type, entity_id, old_data, None
-                    )
+                    try:
+                        self._index_manager.update_index(
+                            entity_type, entity_id, old_data, None
+                        )
+                    except Exception as e:
+                        logger.warning(f"Index update failed for deleted {entity_id}: {e}")
 
                 return True
 
@@ -732,15 +742,19 @@ class CDGStore:
                         self._save_version()
 
                     # Step 5: Invalidate cache and update indexes for all deleted entities
+                    # Index failures are logged but don't fail the transaction
                     for entity_id, _, _ in deleted_files:
                         self._cache_invalidate(entity_id)
 
                     if self._index_manager is not None:
                         for entity_id, entity_type, old_data in deleted_entities:
                             if entity_type:
-                                self._index_manager.update_index(
-                                    entity_type, entity_id, old_data, None
-                                )
+                                try:
+                                    self._index_manager.update_index(
+                                        entity_type, entity_id, old_data, None
+                                    )
+                                except Exception as e:
+                                    logger.warning(f"Index update failed for deleted {entity_id}: {e}")
 
                     return self._version
 

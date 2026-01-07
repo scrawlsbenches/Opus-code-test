@@ -2,8 +2,8 @@
 CDG Index Manager - Schema-based index maintenance.
 
 This module provides automatic index management for CDG entities based on
-schema field annotations. Like SQL Server column indexes, fields marked
-with `indexed=True` in the schema will have indexes maintained automatically.
+schema field annotations. Fields marked with `indexed=True` in the schema
+will have indexes maintained automatically.
 
 Example schema:
     EntitySchema(
@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 import time
 from pathlib import Path
 from typing import Dict, Set, Optional, Any, List, TYPE_CHECKING
@@ -103,6 +104,9 @@ class CDGIndexManager:
         self._schema_registry = schema_registry
         self._config = config
 
+        # Thread safety lock for index modifications (RLock allows reentry for rebuild_all)
+        self._lock = threading.RLock()
+
         # In-memory index cache: {entity_type: {field_name: {value: set(entity_ids)}}}
         self._indexes: Dict[str, Dict[str, Dict[Any, Set[str]]]] = {}
 
@@ -144,9 +148,8 @@ class CDGIndexManager:
         indexed_fields = []
 
         for field in schema.fields:
-            if getattr(field, 'indexed', False):
-                index_type = getattr(field, 'index_type', 'hash')
-                indexed_fields.append((field.name, index_type))
+            if field.indexed:
+                indexed_fields.append((field.name, field.index_type))
 
         return indexed_fields
 
@@ -181,36 +184,37 @@ class CDGIndexManager:
         if not indexed_fields:
             return
 
-        self._ensure_index_structure(entity_type)
+        with self._lock:
+            self._ensure_index_structure(entity_type)
 
-        for field_name, index_type in indexed_fields:
-            # Get old and new values
-            old_value = old_data.get(field_name) if old_data else None
-            new_value = new_data.get(field_name) if new_data else None
+            for field_name, index_type in indexed_fields:
+                # Get old and new values
+                old_value = old_data.get(field_name) if old_data else None
+                new_value = new_data.get(field_name) if new_data else None
 
-            # Skip if value unchanged
-            if old_value == new_value:
-                continue
+                # Skip if value unchanged
+                if old_value == new_value:
+                    continue
 
-            field_index = self._indexes[entity_type][field_name]
+                field_index = self._indexes[entity_type][field_name]
 
-            # Remove from old value's index set
-            if old_value is not None:
-                old_value_key = self._normalize_value(old_value)
-                if old_value_key in field_index:
-                    field_index[old_value_key].discard(entity_id)
-                    # Clean up empty sets
-                    if not field_index[old_value_key]:
-                        del field_index[old_value_key]
+                # Remove from old value's index set
+                if old_value is not None:
+                    old_value_key = self._normalize_value(old_value)
+                    if old_value_key in field_index:
+                        field_index[old_value_key].discard(entity_id)
+                        # Clean up empty sets
+                        if not field_index[old_value_key]:
+                            del field_index[old_value_key]
 
-            # Add to new value's index set
-            if new_value is not None:
-                new_value_key = self._normalize_value(new_value)
-                if new_value_key not in field_index:
-                    field_index[new_value_key] = set()
-                field_index[new_value_key].add(entity_id)
+                # Add to new value's index set
+                if new_value is not None:
+                    new_value_key = self._normalize_value(new_value)
+                    if new_value_key not in field_index:
+                        field_index[new_value_key] = set()
+                    field_index[new_value_key].add(entity_id)
 
-        self._dirty = True
+            self._dirty = True
 
     def remove_from_index(self, entity_type: str, entity_id: str) -> None:
         """
@@ -223,17 +227,18 @@ class CDGIndexManager:
             entity_type: Type of entity
             entity_id: Entity ID to remove
         """
-        if entity_type not in self._indexes:
-            return
+        with self._lock:
+            if entity_type not in self._indexes:
+                return
 
-        for field_name, field_index in self._indexes[entity_type].items():
-            # Find and remove entity_id from all value sets
-            for value, entity_ids in list(field_index.items()):
-                entity_ids.discard(entity_id)
-                if not entity_ids:
-                    del field_index[value]
+            for field_name, field_index in self._indexes[entity_type].items():
+                # Find and remove entity_id from all value sets
+                for value, entity_ids in list(field_index.items()):
+                    entity_ids.discard(entity_id)
+                    if not entity_ids:
+                        del field_index[value]
 
-        self._dirty = True
+            self._dirty = True
 
     def lookup(
         self,
@@ -388,32 +393,33 @@ class CDGIndexManager:
         logger.info("Rebuilding all indexes...")
         start_time = time.time()
 
-        # Clear existing indexes
-        self._indexes.clear()
+        with self._lock:
+            # Clear existing indexes
+            self._indexes.clear()
 
-        # Clear index directory
-        if self._fs.exists(self.index_dir):
-            for index_file in self._fs.glob(self.index_dir, "**/*.json"):
-                self._fs.unlink(index_file, missing_ok=True)
+            # Clear index directory
+            if self._fs.exists(self.index_dir):
+                for index_file in self._fs.glob(self.index_dir, "**/*.json"):
+                    self._fs.unlink(index_file, missing_ok=True)
 
-        # Ensure directory exists
-        self._fs.mkdir(self.index_dir, parents=True, exist_ok=True)
+            # Ensure directory exists
+            self._fs.mkdir(self.index_dir, parents=True, exist_ok=True)
 
-        entity_count = 0
+            entity_count = 0
 
-        if entity_iterator is not None:
-            for entity_type, entity_data in entity_iterator():
-                entity_id = entity_data.get("id")
-                if entity_id:
-                    self.update_index(entity_type, entity_id, None, entity_data)
-                    entity_count += 1
+            if entity_iterator is not None:
+                for entity_type, entity_data in entity_iterator():
+                    entity_id = entity_data.get("id")
+                    if entity_id:
+                        self.update_index(entity_type, entity_id, None, entity_data)
+                        entity_count += 1
 
-        # Save indexes and metadata
-        self._save_indexes()
-        self._save_metadata()
+            # Save indexes and metadata
+            self._save_indexes()
+            self._save_metadata()
 
-        self._dirty = False
-        self._last_rebuild_time = time.time()
+            self._dirty = False
+            self._last_rebuild_time = time.time()
 
         elapsed = time.time() - start_time
         logger.info(f"Index rebuild complete: {entity_count} entities in {elapsed:.2f}s")
@@ -426,11 +432,12 @@ class CDGIndexManager:
 
         Called periodically or on shutdown to ensure indexes are saved.
         """
-        if not self._dirty:
-            return
+        with self._lock:
+            if not self._dirty:
+                return
 
-        self._save_indexes()
-        self._dirty = False
+            self._save_indexes()
+            self._dirty = False
 
     def _load_indexes(self) -> None:
         """Load indexes from disk on startup."""
