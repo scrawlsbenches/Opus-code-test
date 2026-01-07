@@ -18,6 +18,41 @@ deleted modules. Running them wastes time and produces noise.
 
 ---
 
+## ⚠️ REFACTORING RULES (MUST FOLLOW)
+
+1. **NO DEPRECATION** - We're refactoring, not deprecating. Either fix it now
+   or note it in scratchpad for fixing later. Deprecation comments confuse us.
+
+2. **UPDATE SCRATCHPAD BEFORE CONTEXT COMPACTION** - Every time context gets
+   compacted, important information is lost. Commit often and update this
+   scratchpad with current state of mind before it happens.
+
+3. **NO BACKWARD COMPATIBILITY** - We're making breaking changes intentionally.
+   Don't add fallbacks, shims, or compatibility layers.
+
+4. **WE CONTROL THE DATA** - Values come from our schema. No defensive
+   normalization (like `.lower()`) needed. Store values as-is.
+
+5. **GENERIC COMMENTS** - Code comments should be focused and generic.
+   Don't reference external products (like "like SQL Server"). Describe
+   what the code does, not what it's similar to.
+
+---
+
+## 🔧 KNOWN ISSUES TO FIX
+
+### Dual CDGConfig Issue
+`cdg_module.py` defines its own `CDGConfig` (simple) and imports `CDGInternalConfig`
+from `cdg/config.py` (full). This is confusing redundancy.
+**FIX:** Remove cdg_module.py's CDGConfig, use the real one from cdg/config.py.
+
+### Index Callbacks in CDGConfig
+`index_rebuild_callback` and `index_stale_callback` exist only for GoT's
+QueryIndexManager. CDGIndexManager replaces this.
+**FIX:** Remove when QueryIndexManager is removed from GoT.
+
+---
+
 ## WORKFLOW NOTES (for context preservation)
 
 1. **DON'T track "done" here** - commit often with clear messages instead

@@ -316,7 +316,8 @@ class CDGIndexManager:
         """
         Normalize a value for index key storage.
 
-        Converts values to strings for consistent hashing.
+        Values are stored as-is since we control the input through schema.
+        Only type conversion to string is performed for consistent hashing.
         """
         if value is None:
             return "__NULL__"
@@ -325,7 +326,7 @@ class CDGIndexManager:
         if isinstance(value, (int, float)):
             return str(value)
         if isinstance(value, str):
-            return value.lower()  # Case-insensitive by default
+            return value  # Store as-is, we control the input
         if isinstance(value, (list, dict)):
             return json.dumps(value, sort_keys=True)
         return str(value)
