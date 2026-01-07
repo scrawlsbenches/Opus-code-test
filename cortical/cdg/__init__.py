@@ -68,6 +68,7 @@ from .schema import (
     OnDeleteAction,
     ReferenceRule,
 )
+from .index_manager import CDGIndexManager
 
 __all__ = [
     # Types
@@ -114,4 +115,6 @@ __all__ = [
     "ValidationResult",
     "OnDeleteAction",
     "ReferenceRule",
+    # Index
+    "CDGIndexManager",
 ]

@@ -42,6 +42,10 @@ from .config import CDGConfig, RecoveryMode, OrphanStrategy
 from .errors import CorruptionError
 from cortical.utils.checksums import compute_checksum
 from cortical.common.recovery_types import RecoveryResult, RepairResult
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .index_manager import CDGIndexManager
 
 # Re-export for backward compatibility
 __all__ = ['CDGRecoveryManager', 'RecoveryResult', 'RepairResult']
@@ -71,7 +75,8 @@ class CDGRecoveryManager:
         self,
         store_dir: Path,
         config: CDGConfig,
-        entity_factory: Optional[EntityFactory] = None
+        entity_factory: Optional[EntityFactory] = None,
+        index_manager: Optional["CDGIndexManager"] = None,
     ):
         """
         Initialize recovery manager.
@@ -80,16 +85,21 @@ class CDGRecoveryManager:
             store_dir: Base directory for CDG storage
             config: CDG configuration controlling recovery behavior
             entity_factory: Optional factory for creating domain-specific entities
+            index_manager: Optional index manager for schema-based index recovery
         """
         self.store_dir = Path(store_dir)
         self.store_dir.mkdir(parents=True, exist_ok=True)
         self.config = config
 
+        # Index manager for schema-based index recovery
+        self._index_manager = index_manager
+
         # Initialize storage (without triggering transaction manager recovery)
         self.store = CDGStore(
             self.store_dir,
             config=config,
-            entity_factory=entity_factory
+            entity_factory=entity_factory,
+            index_manager=index_manager,
         )
 
         # Initialize WAL if enabled
@@ -144,12 +154,25 @@ class CDGRecoveryManager:
         """
         Check if indexes need to be rebuilt.
 
-        Uses the index_stale_callback from config if provided.
-        If no callback is configured, returns False.
+        Uses CDGIndexManager if available, otherwise falls back to
+        index_stale_callback from config for backward compatibility.
+        If neither is configured, returns False.
 
         Returns:
             True if indexes are stale and need rebuilding
         """
+        # Prefer CDGIndexManager (schema-based indexes)
+        if self._index_manager is not None:
+            try:
+                return self._index_manager.needs_rebuild()
+            except Exception as e:
+                logger.warning(
+                    "Index manager needs_rebuild check failed: %s: %s",
+                    type(e).__name__, e
+                )
+                return True  # Assume rebuild needed on error
+
+        # Fall back to callback for backward compatibility
         if self.config.index_stale_callback is None:
             return False
 
@@ -268,8 +291,25 @@ class CDGRecoveryManager:
         if corrupted_wal_count > 0:
             result.add_action(f"Found {corrupted_wal_count} corrupted WAL entry/entries")
 
-        # Step 7: Rebuild indexes if callback provided
-        if self.config.index_rebuild_callback:
+        # Step 7: Rebuild indexes (prefer CDGIndexManager, fall back to callback)
+        if self._index_manager is not None:
+            try:
+                def entity_iterator():
+                    """Yield (entity_type, entity_data) tuples for indexing."""
+                    for entity in self.store.iter_entities():
+                        entity_type = getattr(entity, 'entity_type', None)
+                        if entity_type:
+                            yield (entity_type, entity.to_dict())
+
+                entity_count = self._index_manager.rebuild_all(entity_iterator)
+                result.indexes_rebuilt = True
+                result.add_action(f"Rebuilt indexes: {entity_count} entities indexed")
+            except Exception as e:
+                result.success = False
+                result.add_action(f"Index rebuild failed: {e}")
+                logger.error("Index rebuild failed: %s: %s", type(e).__name__, e)
+        elif self.config.index_rebuild_callback:
+            # Fall back to callback for backward compatibility
             try:
                 task_count = self.config.index_rebuild_callback(self.store_dir)
                 result.indexes_rebuilt = True

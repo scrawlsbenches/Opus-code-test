@@ -106,6 +106,16 @@ class Field:
 
     Defines a single field in an entity schema with type, requirements,
     defaults, and optional custom validation.
+
+    Index support:
+        Fields can be indexed for fast lookups. Set indexed=True to create
+        an index on this field. The index_type determines the index structure:
+        - "hash": Fast equality lookups (default)
+        - "btree": Range queries, ordering
+        - "fulltext": Text search (for STRING fields)
+
+    Example:
+        Field('status', FieldType.ENUM, indexed=True, choices=['pending', 'done'])
     """
 
     name: str
@@ -116,6 +126,8 @@ class Field:
     item_type: Optional[FieldType] = None  # For LIST type
     validator: Optional[Callable[[Any], bool]] = None
     description: str = ""
+    indexed: bool = False  # Whether to maintain an index on this field
+    index_type: str = "hash"  # Index type: "hash", "btree", "fulltext"
 
     def validate(self, value: Any) -> Tuple[bool, Optional[str]]:
         """

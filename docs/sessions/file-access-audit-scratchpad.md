@@ -134,80 +134,101 @@ Update the scratchpad's "Previous session branch" in this template before ending
 
 ## Current State
 
-**Status:** REFACTORING PHASE 2 - Recovery & Duplication
+**Status:** REFACTORING PHASE 3 - CDG Index Manager
 
-**Completed (Phase 1):**
+**Completed (Phase 1 - File Access):**
 - Deleted `got/wal.py` → use CDGWALManager directly
 - Deleted `got/tx_manager.py` → use CDGTransactionManager directly
 - Deleted `got/versioned_store.py` → use CDGStore directly
 - Removed fallback patterns in `api.py` and `query_api.py`
 - Schema moved to `cdg/schema/`
 
+**Completed (Phase 2 - Recovery):**
+- Deleted `cortical/got/recovery.py` entirely (641 lines → 0)
+- Created `cortical/common/recovery_types.py` (shared RecoveryResult, RepairResult)
+- CDG owns ALL recovery logic - no GoT recovery code
+
 ---
 
 ## ⚠️ PRIORITY TASK LIST (in order)
 
-### 1. RECOVERY MODULE CONSOLIDATION [DONE ✓]
+### 1. CDG INDEX MANAGER [IN PROGRESS]
 
-**COMPLETED 2026-01-07:**
-- Deleted `cortical/got/recovery.py` entirely
-- Created `cortical/common/recovery_types.py` (shared RecoveryResult, RepairResult)
-- Implemented `CDGRecoveryManager.needs_index_recovery()` with callback pattern
-- Added `index_stale_callback` to CDGConfig
-- GoTManager provides callbacks: `_is_index_stale()`, `_rebuild_indexes_callback()`
-- GoT now uses CDGRecoveryManager directly (configured with callbacks)
+**Architecture decision (from user):**
+- Indexes should be maintained by CDG, NOT GoT
+- Indexes configured in schema via `Field(indexed=True)` (like SQL Server column indexes)
+- GoT is a query/facade layer - NO file I/O for index maintenance
 
-**Line reduction:** 641 → 0 (got/recovery.py deleted)
-**Bugs fixed:** All 4 bugs eliminated by delegation to CDG
+**Implementation plan:**
+1. ✅ Add `indexed` and `index_type` to Field in `cdg/schema/__init__.py`
+2. 🔄 Create `cortical/cdg/index_manager.py` with CDGIndexManager
+3. ⬜ Integrate IndexManager with CDGStore (update indexes on write)
+4. ⬜ Integrate IndexManager with CDGRecoveryManager
+5. ⬜ Remove `index_stale_callback` and `index_rebuild_callback` from CDGConfig
+6. ⬜ Remove `_is_index_stale()`, `_rebuild_indexes_callback()` from GoTManager
+7. ⬜ Update GoT entity schemas with `indexed=True` on queryable fields
+
+**CDGIndexManager API:**
+```python
+class CDGIndexManager:
+    def update_index(self, entity_type, entity_id, old_data, new_data)
+    def lookup(self, entity_type, field_name, value) -> Set[str]
+    def rebuild_all(self)
+    def needs_rebuild(self) -> bool
+```
 
 ### 2. FIX TEST IMPORTS [MECHANICAL]
 
-13 files, ~37 broken imports. Estimated 2 hours.
-Blocked until recovery consolidation complete (may change more imports).
+13 files, ~37 broken imports.
+Blocked until index manager complete (may change more imports).
 
 ### 3. VALIDATION RULE EXTRACTION [TECHNICAL DEBT]
 
 **Current state:** 9 if/elif blocks in `_validate_entity_specific()` (lines 406-508)
 - Each entity type repeats same pattern
 - Adding new type requires modifying function
-- Rules embedded in code, not visible at a glance
 
 **Target:** Extract to `ENTITY_SCHEMAS` data structure
-- Declarative rules
-- Adding new entity = adding dict entry
-- ~90 lines → ~60 lines
 
-### 4. GRAPH TRAVERSAL CONSOLIDATION [DUPLICATION]
+### 4. GRAPH TRAVERSAL CONSOLIDATION [DEFERRED]
 
-3 overlapping utilities:
-- `GraphWalker` (642 lines)
-- `PathFinder` (646 lines)
-- `PatternMatcher` (739 lines)
-
-Could share base class for traversal logic.
+3 overlapping utilities. Lower priority.
 
 ---
 
-## Recovery Consolidation Plan
+## ⚠️ CRITICAL ARCHITECTURE RULES
 
-**Strategy:** GoT recovery becomes thin wrapper around CDG recovery
+**CDG owns infrastructure:**
+- Storage, transactions, WAL
+- Recovery (ALL of it)
+- Indexes (schema-based, like SQL Server)
 
-1. Move `RecoveryResult` and `RepairResult` to `cortical/common/`
-2. GoT recovery takes CDGRecoveryManager as dependency
-3. GoT only adds: `needs_index_recovery()`, `rebuild_indexes()`
-4. Delete duplicated methods, delegate to CDG
-5. Fix the bugs (use WAL.log(), handle ADOPTED format)
+**GoT is thin domain layer:**
+- Query/facade over CDG
+- Entity types and business logic
+- NO file I/O for infrastructure
+- Callbacks for NOTIFICATION only, not maintenance
 
-**CDG has that GoT lacks:**
-- `reconstruct_entities_from_wal()` - CRITICAL
-- `MIN_ENTITY_FILE_SIZE` check
-- RecoveryMode enum (configurable)
-- OrphanStrategy enum (type-safe)
-- Proper WAL logging in repair_orphans()
+**Wrong pattern (remove these from GoT):**
+```python
+# WRONG - GoT doing file I/O for indexes
+def _is_index_stale(self):
+    index_path = self.store_dir / "indexes.json"  # NO!
 
-**GoT has that's unique:**
-- `needs_index_recovery()` - real implementation (CDG is placeholder)
-- `rebuild_indexes()` - GoT domain-specific
+# WRONG - GoT doing file maintenance
+def _rebuild_indexes_callback(self):
+    self._indexer.rebuild()  # CDG should call this
+```
+
+**Right pattern:**
+```python
+# RIGHT - Index configured in schema
+Field("status", FieldType.STRING, indexed=True)
+
+# RIGHT - CDG maintains indexes internally
+class CDGIndexManager:
+    def update_index(...)  # Called by CDGStore on write
+```
 
 ---
 
