@@ -1478,3 +1478,9 @@
 {"seq":1478,"ts":"2026-01-07T10:53:20.933203+00:00","tx":"TX-20260107-105320-0fb07072","op":"WRITE","data":{"entity_id":"T-20260107-105320-2fe241c5","old_version":0,"new_version":1,"entity_data":{"id":"T-20260107-105320-2fe241c5","entity_type":"task","version":1,"created_at":"2026-01-07T10:53:20.932270+00:00","modified_at":"2026-01-07T10:53:20.932277+00:00","title":"Final delete test","status":"pending","priority":"low","description":"","properties":{"category":"feature"},"metadata":{}}},"checksum":"1dbc11820d8dc83d"}
 {"seq":1479,"ts":"2026-01-07T10:53:20.934969+00:00","tx":"TX-20260107-105320-0fb07072","op":"TX_PREPARE","data":{},"checksum":"23f6620c9204d7ca"}
 {"seq":1480,"ts":"2026-01-07T10:53:20.936085+00:00","tx":"TX-20260107-105320-0fb07072","op":"TX_COMMIT","data":{"version":2034},"checksum":"931bdc5e447c3ae8"}
+{"seq":1481,"ts":"2026-01-07T10:53:24.207469+00:00","tx":"TX-20260107-105324-91ee6326","op":"TX_BEGIN","data":{"snapshot":2034},"checksum":"f008f29ae2b9f973"}
+{"seq":1482,"ts":"2026-01-07T10:53:24.209141+00:00","tx":"TX-20260107-105324-91ee6326","op":"TX_ROLLBACK","data":{"reason":"read_only"},"checksum":"b7e5ec25d4382a9f"}
+{"seq":1483,"ts":"2026-01-07T10:53:24.405563+00:00","tx":"TX-20260107-105324-c1b0505f","op":"TX_BEGIN","data":{"snapshot":2034},"checksum":"35b6b7fe9677dc33"}
+{"seq":1484,"ts":"2026-01-07T10:53:24.414140+00:00","tx":"TX-20260107-105324-c1b0505f","op":"WRITE","data":{"entity_id":"T-20260107-104355-5c9e7b25","old_version":1,"new_version":-1},"checksum":"64b33308d2db0535"}
+{"seq":1485,"ts":"2026-01-07T10:53:24.415899+00:00","tx":"TX-20260107-105324-c1b0505f","op":"TX_PREPARE","data":{},"checksum":"076998a7d8fd176a"}
+{"seq":1486,"ts":"2026-01-07T10:53:24.416807+00:00","tx":"TX-20260107-105324-c1b0505f","op":"TX_COMMIT","data":{"version":2036},"checksum":"38e23e11998a8055"}
