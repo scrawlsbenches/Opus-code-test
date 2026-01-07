@@ -88,10 +88,10 @@ If multi-process direct access to CDGIndexManager becomes needed, add ProcessLoc
 - KnowledgeTransferSchema: session_id
 - ClaudeMdLayerSchema: layer_type, freshness_status, inclusion_rule
 
-### 6. Dead/Legacy Code to Remove [REMAINING]
-- `remove_from_index()` in index_manager.py (never called) - **Keep for now, may be useful**
-- `_persist_history_entry()` in storage.py (legacy, not crash-safe)
-- Legacy parameters `durability`, `validate_on_save` in CDGStore.__init__
+### 6. Dead/Legacy Code Removed ✓
+- `remove_from_index()` in index_manager.py - **Kept for now, may be useful**
+- ~~`_persist_history_entry()` in storage.py~~ - **DONE:** Removed
+- ~~Legacy parameters `durability`, `validate_on_save` in CDGStore.__init__~~ - **DONE:** Removed
 
 ---
 
@@ -255,7 +255,7 @@ class CDGIndexManager:
     def needs_rebuild(self) -> bool
 ```
 
-### 2. REMOVE QUERYINDEXMANAGER FROM GOT [MOSTLY COMPLETE]
+### 2. REMOVE QUERYINDEXMANAGER FROM GOT [COMPLETE ✓]
 
 **Problem:** GoT has QueryIndexManager doing redundant work. CDGStore now calls
 CDGIndexManager automatically on write/delete, so GoT's manual index updates
@@ -275,16 +275,17 @@ are DOUBLE-WORK.
 4. ✅ Updated got/__init__.py:
    - Removed QueryIndexManager, IndexEntry, IndexStats exports
 5. ✅ Verified got_utils.py validate works
+6. ✅ **Deleted got/indexer.py entirely**
+7. ✅ Removed TYPE_CHECKING import from expression/optimizer.py
+8. ✅ Removed QueryIndexManager registration from got_module.py
 
-**Remaining:**
-- `got/indexer.py` still exists but is no longer imported by api.py or __init__.py
-- Can be deleted in future cleanup, or kept for reference
-- `expression/optimizer.py` has TYPE_CHECKING import (harmless)
+### 3. FIX TEST IMPORTS [COMPLETE ✓]
 
-### 3. FIX TEST IMPORTS [MECHANICAL]
-
-13 files, ~37 broken imports.
-Blocked until QueryIndexManager removal complete (may change more imports).
+**Completed (2026-01-07):**
+- Deleted 12 test files testing removed GoT-layer infrastructure
+- Updated conftest.py to use CDGTransactionManager
+- Updated remaining test imports to use CDG layer classes
+- Removed TestWALManager from test_got_modules.py
 
 ### 4. VALIDATION RULE EXTRACTION [TECHNICAL DEBT]
 
