@@ -5,6 +5,15 @@
 
 ---
 
+## WORKFLOW NOTES (for context preservation)
+
+1. **DON'T track "done" here** - commit often with clear messages instead
+2. **Use subagents** to check git messages regularly (`git log --oneline -10`)
+3. **Preserve context window** - scratchpad is for active thinking, not history
+4. **We're refactoring while figuring out how to refactor** - iterative process
+
+---
+
 ## HANDOFF FOR NEW THREAD
 
 ### What was done this session:
