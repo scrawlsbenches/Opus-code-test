@@ -21,6 +21,7 @@
 | **Evaluate criteria checklists** | Checked criteria, returned STOPPED | exp-20260107-175520-default-to-stop |
 | **Skip verification questions** | Skipped question, invented definitions | exp-20260107-175510-verification-questions |
 | **Answer binary questions honestly** | Answered NO to all, returned BLOCKED | exp-20260107-180334-binary-questions |
+| **v2 template produces quality output** | 5 findings with evidence, correct categorization | exp-20260107-190000-v2-template-validation |
 
 ---
 
@@ -34,6 +35,7 @@
 | **Explicit output triggers** | "return exactly: BLOCKED" → agent returned BLOCKED | exp-20260107-175500-explicit-stopping |
 | **Default-to-stop with criteria** | Checklist + cite evidence → agent stopped | exp-20260107-175520-default-to-stop |
 | **Binary verification questions** | "Is X provided? YES/NO" → agent answered honestly | exp-20260107-180334-binary-questions |
+| **Combined v2 template** | All patterns together → quality output with evidence | exp-20260107-190000-v2-template-validation |
 
 ---
 
