@@ -7,16 +7,12 @@ Tests schema definitions, field validation, migrations, and registry.
 import pytest
 from typing import Dict, Any
 
-from cortical.got.schema import (
+from cortical.cdg.schema import (
     BaseSchema,
     Field,
     FieldType,
     SchemaRegistry,
     ValidationResult,
-    get_registry,
-    register_schema,
-    validate_entity,
-    migrate_entity,
 )
 
 
@@ -479,28 +475,26 @@ class TestSchemaRegistry:
         assert not reg2.has_schema('test')
 
 
-class TestGlobalFunctions:
-    """Tests for module-level convenience functions."""
+class TestRegistryMethods:
+    """Tests for SchemaRegistry methods (formerly global functions)."""
 
-    @pytest.fixture(autouse=True)
-    def clear_registry(self):
-        """Clear global registry before each test."""
-        get_registry().clear()
-        yield
-        get_registry().clear()
+    @pytest.fixture
+    def registry(self):
+        """Create a fresh registry for each test."""
+        return SchemaRegistry()
 
-    def test_register_schema(self):
-        """Test global register_schema function."""
+    def test_register_schema(self, registry):
+        """Test registry.register() method."""
         class TestSchema(BaseSchema):
             schema_version = 1
             entity_type = 'test'
             fields = {}
 
-        register_schema('test', TestSchema)
-        assert get_registry().has_schema('test')
+        registry.register('test', TestSchema)
+        assert registry.has_schema('test')
 
-    def test_validate_entity(self):
-        """Test global validate_entity function."""
+    def test_validate_entity(self, registry):
+        """Test registry.validate() method."""
         class TestSchema(BaseSchema):
             schema_version = 1
             entity_type = 'test'
@@ -508,12 +502,12 @@ class TestGlobalFunctions:
                 'name': Field('name', FieldType.STRING, required=True),
             }
 
-        register_schema('test', TestSchema)
-        result = validate_entity('test', {'name': 'hello'})
+        registry.register('test', TestSchema)
+        result = registry.validate('test', {'name': 'hello'})
         assert result.valid
 
-    def test_migrate_entity(self):
-        """Test global migrate_entity function."""
+    def test_migrate_entity(self, registry):
+        """Test registry.migrate() method."""
         class TestSchema(BaseSchema):
             schema_version = 2
             entity_type = 'test'
@@ -524,9 +518,9 @@ class TestGlobalFunctions:
                 data['v2'] = True
                 return data
 
-        register_schema('test', TestSchema)
+        registry.register('test', TestSchema)
         data = {'id': '123', '_schema_version': 1}
-        migrated, result = migrate_entity('test', data)
+        migrated, result = registry.migrate('test', data)
 
         assert result.migrated
         assert migrated['v2'] is True

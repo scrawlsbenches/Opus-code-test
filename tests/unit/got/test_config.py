@@ -15,9 +15,9 @@ from cortical.got import (
     DurabilityMode,
     GoTConfig,
     GoTManager,
-    WALManager,
-    VersionedStore,
 )
+from cortical.cdg import CDGWALManager, CDGStore
+from cortical.cdg.config import CDGConfig
 from cortical.core.bootstrap import create_container
 
 
@@ -72,7 +72,7 @@ class TestParanoidMode(unittest.TestCase):
     @patch('os.fsync')
     def test_paranoid_mode_fsyncs_on_log(self, mock_fsync):
         """Test that PARANOID mode calls fsync on every WAL log."""
-        wal = WALManager(self.wal_dir, durability=DurabilityMode.PARANOID)
+        wal = CDGWALManager(self.wal_dir, CDGConfig(durability=DurabilityMode.PARANOID))
 
         # Log a transaction begin
         wal.log_tx_begin("tx1", snapshot_version=0)
@@ -83,7 +83,7 @@ class TestParanoidMode(unittest.TestCase):
     @patch('os.fsync')
     def test_paranoid_mode_fsyncs_on_sequence(self, mock_fsync):
         """Test that PARANOID mode calls fsync when saving sequence."""
-        wal = WALManager(self.wal_dir, durability=DurabilityMode.PARANOID)
+        wal = CDGWALManager(self.wal_dir, CDGConfig(durability=DurabilityMode.PARANOID))
 
         # Clear any fsync calls from __init__
         mock_fsync.reset_mock()
@@ -111,7 +111,7 @@ class TestBalancedMode(unittest.TestCase):
     @patch('os.fsync')
     def test_balanced_mode_skips_per_op_fsync(self, mock_fsync):
         """Test that BALANCED mode does NOT fsync on individual operations."""
-        wal = WALManager(self.wal_dir, durability=DurabilityMode.BALANCED)
+        wal = CDGWALManager(self.wal_dir, CDGConfig(durability=DurabilityMode.BALANCED))
 
         # Clear any fsync calls from __init__
         mock_fsync.reset_mock()
@@ -125,7 +125,7 @@ class TestBalancedMode(unittest.TestCase):
     @patch('os.fsync')
     def test_balanced_mode_fsync_now_works(self, mock_fsync):
         """Test that BALANCED mode can fsync explicitly via fsync_now()."""
-        wal = WALManager(self.wal_dir, durability=DurabilityMode.BALANCED)
+        wal = CDGWALManager(self.wal_dir, CDGConfig(durability=DurabilityMode.BALANCED))
 
         # Log some operations
         wal.log_tx_begin("tx1", snapshot_version=0)
@@ -157,7 +157,7 @@ class TestRelaxedMode(unittest.TestCase):
     @patch('os.fsync')
     def test_relaxed_mode_never_fsyncs_wal(self, mock_fsync):
         """Test that RELAXED mode never calls fsync on WAL."""
-        wal = WALManager(self.wal_dir, durability=DurabilityMode.RELAXED)
+        wal = CDGWALManager(self.wal_dir, CDGConfig(durability=DurabilityMode.RELAXED))
 
         # Clear any fsync calls from __init__
         mock_fsync.reset_mock()
@@ -174,7 +174,7 @@ class TestRelaxedMode(unittest.TestCase):
         """Test that RELAXED mode never calls fsync on entity store."""
         from cortical.got import Task
 
-        store = VersionedStore(self.store_dir, durability=DurabilityMode.RELAXED)
+        store = CDGStore(self.store_dir, CDGConfig(durability=DurabilityMode.RELAXED))
 
         # Clear any fsync calls from __init__
         mock_fsync.reset_mock()
