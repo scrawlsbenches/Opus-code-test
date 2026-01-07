@@ -1460,3 +1460,7 @@
 {"seq":1460,"ts":"2026-01-07T10:43:40.238465+00:00","tx":"TX-20260107-104340-15310961","op":"WRITE","data":{"entity_id":"T-20260107-104327-b2367905","old_version":2,"new_version":-1},"checksum":"b2f50ea703c80bb3"}
 {"seq":1461,"ts":"2026-01-07T10:43:40.240368+00:00","tx":"TX-20260107-104340-15310961","op":"TX_PREPARE","data":{},"checksum":"ae159750e82bc1ab"}
 {"seq":1462,"ts":"2026-01-07T10:43:40.241433+00:00","tx":"TX-20260107-104340-15310961","op":"TX_COMMIT","data":{"version":2029},"checksum":"6b912b43da1809f6"}
+{"seq":1463,"ts":"2026-01-07T10:43:55.500015+00:00","tx":"TX-20260107-104355-1c83cebc","op":"TX_BEGIN","data":{"snapshot":2029},"checksum":"1840101176a074a7"}
+{"seq":1464,"ts":"2026-01-07T10:43:55.501436+00:00","tx":"TX-20260107-104355-1c83cebc","op":"WRITE","data":{"entity_id":"T-20260107-104355-5c9e7b25","old_version":0,"new_version":1,"entity_data":{"id":"T-20260107-104355-5c9e7b25","entity_type":"task","version":1,"created_at":"2026-01-07T10:43:55.500653+00:00","modified_at":"2026-01-07T10:43:55.500660+00:00","title":"Delete test 2","status":"pending","priority":"low","description":"","properties":{"category":"feature"},"metadata":{}}},"checksum":"491c607844d16bac"}
+{"seq":1465,"ts":"2026-01-07T10:43:55.503220+00:00","tx":"TX-20260107-104355-1c83cebc","op":"TX_PREPARE","data":{},"checksum":"725afa312572c86a"}
+{"seq":1466,"ts":"2026-01-07T10:43:55.504450+00:00","tx":"TX-20260107-104355-1c83cebc","op":"TX_COMMIT","data":{"version":2030},"checksum":"072fb842f730f2cc"}

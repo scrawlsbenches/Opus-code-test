@@ -1,0 +1,19 @@
+{
+  "_checksum": "e084bfedaa27d9b4",
+  "_written_at": "2026-01-07T10:43:55.512638+00:00",
+  "data": {
+    "created_at": "2026-01-07T10:43:55.500653+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260107-104355-5c9e7b25",
+    "metadata": {},
+    "modified_at": "2026-01-07T10:43:55.512581+00:00",
+    "priority": "low",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Delete test 2",
+    "version": 2
+  }
+}

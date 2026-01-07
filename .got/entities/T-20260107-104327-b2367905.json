@@ -1,0 +1,20 @@
+{
+  "_checksum": "ec062758a3c385f7",
+  "_reconstructed_from_wal": true,
+  "_written_at": "2026-01-07T10:43:55.056664+00:00",
+  "data": {
+    "created_at": "2026-01-07T10:43:27.207792+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260107-104327-b2367905",
+    "metadata": {},
+    "modified_at": "2026-01-07T10:43:27.207797+00:00",
+    "priority": "low",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Delete test task",
+    "version": 1
+  }
+}
