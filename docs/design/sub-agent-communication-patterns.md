@@ -711,7 +711,333 @@ All because an agent believed a lie.
 
 ---
 
-*Document version: 1.1*
+## Appendix: Algorithms for Learning from Audits
+
+This section explores data structures and algorithms—from first principles—that could help us learn patterns from audit data.
+
+### The Problem Domain
+
+We have:
+- **Text data** (comments) with **labels** (misleading/accurate)
+- **Temporal metadata** (when written, when code changed)
+- **Structural relationships** (file → function → comment)
+- **Goal:** Detect patterns, predict categories, find anomalies
+
+---
+
+### Algorithms Ranked by Effectiveness × Usefulness ÷ Complexity
+
+| Rank | Structure/Algorithm | E | U | C | Why |
+|------|---------------------|---|---|---|-----|
+| **1** | Inverted Index | ★★★★★ | ★★★★★ | ★★☆☆☆ | Foundation for everything |
+| **2** | Decision Tree | ★★★★★ | ★★★★★ | ★★☆☆☆ | Interpretable rules |
+| **3** | Trie | ★★★★☆ | ★★★★★ | ★★☆☆☆ | Pattern prefix matching |
+| **4** | Naive Bayes | ★★★★☆ | ★★★★☆ | ★★☆☆☆ | Probabilistic classification |
+| **5** | Union-Find | ★★★★☆ | ★★★★☆ | ★☆☆☆☆ | Clustering with near O(1) |
+| **6** | Bloom Filter | ★★★☆☆ | ★★★★★ | ★☆☆☆☆ | Fast "probably suspicious" |
+| **7** | Suffix Array | ★★★★☆ | ★★★☆☆ | ★★★☆☆ | Find repeated patterns |
+| **8** | DAG (Directed Acyclic Graph) | ★★★★☆ | ★★★☆☆ | ★★★☆☆ | Dependency tracking |
+| **9** | Markov Chain | ★★★☆☆ | ★★★☆☆ | ★★★☆☆ | Sequential patterns |
+| **10** | LSH | ★★★★☆ | ★★★☆☆ | ★★★★☆ | Similarity at scale |
+| **11** | Count-Min Sketch | ★★☆☆☆ | ★★★☆☆ | ★★☆☆☆ | Streaming frequency |
+
+---
+
+### 1. Inverted Index
+
+**What:** Maps terms → list of (document, position) pairs
+
+```
+"will" → [(doc3, pos12), (doc7, pos45), (doc7, pos89)]
+"be"   → [(doc3, pos13), (doc7, pos46), (doc12, pos3)]
+```
+
+**Why #1:**
+- O(1) term lookup
+- Foundation for TF-IDF, phrase search, boolean queries
+- Simple to build, simple to query
+- Enables: "Find all comments containing 'will be implemented'"
+
+**Complexity:** O(n) build, O(1) term lookup, O(k) for k results
+
+---
+
+### 2. Decision Tree
+
+**What:** Binary tree where each node splits on a feature
+
+```
+                    [contains "See:"]
+                    /              \
+                  YES              NO
+                  /                  \
+        [file exists?]        [contains "TODO"]
+        /          \              /        \
+      YES          NO           YES        NO
+       ↓            ↓            ↓          ↓
+   accurate    MISLEADING    accurate    unknown
+```
+
+**Why #2:**
+- Directly interpretable ("IF See: AND file missing THEN misleading")
+- Works well with small labeled datasets (29 examples)
+- Produces rules you can audit and explain
+- No black box
+
+**Complexity:** O(n log n) build, O(log n) classify
+
+---
+
+### 3. Trie (Prefix Tree)
+
+**What:** Tree where edges are characters, paths spell words/patterns
+
+```
+         root
+        /    \
+       S      T
+       |      |
+       e      O
+       |      |
+       e      D
+       |      |
+       :      O
+       |      |
+      (leaf)  :
+              |
+            (leaf)
+```
+
+**Why #3:**
+- O(m) lookup for pattern of length m
+- Natural for "starts with" patterns ("See:", "TODO:", "FUTURE:")
+- Compact storage for shared prefixes
+- Enables autocomplete, pattern enumeration
+
+**Complexity:** O(m) insert, O(m) search, O(alphabet × m) space worst case
+
+---
+
+### 4. Naive Bayes Classifier
+
+**What:** Apply Bayes theorem assuming feature independence
+
+```
+P(misleading | "will", "be", "implemented") ∝
+    P("will" | misleading) × P("be" | misleading) × P("implemented" | misleading) × P(misleading)
+```
+
+**Why #4:**
+- Surprisingly effective for text classification
+- Works with small training sets
+- Fast training and inference
+- Mathematically principled
+
+**The math:**
+```
+P(class | document) = P(document | class) × P(class) / P(document)
+
+With independence assumption:
+P(document | class) = ∏ P(word_i | class)
+```
+
+**Complexity:** O(n × v) train, O(v) classify (v = vocabulary size)
+
+---
+
+### 5. Union-Find (Disjoint Set)
+
+**What:** Tracks equivalence classes with near-constant operations
+
+```
+Initially: {a}, {b}, {c}, {d}, {e}
+
+union(a, b) → {a,b}, {c}, {d}, {e}
+union(c, d) → {a,b}, {c,d}, {e}
+union(b, c) → {a,b,c,d}, {e}
+
+find(a) = find(d)  # Same cluster
+find(a) ≠ find(e)  # Different clusters
+```
+
+**Why #5:**
+- Incrementally cluster similar comments
+- O(α(n)) ≈ O(1) for union and find (inverse Ackermann)
+- Simple implementation (< 30 lines)
+- Merge similar patterns as you discover them
+
+**Complexity:** O(α(n)) per operation, effectively constant
+
+---
+
+### 6. Bloom Filter
+
+**What:** Probabilistic set membership using k hash functions
+
+```
+Insert "See: docs/":
+  h1("See: docs/") mod m = 3  → set bit 3
+  h2("See: docs/") mod m = 7  → set bit 7
+  h3("See: docs/") mod m = 12 → set bit 12
+
+Query "See: docs/":
+  All bits 3,7,12 set? → Probably in set
+
+Query "FIXME:":
+  Bit 5 not set? → Definitely NOT in set
+```
+
+**Why #6:**
+- O(k) insert and query
+- Space efficient (10 bits per element for 1% false positive)
+- No false negatives
+- Fast first-pass filter: "Is this comment pattern known-suspicious?"
+
+**Complexity:** O(k) operations, O(m) space, tunable false positive rate
+
+---
+
+### 7. Suffix Array
+
+**What:** Sorted array of all suffixes of a string
+
+```
+Text: "TODO: fix TODO: add"
+Suffixes sorted:
+  ": add"
+  ": fix TODO: add"
+  "D: add"
+  "D: fix TODO: add"
+  "DO: add"
+  "DO: fix TODO: add"
+  "O: add"
+  "O: fix TODO: add"
+  "ODO: add"
+  "ODO: fix TODO: add"
+  ...
+```
+
+**Why #7:**
+- Find all occurrences of any pattern in O(m log n)
+- Find longest repeated substrings
+- Discover common patterns you didn't anticipate
+- More space-efficient than suffix tree
+
+**Complexity:** O(n log n) build (or O(n) with DC3), O(m log n) search
+
+---
+
+### 8. DAG for Dependencies
+
+**What:** Directed acyclic graph tracking relationships
+
+```
+comment_123 ──references──→ file_456
+    │                           │
+    └──written_by──→ commit_abc │
+                         │      │
+                         └──modifies──┘
+```
+
+**Why #8:**
+- Track comment → code → change relationships
+- Detect "comment references file that was deleted"
+- Enable traversals: "What changed since this comment was written?"
+- Foundation for staleness detection
+
+**Complexity:** O(V + E) traversal, O(1) edge lookup with adjacency list
+
+---
+
+### 9. Markov Chain
+
+**What:** Probabilistic transitions between states (words)
+
+```
+P(next_word | current_word):
+
+"will" → {"be": 0.7, "not": 0.2, "work": 0.1}
+"be"   → {"implemented": 0.5, "fixed": 0.3, "removed": 0.2}
+```
+
+**Why #9:**
+- Model "style" of misleading vs accurate comments
+- Detect: "This comment follows the misleading pattern"
+- Generate examples of suspicious comments
+- Requires minimal training data
+
+**Complexity:** O(n) build, O(1) transition lookup
+
+---
+
+### 10. LSH (Locality Sensitive Hashing)
+
+**What:** Hash similar items to same buckets with high probability
+
+```
+Similar comments hash to same bucket:
+  bucket_42: ["will be implemented soon", "will be added later"]
+  bucket_17: ["TODO: add tests", "TODO: write tests"]
+```
+
+**Why #10:**
+- Approximate nearest neighbor in O(1)
+- Find similar comments without O(n²) comparison
+- Scales to large codebases
+- Tunable precision/recall tradeoff
+
+**Complexity:** O(1) query, O(n) build, sub-linear search
+
+---
+
+### 11. Count-Min Sketch
+
+**What:** Space-efficient frequency estimation
+
+```
+Query: "How often does 'will be' appear?"
+Answer: "Approximately 47 times (±5)"
+```
+
+**Why #11:**
+- Streaming algorithm (single pass over data)
+- Fixed memory regardless of data size
+- Good for "what are the most common patterns?"
+- Trade exactness for space
+
+**Complexity:** O(1) update and query, O(w × d) space
+
+---
+
+### The "Build This First" Stack
+
+If starting from scratch:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  LAYER 1: INDEXING                                                      │
+│  Inverted Index + Trie                                                  │
+│  "Find all documents with pattern X"                                    │
+└─────────────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────────────┐
+│  LAYER 2: SIMILARITY                                                    │
+│  Union-Find + Bloom Filter                                              │
+│  "Group similar items, fast membership check"                           │
+└─────────────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────────────┐
+│  LAYER 3: CLASSIFICATION                                                │
+│  Decision Tree + Naive Bayes                                            │
+│  "Predict category for new items"                                       │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+This gives you interpretable rules (Decision Tree), probabilistic confidence (Naive Bayes), fast filtering (Bloom), and efficient grouping (Union-Find)—all with moderate implementation complexity.
+
+---
+
+*Document version: 1.2*
 *Created: 2026-01-07*
 *Updated: 2026-01-07*
 *Based on: 6 experiments, 5 audit tasks, 29 findings*
