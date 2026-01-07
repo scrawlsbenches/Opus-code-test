@@ -40,7 +40,7 @@ from cortical.utils.id_generation import (
 from cortical.cdg.transaction_manager import CDGTransactionManager, CommitResult
 from .sync import SyncManager, SyncResult
 from .recovery import RecoveryManager, RecoveryResult
-from cortical.cdg.index import IndexManager
+# Indexing handled by CDGTransactionManager automatically on commit
 from .types import Task, Decision, Edge, Entity, Sprint, Epic, Handoff, ClaudeMdLayer, ClaudeMdVersion, Document, EdgeTypes, KnowledgeTransfer
 from .transaction import Transaction
 from .errors import TransactionError, CorruptionError
@@ -153,59 +153,43 @@ class GoTManager:
         *,
         tx_manager: CDGTransactionManager,
         schema_registry: SchemaRegistry,
-        index_manager: IndexManager,
     ):
         """
         Initialize GoT manager with injected dependencies.
 
+        GoTManager is a thin domain layer - pass-through to CDG services.
+        Indexing is handled automatically by CDGTransactionManager on commit.
+
         Args:
             got_dir: Base directory for GoT storage
-            durability: Durability mode controlling fsync behavior (default: BALANCED)
-            cache_enabled: DEPRECATED - Caching is now handled by CDGStore.
-                          This parameter is ignored but kept for backwards compatibility.
-            tx_manager: REQUIRED - Injected CDGTransactionManager instance
-            schema_registry: REQUIRED - SchemaRegistry for entity validation (from Container)
-            index_manager: REQUIRED - CDG IndexManager for field indexing (from Container)
-
-        Raises:
-            TypeError: If required dependencies are missing or wrong type
+            durability: Durability mode (DESIGN ISSUE: should be CDG config)
+            cache_enabled: DEPRECATED - ignored
+            tx_manager: REQUIRED - CDGTransactionManager instance
+            schema_registry: REQUIRED - SchemaRegistry for validation
 
         Example:
-            # The only supported way to get a GoTManager:
             from cortical.core.bootstrap import create_container
-
             container = create_container(got_dir=Path(".got"))
             got_manager = container.resolve(GoTManager)
         """
-        # Validate required dependencies
         if not isinstance(tx_manager, CDGTransactionManager):
             raise TypeError(
-                f"tx_manager is required and must be CDGTransactionManager instance, got {type(tx_manager).__name__}"
+                f"tx_manager must be CDGTransactionManager, got {type(tx_manager).__name__}"
             )
         if not isinstance(schema_registry, SchemaRegistry):
             raise TypeError(
-                f"schema_registry is required and must be SchemaRegistry instance, got {type(schema_registry).__name__}"
-            )
-        if not isinstance(index_manager, IndexManager):
-            raise TypeError(
-                f"index_manager is required and must be IndexManager instance, got {type(index_manager).__name__}"
+                f"schema_registry must be SchemaRegistry, got {type(schema_registry).__name__}"
             )
 
         self.got_dir = Path(got_dir)
-        self.durability = durability
+        self.durability = durability  # DESIGN ISSUE: should be CDG config only
         self.tx_manager = tx_manager
         self._schema_registry = schema_registry
-        self._index_manager = index_manager  # Injected CDG IndexManager
-        self._sync_manager = None  # Lazy initialization
-        self._recovery_manager = None  # Lazy initialization
-        self._query_api = None  # Lazy initialization
+        self._sync_manager = None
+        self._recovery_manager = None
+        self._query_api = None
 
-        # Cache is now handled by CDGStore at the storage layer
-        # GoTManager delegates cache_stats() and cache_clear() to the store
-
-        logger.debug(
-            f"GoTManager initialized with durability={durability.value}"
-        )
+        logger.debug(f"GoTManager initialized")
 
     @property
     def sync_manager(self) -> SyncManager:
@@ -221,15 +205,8 @@ class GoTManager:
             self._recovery_manager = RecoveryManager(self.got_dir)
         return self._recovery_manager
 
-    @property
-    def index_manager(self) -> IndexManager:
-        """
-        Get the CDG IndexManager (injected via constructor).
-
-        Indexes are created automatically by IndexInitializationModule
-        based on schema definitions (e.g., TaskSchema.indexes).
-        """
-        return self._index_manager
+    # Indexing is handled by CDGTransactionManager automatically on commit
+    # No index_manager property needed here
 
     @property
     def query_api(self) -> QueryAPI:
@@ -281,72 +258,7 @@ class GoTManager:
             return self._read_claudemd_layer_file(entity_file)
         return None
 
-    def _rebuild_indexes(self) -> None:
-        """Rebuild all indexes from current entities."""
-        if self._index_manager is None:
-            return
-
-        # Get all tasks for index rebuild
-        tasks = self.list_all_tasks()
-
-        # Convert Task objects to dicts for CDG IndexManager
-        entity_dicts = [
-            {"id": t.id, "status": t.status, "priority": t.priority}
-            for t in tasks
-        ]
-
-        # Rebuild indexes
-        self._index_manager.rebuild_all(entity_dicts)
-        logger.debug(f"Rebuilt indexes: {len(tasks)} tasks")
-
-    def _update_index_for_task(
-        self,
-        task: Task,
-        old_status: Optional[str] = None,
-        old_priority: Optional[str] = None,
-        is_delete: bool = False
-    ) -> None:
-        """
-        Update index when a task changes.
-
-        Uses CDG IndexManager with index names from schema definitions.
-        Index names follow pattern: {entity_type}_{field}_idx
-
-        Args:
-            task: The task that changed
-            old_status: Previous status (for update operations)
-            old_priority: Previous priority (for update operations)
-            is_delete: True if task is being deleted
-        """
-        if self._index_manager is None:
-            return
-
-        if is_delete:
-            # Remove from all indexes
-            self._index_manager.remove_entity(task.id)
-        elif old_status is not None or old_priority is not None:
-            # Update operation - track old and new field values
-            old_fields = {}
-            new_fields = {}
-
-            if old_status is not None:
-                old_fields["status"] = old_status
-            new_fields["status"] = task.status
-
-            if old_priority is not None:
-                old_fields["priority"] = old_priority
-            new_fields["priority"] = task.priority
-
-            self._index_manager.update_entity(task.id, old_fields, new_fields)
-        else:
-            # Create operation - add to all relevant indexes
-            self._index_manager.index_entity(
-                task.id,
-                {"status": task.status, "priority": task.priority}
-            )
-
-        # Save indexes after each update
-        self._index_manager.save()
+    # Indexing methods removed - CDGTransactionManager handles indexing on commit
 
     # ==================== Cache Methods (Delegated to CDGStore) ====================
 
@@ -1927,116 +1839,12 @@ class TransactionContext:
                     )
 
                 # Cache invalidation is handled automatically by CDGStore on write
-
-                # Update indexes WITHIN the lock - atomic with commit
-                if self._got_manager is not None and self._task_changes:
-                    self._apply_index_updates_atomic()
-            # Lock released here - index is guaranteed consistent
+                # Indexing is handled automatically by CDGTransactionManager on commit
+            # Lock released here
 
         return False  # Propagate exceptions
 
-    def _apply_index_updates(self) -> None:
-        """Apply all tracked task changes to the index using CDG IndexManager."""
-        if self._got_manager is None or self._got_manager._index_manager is None:
-            return
-
-        for task_id, changes in self._task_changes.items():
-            if changes.get('is_delete'):
-                # Task was deleted - remove from all indexes
-                self._got_manager._index_manager.remove_entity(task_id)
-                continue
-
-            task = self.tx.write_set.get(task_id)
-            if task is None or not isinstance(task, Task):
-                continue
-
-            if changes.get('is_create'):
-                # New task - add to relevant indexes
-                self._got_manager._index_manager.index_entity(
-                    task.id,
-                    {"status": task.status, "priority": task.priority}
-                )
-            else:
-                # Update task - update indexes with old/new values
-                old_fields = {}
-                new_fields = {"status": task.status, "priority": task.priority}
-
-                if changes.get('old_status') is not None:
-                    old_fields["status"] = changes['old_status']
-                if changes.get('old_priority') is not None:
-                    old_fields["priority"] = changes['old_priority']
-
-                self._got_manager._index_manager.update_entity(
-                    task.id, old_fields, new_fields
-                )
-
-        # Save indexes after all updates
-        self._got_manager._index_manager.save()
-
-    def _apply_index_updates_atomic(self) -> None:
-        """
-        Apply index updates with retry logic using CDG IndexManager.
-
-        MUST be called within transaction lock to ensure atomicity.
-        On persistent failure, logs error. CDG IndexManager handles
-        recovery via its own mechanisms.
-        """
-        if self._got_manager is None or self._got_manager._index_manager is None:
-            return
-
-        import time
-        max_retries = 3
-        last_error = None
-
-        for attempt in range(max_retries):
-            try:
-                # Apply in-memory index updates
-                for task_id, changes in self._task_changes.items():
-                    if changes.get('is_delete'):
-                        self._got_manager._index_manager.remove_entity(task_id)
-                        continue
-
-                    task = self.tx.write_set.get(task_id)
-                    if task is None or not isinstance(task, Task):
-                        continue
-
-                    if changes.get('is_create'):
-                        self._got_manager._index_manager.index_entity(
-                            task.id,
-                            {"status": task.status, "priority": task.priority}
-                        )
-                    else:
-                        old_fields = {}
-                        new_fields = {"status": task.status, "priority": task.priority}
-
-                        if changes.get('old_status') is not None:
-                            old_fields["status"] = changes['old_status']
-                        if changes.get('old_priority') is not None:
-                            old_fields["priority"] = changes['old_priority']
-
-                        self._got_manager._index_manager.update_entity(
-                            task.id, old_fields, new_fields
-                        )
-
-                # Persist to disk
-                self._got_manager._index_manager.save()
-
-                return  # Success
-
-            except Exception as e:
-                last_error = e
-                logger.warning(
-                    f"Index update failed (attempt {attempt + 1}/{max_retries}): {e}"
-                )
-                if attempt < max_retries - 1:
-                    time.sleep(0.01 * (2 ** attempt))  # Exponential backoff
-
-        # All retries exhausted - log error
-        # CDG IndexManager will rebuild on next startup if needed
-        logger.error(
-            f"Index update failed after {max_retries} retries: {last_error}. "
-            "Index may need rebuild."
-        )
+    # Index update methods removed - CDGTransactionManager handles indexing on commit
 
     def create_task(self, title: str, **kwargs) -> Task:
         """

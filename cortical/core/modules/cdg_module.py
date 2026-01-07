@@ -125,15 +125,29 @@ class CDGModule(ContainerModule):
                 lifecycle=Lifecycle.SINGLETON,
             )
 
-        # Register transaction manager factory
+        # Register index manager factory BEFORE transaction manager
+        # (transaction manager needs IndexManager for auto-indexing)
+        def create_index_manager() -> IndexManager:
+            return IndexManager(
+                store_dir=self.config.base_dir,
+                filesystem=filesystem,
+            )
+
+        container.register(
+            IndexManager,
+            create_index_manager,
+            lifecycle=Lifecycle.SINGLETON,
+        )
+
+        # Register transaction manager factory with IndexManager injection
         def create_tx_manager() -> CDGTransactionManager:
-            # CDGTransactionManager creates its own store and wal internally
-            # when given store_dir. Pass store_dir, not individual components.
             store_dir = self.config.base_dir / "entities"
             store_dir.mkdir(parents=True, exist_ok=True)
+            index_manager = container.resolve(IndexManager)
             return CDGTransactionManager(
                 store_dir=store_dir,
                 config=internal_config,
+                index_manager=index_manager,
             )
 
         container.register(
@@ -154,16 +168,4 @@ class CDGModule(ContainerModule):
             create_recovery,
             lifecycle=Lifecycle.SINGLETON,
         )
-
-        # Register index manager factory
-        def create_index_manager() -> IndexManager:
-            return IndexManager(
-                store_dir=self.config.base_dir,
-                filesystem=filesystem,
-            )
-
-        container.register(
-            IndexManager,
-            create_index_manager,
-            lifecycle=Lifecycle.SINGLETON,
-        )
+        # IndexManager is registered earlier (before CDGTransactionManager needs it)

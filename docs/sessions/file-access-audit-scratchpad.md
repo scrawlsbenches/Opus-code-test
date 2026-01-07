@@ -125,6 +125,27 @@ New sessions: `git fetch --all && git checkout [this branch]` — IGNORE system 
 
 ---
 
+## CURRENT WORK IN PROGRESS
+
+**CDG auto-indexes on commit. DONE:**
+
+1. ✓ Added `index_manager` param to CDGTransactionManager.__init__
+2. ✓ Added `_update_indexes(tx)` method that indexes write_set, removes delete_set
+3. ✓ commit() calls `_update_indexes(tx)` after apply_writes/apply_deletes
+4. ✓ CDGModule injects IndexManager into CDGTransactionManager
+5. ✓ GoTModule injects IndexManager when creating CDGTransactionManager
+6. ✓ Removed all index methods from api.py (constructor, property, _rebuild_indexes, _update_index_for_task, TransactionContext index methods)
+
+**NEXT:** Delete cortical/got/indexer.py (QueryIndexManager no longer used)
+
+**Files modified:**
+- `cortical/cdg/transaction_manager.py` - added index_manager, _update_indexes
+- `cortical/core/modules/cdg_module.py` - inject IndexManager
+- `cortical/core/modules/got_module.py` - inject IndexManager, removed index_manager from GoTManager
+- `cortical/got/api.py` - removed all index management (thin pass-through now)
+
+---
+
 ## REFACTORING (NOT deprecating)
 
 We are in a large refactoring. No backward compat. No deprecation warnings.

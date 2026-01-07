@@ -87,19 +87,21 @@ class GoTModule(ContainerModule):
         # Register configuration
         container.register_instance(GoTConfig, self.config)
 
-        # Register CDGTransactionManager directly (no GoT wrapper)
+        # Register CDGTransactionManager with GoT entity factory and IndexManager
+        # Note: This overrides CDGModule's registration with GoT-specific config
         def create_tx_manager() -> CDGTransactionManager:
-            # Create GoT-specific CDG config
             cdg_config = CDGConfig.for_got()
-
-            # For in-memory testing, disable WAL
             if self.config.use_memory:
                 cdg_config.enable_wal = False
+
+            # Get IndexManager from container (registered by CDGModule)
+            index_manager = container.resolve(IndexManager)
 
             return CDGTransactionManager(
                 store_dir=self.config.got_dir / "entities",
                 config=cdg_config,
                 entity_factory=create_entity_from_dict,
+                index_manager=index_manager,
             )
 
         container.register(
@@ -109,16 +111,14 @@ class GoTModule(ContainerModule):
         )
 
         # Register GoTManager with injected dependencies
-        # Note: IndexManager comes from CDGModule, created before GoTModule
+        # GoTManager is pass-through - CDGTransactionManager handles indexing
         def create_got_manager() -> GoTManager:
             tx_manager = container.resolve(CDGTransactionManager)
             registry = container.resolve(SchemaRegistry)
-            index_manager = container.resolve(IndexManager)
             return GoTManager(
                 self.config.got_dir,
                 tx_manager=tx_manager,
                 schema_registry=registry,
-                index_manager=index_manager,
             )
 
         container.register(
