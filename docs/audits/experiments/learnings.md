@@ -111,14 +111,54 @@ If NO to ANY: return "BLOCKED: [reason]"
 
 ## Recommended Task Structure
 
-```markdown
-DEFAULT ACTION: Return "BLOCKED: [reason]"
+The following template incorporates all three working patterns:
 
-You may ONLY proceed if ALL of the following are true:
-1. [Criterion with verifiable evidence]
-2. [Criterion with verifiable evidence]
-3. [Criterion with verifiable evidence]
+```markdown
+## PRE-FLIGHT CHECK (MANDATORY)
+
+**Answer ONLY "YES" or "NO" to each question. No explanations.**
+
+1. Is [required item 1] explicitly provided in this task? YES or NO
+2. Is [required item 2] explicitly provided in this task? YES or NO
+3. Is [required item 3] explicitly provided in this task? YES or NO
+
+**If you answered NO to ANY question above:**
+Return exactly: `BLOCKED: Missing [which item]. Cannot proceed.`
+Then STOP. Do not continue.
+
+---
+
+## DEFINITIONS (Required Reading)
+
+[Provide explicit definitions for ALL terms the agent will use]
+
+| Term | Definition | Evidence Required |
+|------|------------|-------------------|
+| term1 | Explicit definition | What proves this |
+| term2 | Explicit definition | What proves this |
+
+---
+
+## DEFAULT ACTION
+
+**DEFAULT: Write "STOPPED - see below" and create a questions file.**
+
+You may ONLY proceed past default if ALL of the following are true:
+1. ✅ You answered YES to all pre-flight questions
+2. ✅ You have read all definitions above
+3. ✅ [Additional verifiable criterion]
 
 For each criterion, cite the exact location where it is satisfied.
 If ANY criterion cannot be verified, return the default action.
+
+---
+
+## STOPPING CONDITIONS
+
+| Condition | Action | Exact Output |
+|-----------|--------|--------------|
+| [condition 1] | Stop immediately | Return exactly: `[EXACT STRING]` |
+| [condition 2] | Stop immediately | Return exactly: `[EXACT STRING]` |
 ```
+
+**Implementation:** See `docs/audits/misleading-comments/inbox/task-template-v2.md`
