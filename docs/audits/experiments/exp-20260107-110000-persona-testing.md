@@ -1,4 +1,4 @@
-# Experiment: exp-002-persona-testing
+# Experiment: 20260107-110000-persona-testing
 
 *Date: 2026-01-07*
 *Coordinator: claude/code-review-fixes-J4A3H*

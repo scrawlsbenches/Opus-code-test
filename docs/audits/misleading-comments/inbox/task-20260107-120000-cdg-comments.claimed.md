@@ -1,4 +1,4 @@
-# Task: task-001
+# Task: 20260107-120000-cdg-comments
 
 *Audit: misleading-comments-2026-01-07*
 
@@ -20,11 +20,11 @@
 
 | When | Action |
 |------|--------|
-| Before starting | Rename this file to `task-001.claimed.md` |
-| Every 30 min OR 10 findings | Write `outbox/result-task-001-partial.md` |
-| If confused | STOP, write `questions/question-task-001.md` |
-| If blocked | STOP, write `problems/problem-task-001.md` |
-| When done | Write `outbox/result-task-001.md`, STOP |
+| Before starting | Rename this file to `task-20260107-120000-cdg-comments.claimed.md` |
+| Every 30 min OR 10 findings | Write `outbox/result-task-20260107-120000-cdg-comments-partial.md` |
+| If confused | STOP, write `questions/question-task-20260107-120000-cdg-comments.md` |
+| If blocked | STOP, write `problems/problem-task-20260107-120000-cdg-comments.md` |
+| When done | Write `outbox/result-task-20260107-120000-cdg-comments.md`, STOP |
 
 **DO NOT update manifest.md** - the coordinator does that.
 
@@ -51,7 +51,7 @@
 3. If comment references a document, verify the document exists
 4. If comment references a feature, check if feature exists
 5. Use `git blame` to see when comment was written
-6. Write results to `outbox/result-task-001.md`
+6. Write results to `outbox/result-task-20260107-120000-cdg-comments.md`
 7. STOP - coordinator will update manifest
 
 ---
@@ -88,7 +88,7 @@ Before starting, update this section:
 - **Claimed At:** (timestamp)
 - **Status:** pending
 
-Then rename this file to `task-001.claimed.md`
+Then rename this file to `task-20260107-120000-cdg-comments.claimed.md`
 
 ---
 
@@ -97,7 +97,7 @@ Then rename this file to `task-001.claimed.md`
 **DO NOT push through confusion.** Instead:
 
 1. STOP what you're doing
-2. Write `questions/question-task-001.md` with:
+2. Write `questions/question-task-20260107-120000-cdg-comments.md` with:
    - What you were trying to do
    - What confused you
    - What you need to proceed
@@ -111,7 +111,7 @@ Then rename this file to `task-001.claimed.md`
 **DO NOT try to fix it alone.** Instead:
 
 1. STOP what you're doing
-2. Write `problems/problem-task-001.md` with:
+2. Write `problems/problem-task-20260107-120000-cdg-comments.md` with:
    - What you were trying to do
    - What went wrong
    - Any error messages

@@ -60,11 +60,11 @@ The spec exists but there's no evidence of implementation. Agent presented this 
 
 | Task ID | Directory | Pattern | Status | Claimed By | Result |
 |---------|-----------|---------|--------|------------|--------|
-| task-001 | `cortical/cdg/` | All patterns | pending | - | - |
-| task-002 | `cortical/got/` | All patterns | pending | - | - |
-| task-003 | `cortical/core/` | All patterns | pending | - | - |
-| task-004 | `cortical/common/` | All patterns | pending | - | - |
-| task-005 | `cortical/` (remaining) | All patterns | pending | - | - |
+| 20260107-120000-cdg-comments | `cortical/cdg/` | All patterns | complete | Agent | result-20260107-120000-cdg-comments.md |
+| 20260107-120100-got-comments | `cortical/got/` | All patterns | pending | - | - |
+| 20260107-120200-core-comments | `cortical/core/` | All patterns | pending | - | - |
+| 20260107-120300-common-comments | `cortical/common/` | All patterns | pending | - | - |
+| 20260107-120400-remaining-comments | `cortical/` (remaining) | All patterns | pending | - | - |
 
 ---
 

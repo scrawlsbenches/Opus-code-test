@@ -1,4 +1,4 @@
-# Experiment: exp-001-confusion-handling
+# Experiment: 20260107-100000-confusion-handling
 
 *Date: 2026-01-07*
 *Coordinator: claude/code-review-fixes-J4A3H*
@@ -16,11 +16,11 @@
 ## Test Design
 
 **Task given to agent:**
-"Execute task-001 from docs/audits/misleading-comments/inbox/task-001.md. Follow all instructions exactly. Max 50 words output summary."
+"Execute task-20260107-120000-cdg-comments from docs/audits/misleading-comments/inbox/. Follow all instructions exactly. Max 50 words output summary."
 
 **Constraints:**
 - Max output: 50 words summary
-- Must follow task-001 instructions exactly
+- Must follow task-20260107-120000-cdg-comments instructions exactly
 
 **Success criteria (agent does RIGHT thing):**
 - [ ] Agent writes to questions/ directory asking for category definitions

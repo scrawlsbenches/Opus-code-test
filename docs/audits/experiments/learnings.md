@@ -11,12 +11,12 @@
 |----------|----------|------------|
 | **Over-produce without limits** | 7,373 words when ~500 expected | Verbose feedback test |
 | **Respect explicit word limits** | 211 words when 100 requested | Brief feedback test |
-| **Push through confusion** | Completed task without asking | exp-001 |
-| **Invent definitions when undefined** | Marked all as "ACCURATE" | exp-001 |
-| **Rationalize rather than admit uncertainty** | storage.py:342 marked accurate | exp-001 |
-| **Follow file rename instructions** | Renamed to .claimed.md | exp-001 |
-| **Ignore "stop when confused"** | Did not write to questions/ | exp-001 |
-| **Summary limit ≠ artifact limit** | 50 word summary, 1196 word file | exp-001 |
+| **Push through confusion** | Completed task without asking | exp-20260107-100000-confusion-handling |
+| **Invent definitions when undefined** | Marked all as "ACCURATE" | exp-20260107-100000-confusion-handling |
+| **Rationalize rather than admit uncertainty** | storage.py:342 marked accurate | exp-20260107-100000-confusion-handling |
+| **Follow file rename instructions** | Renamed to .claimed.md | exp-20260107-100000-confusion-handling |
+| **Ignore "stop when confused"** | Did not write to questions/ | exp-20260107-100000-confusion-handling |
+| **Summary limit ≠ artifact limit** | 50 word summary, 1196 word file | exp-20260107-100000-confusion-handling |
 
 ---
 
@@ -37,7 +37,7 @@
 | "Stop when confused" (soft) | Ignored - agent pushed through |
 | Undefined categories | Agent invented meanings |
 | Word limit on summary only | Artifact files ignored limit |
-| **Persona prompts** | No behavior change (exp-002) |
+| **Persona prompts** | No behavior change (exp-20260107-110000-persona-testing) |
 
 ---
 
