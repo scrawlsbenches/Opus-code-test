@@ -1,0 +1,19 @@
+{
+  "_checksum": "8028563ac18ebf9f",
+  "_written_at": "2026-01-07T00:14:59.210434+00:00",
+  "data": {
+    "created_at": "2026-01-07T00:14:59.198165+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260107-001459-856b0724",
+    "metadata": {},
+    "modified_at": "2026-01-07T00:14:59.210372+00:00",
+    "priority": "low",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Test recovery refactor",
+    "version": 2
+  }
+}
