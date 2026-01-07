@@ -20,7 +20,7 @@ Usage:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, Set
 
 from .ast import (
     Expression,
@@ -34,9 +34,6 @@ from .ast import (
     Literal,
     Op,
 )
-
-if TYPE_CHECKING:
-    from ..indexer import QueryIndexManager
 
 
 @dataclass

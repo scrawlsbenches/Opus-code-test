@@ -6,7 +6,8 @@ Registers GoT services for task, decision, and knowledge management.
 Services Provided:
     - TransactionManager: ACID transactions for GoT entities
     - GoTManager: High-level API for tasks, decisions, edges
-    - QueryIndexManager: Search and query indexing
+
+Note: Index management is now handled by CDGIndexManager in the CDG layer.
 
 Usage:
     from cortical.core.modules import GoTModule
@@ -77,7 +78,6 @@ class GoTModule(ContainerModule):
         """Register GoT services with the container."""
         from cortical.cdg.transaction_manager import CDGTransactionManager
         from cortical.got.api import GoTManager
-        from cortical.got.indexer import QueryIndexManager
         from cortical.got.types import create_entity_from_dict
         from cortical.cdg.config import CDGConfig
 
@@ -118,19 +118,5 @@ class GoTModule(ContainerModule):
         container.register(
             GoTManager,
             create_got_manager,
-            lifecycle=Lifecycle.SINGLETON,
-        )
-
-        # Register QueryIndexManager
-        # Note: QueryIndexManager currently takes got_dir, but should eventually
-        # receive SchemaRegistry for schema-aware indexing
-        def create_index_manager() -> QueryIndexManager:
-            # Resolve SchemaRegistry for future use
-            # registry = container.resolve(SchemaRegistry)
-            return QueryIndexManager(self.config.got_dir)
-
-        container.register(
-            QueryIndexManager,
-            create_index_manager,
             lifecycle=Lifecycle.SINGLETON,
         )
