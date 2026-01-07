@@ -74,6 +74,12 @@ Before ANY work begins:
 │                          ENTRY GATE CHECKLIST                            │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
+│  □ 0. CHECK FOR SESSION SCRATCHPADS (if continuing previous work)       │
+│       cat docs/sessions/*.md 2>/dev/null | head -100                    │
+│       Look for "SESSION OVERRIDES" section at the top.                  │
+│       ⚠️  SCRATCHPAD OVERRIDES SUPERSEDE THIS CHECKLIST                 │
+│       If scratchpad says "DO NOT RUN TESTS", skip step 1.               │
+│                                                                          │
 │  □ 1. SMOKE TESTS PASS                                                  │
 │       python -m pytest tests/smoke/ -v --tb=short                       │
 │       If this fails, DO NOT PROCEED. Fix it or escalate.                │

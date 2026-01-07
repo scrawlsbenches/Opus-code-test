@@ -5,6 +5,19 @@
 
 ---
 
+## ⛔ SESSION OVERRIDES (supersedes CLAUDE.md Entry Gate)
+
+**READ THIS FIRST. These override default workflow steps.**
+
+- **DO NOT RUN TESTS** - tests are broken due to refactoring, user will say when ready
+- **DO NOT RUN SMOKE TESTS** - same reason
+- **DO RUN `got_utils.py validate`** - this is safe and helpful
+
+**Why:** We're in the middle of a multi-session refactoring. Tests reference
+deleted modules. Running them wastes time and produces noise.
+
+---
+
 ## WORKFLOW NOTES (for context preservation)
 
 1. **DON'T track "done" here** - commit often with clear messages instead
@@ -26,12 +39,12 @@ The system only allows pushing to the session-assigned branch.
 ```markdown
 Continue refactoring work on the Cortical codebase.
 
-**Previous session branch:** `claude/refactor-cortical-codebase-omD09`
+**Previous session branch:** `claude/refactor-cortical-codebase-8ij55`
 
 **First Step:** Merge previous work into your session branch:
 
-git fetch origin claude/refactor-cortical-codebase-omD09
-git merge origin/claude/refactor-cortical-codebase-omD09
+git fetch origin claude/refactor-cortical-codebase-8ij55
+git merge origin/claude/refactor-cortical-codebase-8ij55
 
 Then read the scratchpad:
 cat docs/sessions/file-access-audit-scratchpad.md
@@ -48,8 +61,8 @@ cat docs/sessions/file-access-audit-scratchpad.md
 # 1. You're already on your session-assigned branch - STAY ON IT
 
 # 2. Fetch and merge the previous session's work
-git fetch origin claude/refactor-cortical-codebase-omD09  # branch from prompt
-git merge origin/claude/refactor-cortical-codebase-omD09
+git fetch origin claude/refactor-cortical-codebase-8ij55  # branch from prompt
+git merge origin/claude/refactor-cortical-codebase-8ij55
 
 # 3. Verify you have the previous work
 git log --oneline -5
@@ -69,14 +82,14 @@ Push normally to your session branch - no special syntax needed.
 ```markdown
 Continue refactoring work on the Cortical codebase.
 
-**Previous session branch:** `claude/refactor-cortical-codebase-omD09`
+**Previous session branch:** `claude/refactor-cortical-codebase-8ij55`
 
 ## First Steps (DO THIS BEFORE ANYTHING ELSE)
 
 1. Merge previous work into your session branch:
 
-git fetch origin claude/refactor-cortical-codebase-omD09
-git merge origin/claude/refactor-cortical-codebase-omD09
+git fetch origin claude/refactor-cortical-codebase-8ij55
+git merge origin/claude/refactor-cortical-codebase-8ij55
 git log --oneline -5  # verify you have the history
 
 2. Read the scratchpad:
