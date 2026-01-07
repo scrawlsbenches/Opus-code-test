@@ -311,3 +311,48 @@ That's it. Only 2 fields from CDGConfig are used by CDGStore.
 
 - **CDG owns:** storage, transactions, WAL, recovery, indexes
 - **GoT is:** thin domain layer, NO file I/O
+
+---
+
+## SESSION CONTINUATION PROCEDURE
+
+### For Humans: Creating a Continuation Prompt
+
+```markdown
+Continue refactoring work on the Cortical codebase.
+
+**Previous session branch:** `claude/refactor-cortical-codebase-OZ8em`
+
+**First Step:** Merge previous work into your session branch:
+
+git fetch origin claude/refactor-cortical-codebase-OZ8em
+git merge origin/claude/refactor-cortical-codebase-OZ8em
+
+Then read the scratchpad:
+cat docs/sessions/file-access-audit-scratchpad.md
+```
+
+### For AI Agents: What to Do in a New Session
+
+```bash
+# 1. You're already on your session-assigned branch - STAY ON IT
+
+# 2. Fetch and merge the previous session's work
+git fetch origin claude/refactor-cortical-codebase-OZ8em
+git merge origin/claude/refactor-cortical-codebase-OZ8em
+
+# 3. Verify you have the previous work
+git log --oneline -5
+
+# 4. Read the scratchpad
+cat docs/sessions/file-access-audit-scratchpad.md
+
+# 5. Work normally, push to YOUR session branch
+git push -u origin HEAD
+```
+
+### When Done
+
+Push to YOUR session branch and update this scratchpad's branch name above.
+
+---
