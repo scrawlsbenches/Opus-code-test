@@ -93,10 +93,14 @@ class GoTModule(ContainerModule):
             if self.config.use_memory:
                 cdg_config.enable_wal = False
 
+            # Resolve filesystem from container (InMemoryFileSystem when use_memory=True)
+            filesystem = container.resolve(FileSystem)
+
             return CDGTransactionManager(
                 store_dir=self.config.got_dir / "entities",
                 config=cdg_config,
                 entity_factory=create_entity_from_dict,
+                filesystem=filesystem,
             )
 
         container.register(
