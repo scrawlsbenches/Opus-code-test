@@ -130,9 +130,6 @@ class CDGStore:
         store_dir: Path,
         config: Optional[CDGConfig] = None,
         entity_factory: Optional[EntityFactory] = None,
-        # Legacy parameters for VersionedStore compatibility
-        durability: Optional[DurabilityMode] = None,
-        validate_on_save: bool = True,
         # FileSystem abstraction for testability
         filesystem: Optional[FileSystem] = None,
         # Caching (enabled by default for performance)
@@ -149,8 +146,6 @@ class CDGStore:
             store_dir: Directory path for storing entities
             config: CDG configuration (optional, creates default if not provided)
             entity_factory: Function to create Entity from dict (optional)
-            durability: Legacy parameter for VersionedStore compatibility
-            validate_on_save: Legacy parameter for VersionedStore compatibility
             filesystem: FileSystem implementation (defaults to RealFileSystem)
             cache_enabled: Enable entity caching for read performance
             schema_registry: SchemaRegistry for entity validation (optional,
@@ -164,17 +159,10 @@ class CDGStore:
         self.store_dir = Path(store_dir)
         self._fs.mkdir(self.store_dir, parents=True, exist_ok=True)
 
-        # Handle configuration - support both new CDGConfig and legacy parameters
-        if config is not None:
-            self.config = config
-        else:
-            # Create config from legacy parameters or defaults
-            self.config = CDGConfig(
-                durability=durability or DurabilityMode.BALANCED,
-                validate_on_write=validate_on_save,
-            )
+        # Configuration - use provided config or create default
+        self.config = config or CDGConfig()
 
-        # For legacy compatibility
+        # Convenience aliases (used throughout storage code)
         self.durability = self.config.durability
         self.validate_on_save = self.config.validate_on_write
 
@@ -1111,31 +1099,6 @@ class CDGStore:
             except (json.JSONDecodeError, OSError):
                 # Corrupted pending file, delete it
                 self._fs.unlink(pending_path, missing_ok=True)
-
-    def _persist_history_entry(self, entity_id: str, history_entry: dict) -> None:
-        """
-        Persist a previously captured history entry (legacy direct append).
-
-        NOTE: For crash-safe history, use _write_pending_history + _finalize_pending_history.
-        This method is kept for backward compatibility but does NOT guarantee
-        history persistence on crash between entity write and history write.
-
-        Args:
-            entity_id: Entity identifier
-            history_entry: History entry dict from _capture_history_entry
-        """
-        # Remove recovery metadata if present
-        entry = dict(history_entry)
-        entry.pop("expected_entity_version", None)
-
-        history_path = self._history_path(entity_id)
-
-        with self._history_lock:
-            content = json.dumps(entry, sort_keys=True) + '\n'
-            self._fs.append_text(history_path, content)
-            # fsync history file for durability
-            if self.durability != DurabilityMode.FAST:
-                self._fs.fsync(history_path)
 
     def _load_version(self) -> int:
         """
