@@ -1484,3 +1484,9 @@
 {"seq":1484,"ts":"2026-01-07T10:53:24.414140+00:00","tx":"TX-20260107-105324-c1b0505f","op":"WRITE","data":{"entity_id":"T-20260107-104355-5c9e7b25","old_version":1,"new_version":-1},"checksum":"64b33308d2db0535"}
 {"seq":1485,"ts":"2026-01-07T10:53:24.415899+00:00","tx":"TX-20260107-105324-c1b0505f","op":"TX_PREPARE","data":{},"checksum":"076998a7d8fd176a"}
 {"seq":1486,"ts":"2026-01-07T10:53:24.416807+00:00","tx":"TX-20260107-105324-c1b0505f","op":"TX_COMMIT","data":{"version":2036},"checksum":"38e23e11998a8055"}
+{"seq":1487,"ts":"2026-01-07T10:53:42.217823+00:00","tx":"TX-20260107-105342-5d62a5bb","op":"TX_BEGIN","data":{"snapshot":2036},"checksum":"99551fb716e84793"}
+{"seq":1488,"ts":"2026-01-07T10:53:42.219721+00:00","tx":"TX-20260107-105342-5d62a5bb","op":"TX_ROLLBACK","data":{"reason":"read_only"},"checksum":"10083ec5ca4caca9"}
+{"seq":1489,"ts":"2026-01-07T10:53:42.447199+00:00","tx":"TX-20260107-105342-de5205c2","op":"TX_BEGIN","data":{"snapshot":2036},"checksum":"7f58a0be56835c61"}
+{"seq":1490,"ts":"2026-01-07T10:53:42.457525+00:00","tx":"TX-20260107-105342-de5205c2","op":"WRITE","data":{"entity_id":"T-20260107-105320-2fe241c5","old_version":2,"new_version":-1},"checksum":"2f740e9651f95e7a"}
+{"seq":1491,"ts":"2026-01-07T10:53:42.459594+00:00","tx":"TX-20260107-105342-de5205c2","op":"TX_PREPARE","data":{},"checksum":"c05adc6691ba3e93"}
+{"seq":1492,"ts":"2026-01-07T10:53:42.460737+00:00","tx":"TX-20260107-105342-de5205c2","op":"TX_COMMIT","data":{"version":2038},"checksum":"1e61830961989073"}
