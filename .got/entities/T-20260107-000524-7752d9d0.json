@@ -1,22 +1,24 @@
 {
-  "_checksum": "a7e60353ee5a19ba",
-  "_written_at": "2026-01-07T00:05:49.930724+00:00",
+  "_checksum": "6e6f49123fb03424",
+  "_written_at": "2026-01-07T00:06:14.418642+00:00",
   "data": {
     "created_at": "2026-01-07T00:05:24.432813+00:00",
     "description": "",
     "entity_type": "task",
     "id": "T-20260107-000524-7752d9d0",
     "metadata": {
+      "completed_at": "2026-01-07T00:06:14.401755+00:00",
       "started_at": "2026-01-07T00:05:49.912714+00:00",
-      "updated_at": "2026-01-07T00:05:49.912731+00:00"
+      "updated_at": "2026-01-07T00:06:14.401761+00:00"
     },
-    "modified_at": "2026-01-07T00:05:49.930667+00:00",
+    "modified_at": "2026-01-07T00:06:14.418574+00:00",
     "priority": "high",
     "properties": {
-      "category": "feature"
+      "category": "feature",
+      "retrospective": "Functional testing successful"
     },
-    "status": "in_progress",
+    "status": "completed",
     "title": "Test task for functional testing",
-    "version": 3
+    "version": 4
   }
 }
