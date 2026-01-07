@@ -20,6 +20,7 @@
 | **Follow explicit output triggers** | Returned exact "BLOCKED" string | exp-20260107-175500-explicit-stopping |
 | **Evaluate criteria checklists** | Checked criteria, returned STOPPED | exp-20260107-175520-default-to-stop |
 | **Skip verification questions** | Skipped question, invented definitions | exp-20260107-175510-verification-questions |
+| **Answer binary questions honestly** | Answered NO to all, returned BLOCKED | exp-20260107-180334-binary-questions |
 
 ---
 
@@ -32,6 +33,7 @@
 | File rename for claiming | Agent renamed task file | exp-20260107-100000-confusion-handling |
 | **Explicit output triggers** | "return exactly: BLOCKED" → agent returned BLOCKED | exp-20260107-175500-explicit-stopping |
 | **Default-to-stop with criteria** | Checklist + cite evidence → agent stopped | exp-20260107-175520-default-to-stop |
+| **Binary verification questions** | "Is X provided? YES/NO" → agent answered honestly | exp-20260107-180334-binary-questions |
 
 ---
 
@@ -53,6 +55,7 @@
 2. ~~**Explicit stopping triggers** - "If you see undefined term Y, STOP"~~ **TESTED: YES** ✅
 3. ~~**Verification questions** - "Before proceeding, answer: do you understand X?"~~ **TESTED: NO** ❌
 4. ~~**Default to stop** - "Do NOT complete unless all criteria met"~~ **TESTED: YES** ✅
+5. ~~**Binary questions** - "Is X provided? YES or NO" with consequences~~ **TESTED: YES** ✅
 
 ---
 
@@ -69,7 +72,7 @@ Agents are **completion-biased**. They will:
 
 ### Insight 2: What Works to Override Completion Bias (New)
 
-Two patterns successfully override completion bias:
+Three patterns successfully override completion bias:
 
 **Pattern A: Explicit Output Triggers**
 ```
@@ -85,6 +88,17 @@ Proceed ONLY if ALL criteria met AND you can cite evidence for each.
 ```
 - Flip the default from "complete" to "stop"
 - Require citing evidence prevents fabrication
+
+**Pattern C: Binary Verification Questions**
+```
+Answer ONLY "YES" or "NO":
+1. Is [specific thing] explicitly provided in this prompt? YES or NO
+
+If NO to ANY: return "BLOCKED: [reason]"
+```
+- No room for middle ground or rationalization
+- Questions verify PRESENCE of information, not understanding
+- Explicit consequence for NO prevents proceeding anyway
 
 ### Insight 3: What Doesn't Work
 
