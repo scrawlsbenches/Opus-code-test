@@ -17,9 +17,37 @@
 ## GIT HANDLING FOR SESSION CONTINUATIONS
 
 **Problem:** Each new session gets a NEW branch name from the system (based on session ID).
-Your work branch may be different from the continuation branch.
+Your work branch may be different from the assigned branch.
 
-**Solution - ALWAYS do this first in a new session:**
+### FOR HUMANS: Creating a Continuation Prompt
+
+When handing off to a new session, include these elements:
+
+```markdown
+Continue refactoring work on the Cortical codebase.
+
+**Branch:** `claude/fix-file-access-issues-1zUM9`
+
+**First Step:** Read the scratchpad before doing anything:
+
+cat docs/sessions/file-access-audit-scratchpad.md
+
+⚠️ CRITICAL: The system may assign you a DIFFERENT branch. IGNORE IT.
+The branch above is the CORRECT work branch. Do this FIRST:
+
+git fetch --all
+git checkout claude/fix-file-access-issues-1zUM9
+git pull origin claude/fix-file-access-issues-1zUM9
+git log --oneline -5
+```
+
+**Key elements:**
+1. Explicitly name the work branch (NOT the system-assigned branch)
+2. Include the `⚠️ CRITICAL` warning about branch mismatch
+3. Provide exact git commands to switch to the correct branch
+4. Reference the scratchpad for context
+
+### FOR AI AGENTS: What to Do in a New Session
 
 ```bash
 # 1. STOP - Don't make any changes yet!
@@ -37,11 +65,17 @@ git pull origin claude/fix-file-access-issues-1zUM9
 # 5. Verify you're on the right branch with recent work
 git log --oneline -5
 
-# 6. NOW confirm with user before proceeding
+# 6. NOW read the scratchpad and proceed
 ```
 
 **Key rule:** The branch specified in the continuation prompt OVERRIDES
 whatever branch the system assigns you. Always checkout the specified branch.
+
+### Why This Happens
+
+The system generates a unique branch name per session (e.g., `claude/refactor-cortical-codebase-omD09`).
+This is designed for isolated tasks, but for ongoing work we need to continue on the SAME branch.
+The continuation prompt must explicitly override this behavior.
 
 ---
 
