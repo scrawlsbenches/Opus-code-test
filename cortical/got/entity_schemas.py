@@ -75,10 +75,12 @@ class TaskSchema(BaseSchema):
         'status': Field('status', FieldType.ENUM, required=True,
                        choices=['pending', 'in_progress', 'completed', 'blocked'],
                        default='pending',
+                       indexed=True,  # CDGIndexManager maintains status index
                        description="Current task status"),
         'priority': Field('priority', FieldType.ENUM, required=False,
                          choices=['low', 'medium', 'high', 'critical'],
                          default='medium',
+                         indexed=True,  # CDGIndexManager maintains priority index
                          description="Task priority level"),
         'description': Field('description', FieldType.STRING, required=False,
                             default='',
@@ -144,6 +146,7 @@ class SprintSchema(BaseSchema):
         'status': Field('status', FieldType.ENUM, required=True,
                        choices=['available', 'in_progress', 'completed', 'blocked'],
                        default='available',
+                       indexed=True,  # CDGIndexManager maintains status index
                        description="Sprint status"),
         'epic_id': Field('epic_id', FieldType.STRING, required=False,
                         default='',
@@ -195,6 +198,7 @@ class EpicSchema(BaseSchema):
         'status': Field('status', FieldType.ENUM, required=True,
                        choices=['active', 'completed', 'on_hold'],
                        default='active',
+                       indexed=True,  # CDGIndexManager maintains status index
                        description="Epic status"),
         'phase': Field('phase', FieldType.INTEGER, required=False,
                       default=1,
@@ -242,10 +246,13 @@ class EdgeSchema(BaseSchema):
     fields = {
         **BASE_ENTITY_FIELDS,
         'source_id': Field('source_id', FieldType.STRING, required=True,
+                          indexed=True,  # CDGIndexManager maintains source index
                           description="Source entity ID"),
         'target_id': Field('target_id', FieldType.STRING, required=True,
+                          indexed=True,  # CDGIndexManager maintains target index
                           description="Target entity ID"),
         'edge_type': Field('edge_type', FieldType.STRING, required=True,
+                          indexed=True,  # CDGIndexManager maintains type index
                           description="Relationship type"),
         'weight': Field('weight', FieldType.FLOAT, required=False,
                        default=1.0,
@@ -284,6 +291,7 @@ class HandoffSchema(BaseSchema):
         'status': Field('status', FieldType.ENUM, required=True,
                        choices=['initiated', 'accepted', 'completed', 'rejected'],
                        default='initiated',
+                       indexed=True,  # CDGIndexManager maintains status index
                        description="Handoff status"),
         'instructions': Field('instructions', FieldType.STRING, required=False,
                              default='',
@@ -375,6 +383,7 @@ class KnowledgeTransferSchema(BaseSchema):
         'status': Field('status', FieldType.ENUM, required=False,
                        choices=['draft', 'published', 'archived'],
                        default='published',
+                       indexed=True,  # CDGIndexManager maintains status index
                        description="Publication status"),
         'properties': Field('properties', FieldType.DICT, required=False,
                            default={},
