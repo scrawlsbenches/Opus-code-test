@@ -314,6 +314,35 @@ That's it. Only 2 fields from CDGConfig are used by CDGStore.
 
 ---
 
+## CRITICAL PRINCIPLES (DO NOT REMOVE)
+
+### CDG Architecture Philosophy
+- CDG = clean, generic solution built on first principles
+- **NO TWO LAYERS** - don't maintain wrappers
+- When dealing with GoT, **ALWAYS consider moving functionality DOWN to CDG**
+- Prefer refactoring GoT into CDG over maintaining two versions
+
+### What GoT Uniquely Provides (keep in GoT)
+1. **Entity types** - Task, Decision, Edge, Sprint, etc. (domain models)
+2. **Entity factory** - `create_entity_from_dict()` dispatches to correct type
+3. **QueryIndexManager** - GoT-specific indexing
+4. **GoTManager** - high-level domain API
+5. **Domain logic** - orphan detection, etc.
+
+### Design Decisions
+1. No backward compatibility - fix directly, no fallbacks
+2. Container-first - DI for all dependencies
+3. CDG is foundation - GoT is thin domain layer
+4. Required parameters - no fallbacks
+5. Centralized configuration
+
+### Architectural Insights (from user)
+- **Durability Mode**: GoT has NO business with durability - configured centrally in CDG
+- **got/expression/***: Half-baked but FANTASTIC ideas, will need schema in GENERAL way
+- **got/cli/* Pattern**: Container as member variable, DO NOT import bootstrap in functions
+
+---
+
 ## SESSION CONTINUATION PROCEDURE
 
 ### For Humans: Creating a Continuation Prompt
