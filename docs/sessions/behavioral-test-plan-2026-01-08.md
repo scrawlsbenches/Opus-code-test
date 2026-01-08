@@ -106,15 +106,27 @@ All 14 tests are now properly deselected when running with default config.
 
 **Result:** Tests went from 138s → 47s (3x speedup)
 
-### Finding 2: Tests with Intentional Delays
+### Finding 2: Timeout/TTL Tests Use Excessive Sleep Durations (ACTIONABLE)
 
-Tests using `time.sleep()` or intentional delays:
-- `test_scenario_verifier_detects_phase_timeout` (2.10s) - timeout detection
-- `test_scenario_expired_messages_move_to_dead_letter` (2.00s) - TTL expiry
-- `test_findings_expire_after_ttl` (1.50s) - TTL expiry
-- `test_debounced_commits_batch_changes` (1.33s) - debounce timing
+Tests using `time.sleep()` with unnecessarily long durations:
 
-These are acceptable - they're testing time-based behavior.
+| Test | Current | Can Be | Savings |
+|------|---------|--------|---------|
+| `test_scenario_verifier_detects_phase_timeout` | 2.1s sleep, 2.0s threshold | 0.11s, 0.1s | ~2.0s |
+| `test_scenario_expired_messages_move_to_dead_letter` | 2.0s sleep, 1.0s TTL | 0.1s, 0.05s | ~1.9s |
+| `test_scenario_dead_letter_messages_can_be_retried` | 2.0s sleep, 1.0s TTL | 0.1s, 0.05s | ~1.9s |
+| `test_findings_expire_after_ttl` | 1.5s sleep, 1.0s TTL | 0.1s, 0.05s | ~1.4s |
+
+**Root cause:** Tests use 1-2 second timeouts when 50-100ms would test the same behavior.
+
+**Proposed fix:** Reduce timeout thresholds from seconds to milliseconds:
+- `stuck_threshold_seconds=2.0` → `0.1`
+- `ttl_seconds=1` → `0.05`
+- `time.sleep(2.0)` → `0.1`
+
+**Potential savings:** ~7 seconds total
+
+**Status:** PENDING - awaiting approval to modify test timing values
 
 ### Finding 3: Remaining Slow Tests (< 2s each)
 
@@ -126,10 +138,11 @@ These are acceptable - they're testing time-based behavior.
 
 ## Summary
 
-| Metric | Before | After |
-|--------|--------|-------|
-| Total runtime | 138s | 47s |
-| Slowest setup | 92s | ~0.5s |
-| Tests > 1s | ~12 | ~10 |
+| Metric | Original | After Fix 1 | After Fix 2 (est) |
+|--------|----------|-------------|-------------------|
+| Total runtime | 138s | 47s | ~40s |
+| Slowest test | 92s setup | 2.1s | ~1.9s |
+| Tests > 1s | ~12 | ~10 | ~6 |
 
-**Primary fix:** Mark `shared_processor` tests as slow so they're skipped by default.
+**Fix 1 (DONE):** Mark `shared_processor` tests as slow - 3x speedup
+**Fix 2 (PENDING):** Reduce TTL/timeout test sleeps - est 7s savings
