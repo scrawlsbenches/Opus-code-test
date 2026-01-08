@@ -390,10 +390,10 @@ class TestDeveloperReceivesDiagnosticReports:
         Then anomalies are categorized
         Because categorization helps prioritize fixes
         """
-        # Given: multiple anomaly types
-        verifier = QAPVVerifier(stuck_threshold_seconds=1.0)
+        # Given: multiple anomaly types (50ms threshold, minimum viable)
+        verifier = QAPVVerifier(stuck_threshold_seconds=0.05)
         verifier.record_transition(None, "question")
-        time.sleep(1.1)  # Stuck phase
+        time.sleep(0.1)  # Stuck phase (100ms > 50ms)
         verifier.record_transition("question", "produce")  # Invalid transition
 
         # When: requesting report
