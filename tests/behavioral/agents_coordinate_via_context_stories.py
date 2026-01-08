@@ -239,8 +239,8 @@ class TestFindingsExpireAutomatically:
         Then the finding expires and is no longer retrievable
         Because stale information should not persist
         """
-        # Given: pool with 1-second TTL
-        pool = ContextPool(ttl_seconds=1)
+        # Given: pool with 50ms TTL (minimum viable for testing)
+        pool = ContextPool(ttl_seconds=0.05)
 
         # When: publishing and waiting
         pool.publish(
@@ -250,8 +250,8 @@ class TestFindingsExpireAutomatically:
         )
         assert pool.count() == 1, "Should have one finding initially"
 
-        # Wait for expiration
-        time.sleep(1.5)
+        # Wait for expiration (100ms > 50ms TTL)
+        time.sleep(0.1)
 
         # Then: finding expires
         assert pool.count() == 0, "Finding should expire after TTL"

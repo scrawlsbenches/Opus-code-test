@@ -116,12 +116,12 @@ class TestDeveloperDetectsStuckPhases:
         Then a stuck phase anomaly is raised
         Because phases should complete in reasonable time
         """
-        # Given: verifier with 2-second threshold
-        verifier = QAPVVerifier(stuck_threshold_seconds=2.0)
+        # Given: verifier with 50ms threshold (minimum viable for testing)
+        verifier = QAPVVerifier(stuck_threshold_seconds=0.05)
 
         # When: staying in phase too long
         verifier.record_transition(None, "question")
-        time.sleep(2.1)  # Exceed threshold
+        time.sleep(0.1)  # Exceed threshold (100ms > 50ms)
 
         # Then: stuck phase detected
         anomalies = verifier.check_health()
@@ -137,10 +137,10 @@ class TestDeveloperDetectsStuckPhases:
         Then severity is 'warning' not 'error'
         Because stuck phases need investigation, not immediate halt
         """
-        # Given: stuck phase
-        verifier = QAPVVerifier(stuck_threshold_seconds=1.0)
+        # Given: stuck phase (50ms threshold, minimum viable)
+        verifier = QAPVVerifier(stuck_threshold_seconds=0.05)
         verifier.record_transition(None, "question")
-        time.sleep(1.1)
+        time.sleep(0.1)  # 100ms > 50ms threshold
 
         # When: checking anomalies
         anomalies = verifier.check_health()

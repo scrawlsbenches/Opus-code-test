@@ -206,16 +206,16 @@ class TestMessagingSystemEnsuresReliability:
         broker = PubSubBroker()
         broker.subscribe("ephemeral.*", "subscriber-001")
 
-        # Publish with very short TTL
+        # Publish with very short TTL (50ms minimum viable for testing)
         msg_id = broker.publish(
             "ephemeral.event",
             {"data": "time-sensitive"},
             "publisher",
-            ttl_seconds=1  # 1 second TTL
+            ttl_seconds=0.05  # 50ms TTL
         )
 
-        # Wait for expiration
-        time.sleep(2)
+        # Wait for expiration (100ms > 50ms TTL)
+        time.sleep(0.1)
 
         # When polling
         messages = broker.poll("subscriber-001")
@@ -245,10 +245,10 @@ class TestMessagingSystemEnsuresReliability:
             "retryable",
             {"attempt": 1},
             "scheduler",
-            ttl_seconds=1
+            ttl_seconds=0.05  # 50ms TTL
         )
 
-        time.sleep(2)  # Let it expire
+        time.sleep(0.1)  # Let it expire (100ms > 50ms)
         broker.poll("worker-001")  # Trigger expiration
 
         # When retrying

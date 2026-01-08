@@ -70,7 +70,7 @@ class Message:
     payload: Dict[str, Any]
     sender: str
     timestamp: datetime
-    ttl_seconds: Optional[int] = None
+    ttl_seconds: Optional[float] = None  # float for sub-second precision in tests
     priority: int = 0
     retry_count: int = 0
     status: MessageStatus = MessageStatus.PENDING
@@ -240,7 +240,7 @@ class PubSubBroker:
         topic: str,
         payload: Dict[str, Any],
         sender: str,
-        ttl_seconds: Optional[int] = None,
+        ttl_seconds: Optional[float] = None,
         priority: int = 0,
     ) -> str:
         """
@@ -550,7 +550,7 @@ class PubSubBroker:
 
         return sorted(messages, key=lambda m: m.timestamp, reverse=True)
 
-    def retry_dead_letter(self, message_id: str, new_ttl_seconds: Optional[int] = 300) -> bool:
+    def retry_dead_letter(self, message_id: str, new_ttl_seconds: Optional[float] = 300) -> bool:
         """
         Retry delivery of a dead letter message.
 
