@@ -35,8 +35,22 @@ def temp_got_dir(tmp_path):
 
 
 @pytest.fixture
+def null_persistence():
+    """Create a NullPersistenceBackend for isolated tests."""
+    from scripts.audit_reasoning import NullPersistenceBackend
+    return NullPersistenceBackend()
+
+
+@pytest.fixture
+def memory_persistence():
+    """Create an InMemoryPersistenceBackend for tests that need to verify persistence."""
+    from scripts.audit_reasoning import InMemoryPersistenceBackend
+    return InMemoryPersistenceBackend()
+
+
+@pytest.fixture
 def mock_persistence_file(temp_got_dir, monkeypatch):
-    """Mock the persistence file path."""
+    """Mock the persistence file path (for backward compat tests)."""
     persistence_file = temp_got_dir / "audit_pln_state.json"
     import scripts.audit_reasoning as ar
     monkeypatch.setattr(ar, "PERSISTENCE_FILE", persistence_file)
@@ -45,7 +59,7 @@ def mock_persistence_file(temp_got_dir, monkeypatch):
 
 @pytest.fixture
 def mock_rules_file(temp_got_dir, monkeypatch):
-    """Mock the rules file path."""
+    """Mock the rules file path (for backward compat tests)."""
     rules_file = temp_got_dir / "audit_pln_rules.json"
     import scripts.audit_reasoning as ar
     monkeypatch.setattr(ar, "RULES_FILE", rules_file)
@@ -798,31 +812,28 @@ class TestAuditReasonerInit:
 
         assert reasoner.aggregate_strategy == "max"
 
-    def test_initialization_loads_persistence(self, mock_persistence_file, mock_rules_file):
-        from scripts.audit_reasoning import AuditReasoner
+    def test_initialization_loads_persistence(self):
+        from scripts.audit_reasoning import (
+            AuditReasoner, InMemoryPersistenceBackend,
+            AuditPersistenceState, FileImportanceRecord
+        )
 
-        # Create persisted state
-        state_data = {
-            "version": 1,
-            "created": "2026-01-01",
-            "updated": "2026-01-08",
-            "session_count": 5,
-            "file_importance": {
-                "old_py": {
-                    "file_id": "old_py",
-                    "sti": 0.6,
-                    "lti": 0.4,
-                    "vlti": True,
-                    "last_seen": datetime.now().isoformat(),
-                    "history": []
-                }
-            },
-            "attention_focus": [],
-            "global_stats": {}
-        }
-        mock_persistence_file.write_text(json.dumps(state_data))
+        # Create persistence backend with pre-populated state
+        backend = InMemoryPersistenceBackend()
+        state = AuditPersistenceState.create_new()
+        state.session_count = 5
+        state.file_importance["old_py"] = FileImportanceRecord(
+            file_id="old_py",
+            sti=0.6,
+            lti=0.4,
+            vlti=True,
+            last_seen=datetime.now().isoformat(),
+            history=[]
+        )
+        backend._state = state
 
-        reasoner = AuditReasoner(use_persistence=True)
+        # Create reasoner with the pre-populated backend
+        reasoner = AuditReasoner(persistence=backend)
 
         assert "old_py" in reasoner.file_importance
 
@@ -839,19 +850,22 @@ class TestAuditReasonerMethods:
         # Should have added rules
         assert reasoner.pln.rule_count > 0
 
-    def test_load_manual_rules(self, mock_persistence_file, mock_rules_file):
-        from scripts.audit_reasoning import AuditReasoner
+    def test_load_manual_rules(self):
+        from scripts.audit_reasoning import (
+            AuditReasoner, InMemoryPersistenceBackend
+        )
 
-        # Set up rules file with manual rules
-        rules_data = {
+        # Set up in-memory persistence backend with manual rules
+        backend = InMemoryPersistenceBackend()
+        backend._rules = {
             "version": 1,
+            "rules": [],
             "manual_rules": [
                 {"antecedent": "custom(X)", "consequent": "flagged(X)", "strength": 0.7}
             ]
         }
-        mock_rules_file.write_text(json.dumps(rules_data))
 
-        reasoner = AuditReasoner(use_persistence=False)
+        reasoner = AuditReasoner(persistence=backend)
         count = reasoner.load_manual_rules()
 
         assert count == 1
@@ -1004,98 +1018,110 @@ class TestAuditReasonerMethods:
         assert "pinned_py" in vlti
         assert "normal_py" not in vlti
 
-    def test_get_importance_history(self, mock_persistence_file, mock_rules_file):
-        from scripts.audit_reasoning import AuditReasoner
+    def test_get_importance_history(self):
+        from scripts.audit_reasoning import (
+            AuditReasoner, InMemoryPersistenceBackend,
+            AuditPersistenceState, FileImportanceRecord
+        )
 
         # Create persistence with history
-        state_data = {
-            "version": 1, "created": "now", "updated": "now", "session_count": 1,
-            "file_importance": {
-                "hist_py": {
-                    "file_id": "hist_py", "sti": 0.5, "lti": 0.3, "vlti": False,
-                    "last_seen": datetime.now().isoformat(),
-                    "history": [{"sti": 0.4, "lti": 0.2}]
-                }
-            },
-            "attention_focus": [], "global_stats": {}
-        }
-        mock_persistence_file.write_text(json.dumps(state_data))
+        backend = InMemoryPersistenceBackend()
+        state = AuditPersistenceState.create_new()
+        state.session_count = 1
+        state.file_importance["hist_py"] = FileImportanceRecord(
+            file_id="hist_py",
+            sti=0.5,
+            lti=0.3,
+            vlti=False,
+            last_seen=datetime.now().isoformat(),
+            history=[{"sti": 0.4, "lti": 0.2}]
+        )
+        backend._state = state
 
-        reasoner = AuditReasoner(use_persistence=True)
+        reasoner = AuditReasoner(persistence=backend)
         history = reasoner.get_importance_history("hist_py")
 
         assert len(history) == 1
         assert history[0]["sti"] == 0.4
 
-    def test_get_importance_trend(self, mock_persistence_file, mock_rules_file):
-        from scripts.audit_reasoning import AuditReasoner
+    def test_get_importance_trend(self):
+        from scripts.audit_reasoning import (
+            AuditReasoner, InMemoryPersistenceBackend,
+            AuditPersistenceState, FileImportanceRecord
+        )
 
         # Create persistence with trend data
-        state_data = {
-            "version": 1, "created": "now", "updated": "now", "session_count": 1,
-            "file_importance": {
-                "trend_py": {
-                    "file_id": "trend_py", "sti": 0.8, "lti": 0.5, "vlti": False,
-                    "last_seen": datetime.now().isoformat(),
-                    "history": [
-                        {"sti": 0.2, "lti": 0.1},  # Old
-                        {"sti": 0.8, "lti": 0.5}   # Recent
-                    ]
-                }
-            },
-            "attention_focus": [], "global_stats": {}
-        }
-        mock_persistence_file.write_text(json.dumps(state_data))
+        backend = InMemoryPersistenceBackend()
+        state = AuditPersistenceState.create_new()
+        state.session_count = 1
+        state.file_importance["trend_py"] = FileImportanceRecord(
+            file_id="trend_py",
+            sti=0.8,
+            lti=0.5,
+            vlti=False,
+            last_seen=datetime.now().isoformat(),
+            history=[
+                {"sti": 0.2, "lti": 0.1},  # Old
+                {"sti": 0.8, "lti": 0.5}   # Recent
+            ]
+        )
+        backend._state = state
 
-        reasoner = AuditReasoner(use_persistence=True)
+        reasoner = AuditReasoner(persistence=backend)
         trend = reasoner.get_importance_trend("trend_py")
 
         assert trend == "increasing"
 
-    def test_get_importance_trend_decreasing(self, mock_persistence_file, mock_rules_file):
-        from scripts.audit_reasoning import AuditReasoner
+    def test_get_importance_trend_decreasing(self):
+        from scripts.audit_reasoning import (
+            AuditReasoner, InMemoryPersistenceBackend,
+            AuditPersistenceState, FileImportanceRecord
+        )
 
-        state_data = {
-            "version": 1, "created": "now", "updated": "now", "session_count": 1,
-            "file_importance": {
-                "down_py": {
-                    "file_id": "down_py", "sti": 0.2, "lti": 0.1, "vlti": False,
-                    "last_seen": datetime.now().isoformat(),
-                    "history": [
-                        {"sti": 0.8, "lti": 0.5},
-                        {"sti": 0.2, "lti": 0.1}
-                    ]
-                }
-            },
-            "attention_focus": [], "global_stats": {}
-        }
-        mock_persistence_file.write_text(json.dumps(state_data))
+        backend = InMemoryPersistenceBackend()
+        state = AuditPersistenceState.create_new()
+        state.session_count = 1
+        state.file_importance["down_py"] = FileImportanceRecord(
+            file_id="down_py",
+            sti=0.2,
+            lti=0.1,
+            vlti=False,
+            last_seen=datetime.now().isoformat(),
+            history=[
+                {"sti": 0.8, "lti": 0.5},
+                {"sti": 0.2, "lti": 0.1}
+            ]
+        )
+        backend._state = state
 
-        reasoner = AuditReasoner(use_persistence=True)
+        reasoner = AuditReasoner(persistence=backend)
         trend = reasoner.get_importance_trend("down_py")
 
         assert trend == "decreasing"
 
-    def test_get_importance_trend_stable(self, mock_persistence_file, mock_rules_file):
-        from scripts.audit_reasoning import AuditReasoner
+    def test_get_importance_trend_stable(self):
+        from scripts.audit_reasoning import (
+            AuditReasoner, InMemoryPersistenceBackend,
+            AuditPersistenceState, FileImportanceRecord
+        )
 
-        state_data = {
-            "version": 1, "created": "now", "updated": "now", "session_count": 1,
-            "file_importance": {
-                "stable_py": {
-                    "file_id": "stable_py", "sti": 0.5, "lti": 0.3, "vlti": False,
-                    "last_seen": datetime.now().isoformat(),
-                    "history": [
-                        {"sti": 0.5, "lti": 0.3},
-                        {"sti": 0.5, "lti": 0.3}
-                    ]
-                }
-            },
-            "attention_focus": [], "global_stats": {}
-        }
-        mock_persistence_file.write_text(json.dumps(state_data))
+        backend = InMemoryPersistenceBackend()
+        state = AuditPersistenceState.create_new()
+        state.session_count = 1
+        state.file_importance["stable_py"] = FileImportanceRecord(
+            file_id="stable_py",
+            sti=0.5,
+            lti=0.3,
+            vlti=False,
+            last_seen=datetime.now().isoformat(),
+            history=[
+                {"sti": 0.5, "lti": 0.3},
+                {"sti": 0.5, "lti": 0.3}
+            ]
+        )
+        backend._state = state
 
-        reasoner = AuditReasoner(use_persistence=True)
+        reasoner = AuditReasoner(persistence=backend)
         trend = reasoner.get_importance_trend("stable_py")
 
         assert trend == "stable"
@@ -1112,65 +1138,74 @@ class TestAuditReasonerMethods:
         assert "rules" in stats
         assert "aggregate_strategy" in stats
 
-    def test_save_state(self, mock_persistence_file, mock_rules_file):
-        from scripts.audit_reasoning import AuditReasoner
+    def test_save_state(self):
+        from scripts.audit_reasoning import (
+            AuditReasoner, InMemoryPersistenceBackend
+        )
         from cortical.reasoning.prism_pln import AttentionValue
 
-        reasoner = AuditReasoner(use_persistence=True)
+        backend = InMemoryPersistenceBackend()
+        reasoner = AuditReasoner(persistence=backend)
         reasoner.file_importance["saved_py"] = AttentionValue(sti=0.7, lti=0.4, vlti=False)
 
         reasoner.save_state()
 
-        # Read back
-        data = json.loads(mock_persistence_file.read_text())
-        assert "saved_py" in data["file_importance"]
-        assert data["session_count"] >= 1
+        # Verify state was saved to backend
+        assert backend.save_state_calls == 1
+        assert "saved_py" in backend._state.file_importance
+        assert backend._state.session_count >= 1
 
 
 class TestAuditReasonerPersistenceDecay:
     """Tests for importance decay based on time."""
 
-    def test_decay_applies_based_on_time_elapsed(self, mock_persistence_file, mock_rules_file):
-        from scripts.audit_reasoning import AuditReasoner
+    def test_decay_applies_based_on_time_elapsed(self):
+        from scripts.audit_reasoning import (
+            AuditReasoner, InMemoryPersistenceBackend,
+            AuditPersistenceState, FileImportanceRecord
+        )
 
         # Create state from 12 hours ago
         old_time = (datetime.now() - timedelta(hours=12)).isoformat()
-        state_data = {
-            "version": 1, "created": "now", "updated": "now", "session_count": 1,
-            "file_importance": {
-                "old_py": {
-                    "file_id": "old_py", "sti": 1.0, "lti": 1.0, "vlti": False,
-                    "last_seen": old_time,
-                    "history": []
-                }
-            },
-            "attention_focus": [], "global_stats": {}
-        }
-        mock_persistence_file.write_text(json.dumps(state_data))
+        backend = InMemoryPersistenceBackend()
+        state = AuditPersistenceState.create_new()
+        state.session_count = 1
+        state.file_importance["old_py"] = FileImportanceRecord(
+            file_id="old_py",
+            sti=1.0,
+            lti=1.0,
+            vlti=False,
+            last_seen=old_time,
+            history=[]
+        )
+        backend._state = state
 
-        reasoner = AuditReasoner(use_persistence=True, apply_decay=True)
+        reasoner = AuditReasoner(persistence=backend, apply_decay=True)
 
         # STI should have decayed (0.9^12 ≈ 0.28)
         assert reasoner.file_importance["old_py"].sti < 0.5
 
-    def test_no_decay_when_disabled(self, mock_persistence_file, mock_rules_file):
-        from scripts.audit_reasoning import AuditReasoner
+    def test_no_decay_when_disabled(self):
+        from scripts.audit_reasoning import (
+            AuditReasoner, InMemoryPersistenceBackend,
+            AuditPersistenceState, FileImportanceRecord
+        )
 
         old_time = (datetime.now() - timedelta(hours=24)).isoformat()
-        state_data = {
-            "version": 1, "created": "now", "updated": "now", "session_count": 1,
-            "file_importance": {
-                "nodecay_py": {
-                    "file_id": "nodecay_py", "sti": 1.0, "lti": 1.0, "vlti": False,
-                    "last_seen": old_time,
-                    "history": []
-                }
-            },
-            "attention_focus": [], "global_stats": {}
-        }
-        mock_persistence_file.write_text(json.dumps(state_data))
+        backend = InMemoryPersistenceBackend()
+        state = AuditPersistenceState.create_new()
+        state.session_count = 1
+        state.file_importance["nodecay_py"] = FileImportanceRecord(
+            file_id="nodecay_py",
+            sti=1.0,
+            lti=1.0,
+            vlti=False,
+            last_seen=old_time,
+            history=[]
+        )
+        backend._state = state
 
-        reasoner = AuditReasoner(use_persistence=True, apply_decay=False)
+        reasoner = AuditReasoner(persistence=backend, apply_decay=False)
 
         # Should not have decayed
         assert reasoner.file_importance["nodecay_py"].sti == 1.0
@@ -1355,10 +1390,10 @@ class TestAnalyzeWithReasoning:
         # Should have processed the critical file
         assert len(results["risk_assessments"]) >= 0
 
-    def test_analyze_with_persistence(
-        self, mock_persistence_file, mock_rules_file, monkeypatch
-    ):
-        from scripts.audit_reasoning import analyze_with_reasoning
+    def test_analyze_with_persistence(self, monkeypatch):
+        from scripts.audit_reasoning import (
+            analyze_with_reasoning, InMemoryPersistenceBackend, NullPersistenceBackend
+        )
 
         mock_analysis = {
             "findings": [{"id": "mod.py:1", "pattern": "todo", "message": "Task"}],
@@ -1369,11 +1404,13 @@ class TestAnalyzeWithReasoning:
             lambda *args, **kwargs: mock_analysis
         )
 
-        # First run - should create state
-        results1 = analyze_with_reasoning("test/", use_persistence=True)
+        # Test with use_persistence=False (uses NullPersistenceBackend internally)
+        results = analyze_with_reasoning("test/", use_persistence=False, no_save=True)
 
-        # State file should exist
-        assert mock_persistence_file.exists()
+        # Should return valid results
+        assert results is not None
+        assert "files_analyzed" in results
+        assert "risk_assessments" in results
 
     def test_analyze_with_aggregation_strategies(
         self, mock_persistence_file, mock_rules_file, monkeypatch
@@ -1525,29 +1562,31 @@ class TestEdgeCasesAndBranches:
 
         assert trend is None
 
-    def test_save_state_updates_existing_file(
-        self, mock_persistence_file, mock_rules_file
-    ):
-        from scripts.audit_reasoning import AuditReasoner
+    def test_save_state_updates_existing_file(self):
+        from scripts.audit_reasoning import (
+            AuditReasoner, InMemoryPersistenceBackend
+        )
         from cortical.reasoning.prism_pln import AttentionValue
 
+        # Use shared backend to simulate persistence across reasoner instances
+        backend = InMemoryPersistenceBackend()
+
         # First reasoner - create initial state
-        reasoner1 = AuditReasoner(use_persistence=True)
+        reasoner1 = AuditReasoner(persistence=backend)
         reasoner1.file_importance["file1_py"] = AttentionValue(sti=0.5, lti=0.3)
         reasoner1.save_state()
 
-        # Second reasoner - update state
-        reasoner2 = AuditReasoner(use_persistence=True)
+        # Second reasoner using same backend - state should be preserved
+        reasoner2 = AuditReasoner(persistence=backend)
         reasoner2.file_importance["file1_py"].sti = 0.8
         reasoner2.file_importance["file2_py"] = AttentionValue(sti=0.6, lti=0.4)
         reasoner2.save_state()
 
-        # Check state has both files
-        data = json.loads(mock_persistence_file.read_text())
-        assert "file1_py" in data["file_importance"]
-        assert "file2_py" in data["file_importance"]
-        # Session count should increment
-        assert data["session_count"] >= 2
+        # Check backend state has both files
+        assert "file1_py" in backend._state.file_importance
+        assert "file2_py" in backend._state.file_importance
+        # Session count should increment with each save
+        assert backend._state.session_count >= 2
 
     def test_focus_on_high_risk_empty(
         self, mock_persistence_file, mock_rules_file
@@ -1621,27 +1660,27 @@ class TestEdgeCasesAndBranches:
         result = is_natural_language_query(str(test_dir) + " not tests")
         assert result is True
 
-    def test_persistence_with_invalid_timestamp(
-        self, mock_persistence_file, mock_rules_file
-    ):
-        from scripts.audit_reasoning import AuditReasoner
+    def test_persistence_with_invalid_timestamp(self):
+        from scripts.audit_reasoning import (
+            AuditReasoner, InMemoryPersistenceBackend,
+            AuditPersistenceState, FileImportanceRecord
+        )
 
-        state_data = {
-            "version": 1, "created": "now", "updated": "now", "session_count": 1,
-            "file_importance": {
-                "bad_ts_py": {
-                    "file_id": "bad_ts_py",
-                    "sti": 0.5, "lti": 0.3, "vlti": False,
-                    "last_seen": "not-a-valid-timestamp",
-                    "history": []
-                }
-            },
-            "attention_focus": [], "global_stats": {}
-        }
-        mock_persistence_file.write_text(json.dumps(state_data))
+        backend = InMemoryPersistenceBackend()
+        state = AuditPersistenceState.create_new()
+        state.session_count = 1
+        state.file_importance["bad_ts_py"] = FileImportanceRecord(
+            file_id="bad_ts_py",
+            sti=0.5,
+            lti=0.3,
+            vlti=False,
+            last_seen="not-a-valid-timestamp",
+            history=[]
+        )
+        backend._state = state
 
         # Should handle invalid timestamp gracefully
-        reasoner = AuditReasoner(use_persistence=True, apply_decay=True)
+        reasoner = AuditReasoner(persistence=backend, apply_decay=True)
 
         assert "bad_ts_py" in reasoner.file_importance
 

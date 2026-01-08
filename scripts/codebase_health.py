@@ -35,6 +35,184 @@ from cortical.audits.algorithms.lsh import SimilarCommentFinder
 from cortical.audits.algorithms.union_find import FindingCluster
 from cortical.audits.algorithms.count_min_sketch import PatternFrequencySketch
 from cortical.audits.algorithms.dag import TaskDAG
+from cortical.common.filesystem import FileSystem, RealFileSystem, InMemoryFileSystem
+
+
+# =============================================================================
+# CODEBASE ANALYZER - Uses FileSystem interface for DI
+# =============================================================================
+
+
+class CodebaseAnalyzer:
+    """
+    Analyzes codebases for health issues using dependency injection.
+
+    This class accepts a FileSystem interface, enabling:
+    - Real filesystem analysis in production
+    - In-memory filesystem testing (fast, no disk I/O)
+    - Consistent behavior across environments
+
+    Example:
+        # Production
+        analyzer = CodebaseAnalyzer(RealFileSystem())
+        results = analyzer.analyze(Path("/project/src"))
+
+        # Testing
+        fs = InMemoryFileSystem()
+        fs.write_text(Path("/src/main.py"), "# TODO: fix this")
+        analyzer = CodebaseAnalyzer(fs)
+        results = analyzer.analyze(Path("/src"))
+    """
+
+    # Suspicious patterns to detect
+    SUSPICIOUS_PATTERNS = [
+        "FUTURE:", "TODO:", "FIXME:", "HACK:", "XXX:",
+        "will be", "should be", "planned to", "eventually",
+        "See:", "see docs/", "See docs/"
+    ]
+
+    def __init__(self, filesystem: FileSystem):
+        """
+        Initialize analyzer with a filesystem.
+
+        Args:
+            filesystem: FileSystem implementation (Real or InMemory)
+        """
+        self._fs = filesystem
+
+    @property
+    def filesystem(self) -> FileSystem:
+        """Get the underlying filesystem."""
+        return self._fs
+
+    def find_python_files(self, root: Path) -> List[Path]:
+        """
+        Find all Python files in a directory.
+
+        Args:
+            root: Directory to search
+
+        Returns:
+            List of Python file paths
+        """
+        return self._fs.glob(root, "**/*.py")
+
+    def extract_comments(self, filepath: Path) -> List[Tuple[int, str]]:
+        """
+        Extract comments from a Python file with line numbers.
+
+        Args:
+            filepath: Path to the Python file
+
+        Returns:
+            List of (line_number, comment_text) tuples
+        """
+        comments = []
+        try:
+            content = self._fs.read_text(filepath)
+            for line_no, line in enumerate(content.split("\n"), 1):
+                stripped = line.strip()
+                if stripped.startswith('#'):
+                    comments.append((line_no, stripped[1:].strip()))
+        except FileNotFoundError:
+            pass
+        except Exception:
+            pass
+        return comments
+
+    def scan_for_patterns(
+        self,
+        root: Path,
+        patterns: Optional[List[str]] = None
+    ) -> List[Dict]:
+        """
+        Scan directory for suspicious patterns.
+
+        Args:
+            root: Directory to scan
+            patterns: Patterns to look for (defaults to SUSPICIOUS_PATTERNS)
+
+        Returns:
+            List of findings with file, line, pattern info
+        """
+        if patterns is None:
+            patterns = self.SUSPICIOUS_PATTERNS
+
+        findings = []
+        py_files = self.find_python_files(root)
+
+        for py_file in py_files:
+            try:
+                rel_path = py_file.relative_to(root)
+            except ValueError:
+                rel_path = py_file
+
+            comments = self.extract_comments(py_file)
+
+            for line_no, comment in comments:
+                for pattern in patterns:
+                    if pattern.lower() in comment.lower():
+                        findings.append({
+                            "id": f"{rel_path}:{line_no}",
+                            "file": str(rel_path),
+                            "line": line_no,
+                            "pattern": pattern.rstrip(":").lower(),
+                            "comment": comment,
+                        })
+
+        return findings
+
+    def analyze(
+        self,
+        root: Path,
+        with_git: bool = False
+    ) -> Dict[str, any]:
+        """
+        Run full analysis on a directory.
+
+        Args:
+            root: Directory to analyze
+            with_git: Include git history analysis (requires real filesystem)
+
+        Returns:
+            Analysis results dictionary
+        """
+        if not self._fs.exists(root):
+            return {"error": f"Directory does not exist: {root}"}
+
+        if not self._fs.is_dir(root):
+            return {"error": f"Path is not a directory: {root}"}
+
+        # Find Python files
+        py_files = self.find_python_files(root)
+
+        results = {
+            "files_analyzed": len(py_files),
+            "comments_analyzed": 0,
+            "findings": [],
+            "pattern_counts": {},
+            "files": [str(f) for f in py_files],
+        }
+
+        # Scan for patterns
+        findings = self.scan_for_patterns(root)
+        results["findings"] = findings
+
+        # Count patterns
+        pattern_counts = {}
+        for finding in findings:
+            pattern = finding["pattern"]
+            pattern_counts[pattern] = pattern_counts.get(pattern, 0) + 1
+        results["pattern_counts"] = pattern_counts
+
+        # Count total comments
+        total_comments = 0
+        for py_file in py_files:
+            comments = self.extract_comments(py_file)
+            total_comments += len(comments)
+        results["comments_analyzed"] = total_comments
+
+        return results
 
 
 # =============================================================================

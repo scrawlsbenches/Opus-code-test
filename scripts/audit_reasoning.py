@@ -33,7 +33,7 @@ Usage:
 import sys
 import json
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Set, Tuple
+from typing import Dict, List, Any, Optional, Set, Tuple, Protocol, Union
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
@@ -47,17 +47,196 @@ from cortical.reasoning.prism_pln import (
     InferenceStep, InferenceTrace
 )
 from cortical.reasoning.woven_mind import WovenMind
+from cortical.common.filesystem import FileSystem, RealFileSystem, InMemoryFileSystem
 
 # Import from our other audit tools
-from scripts.codebase_health import analyze_directory
+from scripts.codebase_health import analyze_directory, CodebaseAnalyzer
 
 # =============================================================================
-# STATE FILES
+# STATE FILES (defaults - can be overridden via DI)
 # =============================================================================
 
 RULES_FILE = Path(__file__).parent.parent / ".got" / "audit_pln_rules.json"
 WOVEN_MIND_FILE = Path(__file__).parent.parent / ".got" / "woven_audit_mind.json"
 PERSISTENCE_FILE = Path(__file__).parent.parent / ".got" / "audit_pln_state.json"
+
+
+# =============================================================================
+# PERSISTENCE BACKEND PROTOCOL
+# =============================================================================
+
+
+class PersistenceBackend(Protocol):
+    """
+    Protocol for audit state persistence.
+
+    Implementations:
+    - FilePersistenceBackend: Real filesystem persistence
+    - NullPersistenceBackend: No-op for testing
+    - InMemoryPersistenceBackend: In-memory for testing
+    """
+
+    def load_state(self) -> 'AuditPersistenceState':
+        """Load persistence state."""
+        ...
+
+    def save_state(self, state: 'AuditPersistenceState') -> None:
+        """Save persistence state."""
+        ...
+
+    def load_rules(self) -> Dict[str, Any]:
+        """Load PLN rules."""
+        ...
+
+    def save_rules(self, rules: Dict[str, Any]) -> None:
+        """Save PLN rules."""
+        ...
+
+
+class FilePersistenceBackend:
+    """
+    Real filesystem persistence backend.
+
+    Stores state and rules as JSON files on disk.
+    """
+
+    def __init__(
+        self,
+        filesystem: FileSystem,
+        persistence_file: Path = PERSISTENCE_FILE,
+        rules_file: Path = RULES_FILE
+    ):
+        self._fs = filesystem
+        self._persistence_file = persistence_file
+        self._rules_file = rules_file
+
+    def load_state(self) -> 'AuditPersistenceState':
+        """Load persistence state from disk."""
+        if self._fs.exists(self._persistence_file):
+            try:
+                data = json.loads(self._fs.read_text(self._persistence_file))
+                return AuditPersistenceState.from_dict(data)
+            except (json.JSONDecodeError, KeyError) as e:
+                print(f"Warning: Could not load persistence state: {e}")
+        return AuditPersistenceState.create_new()
+
+    def save_state(self, state: 'AuditPersistenceState') -> None:
+        """Save persistence state to disk."""
+        # Ensure parent directory exists
+        parent = self._persistence_file.parent
+        if not self._fs.exists(parent):
+            self._fs.mkdir(parent, parents=True, exist_ok=True)
+
+        state.updated = datetime.now().isoformat()
+        self._fs.write_text(
+            self._persistence_file,
+            json.dumps(state.to_dict(), indent=2)
+        )
+
+    def load_rules(self) -> Dict[str, Any]:
+        """Load PLN rules from disk."""
+        if self._fs.exists(self._rules_file):
+            try:
+                return json.loads(self._fs.read_text(self._rules_file))
+            except (json.JSONDecodeError, KeyError):
+                pass
+        return {
+            "version": 1,
+            "created": datetime.now().isoformat(),
+            "rules": [],
+            "manual_rules": [],
+            "derived_rules": [],
+        }
+
+    def save_rules(self, rules: Dict[str, Any]) -> None:
+        """Save PLN rules to disk."""
+        parent = self._rules_file.parent
+        if not self._fs.exists(parent):
+            self._fs.mkdir(parent, parents=True, exist_ok=True)
+
+        rules["updated"] = datetime.now().isoformat()
+        self._fs.write_text(
+            self._rules_file,
+            json.dumps(rules, indent=2)
+        )
+
+
+class NullPersistenceBackend:
+    """
+    No-op persistence backend for testing.
+
+    Does not persist any state - useful for isolated tests.
+    """
+
+    def load_state(self) -> 'AuditPersistenceState':
+        """Return fresh state (nothing to load)."""
+        return AuditPersistenceState.create_new()
+
+    def save_state(self, state: 'AuditPersistenceState') -> None:
+        """No-op (don't save anything)."""
+        pass
+
+    def load_rules(self) -> Dict[str, Any]:
+        """Return empty rules."""
+        return {
+            "version": 1,
+            "created": datetime.now().isoformat(),
+            "rules": [],
+            "manual_rules": [],
+            "derived_rules": [],
+        }
+
+    def save_rules(self, rules: Dict[str, Any]) -> None:
+        """No-op (don't save anything)."""
+        pass
+
+
+class InMemoryPersistenceBackend:
+    """
+    In-memory persistence backend for testing.
+
+    Stores state in memory - useful for tests that need to verify persistence
+    behavior without disk I/O.
+    """
+
+    def __init__(self):
+        self._state: Optional['AuditPersistenceState'] = None
+        self._rules: Dict[str, Any] = {
+            "version": 1,
+            "created": datetime.now().isoformat(),
+            "rules": [],
+            "manual_rules": [],
+            "derived_rules": [],
+        }
+        # Tracking for assertions
+        self.save_state_calls = 0
+        self.load_state_calls = 0
+        self.save_rules_calls = 0
+        self.load_rules_calls = 0
+
+    def load_state(self) -> 'AuditPersistenceState':
+        """Load state from memory."""
+        self.load_state_calls += 1
+        if self._state is None:
+            return AuditPersistenceState.create_new()
+        return self._state
+
+    def save_state(self, state: 'AuditPersistenceState') -> None:
+        """Save state to memory."""
+        self.save_state_calls += 1
+        state.updated = datetime.now().isoformat()
+        self._state = state
+
+    def load_rules(self) -> Dict[str, Any]:
+        """Load rules from memory."""
+        self.load_rules_calls += 1
+        return self._rules.copy()
+
+    def save_rules(self, rules: Dict[str, Any]) -> None:
+        """Save rules to memory."""
+        self.save_rules_calls += 1
+        rules["updated"] = datetime.now().isoformat()
+        self._rules = rules.copy()
 
 
 # =============================================================================
@@ -572,18 +751,49 @@ class AuditReasoner:
     - Importance weights (STI/LTI) for atom prioritization
     - Compound terms for complex multi-signal rules
     - Persistence across sessions for importance tracking
+
+    Dependency Injection:
+    - Accepts PersistenceBackend for state/rules persistence
+    - Use NullPersistenceBackend for testing (no persistence)
+    - Use FilePersistenceBackend for production
+    - Use InMemoryPersistenceBackend for testing persistence behavior
     """
 
     def __init__(
         self,
+        persistence: Union[PersistenceBackend, None] = None,
         aggregate_strategy: AggregateStrategy = "revision",
-        use_persistence: bool = True,
-        apply_decay: bool = True
+        apply_decay: bool = True,
+        # Backward compatibility - deprecated, use persistence param instead
+        use_persistence: bool = True
     ):
+        """
+        Initialize the audit reasoner.
+
+        Args:
+            persistence: Backend for state/rules persistence.
+                        - None with use_persistence=True: uses default FilePersistenceBackend
+                        - None with use_persistence=False: uses NullPersistenceBackend
+                        - PersistenceBackend instance: uses provided backend
+            aggregate_strategy: Strategy for combining multiple rule results
+            apply_decay: Whether to apply time-based decay to importance values
+            use_persistence: DEPRECATED - use persistence parameter instead
+        """
         self.pln = PLNReasoner()
-        self.rules_config = load_rules()
         self.aggregate_strategy = aggregate_strategy
-        self.use_persistence = use_persistence
+
+        # Set up persistence backend
+        if persistence is not None:
+            self._persistence = persistence
+        elif use_persistence:
+            # Default to file-based persistence with real filesystem
+            self._persistence = FilePersistenceBackend(RealFileSystem())
+        else:
+            # No persistence
+            self._persistence = NullPersistenceBackend()
+
+        # Load rules from persistence
+        self.rules_config = self._persistence.load_rules()
 
         # Attention tracking for files
         self.attention_focus = AttentionalFocus(max_size=50, default_boost=1.5)
@@ -597,12 +807,16 @@ class AuditReasoner:
 
         # Load persisted state if available
         self._persistence_state: Optional[AuditPersistenceState] = None
-        if use_persistence:
-            self._load_from_persistence(apply_decay=apply_decay)
+        self._load_from_persistence(apply_decay=apply_decay)
+
+    @property
+    def persistence(self) -> PersistenceBackend:
+        """Get the persistence backend."""
+        return self._persistence
 
     def _load_from_persistence(self, apply_decay: bool = True) -> None:
         """Load importance values from persisted state."""
-        self._persistence_state = load_persistence_state()
+        self._persistence_state = self._persistence.load_state()
 
         # Restore importance values
         for file_id, record in self._persistence_state.file_importance.items():
@@ -640,9 +854,6 @@ class AuditReasoner:
 
     def save_state(self) -> None:
         """Save current state to persistence."""
-        if not self.use_persistence:
-            return
-
         if self._persistence_state is None:
             self._persistence_state = AuditPersistenceState.create_new()
 
@@ -687,7 +898,8 @@ class AuditReasoner:
             "vlti_files": len(self.get_vlti_files()),
         }
 
-        save_persistence_state(self._persistence_state)
+        # Use injected persistence backend
+        self._persistence.save_state(self._persistence_state)
 
     def get_importance_history(self, file_id: str) -> List[Dict[str, Any]]:
         """Get the importance history for a specific file."""
