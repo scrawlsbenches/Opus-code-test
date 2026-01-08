@@ -349,6 +349,39 @@ that you understand the tradeoff.
 
 ---
 
+## Technical Debt: Reduce It When You Can
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    TECHNICAL DEBT REDUCTION                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  When you see technical debt, REDUCE IT if you can.                     │
+│                                                                          │
+│  This means:                                                            │
+│  - Consolidate duplicated code when discovered                          │
+│  - Remove dead code, don't comment it out                               │
+│  - Fix misleading names when you understand the intent                  │
+│  - Simplify complex logic when the simpler version is clear             │
+│  - Delete backward-compatibility shims when safe                        │
+│  - Replace if/elif chains with data structures                          │
+│                                                                          │
+│  The rule is simple:                                                    │
+│  IF you can reduce debt without breaking things,                        │
+│  AND it takes less than 30 minutes,                                     │
+│  THEN do it now, not later.                                             │
+│                                                                          │
+│  "Later" never comes. The next session won't remember.                  │
+│  The codebase accumulates cruft. Do it now.                             │
+│                                                                          │
+│  Exception: If you're in the middle of a larger task, note the debt     │
+│  and complete your current task first. Context-switching is expensive.  │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## Search Before Creating (MANDATORY)
 
 ```
