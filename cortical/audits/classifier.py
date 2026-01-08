@@ -11,6 +11,9 @@ from dataclasses import dataclass
 
 from .patterns import MISLEADING_PATTERNS, ACCURATE_PATTERNS, EXCLUDE_PATTERNS
 
+# Default confidence threshold for model-based classification
+DEFAULT_CONFIDENCE_THRESHOLD = 0.65
+
 
 @dataclass
 class ClassificationResult:
@@ -85,6 +88,7 @@ def classify_with_model(
     comment: str,
     classifier,  # CommentClassifier from algorithms
     tokenizer,   # Tokenizer for preprocessing
+    threshold: float = DEFAULT_CONFIDENCE_THRESHOLD,
 ) -> ClassificationResult:
     """
     Classify a comment using the trained Naive Bayes model.
@@ -93,6 +97,7 @@ def classify_with_model(
         comment: Comment text to classify
         classifier: Trained CommentClassifier
         tokenizer: Tokenizer for preprocessing
+        threshold: Minimum confidence to return a classification (default: 0.65)
 
     Returns:
         ClassificationResult with classification and confidence
@@ -113,16 +118,15 @@ def classify_with_model(
     probs = classifier.predict_proba(tokens)
 
     # Determine classification
-    # Use higher threshold (0.65) to reduce false positives
-    # This means we need stronger evidence before flagging something as misleading
-    if 'misleading' in probs and probs['misleading'] > 0.65:
+    # Only classify if confidence exceeds threshold to reduce false positives
+    if 'misleading' in probs and probs['misleading'] > threshold:
         return ClassificationResult(
             classification='misleading',
             pattern_type='model',
             matched_pattern='naive_bayes',
             confidence=probs['misleading'],
         )
-    elif 'accurate' in probs and probs['accurate'] > 0.65:
+    elif 'accurate' in probs and probs['accurate'] > threshold:
         return ClassificationResult(
             classification='accurate',
             pattern_type='model',
@@ -143,6 +147,7 @@ def batch_classify(
     use_model: bool = False,
     classifier=None,
     tokenizer=None,
+    threshold: float = DEFAULT_CONFIDENCE_THRESHOLD,
 ) -> List[ClassificationResult]:
     """
     Classify multiple comments.
@@ -152,6 +157,7 @@ def batch_classify(
         use_model: Whether to use ML model (requires classifier and tokenizer)
         classifier: Trained classifier (if use_model=True)
         tokenizer: Tokenizer (if use_model=True)
+        threshold: Minimum confidence for model-based classification
 
     Returns:
         List of ClassificationResults
@@ -160,7 +166,7 @@ def batch_classify(
 
     for comment in comments:
         if use_model and classifier and tokenizer:
-            result = classify_with_model(comment, classifier, tokenizer)
+            result = classify_with_model(comment, classifier, tokenizer, threshold)
         else:
             result = classify_comment(comment)
         results.append(result)

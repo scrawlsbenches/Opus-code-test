@@ -20,6 +20,10 @@ TRIE_MODEL = MODEL_DIR / "marker_trie.pkl"
 # Default output directory for training data
 DEFAULT_TRAINING_DIR = Path("docs/audits")
 
+# Default confidence threshold for classification
+# Used by scan and classify commands to filter low-confidence predictions
+DEFAULT_CONFIDENCE_THRESHOLD = 0.65
+
 
 def save_model(obj: Any, path: Path) -> None:
     """

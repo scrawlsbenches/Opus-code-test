@@ -10,6 +10,7 @@ from typing import Any
 
 from ._base import (
     NAIVE_BAYES_MODEL,
+    DEFAULT_CONFIDENCE_THRESHOLD,
     load_model,
     tokenize_comment,
     print_header,
@@ -28,6 +29,12 @@ def setup_args(subparsers) -> None:
         '-v', '--verbose',
         action='store_true',
         help='Show detailed output'
+    )
+    parser.add_argument(
+        '--confidence',
+        type=float,
+        default=DEFAULT_CONFIDENCE_THRESHOLD,
+        help=f'Minimum confidence threshold (default: {DEFAULT_CONFIDENCE_THRESHOLD})'
     )
 
 
@@ -115,9 +122,10 @@ def run(args: Any) -> None:
                         if marker_base in comment_lower:
                             markers.append(marker)
 
-                # Only report if confidence >= 0.65 or has markers
+                # Only report if confidence >= threshold or has markers
                 # Low confidence without markers is likely a false positive
-                if confidence < 0.65 and not markers:
+                threshold = getattr(args, 'confidence', DEFAULT_CONFIDENCE_THRESHOLD)
+                if confidence < threshold and not markers:
                     continue
 
                 # Record finding
