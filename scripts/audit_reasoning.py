@@ -47,7 +47,7 @@ from cortical.reasoning.prism_pln import (
     InferenceStep, InferenceTrace
 )
 from cortical.reasoning.woven_mind import WovenMind
-from cortical.common.filesystem import FileSystem, RealFileSystem, InMemoryFileSystem
+from cortical.common.filesystem import FileSystem, RealFileSystem
 
 # Import from our other audit tools
 from scripts.codebase_health import analyze_directory, CodebaseAnalyzer
@@ -237,6 +237,16 @@ class InMemoryPersistenceBackend:
         self.save_rules_calls += 1
         rules["updated"] = datetime.now().isoformat()
         self._rules = rules.copy()
+
+
+def create_default_persistence() -> PersistenceBackend:
+    """
+    Factory function for creating the default production persistence backend.
+
+    This is the ONLY place in the module that knows about RealFileSystem.
+    All other code should receive a PersistenceBackend via dependency injection.
+    """
+    return FilePersistenceBackend(RealFileSystem())
 
 
 # =============================================================================
@@ -786,8 +796,8 @@ class AuditReasoner:
         if persistence is not None:
             self._persistence = persistence
         elif use_persistence:
-            # Default to file-based persistence with real filesystem
-            self._persistence = FilePersistenceBackend(RealFileSystem())
+            # Default to file-based persistence (via factory)
+            self._persistence = create_default_persistence()
         else:
             # No persistence
             self._persistence = NullPersistenceBackend()
