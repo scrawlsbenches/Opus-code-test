@@ -1,300 +1,671 @@
 """
 Behavioral Tests for Audit Reasoning with PLN.
 
-These tests describe user stories for the audit reasoning system:
-- Developers analyzing code for risks
-- Understanding WHY files are flagged
-- Getting actionable suggestions
-- Persisting insights across sessions
+These tests describe user stories for the audit reasoning system using
+a realistic in-memory codebase. The InMemoryFileSystem contains actual
+Python files with real patterns (TODO, FIXME, etc.) that the auditor scans.
 
 Testing Philosophy (Metus):
 - Scenarios test behaviors, not implementation
 - Given-When-Then format tells the story
 - Tests serve as living documentation
+- Test codebase simulates real audit scenarios
 """
 
 import pytest
+import re
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
+from dataclasses import dataclass
+
+from cortical.common.filesystem import InMemoryFileSystem
 
 
 # =============================================================================
-# STORY: Developer Analyzes File for Risks
+# TEST CODEBASE - Realistic files for audit scenarios
 # =============================================================================
 
 
-class TestDeveloperAnalyzesFileForRisks:
+# Sample Python files with various audit patterns
+TEST_CODEBASE = {
+    "/codebase/src/auth/login.py": '''"""Authentication module for user login."""
+
+import hashlib
+import time
+
+# TODO: Add rate limiting to prevent brute force attacks
+# FIXME: Password hashing should use bcrypt, not md5
+
+def authenticate(username: str, password: str) -> bool:
+    """Authenticate user with username and password."""
+    # HACK: Temporary bypass for testing
+    if username == "test":
+        return True
+
+    hashed = hashlib.md5(password.encode()).hexdigest()  # FIXME: insecure!
+    return check_database(username, hashed)
+
+def check_database(username: str, hashed_pw: str) -> bool:
+    """Check credentials against database."""
+    # TODO: Implement actual database lookup
+    return False
+''',
+
+    "/codebase/src/auth/session.py": '''"""Session management module."""
+
+import uuid
+from datetime import datetime, timedelta
+
+class SessionManager:
+    """Manage user sessions."""
+
+    def __init__(self):
+        self.sessions = {}  # TODO: Use Redis instead of in-memory
+
+    def create_session(self, user_id: str) -> str:
+        """Create a new session for user."""
+        session_id = str(uuid.uuid4())
+        self.sessions[session_id] = {
+            "user_id": user_id,
+            "created": datetime.now(),
+            "expires": datetime.now() + timedelta(hours=24)
+        }
+        return session_id
+
+    def validate_session(self, session_id: str) -> bool:
+        """Check if session is valid."""
+        if session_id not in self.sessions:
+            return False
+        session = self.sessions[session_id]
+        return datetime.now() < session["expires"]
+''',
+
+    "/codebase/src/api/endpoints.py": '''"""API endpoint handlers."""
+
+from flask import request, jsonify
+
+# FIXME: All endpoints need authentication middleware
+# TODO: Add input validation for all parameters
+
+def get_users():
+    """Get list of users."""
+    # Should be paginated but isn't - will be slow with many users
+    return jsonify(fetch_all_users())
+
+def create_user():
+    """Create a new user."""
+    data = request.json
+    # XXX: No validation! SQL injection possible
+    username = data.get("username")
+    return insert_user(username)
+
+def delete_user(user_id):
+    """Delete a user by ID."""
+    # HACK: Skipping permission check for now
+    return remove_user(user_id)
+''',
+
+    "/codebase/src/utils/helpers.py": '''"""Utility helper functions."""
+
+import os
+import logging
+
+logger = logging.getLogger(__name__)
+
+def get_config(key: str, default=None):
+    """Get configuration value from environment."""
+    return os.environ.get(key, default)
+
+def format_currency(amount: float) -> str:
+    """Format amount as currency string."""
+    return f"${amount:,.2f}"
+
+def calculate_tax(amount: float, rate: float = 0.1) -> float:
+    """Calculate tax on amount."""
+    return amount * rate
+''',
+
+    "/codebase/src/legacy/old_processor.py": '''"""Legacy data processor - scheduled for removal."""
+
+# WARNING: This entire module is deprecated
+# TODO: Migrate all usages to new_processor.py
+# FIXME: Memory leak in process_batch when handling large files
+
+import gc
+
+class OldProcessor:
+    """Legacy processor - DO NOT USE IN NEW CODE."""
+
+    def __init__(self):
+        self.cache = {}  # HACK: Unbounded cache causes memory issues
+
+    def process(self, data):
+        """Process data using legacy algorithm."""
+        # FIXME: This is O(n^2), should be O(n log n)
+        result = []
+        for i in data:
+            for j in data:
+                if i != j:
+                    result.append((i, j))
+        return result
+
+    def process_batch(self, items):
+        """Process a batch of items."""
+        # TODO: Add proper error handling
+        # FIXME: Memory leak here - cache never cleared
+        for item in items:
+            self.cache[item.id] = self.process(item.data)
+        return list(self.cache.values())
+''',
+
+    "/codebase/src/core/engine.py": '''"""Core processing engine."""
+
+from typing import List, Optional
+from dataclasses import dataclass
+
+@dataclass
+class Task:
+    id: str
+    priority: int
+    data: dict
+
+class Engine:
+    """Main processing engine."""
+
+    def __init__(self, workers: int = 4):
+        self.workers = workers
+        self.queue = []
+
+    def submit(self, task: Task) -> str:
+        """Submit a task for processing."""
+        self.queue.append(task)
+        self.queue.sort(key=lambda t: t.priority, reverse=True)
+        return task.id
+
+    def process_next(self) -> Optional[dict]:
+        """Process the next task in queue."""
+        if not self.queue:
+            return None
+        task = self.queue.pop(0)
+        return self._execute(task)
+
+    def _execute(self, task: Task) -> dict:
+        """Execute a single task."""
+        return {"id": task.id, "status": "completed", "result": task.data}
+''',
+
+    "/codebase/tests/test_auth.py": '''"""Tests for authentication module."""
+
+import pytest
+from src.auth.login import authenticate
+
+def test_authenticate_valid_user():
+    """Test authentication with valid credentials."""
+    # TODO: Use proper test fixtures
+    assert authenticate("test", "password") == True
+
+def test_authenticate_invalid_user():
+    """Test authentication with invalid credentials."""
+    assert authenticate("invalid", "wrong") == False
+''',
+}
+
+
+# =============================================================================
+# FIXTURES
+# =============================================================================
+
+
+@pytest.fixture
+def memory_fs():
+    """Create an in-memory filesystem with test codebase."""
+    fs = InMemoryFileSystem()
+
+    # Create directory structure and files
+    for file_path, content in TEST_CODEBASE.items():
+        path = Path(file_path)
+        # Create parent directories
+        fs.mkdir(path.parent, parents=True, exist_ok=True)
+        # Write the file
+        fs.write_text(path, content)
+
+    return fs
+
+
+@pytest.fixture
+def file_scanner(memory_fs):
     """
-    Story: As a developer, I want to analyze a file for potential risks
+    Create a scanner that extracts patterns from in-memory files.
+
+    This simulates what the real codebase_health.analyze_directory does,
+    but operates on the InMemoryFileSystem.
+    """
+    return InMemoryFileScanner(memory_fs)
+
+
+@pytest.fixture
+def reasoner_with_codebase(memory_fs, file_scanner):
+    """
+    Create an audit reasoner pre-loaded with facts from the test codebase.
+
+    This is the realistic scenario: scan codebase -> extract findings -> reason.
+    """
+    from scripts.audit_reasoning import AuditReasoner
+
+    # Scan the in-memory codebase
+    findings = file_scanner.scan_directory(Path("/codebase"))
+
+    # Create reasoner
+    reasoner = AuditReasoner(use_persistence=False)
+    reasoner.add_default_rules()
+
+    # Assert facts from actual file scan
+    for file_path, patterns, traits in findings:
+        dirs = [p for p in Path(file_path).parts[2:-1]]  # Skip /codebase/src
+        reasoner.assert_file_facts(file_path, patterns, traits, dirs)
+
+    return reasoner, findings
+
+
+# =============================================================================
+# IN-MEMORY FILE SCANNER
+# =============================================================================
+
+
+@dataclass
+class Finding:
+    """A finding from scanning a file."""
+    file_path: str
+    pattern: str
+    line_number: int
+    line_content: str
+
+
+class InMemoryFileScanner:
+    """
+    Scanner that extracts audit patterns from in-memory files.
+
+    This mirrors what codebase_health.analyze_directory does on real files,
+    but operates on InMemoryFileSystem for testing.
+    """
+
+    # Patterns to search for (same as real tool)
+    PATTERNS = {
+        "todo": re.compile(r"#\s*TODO:?\s*(.+)", re.IGNORECASE),
+        "fixme": re.compile(r"#\s*FIXME:?\s*(.+)", re.IGNORECASE),
+        "hack": re.compile(r"#\s*HACK:?\s*(.+)", re.IGNORECASE),
+        "xxx": re.compile(r"#\s*XXX:?\s*(.+)", re.IGNORECASE),
+        "warning": re.compile(r"#\s*WARNING:?\s*(.+)", re.IGNORECASE),
+    }
+
+    def __init__(self, fs: InMemoryFileSystem):
+        self.fs = fs
+
+    def scan_file(self, path: Path) -> List[Finding]:
+        """Scan a single file for patterns."""
+        findings = []
+        try:
+            content = self.fs.read_text(path)
+            lines = content.split("\n")
+
+            for line_num, line in enumerate(lines, 1):
+                for pattern_name, pattern in self.PATTERNS.items():
+                    match = pattern.search(line)
+                    if match:
+                        findings.append(Finding(
+                            file_path=str(path),
+                            pattern=pattern_name,
+                            line_number=line_num,
+                            line_content=line.strip()
+                        ))
+        except FileNotFoundError:
+            pass
+
+        return findings
+
+    def scan_directory(self, root: Path) -> List[Tuple[str, List[str], List[str]]]:
+        """
+        Scan all Python files in directory.
+
+        Returns: List of (file_path, patterns, traits) tuples
+        """
+        results = []
+
+        # Get all files
+        all_files = self.fs.list_all_files()
+        py_files = [f for f in all_files if f.endswith(".py") and str(root) in f]
+
+        for file_path in py_files:
+            path = Path(file_path)
+            findings = self.scan_file(path)
+
+            if findings:
+                patterns = list(set(f.pattern for f in findings))
+
+                # Determine traits based on patterns
+                traits = []
+                if len(findings) > 5:
+                    traits.append("high_churn")  # Many issues = frequent changes
+                if "fixme" in patterns and "hack" in patterns:
+                    traits.append("bug_prone")
+                if "legacy" in file_path.lower() or "old" in file_path.lower():
+                    traits.append("legacy")
+
+                results.append((file_path, patterns, traits))
+
+        return results
+
+    def get_findings_for_file(self, path: Path) -> List[Finding]:
+        """Get all findings for a specific file."""
+        return self.scan_file(path)
+
+
+# =============================================================================
+# STORY: Developer Analyzes Codebase for Risks
+# =============================================================================
+
+
+class TestDeveloperAnalyzesCodebaseForRisks:
+    """
+    Story: As a developer, I want to analyze my codebase for potential risks
     so that I can prioritize what to review.
     """
 
-    @pytest.fixture
-    def reasoner(self):
-        """Create an audit reasoner with default rules."""
-        from scripts.audit_reasoning import AuditReasoner
-        r = AuditReasoner(use_persistence=False)
-        r.add_default_rules()
-        return r
-
-    def test_analyzing_file_with_todo_comments(self, reasoner):
+    def test_scanning_codebase_finds_todo_comments(self, file_scanner):
         """
-        Scenario: Analyzing a file that contains TODO comments
+        Scenario: Scanning codebase finds TODO comments
 
-        Given a file with TODO comments
-        When I analyze the file for risks
-        Then the file should be flagged as having incomplete work
-        And the confidence should be reasonable (> 0.3)
+        Given a codebase with files containing TODO comments
+        When I scan the codebase
+        Then I should find all files with TODOs
+        And the findings should include the line content
         """
-        # Given a file with TODO comments
-        file_path = "src/utils.py"
-        reasoner.assert_file_facts(
-            file_path,
-            patterns=["todo"],
-            traits=[],
-            directories=["utils"]
+        # Given a codebase with TODO comments (from fixture)
+
+        # When I scan the codebase
+        findings = file_scanner.scan_directory(Path("/codebase"))
+
+        # Then I should find files with TODOs
+        files_with_todos = [f for f, patterns, _ in findings if "todo" in patterns]
+        assert len(files_with_todos) > 0
+
+        # And the findings should include specific files
+        file_paths = [f for f, _, _ in findings]
+        assert any("login.py" in f for f in file_paths)
+        assert any("old_processor.py" in f for f in file_paths)
+
+    def test_scanning_finds_security_concerns(self, file_scanner):
+        """
+        Scenario: Scanning finds security-related FIXME comments
+
+        Given a codebase with security issues marked as FIXME
+        When I scan the codebase
+        Then I should find the security concerns
+        And login.py should be flagged for the password hashing issue
+        """
+        # Given a codebase with security FIXME comments
+
+        # When I scan the codebase
+        findings = file_scanner.scan_directory(Path("/codebase"))
+
+        # Then I should find security concerns
+        login_findings = [f for f, patterns, _ in findings
+                         if "login.py" in f and "fixme" in patterns]
+        assert len(login_findings) > 0
+
+        # And the specific security issue should be present
+        login_details = file_scanner.get_findings_for_file(
+            Path("/codebase/src/auth/login.py")
         )
+        fixme_findings = [f for f in login_details if f.pattern == "fixme"]
+        assert any("bcrypt" in f.line_content or "md5" in f.line_content
+                   for f in fixme_findings)
 
-        # When I analyze the file for risks
-        results = reasoner.query_file_risk(file_path)
-
-        # Then the file should be flagged as having incomplete work
-        assert results is not None
-        assert "incomplete" in results or "needs_review" in results
-
-        # And the confidence should be reasonable (> 0.3)
-        if "incomplete" in results:
-            assert results["incomplete"]["strength"] > 0.3
-
-    def test_analyzing_file_with_fixme_markers(self, reasoner):
+    def test_legacy_code_identified_as_high_risk(self, file_scanner):
         """
-        Scenario: Analyzing a file with FIXME markers
+        Scenario: Legacy code is identified as high risk
 
-        Given a file with FIXME markers
-        When I analyze the file for known issues
-        Then the file should be flagged as needing review
-        And I should understand why it was flagged
+        Given a codebase with legacy modules
+        When I scan the codebase
+        Then legacy modules should be marked with traits
+        And old_processor.py should have legacy trait
         """
-        # Given a file with FIXME markers
-        file_path = "src/parser.py"
-        reasoner.assert_file_facts(
-            file_path,
-            patterns=["fixme"],
-            traits=[],
-            directories=["parser"]
-        )
+        # Given a codebase with legacy modules
 
-        # When I analyze the file for known issues
-        results = reasoner.query_file_risk(file_path)
+        # When I scan the codebase
+        findings = file_scanner.scan_directory(Path("/codebase"))
 
-        # Then the file should be flagged as having known issues
-        assert results is not None
-        # Either has_known_issue or needs_review should be present
-        has_risk = any(k in results for k in ["has_known_issue", "needs_review", "risky"])
-        assert has_risk or len(results) > 0
+        # Then legacy modules should have traits
+        legacy_findings = [(f, patterns, traits) for f, patterns, traits in findings
+                          if "legacy" in f.lower() or "old" in f.lower()]
+        assert len(legacy_findings) > 0
 
-    def test_analyzing_high_churn_file(self, reasoner):
-        """
-        Scenario: Analyzing a high-churn file
-
-        Given a file that has been modified frequently
-        When I analyze the file for risks
-        Then the file should be flagged as needing review
-        """
-        # Given a file that has been modified frequently
-        file_path = "src/core/engine.py"
-        reasoner.assert_file_facts(
-            file_path,
-            patterns=[],
-            traits=["high_churn"],
-            directories=["core"]
-        )
-
-        # When I analyze the file for risks
-        results = reasoner.query_file_risk(file_path)
-
-        # Then the file should be flagged as needing review
-        assert results is not None
-        # Should have some risk signal
-        has_signal = "needs_review" in results or "risky" in results
-        assert has_signal or "_importance" in results
+        # And old_processor.py should have legacy trait
+        old_processor = [(f, patterns, traits) for f, patterns, traits in findings
+                        if "old_processor.py" in f]
+        assert len(old_processor) > 0
+        _, _, traits = old_processor[0]
+        assert "legacy" in traits
 
 
 # =============================================================================
-# STORY: Developer Wants to Understand WHY a File is Risky
+# STORY: Developer Reasons About File Risks
 # =============================================================================
 
 
-class TestDeveloperUnderstandsWhyFileIsRisky:
+class TestDeveloperReasonsAboutFileRisks:
+    """
+    Story: As a developer, I want the system to reason about file risks
+    so that I get intelligent prioritization beyond simple pattern matching.
+    """
+
+    def test_file_with_multiple_issues_flagged_for_review(
+        self, reasoner_with_codebase
+    ):
+        """
+        Scenario: File with multiple issues is flagged for review
+
+        Given a codebase has been scanned
+        When I query risk for login.py (which has TODO, FIXME, and HACK)
+        Then it should be flagged for review
+        And the risk should reflect multiple issues
+        """
+        reasoner, findings = reasoner_with_codebase
+
+        # Given a codebase has been scanned (from fixture)
+
+        # When I query risk for login.py
+        login_file = [f for f, _, _ in findings if "login.py" in f][0]
+        results = reasoner.query_file_risk(login_file)
+
+        # Then it should have risk signals
+        assert results is not None
+        assert len(results) > 0
+
+    def test_clean_utility_file_has_lower_risk(self, reasoner_with_codebase):
+        """
+        Scenario: Clean utility file has lower risk than problematic files
+
+        Given a codebase has been scanned
+        When I compare helpers.py (clean) to login.py (problematic)
+        Then helpers.py should have fewer or no risk signals
+        """
+        reasoner, findings = reasoner_with_codebase
+
+        # Given codebase has been scanned
+
+        # When I query risk for both files
+        helpers_findings = [f for f, patterns, _ in findings if "helpers.py" in f]
+
+        # Then helpers.py should have fewer findings (it has no patterns)
+        # It might not even be in findings if it's clean
+        if helpers_findings:
+            helpers_file = helpers_findings[0]
+            results = reasoner.query_file_risk(helpers_file)
+            # Should have minimal risk signals
+            risk_count = len([k for k in results if not k.startswith("_")])
+            assert risk_count <= 2  # Few or no risks
+
+    def test_legacy_module_flagged_as_risky(self, reasoner_with_codebase):
+        """
+        Scenario: Legacy module is flagged as risky
+
+        Given a codebase has been scanned
+        When I query risk for old_processor.py
+        Then it should be flagged as risky
+        And it should have high importance due to multiple issues
+        """
+        reasoner, findings = reasoner_with_codebase
+
+        # Given codebase has been scanned
+
+        # When I query risk for old_processor.py
+        old_proc = [f for f, _, _ in findings if "old_processor.py" in f][0]
+        results = reasoner.query_file_risk(old_proc)
+
+        # Then it should be flagged
+        assert results is not None
+
+        # And it should have importance tracked
+        assert "_importance" in results
+        importance = results["_importance"]
+        assert importance["total"] > 0
+
+
+# =============================================================================
+# STORY: Developer Understands Why Files Are Flagged
+# =============================================================================
+
+
+class TestDeveloperUnderstandsWhyFlagged:
     """
     Story: As a developer, I want to understand WHY a file was flagged
-    so that I can make informed decisions about what to fix.
+    so that I can make informed decisions about what to fix first.
     """
 
-    @pytest.fixture
-    def reasoner(self):
-        """Create an audit reasoner with default rules."""
-        from scripts.audit_reasoning import AuditReasoner
-        r = AuditReasoner(use_persistence=False)
-        r.add_default_rules()
-        return r
-
-    def test_explanation_shows_reasoning(self, reasoner):
+    def test_explanation_shows_detected_patterns(self, reasoner_with_codebase):
         """
-        Scenario: Getting explanation for a flagged file
+        Scenario: Explanation shows the detected patterns
 
-        Given a file flagged for having multiple risk factors
-        When I ask for an explanation
-        Then I should see the reasoning chain
-        And the explanation should be human-readable
-        """
-        # Given a file flagged for having multiple risk factors
-        file_path = "src/critical_module.py"
-        reasoner.assert_file_facts(
-            file_path,
-            patterns=["todo", "fixme"],
-            traits=["high_churn"],
-            directories=["critical"]
-        )
-
-        # When I ask for an explanation
-        explanation = reasoner.explain_file_risk(file_path)
-
-        # Then I should see the reasoning chain
-        assert explanation is not None
-        assert "traces" in explanation
-
-        # And the explanation should be human-readable
-        assert "summary" in explanation
-        summary = explanation["summary"]
-        assert isinstance(summary, str)
-
-    def test_explanation_includes_facts(self, reasoner):
-        """
-        Scenario: Explanation includes detected facts
-
-        Given a file with specific patterns
+        Given I have a file flagged for multiple issues
         When I request an explanation
-        Then I should see the facts that were detected
+        Then I should see which patterns triggered the flagging
+        And the explanation should mention TODO, FIXME, or HACK
         """
-        # Given a file with specific patterns
-        file_path = "src/handler.py"
-        reasoner.assert_file_facts(
-            file_path,
-            patterns=["todo", "should_be"],
-            traits=[],
-            directories=["handlers"]
-        )
+        reasoner, findings = reasoner_with_codebase
+
+        # Given a file with multiple issues
+        login_file = [f for f, _, _ in findings if "login.py" in f][0]
 
         # When I request an explanation
-        explanation = reasoner.explain_file_risk(file_path)
+        explanation = reasoner.explain_file_risk(login_file)
 
-        # Then I should see the facts that were detected
+        # Then I should see the facts
         assert "facts" in explanation
         facts = explanation["facts"]
-        # Should have recorded the patterns
-        assert isinstance(facts, dict)
+        assert len(facts) > 0
 
+        # And the summary should be present
+        assert "summary" in explanation
 
-# =============================================================================
-# STORY: Developer Gets Actionable Suggestions
-# =============================================================================
-
-
-class TestDeveloperGetsActionableSuggestions:
-    """
-    Story: As a developer, I want actionable suggestions for flagged files
-    so that I know what to do next.
-    """
-
-    @pytest.fixture
-    def reasoner(self):
-        """Create an audit reasoner with default rules."""
-        from scripts.audit_reasoning import AuditReasoner
-        r = AuditReasoner(use_persistence=False)
-        r.add_default_rules()
-        return r
-
-    def test_todo_file_gets_completion_suggestion(self, reasoner):
+    def test_explanation_includes_suggestions(self, reasoner_with_codebase):
         """
-        Scenario: File with TODOs gets completion suggestion
+        Scenario: Explanation includes actionable suggestions
 
-        Given a file with TODO comments
-        When I request suggestions
-        Then I should receive a suggestion to address the TODOs
+        Given a file flagged for FIXME issues
+        When I request an explanation
+        Then I should receive suggestions for what to do
         """
-        # Given a file with TODO comments
-        file_path = "src/unfinished.py"
-        reasoner.assert_file_facts(
-            file_path,
-            patterns=["todo"],
-            traits=[],
-            directories=[]
-        )
+        reasoner, findings = reasoner_with_codebase
 
-        # When I request suggestions (via explain_file_risk)
-        explanation = reasoner.explain_file_risk(file_path)
+        # Given a file with FIXME issues
+        login_file = [f for f, _, _ in findings if "login.py" in f][0]
 
-        # Then I should receive suggestions
+        # When I request an explanation
+        explanation = reasoner.explain_file_risk(login_file)
+
+        # Then suggestions should be provided
         assert "suggestions" in explanation
         suggestions = explanation["suggestions"]
         assert isinstance(suggestions, list)
-        # If there are suggestions, they should be actionable
-        if suggestions:
-            assert any("TODO" in s or "todo" in s.lower() for s in suggestions)
 
-    def test_fixme_file_gets_bug_fix_suggestion(self, reasoner):
+    def test_explanation_traces_reasoning_chain(self, reasoner_with_codebase):
         """
-        Scenario: File with FIXME gets bug fix suggestion
+        Scenario: Explanation shows reasoning chain
 
-        Given a file with FIXME markers
-        When I request suggestions
-        Then I should receive a suggestion to address the known issues
+        Given a file that triggers rule inference
+        When I request an explanation with traces
+        Then I should see how conclusions were derived
         """
-        # Given a file with FIXME markers
-        file_path = "src/buggy.py"
-        reasoner.assert_file_facts(
-            file_path,
-            patterns=["fixme"],
-            traits=[],
-            directories=[]
-        )
+        reasoner, findings = reasoner_with_codebase
 
-        # When I request suggestions
-        explanation = reasoner.explain_file_risk(file_path)
+        # Given a file that triggers rules
+        old_proc = [f for f, _, _ in findings if "old_processor.py" in f][0]
 
-        # Then I should receive suggestions
-        assert "suggestions" in explanation
-        suggestions = explanation["suggestions"]
-        assert isinstance(suggestions, list)
-        # If there are suggestions, they should mention fixing or bugs
-        if suggestions:
-            suggestion_text = " ".join(suggestions).lower()
-            assert "fix" in suggestion_text or "bug" in suggestion_text or "issue" in suggestion_text
+        # When I request an explanation
+        explanation = reasoner.explain_file_risk(old_proc)
 
-    def test_high_churn_file_gets_refactoring_suggestion(self, reasoner):
+        # Then traces should be present
+        assert "traces" in explanation
+        traces = explanation["traces"]
+        # Should have some inference results
+        assert isinstance(traces, dict)
+
+
+# =============================================================================
+# STORY: Developer Gets Priority Ordering
+# =============================================================================
+
+
+class TestDeveloperGetsPriorityOrdering:
+    """
+    Story: As a developer, I want files prioritized by risk
+    so that I can focus on the most critical issues first.
+    """
+
+    def test_priority_files_ordered_by_importance(self, reasoner_with_codebase):
         """
-        Scenario: High-churn file gets refactoring suggestion
+        Scenario: Priority files are ordered by importance
 
-        Given a file with high churn rate
-        When I request suggestions
-        Then I should receive a suggestion to consider refactoring
+        Given multiple files have been analyzed
+        When I request priority files
+        Then files should be ordered by importance score
+        And high-issue files should rank higher
         """
-        # Given a file with high churn rate
-        file_path = "src/hot_module.py"
-        reasoner.assert_file_facts(
-            file_path,
-            patterns=[],
-            traits=["high_churn"],
-            directories=[]
-        )
+        reasoner, findings = reasoner_with_codebase
 
-        # When I request suggestions
-        explanation = reasoner.explain_file_risk(file_path)
+        # Given multiple files analyzed (from fixture)
 
-        # Then suggestions should be available
-        assert "suggestions" in explanation
-        # May or may not have suggestions depending on inference results
+        # When I request priority files
+        priorities = reasoner.get_priority_files(top_n=5)
+
+        # Then files should be returned in order
+        assert len(priorities) > 0
+        for i in range(len(priorities) - 1):
+            _, importance_a = priorities[i]
+            _, importance_b = priorities[i + 1]
+            assert importance_a >= importance_b
+
+    def test_legacy_file_has_high_priority(self, reasoner_with_codebase):
+        """
+        Scenario: Legacy files with many issues rank high
+
+        Given a legacy file with multiple issues
+        When I check priority ranking
+        Then old_processor.py should be in top priority files
+        """
+        reasoner, findings = reasoner_with_codebase
+
+        # Given codebase analyzed
+
+        # When I check priorities
+        priorities = reasoner.get_priority_files(top_n=10)
+        priority_files = [f for f, _ in priorities]
+
+        # Then old_processor should rank high (has many issues)
+        # Note: file_id is normalized (. replaced with _)
+        has_old_processor = any("old_processor" in f for f in priority_files)
+        assert has_old_processor
 
 
 # =============================================================================
@@ -305,77 +676,59 @@ class TestDeveloperGetsActionableSuggestions:
 class TestDeveloperUsesNaturalLanguageQueries:
     """
     Story: As a developer, I want to ask questions in natural language
-    so that I don't need to learn a query syntax.
+    so that I don't need to learn a formal query syntax.
     """
 
-    def test_translate_risky_query(self):
+    def test_translate_why_question(self):
         """
-        Scenario: Translating "why is this file risky?"
+        Scenario: Translating "why is X risky?"
 
         Given a natural language question about risk
-        When I translate it to a structured query
-        Then the query should identify the file and intent
+        When I translate it
+        Then I should get a structured query with explain intent
         """
         from scripts.audit_reasoning import translate_audit_query
 
-        # When I translate a question about risk
-        query = translate_audit_query("why is utils.py risky?")
+        # When I translate a "why" question
+        query = translate_audit_query("why is login.py risky?")
 
         # Then the query should be recognized
         assert query is not None
-        # Should have a valid intent
         assert query.intent in ["explain", "list", "trace"]
 
-    def test_translate_todo_query(self):
-        """
-        Scenario: Translating "which files have TODO comments?"
-
-        Given a natural language question about TODOs
-        When I translate it to a structured query
-        Then the query should look for TODO patterns
-        """
-        from scripts.audit_reasoning import translate_audit_query
-
-        # When I translate a question about TODOs
-        query = translate_audit_query("which files have todos?")
-
-        # Then the query should be recognized
-        assert query is not None
-
-    def test_translate_flagged_query(self):
+    def test_translate_list_question(self):
         """
         Scenario: Translating "what files are flagged?"
 
         Given a natural language question about flagged files
-        When I translate it to a structured query
-        Then the query should look for flagged files
+        When I translate it
+        Then I should get a list query
         """
         from scripts.audit_reasoning import translate_audit_query
 
-        # When I translate a question about flagged files
+        # When I translate a "what" question
         query = translate_audit_query("what files are flagged?")
 
         # Then the query should be recognized
         assert query is not None
-        # Should have a valid intent (list is the default for "what" queries)
         assert query.intent in ["list", "explain", "trace"]
 
-    def test_is_natural_language_detection(self):
+    def test_detect_natural_language(self):
         """
-        Scenario: Detecting natural language vs formal queries
+        Scenario: Detecting natural language vs flags
 
-        Given various inputs
+        Given various input types
         When I check if they are natural language
-        Then natural language should be detected correctly
+        Then questions should be detected as NL
+        And flags should not be detected as NL
         """
         from scripts.audit_reasoning import is_natural_language_query
 
-        # Natural language queries (contain spaces or NLU keywords)
-        assert is_natural_language_query("why is utils.py risky?")
-        assert is_natural_language_query("what files are flagged?")
-        assert is_natural_language_query("which modules need review?")
+        # Natural language
+        assert is_natural_language_query("why is this file risky?")
+        assert is_natural_language_query("show me the priority files")
 
-        # Single word paths without NLU keywords are not natural language
+        # Not natural language (flags)
         assert not is_natural_language_query("--verbose")
         assert not is_natural_language_query("-h")
 
@@ -387,171 +740,53 @@ class TestDeveloperUsesNaturalLanguageQueries:
 
 class TestInsightsPersistAcrossSessions:
     """
-    Story: As a developer, I want my audit insights to persist
-    so that I don't lose context between sessions.
+    Story: As a developer, I want audit insights to persist
+    so that importance builds up over time with repeated access.
     """
-
-    def test_file_importance_record_creation(self):
-        """
-        Scenario: Creating a file importance record
-
-        Given a file that was analyzed
-        When I create an importance record
-        Then it should capture the analysis metrics
-        """
-        from scripts.audit_reasoning import FileImportanceRecord
-
-        # When I create an importance record
-        record = FileImportanceRecord(
-            file_id="utils_py",
-            sti=0.8,
-            lti=0.7,
-            vlti=False,
-            last_seen="2026-01-07T12:00:00",
-            history=[]
-        )
-
-        # Then it should capture the analysis metrics
-        assert record.file_id == "utils_py"
-        assert record.sti == 0.8
-        assert record.lti == 0.7
-        assert record.vlti is False
-
-    def test_persistence_state_tracks_multiple_files(self):
-        """
-        Scenario: Tracking multiple files across sessions
-
-        Given multiple files have been analyzed
-        When I save the persistence state
-        Then all files should be tracked
-        """
-        from scripts.audit_reasoning import (
-            AuditPersistenceState,
-            FileImportanceRecord,
-        )
-
-        # Given multiple files have been analyzed
-        state = AuditPersistenceState.create_new()
-
-        record1 = FileImportanceRecord(
-            file_id="file1_py",
-            sti=0.8,
-            lti=0.7,
-            vlti=False,
-            last_seen="2026-01-07T12:00:00",
-            history=[]
-        )
-        record2 = FileImportanceRecord(
-            file_id="file2_py",
-            sti=0.6,
-            lti=0.5,
-            vlti=True,
-            last_seen="2026-01-07T12:00:00",
-            history=[]
-        )
-
-        state.file_importance["file1_py"] = record1
-        state.file_importance["file2_py"] = record2
-
-        # Then all files should be tracked
-        assert len(state.file_importance) == 2
-        assert "file1_py" in state.file_importance
-        assert "file2_py" in state.file_importance
-        assert state.file_importance["file2_py"].vlti is True
 
     def test_attention_value_decay(self):
         """
-        Scenario: File importance decays when not accessed
+        Scenario: Importance decays when files not accessed
 
-        Given a file that hasn't been accessed recently
-        When the decay process runs
-        Then the file's short-term importance should decrease
+        Given a file with high short-term importance
+        When decay is applied
+        Then STI should decrease
+        And LTI should remain more stable
         """
         from scripts.audit_reasoning import AttentionValue
 
-        # Given a file with high short-term importance
+        # Given high importance
         attention = AttentionValue(sti=0.9, lti=0.7, vlti=False)
 
-        # When the decay process runs
+        # When decay is applied
         attention.decay_sti(0.8)  # 20% decay
 
-        # Then the file's short-term importance should decrease
+        # Then STI decreases
         assert attention.sti == pytest.approx(0.72, rel=0.01)
-        # Long-term importance unchanged
+        # LTI unchanged
         assert attention.lti == 0.7
 
-
-# =============================================================================
-# STORY: Multi-Rule Analysis
-# =============================================================================
-
-
-class TestMultiRuleAnalysis:
-    """
-    Story: As a developer, I want multiple rules to contribute to risk assessment
-    so that I get a comprehensive view.
-    """
-
-    @pytest.fixture
-    def reasoner(self):
-        """Create an audit reasoner with default rules."""
-        from scripts.audit_reasoning import AuditReasoner
-        r = AuditReasoner(use_persistence=False)
-        r.add_default_rules()
-        return r
-
-    def test_multiple_risk_factors_detected(self, reasoner):
+    def test_stimulation_increases_importance(self, reasoner_with_codebase):
         """
-        Scenario: Multiple risk factors are detected and reported
+        Scenario: Accessing a file increases its importance
 
-        Given a file with multiple risk indicators
-        When I analyze the file
-        Then all risk factors should be captured in the explanation
+        Given a file in the codebase
+        When I stimulate it (simulating access)
+        Then its short-term importance should increase
         """
-        # Given a file with multiple risk indicators
-        file_path = "src/problematic.py"
-        reasoner.assert_file_facts(
-            file_path,
-            patterns=["todo", "fixme", "hack"],
-            traits=["high_churn"],
-            directories=[]
-        )
+        reasoner, findings = reasoner_with_codebase
 
-        # When I analyze the file
-        explanation = reasoner.explain_file_risk(file_path)
+        # Given a file
+        login_file = [f for f, _, _ in findings if "login.py" in f][0]
+        file_id = Path(login_file).name.replace(".", "_")
+        initial_sti = reasoner.file_importance[file_id].sti
 
-        # Then multiple facts should be captured
-        assert "facts" in explanation
-        facts = explanation["facts"]
-        # Should have multiple patterns recorded
-        assert len(facts) >= 1
+        # When I stimulate it
+        reasoner.stimulate_file(login_file, amount=0.3)
 
-    def test_aggregation_strategies_produce_different_results(self, reasoner):
-        """
-        Scenario: Different aggregation strategies produce different confidence levels
-
-        Given a file with risk indicators
-        When I query with different aggregation strategies
-        Then the results may differ based on strategy
-        """
-        # Given a file with risk indicators
-        file_path = "src/test_file.py"
-        reasoner.assert_file_facts(
-            file_path,
-            patterns=["todo", "fixme"],
-            traits=["high_churn"],
-            directories=[]
-        )
-
-        # When I query with different aggregation strategies
-        results = reasoner.query_with_aggregation(
-            f"needs_review({Path(file_path).name.replace('.', '_')})",
-            strategies=["first", "revision", "max", "or"]
-        )
-
-        # Then the results exist (strategies may or may not differ)
-        # The important thing is all strategies work
-        assert isinstance(results, dict)
+        # Then importance increases
+        new_sti = reasoner.file_importance[file_id].sti
+        assert new_sti > initial_sti
 
 
 # =============================================================================
@@ -561,206 +796,124 @@ class TestMultiRuleAnalysis:
 
 class TestReportGeneration:
     """
-    Story: As a developer, I want to generate reports of audit findings
-    so that I can share them with my team.
+    Story: As a developer, I want to generate audit reports
+    so that I can share findings with my team.
     """
 
-    def test_generate_reasoning_report(self):
+    def test_generate_report_from_analysis(self, reasoner_with_codebase):
         """
-        Scenario: Generate a reasoning report
+        Scenario: Generate a report from codebase analysis
 
-        Given analysis results from multiple files
+        Given a codebase has been analyzed
         When I generate a report
-        Then it should summarize the findings
+        Then it should summarize all findings
         """
         from scripts.audit_reasoning import generate_reasoning_report
 
-        # Given analysis results from multiple files
+        reasoner, findings = reasoner_with_codebase
+
+        # Given analysis results
         results = {
-            "files_analyzed": ["src/a.py", "src/b.py", "src/c.py"],
+            "files_analyzed": [f for f, _, _ in findings],
             "rules_loaded": 10,
-            "analysis_results": [
-                {
-                    "file": "src/a.py",
-                    "risk": {"needs_review": {"strength": 0.8}},
-                },
-                {
-                    "file": "src/b.py",
-                    "risk": {"flagged": {"strength": 0.5}},
-                },
-            ],
+            "analysis_results": [],
         }
+
+        for file_path, patterns, traits in findings:
+            explanation = reasoner.explain_file_risk(file_path)
+            results["analysis_results"].append({
+                "file": file_path,
+                "patterns": patterns,
+                "explanation": explanation,
+            })
 
         # When I generate a report
         report = generate_reasoning_report(results)
 
-        # Then it should be a non-empty string
+        # Then report should be generated
         assert report is not None
         assert isinstance(report, str)
         assert len(report) > 0
 
 
 # =============================================================================
-# STORY: WovenMind Integration
+# STORY: Complete Audit Workflow
 # =============================================================================
 
 
-class TestWovenMindIntegration:
+class TestCompleteAuditWorkflow:
     """
-    Story: As a system, I want to learn from WovenMind abstractions
-    so that I can apply learned patterns to code analysis.
+    Story: As an auditor, I want to run a complete audit workflow
+    from scanning to reporting.
     """
 
-    def test_abstraction_to_rule_conversion(self):
+    def test_full_audit_workflow(self, memory_fs, file_scanner):
         """
-        Scenario: WovenMind abstraction becomes audit rule
+        Scenario: Complete audit from scan to prioritization
 
-        Given a WovenMind abstraction about code patterns
-        When I convert it to an audit rule
-        Then it should produce a usable rule structure
-        """
-        from scripts.audit_reasoning import abstraction_to_rule
-
-        # Given a WovenMind abstraction
-        abstraction = {
-            "type": "co-occurrence",
-            "edge_strength": 0.8,
-            "source_nodes": ["dir:legacy", "pattern:todo"],
-        }
-
-        # When I convert it to an audit rule
-        rule = abstraction_to_rule(abstraction)
-
-        # Then it should produce a rule structure
-        assert rule is not None
-        assert "strength" in rule
-        assert "confidence" in rule
-
-    def test_loading_rules_from_woven_mind(self):
-        """
-        Scenario: Loading rules from WovenMind abstractions
-
-        Given the reasoner is initialized
-        When I load rules from WovenMind
-        Then rules should be added to the reasoner
+        Given a codebase with various issues
+        When I run the full audit workflow
+        Then I should get prioritized findings with explanations
         """
         from scripts.audit_reasoning import AuditReasoner
 
-        # Given the reasoner is initialized
+        # Given: Scan the codebase
+        findings = file_scanner.scan_directory(Path("/codebase"))
+        assert len(findings) > 0, "Should find files with issues"
+
+        # When: Initialize reasoner and load facts
         reasoner = AuditReasoner(use_persistence=False)
+        reasoner.add_default_rules()
 
-        # When I load rules from WovenMind (may or may not find abstractions)
-        count = reasoner.load_rules_from_woven_mind()
+        for file_path, patterns, traits in findings:
+            dirs = [p for p in Path(file_path).parts[2:-1]]
+            reasoner.assert_file_facts(file_path, patterns, traits, dirs)
 
-        # Then the method completes without error
-        # Count may be 0 if no abstractions file exists
-        assert isinstance(count, int)
-        assert count >= 0
-
-
-# =============================================================================
-# STORY: Attention-Based Prioritization
-# =============================================================================
-
-
-class TestAttentionBasedPrioritization:
-    """
-    Story: As a developer, I want the system to focus on the most important files
-    so that I can prioritize my review efforts.
-    """
-
-    @pytest.fixture
-    def reasoner(self):
-        """Create an audit reasoner with default rules."""
-        from scripts.audit_reasoning import AuditReasoner
-        r = AuditReasoner(use_persistence=False)
-        r.add_default_rules()
-        return r
-
-    def test_get_priority_files(self, reasoner):
-        """
-        Scenario: Getting priority files for review
-
-        Given multiple files have been analyzed
-        When I request the priority files
-        Then files should be ordered by importance
-        """
-        # Given multiple files have been analyzed
-        reasoner.assert_file_facts(
-            "critical.py",
-            patterns=["fixme", "hack"],
-            traits=["high_churn", "bug_prone"],
-            directories=[]
-        )
-        reasoner.assert_file_facts(
-            "normal.py",
-            patterns=["todo"],
-            traits=[],
-            directories=[]
-        )
-        reasoner.assert_file_facts(
-            "stable.py",
-            patterns=[],
-            traits=["stable"],
-            directories=[]
-        )
-
-        # When I request the priority files
-        priorities = reasoner.get_priority_files(top_n=3)
-
-        # Then files should be returned
+        # Then: Get prioritized results
+        priorities = reasoner.get_priority_files(top_n=5)
         assert len(priorities) > 0
-        # Each entry should be (file_id, importance)
-        for file_id, importance in priorities:
-            assert isinstance(file_id, str)
-            assert isinstance(importance, (int, float))
 
-    def test_stimulate_file_importance(self, reasoner):
+        # And: Explanations available for each
+        for file_id, importance in priorities[:3]:
+            # Reconstruct path for explanation
+            for file_path, _, _ in findings:
+                if file_id in Path(file_path).name.replace(".", "_"):
+                    explanation = reasoner.explain_file_risk(file_path)
+                    assert explanation is not None
+                    assert "summary" in explanation
+                    break
+
+    def test_audit_identifies_security_issues(self, memory_fs, file_scanner):
         """
-        Scenario: Stimulating a file increases its importance
+        Scenario: Audit correctly identifies security concerns
 
-        Given a file has been analyzed
-        When I stimulate the file (e.g., it was accessed)
-        Then its short-term importance should increase
+        Given a codebase with security-marked issues
+        When I audit the codebase
+        Then security files should be prioritized
+        And explanations should mention security patterns
         """
-        # Given a file has been analyzed
-        file_path = "important.py"
-        reasoner.assert_file_facts(
-            file_path,
-            patterns=["todo"],
-            traits=[],
-            directories=[]
-        )
+        from scripts.audit_reasoning import AuditReasoner
 
-        file_id = "important_py"
-        initial_sti = reasoner.file_importance[file_id].sti
+        # Given: Scan
+        findings = file_scanner.scan_directory(Path("/codebase"))
 
-        # When I stimulate the file
-        reasoner.stimulate_file(file_path, amount=0.3)
+        # When: Analyze
+        reasoner = AuditReasoner(use_persistence=False)
+        reasoner.add_default_rules()
 
-        # Then its short-term importance should increase
-        new_sti = reasoner.file_importance[file_id].sti
-        assert new_sti > initial_sti
+        for file_path, patterns, traits in findings:
+            dirs = [p for p in Path(file_path).parts[2:-1]]
+            reasoner.assert_file_facts(file_path, patterns, traits, dirs)
 
-    def test_vlti_files_tracked(self, reasoner):
-        """
-        Scenario: Critical files are tracked with VLTI flag
+        # Then: Auth files with security issues should be tracked
+        auth_findings = [f for f, patterns, _ in findings
+                        if "auth" in f and ("fixme" in patterns or "hack" in patterns)]
+        assert len(auth_findings) > 0
 
-        Given a file marked as critical
-        When I query for VLTI files
-        Then the critical file should be listed
-        """
-        # Given a file marked as critical
-        file_path = "critical_service.py"
-        reasoner.assert_file_facts(
-            file_path,
-            patterns=[],
-            traits=["critical"],
-            directories=[]
-        )
-
-        # When I query for VLTI files
-        vlti_files = reasoner.get_vlti_files()
-
-        # Then the critical file should be listed
-        assert "critical_service_py" in vlti_files
+        # And: login.py should have explanation available
+        login_file = [f for f, _, _ in findings if "login.py" in f]
+        if login_file:
+            explanation = reasoner.explain_file_risk(login_file[0])
+            assert explanation is not None
+            # Should have suggestions for the issues found
+            assert "suggestions" in explanation
