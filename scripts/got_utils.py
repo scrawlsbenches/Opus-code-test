@@ -3142,6 +3142,25 @@ VALID_COMMANDS = [
 
 
 def suggest_command(invalid_cmd: str, valid_commands: list = VALID_COMMANDS) -> list:
+    """Suggest similar commands when user types an invalid one.
+
+    Uses difflib to find close matches, making the CLI more user-friendly.
+
+    Args:
+        invalid_cmd: The invalid command the user typed
+        valid_commands: List of valid commands to match against
+
+    Returns:
+        List of up to 3 similar command suggestions
+    """
+    import difflib
+    matches = difflib.get_close_matches(
+        invalid_cmd.lower(),
+        valid_commands,
+        n=3,
+        cutoff=0.4  # Lower cutoff to catch more typos
+    )
+    return matches
 
 
 def cmd_backup_list(args, manager: "TransactionalGoTAdapter") -> int:
@@ -3689,25 +3708,9 @@ def cmd_compact(args, manager: "TransactionalGoTAdapter") -> int:
     DEPRECATED: This command is for the legacy event-sourced backend.
     The TX backend uses entity files in .got/entities/ which don't need compaction.
     """
-    Suggest similar commands when user types an invalid one.
-
-    Uses difflib to find close matches, making the CLI more user-friendly.
-
-    Args:
-        invalid_cmd: The invalid command the user typed
-        valid_commands: List of valid commands to match against
-
-    Returns:
-        List of up to 3 similar command suggestions
-    """
-    import difflib
-    matches = difflib.get_close_matches(
-        invalid_cmd.lower(),
-        valid_commands,
-        n=3,
-        cutoff=0.4  # Lower cutoff to catch more typos
-    )
-    return matches
+    print("Note: The compact command is deprecated for the TX backend.")
+    print("Entity files in .got/entities/ don't require compaction.")
+    return 0
 
 
 def print_command_suggestion(invalid_cmd: str) -> None:

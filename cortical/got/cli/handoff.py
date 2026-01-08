@@ -325,8 +325,6 @@ def setup_handoff_parser(subparsers) -> None:
     handoff_show = handoff_subparsers.add_parser("show", help="Show handoff details")
     handoff_show.add_argument("handoff_id", help="Handoff ID to display")
 
-    handoff_reject.add_argument("--reason", "-r", default="", help="Reason for rejection")
-
     # handoff list
     handoff_list = handoff_subparsers.add_parser("list", help="List handoffs")
     handoff_list.add_argument(
