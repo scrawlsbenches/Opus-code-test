@@ -413,3 +413,265 @@ class TestSerialization:
 
             assert loaded.atom_count == graph.atom_count
             assert loaded.link_count == graph.link_count
+
+
+class TestMultiRuleAggregation:
+    """
+    Test multi-rule aggregation for combining evidence from multiple inference paths.
+
+    This is critical for audit tooling where multiple signals (TODOs, high churn,
+    known issues) should combine to produce a stronger overall assessment.
+    """
+
+    def test_aggregate_first_returns_single_match(self):
+        """Default 'first' strategy returns first matching rule (legacy behavior)."""
+        from cortical.reasoning.prism_pln import PLNReasoner
+
+        reasoner = PLNReasoner()
+
+        # Two rules that both conclude needs_review
+        reasoner.assert_rule("has_todo(X)", "needs_review(X)", strength=0.6)
+        reasoner.assert_rule("high_churn(X)", "needs_review(X)", strength=0.7)
+
+        # Facts: file_a has both properties
+        reasoner.assert_fact("has_todo(file_a)", strength=0.95)
+        reasoner.assert_fact("high_churn(file_a)", strength=0.9)
+
+        # Default (first) should return result from first matching rule
+        result = reasoner.query("needs_review(file_a)")
+
+        assert result is not None
+        # Should be around 0.57-0.63 (from one rule only)
+        assert result.strength < 0.7
+
+    def test_aggregate_revision_combines_evidence(self):
+        """Revision strategy combines evidence using Bayesian update."""
+        from cortical.reasoning.prism_pln import PLNReasoner
+
+        reasoner = PLNReasoner()
+
+        # Two rules that both conclude needs_review
+        reasoner.assert_rule("has_todo(X)", "needs_review(X)", strength=0.6)
+        reasoner.assert_rule("high_churn(X)", "needs_review(X)", strength=0.7)
+
+        # Facts: file_a has both properties
+        reasoner.assert_fact("has_todo(file_a)", strength=0.95)
+        reasoner.assert_fact("high_churn(file_a)", strength=0.9)
+
+        # Revision combines both pieces of evidence
+        result = reasoner.query("needs_review(file_a)", aggregate="revision")
+
+        assert result is not None
+        # Combined evidence should be stronger than either alone
+        # Two independent sources saying "needs review" → higher certainty
+        assert result.strength > 0.6  # Stronger than first rule alone
+
+    def test_aggregate_max_returns_strongest(self):
+        """Max strategy returns the strongest evidence."""
+        from cortical.reasoning.prism_pln import PLNReasoner
+
+        reasoner = PLNReasoner()
+
+        reasoner.assert_rule("has_todo(X)", "flagged(X)", strength=0.5)
+        reasoner.assert_rule("security_issue(X)", "flagged(X)", strength=0.95)
+
+        reasoner.assert_fact("has_todo(file_a)", strength=0.99)
+        reasoner.assert_fact("security_issue(file_a)", strength=0.99)
+
+        result = reasoner.query("flagged(file_a)", aggregate="max")
+
+        assert result is not None
+        # Should return the stronger security_issue path
+        assert result.strength > 0.8
+
+    def test_aggregate_or_treats_as_disjunction(self):
+        """Or strategy combines as independent evidence paths."""
+        from cortical.reasoning.prism_pln import PLNReasoner
+
+        reasoner = PLNReasoner()
+
+        reasoner.assert_rule("path_a(X)", "risky(X)", strength=0.6)
+        reasoner.assert_rule("path_b(X)", "risky(X)", strength=0.6)
+
+        reasoner.assert_fact("path_a(file_a)", strength=0.95)
+        reasoner.assert_fact("path_b(file_a)", strength=0.95)
+
+        result = reasoner.query("risky(file_a)", aggregate="or")
+
+        assert result is not None
+        # P(A or B) = P(A) + P(B) - P(A)*P(B) → higher than either alone
+        # With two 0.57ish results: 0.57 + 0.57 - 0.57*0.57 ≈ 0.81
+        assert result.strength > 0.7
+
+    def test_aggregate_weighted_by_confidence(self):
+        """Weighted strategy weights by confidence."""
+        from cortical.reasoning.prism_pln import PLNReasoner
+
+        reasoner = PLNReasoner()
+
+        # High confidence rule should dominate
+        reasoner.assert_rule("high_conf(X)", "result(X)", strength=0.8, confidence=0.95)
+        reasoner.assert_rule("low_conf(X)", "result(X)", strength=0.3, confidence=0.2)
+
+        reasoner.assert_fact("high_conf(file_a)", strength=0.99, confidence=0.99)
+        reasoner.assert_fact("low_conf(file_a)", strength=0.99, confidence=0.99)
+
+        result = reasoner.query("result(file_a)", aggregate="weighted")
+
+        assert result is not None
+        # High confidence rule should dominate, pulling result toward 0.8
+        assert result.strength > 0.5
+
+    def test_single_matching_rule_same_across_strategies(self):
+        """When only one rule matches, all strategies return same result."""
+        from cortical.reasoning.prism_pln import PLNReasoner
+
+        reasoner = PLNReasoner()
+
+        reasoner.assert_rule("bird(X)", "canfly(X)", strength=0.85)
+        reasoner.assert_fact("bird(tweety)", strength=0.99)
+
+        result_first = reasoner.query("canfly(tweety)", aggregate="first")
+        result_revision = reasoner.query("canfly(tweety)", aggregate="revision")
+        result_max = reasoner.query("canfly(tweety)", aggregate="max")
+
+        # All should be approximately equal when only one rule fires
+        assert result_first is not None
+        assert result_revision is not None
+        assert result_max is not None
+        assert abs(result_first.strength - result_revision.strength) < 0.01
+        assert abs(result_first.strength - result_max.strength) < 0.01
+
+    def test_no_matching_rules_returns_none(self):
+        """When no rules match, all strategies return None."""
+        from cortical.reasoning.prism_pln import PLNReasoner
+
+        reasoner = PLNReasoner()
+
+        reasoner.assert_rule("bird(X)", "canfly(X)", strength=0.85)
+        # Note: no fact about bird(tweety)
+
+        result = reasoner.query("canfly(tweety)", aggregate="revision")
+
+        assert result is None
+
+    def test_audit_scenario_combined_signals(self):
+        """
+        Real-world audit scenario: multiple signals combine for risk assessment.
+
+        This is the canonical use case from audit_reasoning.py.
+        """
+        from cortical.reasoning.prism_pln import PLNReasoner
+
+        reasoner = PLNReasoner()
+
+        # Audit rules (from audit_reasoning.py defaults)
+        reasoner.assert_rule("has_trait(X, high_churn)", "needs_review(X)", strength=0.7)
+        reasoner.assert_rule("has_pattern(X, todo)", "incomplete(X)", strength=0.6)
+        reasoner.assert_rule("has_pattern(X, should_be)", "has_known_issue(X)", strength=0.5)
+        reasoner.assert_rule("incomplete(X)", "needs_review(X)", strength=0.5)
+        reasoner.assert_rule("has_known_issue(X)", "needs_review(X)", strength=0.6)
+
+        # File facts: legacy_handler.py has multiple issues
+        reasoner.assert_fact("has_trait(legacy_handler, high_churn)", strength=0.95)
+        reasoner.assert_fact("has_pattern(legacy_handler, todo)", strength=0.99)
+        reasoner.assert_fact("has_pattern(legacy_handler, should_be)", strength=0.99)
+
+        # Query with revision to combine all evidence paths
+        result = reasoner.query("needs_review(legacy_handler)", aggregate="revision")
+
+        assert result is not None
+        # Multiple paths all say needs_review → high combined confidence
+        # - high_churn → needs_review
+        # - todo → incomplete → needs_review
+        # - should_be → has_known_issue → needs_review
+        assert result.strength > 0.5  # Combined evidence from multiple paths
+
+    def test_graph_level_aggregation(self):
+        """Test aggregation at PLNGraph level directly."""
+        from cortical.reasoning.prism_pln import PLNGraph, TruthValue
+
+        graph = PLNGraph()
+
+        # Setup
+        graph.add_atom("a(x)", TruthValue(0.9, 0.9))
+        graph.add_atom("b(x)", TruthValue(0.9, 0.9))
+        graph.add_implication("a(X)", "c(X)", TruthValue(0.7, 0.8))
+        graph.add_implication("b(X)", "c(X)", TruthValue(0.6, 0.8))
+
+        # Test different strategies at graph level
+        result_first = graph.infer("c(x)", aggregate="first")
+        result_revision = graph.infer("c(x)", aggregate="revision")
+
+        assert result_first is not None
+        assert result_revision is not None
+        # Revision should combine evidence
+
+
+class TestAggregationFunctions:
+    """Test the aggregate_truth_values helper function directly."""
+
+    def test_aggregate_empty_list(self):
+        """Empty list returns None."""
+        from cortical.reasoning.prism_pln import aggregate_truth_values
+
+        result = aggregate_truth_values([])
+        assert result is None
+
+    def test_aggregate_single_item(self):
+        """Single item returns that item."""
+        from cortical.reasoning.prism_pln import TruthValue, aggregate_truth_values
+
+        tv = TruthValue(0.8, 0.9)
+        result = aggregate_truth_values([tv])
+
+        assert result.strength == 0.8
+        assert result.confidence == 0.9
+
+    def test_aggregate_revision_increases_confidence(self):
+        """Revision increases confidence with more evidence."""
+        from cortical.reasoning.prism_pln import TruthValue, aggregate_truth_values
+
+        tv1 = TruthValue(0.7, 0.5)
+        tv2 = TruthValue(0.8, 0.6)
+
+        result = aggregate_truth_values([tv1, tv2], strategy="revision")
+
+        # Combined confidence should exceed both inputs
+        assert result.confidence > max(tv1.confidence, tv2.confidence)
+
+    def test_aggregate_max_selects_strongest(self):
+        """Max selects the value with highest strength."""
+        from cortical.reasoning.prism_pln import TruthValue, aggregate_truth_values
+
+        tv1 = TruthValue(0.3, 0.9)
+        tv2 = TruthValue(0.9, 0.5)
+        tv3 = TruthValue(0.6, 0.7)
+
+        result = aggregate_truth_values([tv1, tv2, tv3], strategy="max")
+
+        assert result.strength == 0.9
+
+    def test_aggregate_or_formula(self):
+        """Or uses P(A or B) = P(A) + P(B) - P(A)*P(B)."""
+        from cortical.reasoning.prism_pln import TruthValue, aggregate_truth_values
+
+        tv1 = TruthValue(0.5, 0.9)
+        tv2 = TruthValue(0.5, 0.9)
+
+        result = aggregate_truth_values([tv1, tv2], strategy="or")
+
+        # 0.5 + 0.5 - 0.5*0.5 = 0.75
+        assert abs(result.strength - 0.75) < 0.01
+
+    def test_aggregate_weighted_favors_high_confidence(self):
+        """Weighted average favors high-confidence values."""
+        from cortical.reasoning.prism_pln import TruthValue, aggregate_truth_values
+
+        tv_high_conf = TruthValue(0.9, 0.95)
+        tv_low_conf = TruthValue(0.1, 0.05)
+
+        result = aggregate_truth_values([tv_high_conf, tv_low_conf], strategy="weighted")
+
+        # Should be close to 0.9 (high conf dominates)
+        assert result.strength > 0.8

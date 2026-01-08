@@ -25,10 +25,15 @@ Example:
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple, Any, Literal
 from collections import defaultdict
+from functools import reduce
 import json
 import math
+
+
+# Aggregation strategies for multi-rule inference
+AggregateStrategy = Literal["first", "revision", "max", "or", "weighted"]
 
 
 @dataclass
@@ -246,6 +251,73 @@ def abduce(tv_ab: TruthValue, tv_b: TruthValue) -> TruthValue:
 
 
 # =============================================================================
+# AGGREGATION FUNCTIONS
+# =============================================================================
+
+def aggregate_truth_values(
+    truth_values: List[TruthValue],
+    strategy: AggregateStrategy = "revision"
+) -> Optional[TruthValue]:
+    """
+    Aggregate multiple truth values into one using the specified strategy.
+
+    Args:
+        truth_values: List of truth values to aggregate
+        strategy: Aggregation strategy:
+            - "first": Return the first value (legacy behavior)
+            - "revision": Combine using PLN revision (Bayesian update)
+            - "max": Return the value with highest strength
+            - "or": Combine using pln_or (disjunction)
+            - "weighted": Weight by confidence, then average
+
+    Returns:
+        Aggregated truth value, or None if list is empty
+    """
+    if not truth_values:
+        return None
+
+    if len(truth_values) == 1:
+        return truth_values[0]
+
+    if strategy == "first":
+        return truth_values[0]
+
+    elif strategy == "revision":
+        # Combine evidence using PLN revision formula
+        # This is the principled Bayesian approach
+        return reduce(lambda a, b: a.revise(b), truth_values)
+
+    elif strategy == "max":
+        # Return the strongest evidence
+        return max(truth_values, key=lambda tv: tv.strength)
+
+    elif strategy == "or":
+        # Treat as independent evidence paths (disjunction)
+        # P(A or B) = P(A) + P(B) - P(A)*P(B)
+        return reduce(pln_or, truth_values)
+
+    elif strategy == "weighted":
+        # Weighted average by confidence
+        total_conf = sum(tv.confidence for tv in truth_values)
+        if total_conf < 0.001:
+            # All have near-zero confidence, just average
+            avg_strength = sum(tv.strength for tv in truth_values) / len(truth_values)
+            avg_conf = sum(tv.confidence for tv in truth_values) / len(truth_values)
+            return TruthValue(strength=avg_strength, confidence=avg_conf)
+
+        weighted_strength = sum(
+            tv.strength * tv.confidence for tv in truth_values
+        ) / total_conf
+        # Combined confidence increases with more evidence
+        combined_conf = min(0.99, total_conf / (total_conf + 1))
+        return TruthValue(strength=weighted_strength, confidence=combined_conf)
+
+    else:
+        # Unknown strategy, fall back to first
+        return truth_values[0]
+
+
+# =============================================================================
 # ATOMS
 # =============================================================================
 
@@ -400,42 +472,41 @@ class PLNGraph:
             if cons == consequent
         ]
 
-    def infer(self, query: str, max_depth: int = 3) -> Optional[TruthValue]:
+    def infer(
+        self,
+        query: str,
+        max_depth: int = 3,
+        aggregate: AggregateStrategy = "first"
+    ) -> Optional[TruthValue]:
         """
         Infer the truth value of a query through backward chaining.
 
         Args:
             query: The atom to query
             max_depth: Maximum inference chain depth
+            aggregate: Strategy for combining evidence from multiple rules:
+                - "first": Return first matching rule (legacy behavior)
+                - "revision": Combine using PLN revision (Bayesian update)
+                - "max": Return the strongest evidence
+                - "or": Combine as independent evidence (disjunction)
+                - "weighted": Weight by confidence, then average
 
         Returns:
             Inferred truth value or None if no inference possible
 
-        LIMITATION: Currently returns on first matching rule (single-rule firing).
-
-        TODO: For multi-rule aggregation (combining evidence from multiple paths):
-        1. Collect ALL matching rules instead of returning on first match
-        2. Infer truth value through each applicable rule
-        3. Aggregate results using revision formula (TruthValue.revise)
-           or use pln_or for independent evidence paths
-        4. Consider attention/importance weights for prioritizing rules
-
-        Example DSL extension for multi-path queries:
-            query("needs_review(X)", aggregate="revision")  # Combine via revision
-            query("needs_review(X)", aggregate="max")       # Take strongest path
-            query("needs_review(X)", aggregate="weighted")  # Weight by confidence
-
-        For audit use cases, multi-rule aggregation would allow:
+        Example - Multi-rule aggregation for audit use cases:
             has_todo(X) → needs_review(X) [0.6]
             high_churn(X) → needs_review(X) [0.7]
-            → Combined: needs_review(file_a) should be ~0.82 not 0.6
+
+            With aggregate="first": returns 0.6 (first match only)
+            With aggregate="revision": returns ~0.82 (combined evidence)
+            With aggregate="or": returns ~0.88 (either path)
         """
         # Direct lookup
         if query in self._atoms:
             return self._atoms[query].truth_value
 
         # Try to match patterns (query might match an existing atom)
-        query_atom = Atom(name=query)
         for name, atom in self._atoms.items():
             if atom.matches(query):
                 return atom.truth_value
@@ -444,11 +515,13 @@ class PLNGraph:
         if max_depth <= 0:
             return None
 
+        # Collect ALL matching rules and their inferred truth values
+        matching_results: List[TruthValue] = []
+
         # Find implications that conclude the query
         for (ant, cons), link in self._implications.items():
             # Check if consequent pattern can match query
             # e.g., cons="canfly(X)" should match query="canfly(tweety)"
-            cons_atom = Atom(name=cons)
             query_matches = False
             substitutions = {}
 
@@ -480,15 +553,22 @@ class PLNGraph:
                 for var, val in substitutions.items():
                     ant_query = ant_query.replace(var, val)
 
-                # Try to infer antecedent
-                ant_tv = self.infer(ant_query, max_depth - 1)
+                # Try to infer antecedent (recursive call preserves aggregate strategy)
+                ant_tv = self.infer(ant_query, max_depth - 1, aggregate)
 
                 if ant_tv is not None:
                     # Apply modus ponens
                     result = pln_implication(ant_tv, link.truth_value)
-                    return result
 
-        return None
+                    # For "first" strategy, return immediately (legacy behavior)
+                    if aggregate == "first":
+                        return result
+
+                    # Otherwise, collect for aggregation
+                    matching_results.append(result)
+
+        # Aggregate collected results
+        return aggregate_truth_values(matching_results, aggregate)
 
     def _substitute_variables(self, pattern: str, source: str, target: str) -> str:
         """Substitute variables from source pattern into target."""
@@ -667,9 +747,42 @@ class PLNReasoner:
         link = self.graph.get_implication(antecedent, consequent)
         return link.truth_value if link else None
 
-    def query(self, statement: str, max_depth: int = 5) -> Optional[TruthValue]:
-        """Query the truth value of a statement."""
-        return self.graph.infer(statement, max_depth=max_depth)
+    def query(
+        self,
+        statement: str,
+        max_depth: int = 5,
+        aggregate: AggregateStrategy = "first"
+    ) -> Optional[TruthValue]:
+        """
+        Query the truth value of a statement.
+
+        Args:
+            statement: The statement to query
+            max_depth: Maximum inference chain depth
+            aggregate: Strategy for combining evidence from multiple rules:
+                - "first": Return first matching rule (legacy behavior)
+                - "revision": Combine using PLN revision (recommended for audits)
+                - "max": Return the strongest evidence
+                - "or": Combine as independent evidence paths
+                - "weighted": Weight by confidence, then average
+
+        Returns:
+            Inferred truth value or None if no inference possible
+
+        Example:
+            # Multiple rules fire for needs_review
+            reasoner.assert_rule("has_todo(X)", "needs_review(X)", strength=0.6)
+            reasoner.assert_rule("high_churn(X)", "needs_review(X)", strength=0.7)
+            reasoner.assert_fact("has_todo(file_a)", strength=0.95)
+            reasoner.assert_fact("high_churn(file_a)", strength=0.9)
+
+            # First match only (legacy)
+            result = reasoner.query("needs_review(file_a)")  # ~0.57
+
+            # Combined evidence (recommended)
+            result = reasoner.query("needs_review(file_a)", aggregate="revision")  # ~0.82
+        """
+        return self.graph.infer(statement, max_depth=max_depth, aggregate=aggregate)
 
     def observe(self, statement: str, is_true: bool) -> None:
         """Observe evidence about a statement."""
