@@ -32,7 +32,7 @@ from cortical.got import (
     Task,
     Decision,
     Edge,
-    WALManager,
+    CDGWALManager as WALManager,
     RecoveryManager,
     ConflictResolver,
     ConflictStrategy,

@@ -26,6 +26,8 @@ from cortical.reasoning.loom import ThinkingMode
 # CONSTANTS
 # =============================================================================
 
+# TODO: Revisit storage location - consider moving to CDG for proper
+# transactional persistence instead of raw JSON file in .got/
 DEFAULT_MIND_STATE_FILE = ".got/woven_audit_mind.json"
 DEFAULT_DISCOVERY_LOG_FILE = ".got/woven_discoveries.json"
 
