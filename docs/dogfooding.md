@@ -258,7 +258,7 @@ python scripts/search_codebase.py "my new function"
 
 2. **Check the task list**
    ```bash
-   python scripts/got_utils.py task list --status pending
+   python -m cortical.got task list --status pending
    ```
 
 3. **Implement the feature**

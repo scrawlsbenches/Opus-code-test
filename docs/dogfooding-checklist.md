@@ -110,7 +110,7 @@ When implementing search features, it's easy to test individual components in is
 
 - [ ] **Add new tasks immediately**
   - Why: Issues discovered during testing are easy to forget
-  - Command: `python scripts/got_utils.py task create "Brief description" --priority high`
+  - Command: `python -m cortical.got task create "Brief description" --priority high`
   - Document context:
     - When testing [feature], discovered [issue]
     - Query: [search query that revealed it]
@@ -125,9 +125,9 @@ When implementing search features, it's easy to test individual components in is
 - [ ] **Verify task tracking is current**
   - Why: Keeps project organized and scannable
   - Commands:
-    - View all: `python scripts/got_utils.py task list`
-    - View summary: `python scripts/got_utils.py dashboard`
-    - Mark complete: `python scripts/got_utils.py task complete TASK_ID --notes "..."`
+    - View all: `python -m cortical.got task list`
+    - View summary: `python -m cortical.got dashboard`
+    - Mark complete: `python -m cortical.got task complete TASK_ID --notes "..."`
 
 ---
 
@@ -136,11 +136,11 @@ When implementing search features, it's easy to test individual components in is
 - [ ] **All issues documented in task system?**
   - Why: Un-documented issues will be forgotten
   - Check: Review your testing notes and ensure every issue has a task
-  - Verify: `python scripts/got_utils.py task list` shows all new tasks
+  - Verify: `python -m cortical.got task list` shows all new tasks
 
 - [ ] **Task tracking current?**
   - Why: Provides quick overview of project health
-  - Verify: `python scripts/got_utils.py dashboard` is accurate
+  - Verify: `python -m cortical.got dashboard` is accurate
 
 - [ ] **Changes committed and pushed?**
   - Why: Sharing findings with team prevents duplicate work
@@ -165,7 +165,7 @@ python scripts/search_codebase.py "what is a minicolumn" --verbose
 python scripts/search_codebase.py "my new function name" --verbose
 
 # 4. Document issues
-# python scripts/got_utils.py task create "Issue found during testing" --priority high
+# python -m cortical.got task create "Issue found during testing" --priority high
 
 # 5. Commit findings (GoT auto-commits task changes)
 git add docs/

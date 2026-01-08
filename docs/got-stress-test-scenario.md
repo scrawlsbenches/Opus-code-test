@@ -21,12 +21,12 @@ A sprint where 5 parallel sub-agents document all undocumented features while:
 
 ```bash
 # Create sprint with 10 tasks
-python scripts/got_utils.py sprint create "Stress Test Sprint" \
+python -m cortical.got sprint create "Stress Test Sprint" \
   --goal "Document all undocumented GoT features" \
   --tasks 10
 
 # Log initial decision
-python scripts/got_utils.py decision log \
+python -m cortical.got decision log \
   "Run parallel documentation sprint with 5 agents" \
   --rationale "Test GoT under load" \
   --affects task:T-sprint-1,task:T-sprint-2,task:T-sprint-3
@@ -57,17 +57,17 @@ All 5 agents complete simultaneously, creating 5 handoffs:
 
 ```bash
 # Agent 1 initiates
-python scripts/got_utils.py handoff initiate task:T-doc-1 \
+python -m cortical.got handoff initiate task:T-doc-1 \
   --target verifier --instructions "Verify decision logging docs"
 
 # Verifier accepts all 5
 for i in 1 2 3 4 5; do
-  python scripts/got_utils.py handoff accept handoff:H-$i --agent verifier
+  python -m cortical.got handoff accept handoff:H-$i --agent verifier
 done
 
 # Verifier completes all 5
 for i in 1 2 3 4 5; do
-  python scripts/got_utils.py handoff complete handoff:H-$i \
+  python -m cortical.got handoff complete handoff:H-$i \
     --agent verifier --result '{"status": "verified"}'
 done
 ```
@@ -78,10 +78,10 @@ After agents commit, infer edges from all recent commits:
 
 ```bash
 # Infer edges from last 20 commits
-python scripts/got_utils.py infer --commits 20
+python -m cortical.got infer --commits 20
 
 # Check edge count increased
-python scripts/got_utils.py stats
+python -m cortical.got stats
 ```
 
 Expected: 15-30 new edges from commit message parsing.
@@ -92,16 +92,16 @@ Run complex queries against the now-dense graph:
 
 ```bash
 # Find all blocked tasks
-python scripts/got_utils.py query "blocked tasks"
+python -m cortical.got query "blocked tasks"
 
 # Find path between distant nodes
-python scripts/got_utils.py query "path from decision:D-001 to task:T-doc-5"
+python -m cortical.got query "path from decision:D-001 to task:T-doc-5"
 
 # Get all relationships for a task
-python scripts/got_utils.py query "relationships task:T-doc-1"
+python -m cortical.got query "relationships task:T-doc-1"
 
 # Find what depends on a decision
-python scripts/got_utils.py query "what depends on decision:D-001"
+python -m cortical.got query "what depends on decision:D-001"
 ```
 
 ### Phase 6: Compaction Under Load
@@ -113,13 +113,13 @@ With ~300+ events, test compaction:
 wc -l .got/events/*.jsonl
 
 # Compact preserving 7 days
-python scripts/got_utils.py compact --preserve-days 7
+python -m cortical.got compact --preserve-days 7
 
 # Count events after
 wc -l .got/events/*.jsonl
 
 # Verify state preserved
-python scripts/got_utils.py stats
+python -m cortical.got stats
 ```
 
 ## Success Metrics
@@ -157,7 +157,7 @@ python scripts/run_got_stress_test.py
 python scripts/run_got_stress_test.py --quick
 
 # Check results
-python scripts/got_utils.py stats
+python -m cortical.got stats
 cat .got/stress-test-results.json
 ```
 
@@ -178,5 +178,5 @@ After running, analyze:
 mv .got/events .got/events-stress-test-$(date +%Y%m%d)
 
 # Create fresh state
-python scripts/got_utils.py init --force
+python -m cortical.got init --force
 ```

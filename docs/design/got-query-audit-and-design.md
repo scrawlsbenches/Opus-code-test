@@ -1407,7 +1407,7 @@ Every agent MUST follow this workflow when assigned a task:
 │  1. Run ALL tests in Validation_Steps                                   │
 │  2. Check coverage meets requirements                                   │
 │  3. Run smoke tests to verify no regressions                            │
-│  4. Verify GoT system still healthy: python scripts/got_utils.py validate│
+│  4. Verify GoT system still healthy: python -m cortical.got validate│
 │                                                                          │
 │  PHASE 6: CLEANUP TASK CREATION (If needed)                             │
 │  ──────────────────────────────────────────                             │
@@ -1576,7 +1576,7 @@ print(f'Found {len(results)} connected tasks')
 ### 4.4 Knowledge Transfer Template
 
 ```yaml
-# Created via: python scripts/got_utils.py kt create "Session: [TOPIC]"
+# Created via: python -m cortical.got kt create "Session: [TOPIC]"
 
 Knowledge_Transfer:
   session_id: KT-XXXX
@@ -1626,7 +1626,7 @@ Knowledge_Transfer:
 When context must be preserved across sessions:
 
 ```yaml
-# Created via: python scripts/got_utils.py handoff initiate [TASK_ID]
+# Created via: python -m cortical.got handoff initiate [TASK_ID]
 
 Handoff:
   id: H-XXXX
@@ -1748,15 +1748,15 @@ When the main agent is approaching context limits mid-task:
 
 ```bash
 # 1. Capture current state
-python scripts/got_utils.py kt create "Mid-task handoff: [topic]" \
+python -m cortical.got kt create "Mid-task handoff: [topic]" \
     --summary "Progress: [what's done]. Next: [what remains]. Blockers: [if any]"
 
 # 2. Record in GoT for traceability
-python scripts/got_utils.py task update T-XXXX \
+python -m cortical.got task update T-XXXX \
     --properties '{"handoff_reason": "context_pressure", "progress_pct": 70}'
 
 # 3. Create explicit continuation instructions
-python scripts/got_utils.py handoff initiate T-XXXX \
+python -m cortical.got handoff initiate T-XXXX \
     --target self \
     --instructions "Continue from: [specific point]. Files modified: [list]. Next step: [action]."
 ```
@@ -1780,7 +1780,7 @@ Every task must pass:
 
 ```bash
 # Minimum validation for any task
-python scripts/got_utils.py validate                    # GoT healthy
+python -m cortical.got validate                    # GoT healthy
 python -m pytest tests/smoke/ -v                        # No regressions
 python -m pytest tests/behavioral/test_[FEATURE].py -v  # Behavioral pass
 python -m pytest tests/unit/test_[FEATURE].py -v        # Unit pass
@@ -1827,7 +1827,7 @@ python -m coverage report --include="cortical/got/expression/*" --fail-under=90
 python scripts/benchmark_expression.py
 
 # GoT health
-python scripts/got_utils.py validate
+python -m cortical.got validate
 
 echo "=== Epic COMPLETE ==="
 ```
@@ -1840,22 +1840,22 @@ echo "=== Epic COMPLETE ==="
 
 ```bash
 # Epic
-python scripts/got_utils.py epic create "Title" --description "..."
+python -m cortical.got epic create "Title" --description "..."
 
 # Sprint
-python scripts/got_utils.py sprint create "Title" --goal "..."
+python -m cortical.got sprint create "Title" --goal "..."
 
 # Task
-python scripts/got_utils.py task create "Title" \
+python -m cortical.got task create "Title" \
     --priority [critical|high|medium|low] \
     --category [feature|bugfix|refactor|docs|test]
 
 # Edge (dependency)
-python scripts/got_utils.py edge add T-001 T-002 DEPENDS_ON
-python scripts/got_utils.py edge add T-003 T-CLEANUP-APPROVAL BLOCKED_BY
+python -m cortical.got edge add T-001 T-002 DEPENDS_ON
+python -m cortical.got edge add T-003 T-CLEANUP-APPROVAL BLOCKED_BY
 
 # Decision
-python scripts/got_utils.py decision log "Decision title" \
+python -m cortical.got decision log "Decision title" \
     --rationale "Why this decision was made"
 ```
 
@@ -1863,38 +1863,38 @@ python scripts/got_utils.py decision log "Decision title" \
 
 ```bash
 # Start task
-python scripts/got_utils.py task start T-XXXX
+python -m cortical.got task start T-XXXX
 
 # Complete task
-python scripts/got_utils.py task complete T-XXXX \
+python -m cortical.got task complete T-XXXX \
     --retrospective "What worked, what didn't, what was learned"
 
 # Create knowledge transfer
-python scripts/got_utils.py kt create "Session: Topic" \
+python -m cortical.got kt create "Session: Topic" \
     --summary "Key outcomes..."
 
 # Initiate handoff
-python scripts/got_utils.py handoff initiate T-XXXX \
+python -m cortical.got handoff initiate T-XXXX \
     --target agent \
     --instructions "What to do next..."
 
 # Accept handoff
-python scripts/got_utils.py handoff accept H-XXXX
+python -m cortical.got handoff accept H-XXXX
 ```
 
 ### 6.3 Querying State
 
 ```bash
 # Current state
-python scripts/got_utils.py task list --status in_progress
-python scripts/got_utils.py blocked
-python scripts/got_utils.py validate
+python -m cortical.got task list --status in_progress
+python -m cortical.got blocked
+python -m cortical.got validate
 
 # Pending handoffs
-python scripts/got_utils.py handoff list --status pending
+python -m cortical.got handoff list --status pending
 
 # Knowledge transfers
-python scripts/got_utils.py kt list --status draft
+python -m cortical.got kt list --status draft
 ```
 
 ---
@@ -2163,10 +2163,10 @@ The existing schema infrastructure is in:
 
 ```bash
 # Future CLI support (to be implemented)
-python scripts/got_utils.py query --help-syntax
-python scripts/got_utils.py query --list-fields tasks
-python scripts/got_utils.py query --list-functions
-python scripts/got_utils.py query --explain "status = 'pending'"
+python -m cortical.got query --help-syntax
+python -m cortical.got query --list-fields tasks
+python -m cortical.got query --list-functions
+python -m cortical.got query --explain "status = 'pending'"
 ```
 
 **How to Introspect the Schema Dynamically:**

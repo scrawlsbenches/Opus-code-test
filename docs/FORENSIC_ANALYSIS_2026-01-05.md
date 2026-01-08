@@ -135,7 +135,7 @@ The 413 broken edges reference Sprint entities that no longer exist:
 **Remediation:**
 ```bash
 # Option 1: Run edge cleanup (if command exists)
-python scripts/got_utils.py cleanup --broken-edges
+python -m cortical.got cleanup --broken-edges
 
 # Option 2: Manual cleanup script
 python3 -c "
@@ -275,7 +275,7 @@ The team has built something significant here. The issues identified are mainten
 
 ```bash
 # Run after remediation to verify
-python scripts/got_utils.py validate --check-refs  # Should show 0 broken refs
+python -m cortical.got validate --check-refs  # Should show 0 broken refs
 python -m pytest tests/smoke/ -v                    # Gate 1
 python -m pytest tests/unit/ -v                     # Gate 2
 ```

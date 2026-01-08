@@ -21,7 +21,7 @@
 | **Understand the architecture** | Read [Architecture](#architecture-at-a-glance) below |
 | **Run all tests** | `python -m pytest tests/ -v` |
 | **Run smoke tests only** | `python -m pytest tests/smoke/ -v` |
-| **Track tasks/decisions** | `python scripts/got_utils.py --help` |
+| **Track tasks/decisions** | `python -m cortical.got --help` |
 | **Train on this codebase** | `benchmarks/codebase_slm/train_slm.py` |
 | **Contribute code** | Read `CLAUDE.md` (Metus philosophy) |
 | **Find a specific feature** | See [Where To Find Things](#where-to-find-things) |

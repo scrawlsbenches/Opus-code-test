@@ -417,10 +417,10 @@ GOVERNANCE_EDGES = {
 
 ```bash
 # Governance commands (to be implemented)
-python scripts/got_utils.py governance status      # Show governance state
-python scripts/got_utils.py governance check       # Verify compliance
-python scripts/got_utils.py governance propose     # Propose change
-python scripts/got_utils.py governance audit       # Run governance audit
+python -m cortical.got governance status      # Show governance state
+python -m cortical.got governance check       # Verify compliance
+python -m cortical.got governance propose     # Propose change
+python -m cortical.got governance audit       # Run governance audit
 ```
 
 ### 6.3 Automated Enforcement

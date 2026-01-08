@@ -267,7 +267,7 @@ event_log.log(
 
 ```bash
 # Reject handoff with structured data
-python scripts/got_utils.py handoff reject HANDOFF_ID \
+python -m cortical.got handoff reject HANDOFF_ID \
   --agent sub-agent-1 \
   --reason SCOPE_CREEP \
   --summary "Scope grew 5x" \
@@ -278,13 +278,13 @@ python scripts/got_utils.py handoff reject HANDOFF_ID \
   --scope-growth 5.0
 
 # View rejection details
-python scripts/got_utils.py handoff status HANDOFF_ID
+python -m cortical.got handoff status HANDOFF_ID
 
 # Analyze rejection patterns
-python scripts/got_utils.py analyze rejections --since 2025-12-01
+python -m cortical.got analyze rejections --since 2025-12-01
 
 # Director responds
-python scripts/got_utils.py handoff rejection-response HANDOFF_ID \
+python -m cortical.got handoff rejection-response HANDOFF_ID \
   --decision ACCEPT_AND_DECOMPOSE \
   --created-tasks task:T-xxx task:T-yyy
 ```

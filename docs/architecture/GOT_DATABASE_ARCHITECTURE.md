@@ -1595,7 +1595,7 @@ class AnomalyDetector:
 **Validation:**
 ```bash
 pytest tests/got/test_storage.py -v
-python scripts/got_utils.py validate --check-tiers
+python -m cortical.got validate --check-tiers
 ```
 
 ### Phase 2: Transactions & Locking (Weeks 3-4)
@@ -1629,7 +1629,7 @@ python scripts/got_utils.py validate --check-tiers
 **Validation:**
 ```bash
 pytest tests/got/test_transactions.py -v --concurrent
-python scripts/got_utils.py stress-test --agents 5 --duration 60
+python -m cortical.got stress-test --agents 5 --duration 60
 ```
 
 ### Phase 3: Foreign Keys & Referential Integrity (Week 5)
@@ -1657,7 +1657,7 @@ python scripts/got_utils.py stress-test --agents 5 --duration 60
 **Validation:**
 ```bash
 pytest tests/got/test_foreign_keys.py -v
-python scripts/got_utils.py validate --check-refs --fix-orphans
+python -m cortical.got validate --check-refs --fix-orphans
 ```
 
 **See:** `docs/research-foreign-key-patterns.md` for implementation details.
@@ -1693,7 +1693,7 @@ python scripts/got_utils.py validate --check-refs --fix-orphans
 **Validation:**
 ```bash
 pytest tests/got/test_indexing.py -v --benchmark
-python scripts/got_utils.py query "what blocks T-20251222-001122-a1b2" --explain
+python -m cortical.got query "what blocks T-20251222-001122-a1b2" --explain
 ```
 
 **See:** `docs/file-based-index-architecture.md`, `docs/graph-ir-patterns.md` for index design.
@@ -1723,7 +1723,7 @@ python scripts/got_utils.py query "what blocks T-20251222-001122-a1b2" --explain
 **Validation:**
 ```bash
 pytest tests/got/test_multi_agent.py -v --agents 10
-python scripts/got_utils.py simulate-agents --count 5 --tasks 20
+python -m cortical.got simulate-agents --count 5 --tasks 20
 ```
 
 **See:** `docs/research/multi-agent-concurrency-patterns.md` for concurrency patterns.
@@ -1753,7 +1753,7 @@ python scripts/got_utils.py simulate-agents --count 5 --tasks 20
 **Validation:**
 ```bash
 pytest tests/got/test_health.py -v
-python scripts/got_utils.py health-check --fix --report
+python -m cortical.got health-check --fix --report
 ```
 
 **See:** `docs/database-self-diagnostic-patterns.md` for diagnostic patterns.
@@ -1837,7 +1837,7 @@ mypy cortical/got/ --strict
 ```bash
 pytest tests/got/benchmarks/ -v --benchmark-only
 python scripts/got_stress_test.py --entities 5000 --agents 20 --duration 300
-python scripts/got_utils.py profile --report
+python -m cortical.got profile --report
 ```
 
 ---

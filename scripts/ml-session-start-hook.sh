@@ -151,7 +151,7 @@ if [[ -n "$current_sprint" ]]; then
     done
 else
     echo "   (no active sprint)"
-    echo "   💡 Create one: python scripts/got_utils.py sprint create \"Sprint Name\" --number N"
+    echo "   💡 Create one: python -m cortical.got sprint create \"Sprint Name\" --number N"
 fi
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
@@ -227,7 +227,7 @@ got_exit=$?
 if [[ $got_exit -eq 0 ]]; then
     echo "   ✅ GoT healthy"
 else
-    echo "   ⚠️  GoT issues detected - run 'python scripts/got_utils.py validate'"
+    echo "   ⚠️  GoT issues detected - run 'python -m cortical.got validate'"
 fi
 
 # Show task summary
@@ -250,7 +250,7 @@ if [[ -n "$pending_handoffs" ]]; then
         echo "      $line"
     done
     echo ""
-    echo "   💡 To accept a handoff: python scripts/got_utils.py handoff accept <HANDOFF_ID> --agent <YOUR_AGENT_NAME>"
+    echo "   💡 To accept a handoff: python -m cortical.got handoff accept <HANDOFF_ID> --agent <YOUR_AGENT_NAME>"
     echo ""
 
     # Get details of first pending handoff

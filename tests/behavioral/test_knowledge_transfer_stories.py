@@ -36,7 +36,7 @@ from cortical.got import (
     CorruptionError,
 )
 from cortical.got.types import KnowledgeTransfer
-from scripts.got_utils import TransactionalGoTAdapter
+from cortical.got.adapter import TransactionalGoTAdapter
 from tests.conftest import _create_container
 
 

@@ -371,22 +371,22 @@ guidance = bridge.get_guidance_for_task(
 
 ### Failure Tracking
 
-**CLI:** `python scripts/got_utils.py failure`
+**CLI:** `python -m cortical.got failure`
 
 Failed approaches are as valuable as successes—sometimes more so. The failure tracking system captures what *didn't* work:
 
 ```bash
 # Log a failed attempt
-python scripts/got_utils.py failure log T-20260103-123456 \
+python -m cortical.got failure log T-20260103-123456 \
     --attempt "Tried using library X for authentication" \
     --error "Library X conflicts with our zero-dependency policy" \
     --lesson "Build auth ourselves or use stdlib only"
 
 # List recent failures
-python scripts/got_utils.py failure list --limit 10
+python -m cortical.got failure list --limit 10
 
 # Show failures for specific task
-python scripts/got_utils.py failure show T-20260103-123456
+python -m cortical.got failure show T-20260103-123456
 ```
 
 **How it works:**
@@ -653,26 +653,26 @@ processor = CorticalTextProcessor.load("corpus")
 
 ```bash
 # Task management
-python scripts/got_utils.py task create "Fix bug" --priority high
-python scripts/got_utils.py task start T-20251228-...
-python scripts/got_utils.py task complete T-20251228-... --notes "Fixed in 2 hours"
+python -m cortical.got task create "Fix bug" --priority high
+python -m cortical.got task start T-20251228-...
+python -m cortical.got task complete T-20251228-... --notes "Fixed in 2 hours"
 
 # Sprint management
-python scripts/got_utils.py sprint create "Sprint 1" --number 1
-python scripts/got_utils.py sprint status
+python -m cortical.got sprint create "Sprint 1" --number 1
+python -m cortical.got sprint status
 
 # Decision logging
-python scripts/got_utils.py decision log "Use JWT" --rationale "Stateless, scales"
+python -m cortical.got decision log "Use JWT" --rationale "Stateless, scales"
 
 # Queries
-python scripts/got_utils.py query "what blocks T-..."
-python scripts/got_utils.py blocked
-python scripts/got_utils.py dashboard
+python -m cortical.got query "what blocks T-..."
+python -m cortical.got blocked
+python -m cortical.got dashboard
 
 # Handoffs (agent-to-agent)
-python scripts/got_utils.py handoff initiate T-... --target sub-agent --instructions "..."
-python scripts/got_utils.py handoff accept H-... --agent sub-agent
-python scripts/got_utils.py handoff complete H-... --agent sub-agent --result '{"status":"done"}'
+python -m cortical.got handoff initiate T-... --target sub-agent --instructions "..."
+python -m cortical.got handoff accept H-... --agent sub-agent
+python -m cortical.got handoff complete H-... --agent sub-agent --result '{"status":"done"}'
 ```
 
 ---

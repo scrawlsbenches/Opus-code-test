@@ -85,7 +85,7 @@ Every agent working on this epic MUST follow these rules:
 │     NEVER put benchmarks in unit tests.                              │
 │                                                                       │
 │  4. CHECK GoT BEFORE STARTING                                        │
-│     Run: python scripts/got_utils.py task show T-XXXXX               │
+│     Run: python -m cortical.got task show T-XXXXX               │
 │     Check for blockers and dependencies.                             │
 │                                                                       │
 │  5. VERIFY BEFORE REPORTING SUCCESS                                  │
@@ -94,7 +94,7 @@ Every agent working on this epic MUST follow these rules:
 │                                                                       │
 │  6. DOCUMENT DECISIONS                                               │
 │     Log significant choices to GoT.                                  │
-│     python scripts/got_utils.py decision log "..." --rationale       │
+│     python -m cortical.got decision log "..." --rationale       │
 │                                                                       │
 │  7. ESCALATE UNCERTAINTY                                             │
 │     If unsure, stop and report back.                                 │
@@ -236,8 +236,8 @@ Report findings before proceeding to implementation.
 
 ```bash
 # 1. Check current sprint and task status
-python scripts/got_utils.py sprint status
-python scripts/got_utils.py task show T-XXXXX
+python -m cortical.got sprint status
+python -m cortical.got task show T-XXXXX
 
 # 2. Read the handoff
 cat samples/memories/2025-12-27-handoff-cognitive-nlu-nlg-exploration.md
@@ -266,10 +266,10 @@ git stash && python -m pytest tests/ -q && git stash pop
 
 ```bash
 # 1. Document the blocker
-python scripts/got_utils.py task update T-XXXXX --blocked-by T-YYYYY
+python -m cortical.got task update T-XXXXX --blocked-by T-YYYYY
 
 # 2. Check if blocker is in progress
-python scripts/got_utils.py task show T-YYYYY
+python -m cortical.got task show T-YYYYY
 
 # 3. Work on non-blocked tasks or escalate
 ```
@@ -335,25 +335,25 @@ if __name__ == "__main__":
 
 ```bash
 # Task management
-python scripts/got_utils.py task show T-XXXXX          # View task details
-python scripts/got_utils.py task start T-XXXXX         # Mark as in_progress
-python scripts/got_utils.py task complete T-XXXXX      # Mark as complete
-python scripts/got_utils.py task update T-XXXXX --notes "..."  # Add notes
+python -m cortical.got task show T-XXXXX          # View task details
+python -m cortical.got task start T-XXXXX         # Mark as in_progress
+python -m cortical.got task complete T-XXXXX      # Mark as complete
+python -m cortical.got task update T-XXXXX --notes "..."  # Add notes
 
 # Decision logging
-python scripts/got_utils.py decision log "Decision" --rationale "Why"
+python -m cortical.got decision log "Decision" --rationale "Why"
 
 # Sprint status
-python scripts/got_utils.py sprint status              # Current sprint
-python scripts/got_utils.py dashboard                  # Full overview
+python -m cortical.got sprint status              # Current sprint
+python -m cortical.got dashboard                  # Full overview
 
 # Handoff management
-python scripts/got_utils.py handoff list               # All handoffs
-python scripts/got_utils.py handoff accept H-XXX --agent agent-name
+python -m cortical.got handoff list               # All handoffs
+python -m cortical.got handoff accept H-XXX --agent agent-name
 
 # Queries
-python scripts/got_utils.py query "what blocks T-XXXXX"
-python scripts/got_utils.py query "what depends on T-XXXXX"
+python -m cortical.got query "what blocks T-XXXXX"
+python -m cortical.got query "what depends on T-XXXXX"
 ```
 
 ---

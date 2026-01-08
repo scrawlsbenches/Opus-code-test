@@ -124,7 +124,7 @@ After migration, the CLI automatically detects the transactional backend:
 
 ```bash
 # Auto-detects .got-tx/ and uses transactional backend
-python scripts/got_utils.py task list
+python -m cortical.got task list
 ```
 
 ### Explicit Backend Selection
@@ -133,10 +133,10 @@ Force a specific backend:
 
 ```bash
 # Use transactional backend explicitly
-python scripts/got_utils.py --backend transactional task list
+python -m cortical.got --backend transactional task list
 
 # Use event-sourced backend explicitly (if .got/ still exists)
-python scripts/got_utils.py --backend event-sourced task list
+python -m cortical.got --backend event-sourced task list
 ```
 
 ### Environment Variable
@@ -144,7 +144,7 @@ python scripts/got_utils.py --backend event-sourced task list
 ```bash
 # Set default backend via environment
 export GOT_BACKEND=transactional
-python scripts/got_utils.py task list
+python -m cortical.got task list
 ```
 
 ---
@@ -175,7 +175,7 @@ mv .got-backup-YYYYMMDD-HHMMSS .got
 
 # Step 3: Force event-sourced backend
 export GOT_BACKEND=event-sourced
-python scripts/got_utils.py task list
+python -m cortical.got task list
 ```
 
 ---
@@ -220,10 +220,10 @@ Ensure auto-detection is working:
 
 ```bash
 # Check which backend is being used
-GOT_DEBUG=1 python scripts/got_utils.py task list
+GOT_DEBUG=1 python -m cortical.got task list
 
 # Force transactional
-python scripts/got_utils.py --backend transactional task list
+python -m cortical.got --backend transactional task list
 ```
 
 ---

@@ -168,7 +168,7 @@ manager = container.resolve(GoTManager)
 
 ```bash
 # Health check
-python scripts/got_utils.py validate
+python -m cortical.got validate
 
 # Tests
 pytest tests/smoke/ -v              # ~1s
@@ -176,9 +176,9 @@ pytest tests/unit/ -v               # ~30s
 pytest tests/ -v -m "not slow"      # Skip slow tests
 
 # Task management
-python scripts/got_utils.py task create "Title"
-python scripts/got_utils.py task list --status in_progress
-python scripts/got_utils.py query "blocked tasks"
+python -m cortical.got task create "Title"
+python -m cortical.got task list --status in_progress
+python -m cortical.got query "blocked tasks"
 ```
 
 ---

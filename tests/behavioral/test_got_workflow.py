@@ -25,7 +25,7 @@ import sys
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from scripts.got_utils import (
+from cortical.got.adapter import (
     GoTBackendFactory,
     STATUS_PENDING,
     STATUS_IN_PROGRESS,

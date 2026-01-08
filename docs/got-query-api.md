@@ -190,16 +190,16 @@ The Query API powers the `got analyze` CLI commands:
 
 ```bash
 # Summary with task counts by status/priority
-python scripts/got_utils.py analyze summary
+python -m cortical.got analyze summary
 
 # Dependency analysis for a task
-python scripts/got_utils.py analyze dependencies T-xxx
+python -m cortical.got analyze dependencies T-xxx
 
 # Find graph patterns
-python scripts/got_utils.py analyze patterns
+python -m cortical.got analyze patterns
 
 # Find disconnected clusters
-python scripts/got_utils.py analyze orphans
+python -m cortical.got analyze orphans
 ```
 
 **Source:** [`cortical/got/cli/analyze.py`](../cortical/got/cli/analyze.py)

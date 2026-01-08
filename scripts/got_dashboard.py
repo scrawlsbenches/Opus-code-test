@@ -1027,7 +1027,7 @@ def render_dashboard(manager) -> str:
 def main():
     """Main entry point."""
     # Import here to avoid circular imports
-    from scripts.got_utils import TransactionalGoTAdapter
+    from cortical.got.adapter import TransactionalGoTAdapter
 
     manager = TransactionalGoTAdapter()
     dashboard = render_dashboard(manager)

@@ -101,7 +101,7 @@ python -m pytest tests/behavioral/test_agent_uses_natural_query_expressions.py -
 python -m pytest tests/smoke/ -v
 
 # GoT health check
-python scripts/got_utils.py validate
+python -m cortical.got validate
 ```
 
 ### Design Document Reference

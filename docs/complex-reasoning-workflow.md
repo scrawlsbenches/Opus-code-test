@@ -1115,26 +1115,26 @@ with timed_block("my_operation"):
 
 ```bash
 # Create task when entering QUESTION phase
-python scripts/got_utils.py task create "Investigate: [question]"
+python -m cortical.got task create "Investigate: [question]"
 
 # Update task when entering PRODUCE phase
-python scripts/got_utils.py task start TASK_ID
+python -m cortical.got task start TASK_ID
 
 # Complete task when VERIFY passes
-python scripts/got_utils.py task complete TASK_ID --notes "..."
+python -m cortical.got task complete TASK_ID --notes "..."
 ```
 
 ### 11.2 Sprint Integration
 
 ```bash
 # Check current sprint context before starting
-python scripts/got_utils.py sprint status
+python -m cortical.got sprint status
 
 # View sprint details
-python scripts/got_utils.py sprint list
+python -m cortical.got sprint list
 
 # Log decisions with rationale
-python scripts/got_utils.py decision log "Decided X" --rationale "Because Y"
+python -m cortical.got decision log "Decided X" --rationale "Because Y"
 ```
 
 ### 11.3 ML Data Collection Integration
@@ -1229,10 +1229,10 @@ python scripts/search_codebase.py "existing documentation"
 ```bash
 # Question/Research
 python scripts/search_codebase.py "query"
-python scripts/got_utils.py task list
+python -m cortical.got task list
 
 # Production
-python scripts/got_utils.py task create "description"
+python -m cortical.got task create "description"
 python scripts/run_tests.py quick
 
 # Verification
@@ -1245,8 +1245,8 @@ python scripts/new_memory.py "decision" --decision
 python scripts/session_handoff.py
 
 # Sprint
-python scripts/got_utils.py sprint status
-python scripts/got_utils.py decision log "observation" --rationale "..."
+python -m cortical.got sprint status
+python -m cortical.got decision log "observation" --rationale "..."
 
 # ML Data
 python scripts/ml_data_collector.py stats
@@ -1461,7 +1461,7 @@ git commit -m "partial: working pieces from failed attempt"
 git stash save "broken-pieces-for-analysis"
 
 # Document
-python scripts/got_utils.py task create "Resume: [what still needs doing]" --priority high
+python -m cortical.got task create "Resume: [what still needs doing]" --priority high
 ```
 
 **Knowledge preservation (even from failure):**
@@ -1758,8 +1758,8 @@ git diff branch-a..branch-b --stat  # See what differs
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │  STEP 1: Read the landscape (10 min)                                │
-│  ├── python scripts/got_utils.py sprint status                     │
-│  ├── python scripts/got_utils.py task list --status in_progress    │
+│  ├── python -m cortical.got sprint status                     │
+│  ├── python -m cortical.got task list --status in_progress    │
 │  └── git log --oneline -20  # Recent activity                      │
 │                                                                      │
 │  STEP 2: Understand current work (15 min)                           │
@@ -1794,7 +1794,7 @@ git diff branch-a..branch-b --stat  # See what differs
 
 ### Tier 1: Immediate Context (Always Read)
 1. **CLAUDE.md** - Project instructions and patterns
-2. **GoT sprint status** - `python scripts/got_utils.py sprint status`
+2. **GoT sprint status** - `python -m cortical.got sprint status`
 3. **Recent handoff docs** - Any in samples/memories/[DRAFT]*
 
 ### Tier 2: Architecture (Read for Significant Work)
@@ -1816,8 +1816,8 @@ git diff branch-a..branch-b --stat  # See what differs
 
 ```bash
 # "Where are we?" - Sprint and task status
-python scripts/got_utils.py sprint status
-python scripts/got_utils.py task list --status in_progress
+python -m cortical.got sprint status
+python -m cortical.got task list --status in_progress
 
 # "What happened recently?" - Git history
 git log --oneline -20

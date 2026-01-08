@@ -59,10 +59,10 @@ Merge conflicts become rare.
 
 **Work is tracked in GoT (Graph of Thought):**
 ```bash
-python scripts/got_utils.py task list        # See available work
-python scripts/got_utils.py task start ID    # Claim a task
-python scripts/got_utils.py task complete ID # Mark done
-python scripts/got_utils.py sprint status    # Current sprint focus
+python -m cortical.got task list        # See available work
+python -m cortical.got task start ID    # Claim a task
+python -m cortical.got task complete ID # Mark done
+python -m cortical.got sprint status    # Current sprint focus
 ```
 
 ---
