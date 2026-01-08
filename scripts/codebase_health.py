@@ -2,6 +2,10 @@
 """
 Codebase Health Analyzer
 
+DEPRECATION NOTE: This script is maintained for backward compatibility.
+Prefer using the CLI: python -m cortical.cli audit health ...
+Or import directly: from cortical.audits import analyze_directory, CodebaseAnalyzer
+
 Uses the algorithm implementations to analyze code quality:
 1. Comment pattern detection (Trie + Inverted Index)
 2. Duplicate detection (Suffix Array)

@@ -226,16 +226,19 @@ suffix arrays. Keep separate for single responsibility.
 3. `cortical/audits/reasoning.py` - AuditReasoner, AuditQuery, NLU parsing
 4. `cortical/cli/audit/health.py` - Health CLI command
 5. `cortical/cli/audit/reason.py` - Reason CLI command
+6. `cortical/cli/audit/discover.py` - WovenMind discovery CLI command (experimental)
 
 ### Updated Files
 1. `cortical/audits/__init__.py` - Export new modules
-2. `cortical/cli/audit/__init__.py` - Register new commands
+2. `cortical/cli/audit/__init__.py` - Register all new commands (health, reason, discover)
 3. `scripts/audit_reasoning.py` - Fixed monkeypatch bug for tests, added deprecation note
+4. `scripts/codebase_health.py` - Added deprecation note
+5. `scripts/woven_audit_discovery.py` - Added deprecation note
 
 ### Test Results
 - 34 smoke tests pass
 - 138 audit reasoning tests pass
-- All CLI commands functional
+- All CLI commands functional (9 total: generate, train, scan, patterns, similar, index, health, reason, discover)
 
 ---
 

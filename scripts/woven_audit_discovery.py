@@ -2,6 +2,9 @@
 """
 Woven Audit Discovery - Pattern Discovery for Codebase Audits using WovenMind
 
+DEPRECATION NOTE: This script is maintained for backward compatibility.
+Prefer using the CLI: python -m cortical.cli audit discover ...
+
 STATUS: Experimental Research Tool
 ==================================
 

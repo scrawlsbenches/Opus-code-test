@@ -10,6 +10,7 @@ This package provides CLI commands for the audit system:
     - index: Build search indexes
     - health: Analyze codebase health
     - reason: PLN-based audit reasoning
+    - discover: WovenMind pattern discovery (experimental)
 
 Usage:
     from cortical.cli.audit import setup_parser, handle_command
@@ -44,6 +45,7 @@ Commands:
     index      Build search indexes
     health     Analyze codebase health
     reason     PLN-based audit reasoning
+    discover   WovenMind pattern discovery (experimental)
 
 Workflow:
     1. Generate training data:  audit generate cortical/
@@ -58,7 +60,7 @@ Workflow:
     )
 
     # Import command modules and set up parsers
-    from . import generate, train, scan, patterns, similar, index, health, reason
+    from . import generate, train, scan, patterns, similar, index, health, reason, discover
 
     generate.setup_args(audit_subparsers)
     train.setup_args(audit_subparsers)
@@ -68,6 +70,7 @@ Workflow:
     index.setup_args(audit_subparsers)
     health.setup_args(audit_subparsers)
     reason.setup_args(audit_subparsers)
+    discover.setup_args(audit_subparsers)
 
 
 def handle_command(args: Any) -> int:
@@ -86,7 +89,7 @@ def handle_command(args: Any) -> int:
         return 1
 
     # Import command modules
-    from . import generate, train, scan, patterns, similar, index, health, reason
+    from . import generate, train, scan, patterns, similar, index, health, reason, discover
 
     command_handlers = {
         'generate': generate.run,
@@ -97,6 +100,7 @@ def handle_command(args: Any) -> int:
         'index': index.run,
         'health': health.run,
         'reason': reason.run,
+        'discover': discover.run,
     }
 
     handler = command_handlers.get(args.audit_command)
