@@ -5,9 +5,33 @@ Uses Suffix Array to find copy-pasted text and Count-Min Sketch for
 frequency tracking.
 """
 
-from typing import Any
+from typing import Any, List, Tuple
 
 from ._base import print_header, print_separator
+
+
+def is_separator_line(text: str) -> bool:
+    """
+    Check if text is a separator line (>80% repeated chars like =, -, #).
+
+    These lines are noise in pattern analysis - they appear frequently
+    but carry no semantic meaning.
+    """
+    if len(text) < 10:
+        return False
+    # Count occurrences of each character
+    char_counts: dict = {}
+    for c in text:
+        char_counts[c] = char_counts.get(c, 0) + 1
+    most_common_count = max(char_counts.values())
+    return most_common_count / len(text) > 0.8
+
+
+def filter_separator_patterns(
+    patterns: List[Tuple[str, int]]
+) -> List[Tuple[str, int]]:
+    """Filter out separator line patterns from results."""
+    return [(p, c) for p, c in patterns if not is_separator_line(p)]
 
 
 def setup_args(subparsers) -> None:
@@ -73,12 +97,16 @@ def run(args: Any) -> None:
 
     repeated = pattern_finder.repeated_substrings(min_length=min_length)
 
+    # Filter out separator lines (noise like ====, ----, ####)
+    repeated = filter_separator_patterns(repeated)
+
     if not repeated:
         print(f"No repeated patterns of length >= {min_length} found.")
         return
 
     # Initialize Count-Min Sketch for frequency tracking
-    sketch = PatternFrequencySketch(width=1000, depth=5)
+    # Use larger width (10000) to reduce hash collisions
+    sketch = PatternFrequencySketch(width=10000, depth=5)
 
     for pattern, count in repeated:
         sketch.add(pattern, count)

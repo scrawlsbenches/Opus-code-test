@@ -200,7 +200,8 @@ class Tokenizer:
         'require', 'requires', 'required', 'requiring',
         'enable', 'enables', 'enabled', 'enabling',
         'allow', 'allows', 'allowed', 'allowing',
-        'create', 'creates', 'created', 'creating',
+        # Note: 'create' removed - it's a meaningful action verb in many contexts
+        # (create task, create user, create file) that shouldn't be filtered
         'become', 'becomes', 'became', 'becoming',
         'remain', 'remains', 'remained', 'remaining',
         'offer', 'offers', 'offered', 'offering',

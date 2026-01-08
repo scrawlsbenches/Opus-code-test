@@ -113,14 +113,16 @@ def classify_with_model(
     probs = classifier.predict_proba(tokens)
 
     # Determine classification
-    if 'misleading' in probs and probs['misleading'] > 0.5:
+    # Use higher threshold (0.65) to reduce false positives
+    # This means we need stronger evidence before flagging something as misleading
+    if 'misleading' in probs and probs['misleading'] > 0.65:
         return ClassificationResult(
             classification='misleading',
             pattern_type='model',
             matched_pattern='naive_bayes',
             confidence=probs['misleading'],
         )
-    elif 'accurate' in probs and probs['accurate'] > 0.5:
+    elif 'accurate' in probs and probs['accurate'] > 0.65:
         return ClassificationResult(
             classification='accurate',
             pattern_type='model',

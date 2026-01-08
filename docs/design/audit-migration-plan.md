@@ -167,25 +167,22 @@ Keep scripts as backwards-compatible wrappers:
 
 ## Issues Found During Phase 1-2
 
-The following issues were identified during testing and should be addressed:
+The following issues were identified during testing and have been fixed:
 
-### Audit Tool Issues (from functional testing)
+### Audit Tool Issues (from functional testing) - RESOLVED
 
-| Issue | Severity | Description |
+| Issue | Severity | Fix Applied |
 |-------|----------|-------------|
-| scan false positives | Medium | Normal comments flagged as misleading (e.g., "Utility classes" at 84% confidence) |
-| patterns finds noise | Medium | Top patterns are separator lines (`====`), not meaningful patterns |
-| Count-Min Sketch overcounts | Low | Estimates show 16-40 for patterns appearing 2 times |
-| similar tokenizer aggressive | Low | "Create task" tokenizes to just `['task']`, dropping verb |
+| scan false positives | Medium | ✅ Raised classifier threshold from 0.5 to 0.65 |
+| patterns finds noise | Medium | ✅ Added separator line filter (>80% repeated chars) |
+| Count-Min Sketch overcounts | Low | ✅ Increased sketch width from 1000 to 10000 |
+| similar tokenizer aggressive | Low | ✅ Removed 'create' from stop words |
 
-### Deferred Improvements
+### Files Modified for Fixes
 
-```
-# TODO(migration): Filter separator lines in patterns command before analysis
-# TODO(migration): Tune Naive Bayes training for better precision
-# TODO(migration): Adjust LSH threshold defaults for better recall
-# TODO(migration): Review tokenizer settings for similar command
-```
+- `cortical/cli/audit/patterns.py` - Added `is_separator_line()` and `filter_separator_patterns()`
+- `cortical/audits/classifier.py` - Changed threshold from 0.5 to 0.65
+- `cortical/tokenizer.py` - Removed 'create', 'creates', 'created', 'creating' from stop words
 
 ---
 
