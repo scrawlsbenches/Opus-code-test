@@ -235,25 +235,7 @@ def cmd_handoff_list(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_handoff_reject(args, manager: "TransactionalGoTAdapter") -> int:
-    """Handle 'got handoff reject' command."""
-    success = manager.reject_handoff(
-        handoff_id=args.handoff_id,
-        agent=args.agent,
-        reason=args.reason,
-    )
-
-    if not success:
-        print(f"Failed to reject handoff: {args.handoff_id}")
-        return 1
-
-    print(f"Handoff rejected: {args.handoff_id}")
-    print(f"  Agent: {args.agent}")
-    print(f"  Reason: {args.reason}")
-    return 0
-
-
-# 
+#
 # CLI INTEGRATION
 # 
 

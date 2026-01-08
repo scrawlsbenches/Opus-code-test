@@ -207,21 +207,8 @@ def cmd_validate(args, manager: "TransactionalGoTAdapter") -> int:
 
     orphan_count = len(all_node_ids - nodes_with_edges)
     # Bug fix: Use all_node_ids count as denominator, not just graph.nodes (which only has Tasks+Decisions)
-    # Previously: orphan_rate = orphan_count / max(total_nodes, 1) * 100  # Wrong: 452 denominator
     total_all_entities = len(all_node_ids)
     orphan_rate = orphan_count / max(total_all_entities, 1) * 100
-
-    # Only count edge references that point to existing nodes
-    all_node_ids = set(manager.graph.nodes.keys())
-    nodes_with_edges = set()
-    for edge in manager.graph.edges:
-        if edge.source_id in all_node_ids:
-            nodes_with_edges.add(edge.source_id)
-        if edge.target_id in all_node_ids:
-            nodes_with_edges.add(edge.target_id)
-
-    orphan_count = len(all_node_ids - nodes_with_edges)
-    orphan_rate = orphan_count / max(total_nodes, 1) * 100
 
     # Check orphan rate (warning if high, but not critical)
     if orphan_rate > 50:
