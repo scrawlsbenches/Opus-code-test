@@ -190,3 +190,12 @@ A: Delete it after migration. It was a proof-of-concept.
 - [ ] Container integration approach confirmed
 - [ ] Migration scope agreed
 - [ ] Backwards compatibility plan acceptable
+
+---
+
+## Escape Note
+
+**Remember to add TODO comments for any issues encountered during the migration.**
+This allows us to track and implement deferred items later without blocking progress.
+
+Format: `# TODO(migration): Description of issue or deferred work`

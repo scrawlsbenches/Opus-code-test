@@ -9,14 +9,18 @@ Available Modules:
     - CDGModule: Storage, WAL, transactions (foundation layer)
     - GoTModule: Graph of Thought (tasks, decisions, edges)
     - CELModule: Cognitive Event Lattice (event sourcing)
+    - AuditModule: Codebase quality analysis (Bloom filter, Naive Bayes, LSH)
 """
 
 from .cdg_module import CDGModule
 from .got_module import GoTModule
 from .schema_module import SchemaModule
+from .audit_module import AuditModule, AuditConfig
 
 __all__ = [
     'SchemaModule',
     'CDGModule',
     'GoTModule',
+    'AuditModule',
+    'AuditConfig',
 ]
