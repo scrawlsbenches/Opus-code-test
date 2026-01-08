@@ -259,7 +259,9 @@ class BaseSchema:
             fields = {
                 'id': Field('id', FieldType.STRING, required=True),
                 'title': Field('title', FieldType.STRING, required=True),
+                'status': Field('status', FieldType.ENUM, choices=['pending', 'completed']),
             }
+            indexes = ['status', ('priority', 'created_at')]  # Single and composite
 
             @classmethod
             def migrate_v1_to_v2(cls, data: Dict) -> Dict:
@@ -271,6 +273,7 @@ class BaseSchema:
     entity_type: str = ""
     id_prefix: str = ""
     fields: Dict[str, Field] = {}
+    indexes: List[Any] = []  # List of field names or tuples for composite indexes
 
     # Schema version field name in data
     SCHEMA_VERSION_KEY = "_schema_version"
@@ -297,6 +300,31 @@ class BaseSchema:
                 except (ValueError, IndexError):
                     continue
         return migrations
+
+    @classmethod
+    def get_indexes(cls) -> List[Tuple[str, List[str]]]:
+        """
+        Get index definitions for this schema.
+
+        Returns normalized list of (index_name, field_list) tuples.
+        Single field indexes like 'status' become ('status_idx', ['status']).
+        Composite indexes like ('priority', 'created_at') become
+        ('priority_created_at_idx', ['priority', 'created_at']).
+
+        Returns:
+            List of (index_name, fields) tuples
+        """
+        result = []
+        for idx_def in cls.indexes:
+            if isinstance(idx_def, str):
+                # Single field: 'status' -> ('status_idx', ['status'])
+                result.append((f"{idx_def}_idx", [idx_def]))
+            elif isinstance(idx_def, (tuple, list)):
+                # Composite: ('a', 'b') -> ('a_b_idx', ['a', 'b'])
+                fields = list(idx_def)
+                name = "_".join(fields) + "_idx"
+                result.append((name, fields))
+        return result
 
     @classmethod
     def validate(cls, data: Dict[str, Any], strict: bool = False) -> ValidationResult:
@@ -531,6 +559,24 @@ class SchemaRegistry:
     def has_schema(self, entity_type: str) -> bool:
         """Check if a schema is registered for an entity type."""
         return entity_type in self._schemas
+
+    def get_all_indexes(self) -> List[Tuple[str, str, List[str]]]:
+        """
+        Get all index definitions from all registered schemas.
+
+        Returns:
+            List of (entity_type, index_name, fields) tuples.
+            Used by IndexManager to create schema-defined indexes.
+
+        Example:
+            [('task', 'status_idx', ['status']),
+             ('task', 'priority_created_at_idx', ['priority', 'created_at'])]
+        """
+        result = []
+        for entity_type, schema in self._schemas.items():
+            for index_name, fields in schema.get_indexes():
+                result.append((entity_type, index_name, fields))
+        return result
 
     def validate(
         self,

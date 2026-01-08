@@ -20,6 +20,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from typing import TYPE_CHECKING
+
 from cortical.utils.locking import ProcessLock
 from cortical.common.filesystem import FileSystem
 from .types import Entity
@@ -28,6 +30,9 @@ from .storage import CDGStore, EntityFactory
 from .wal import CDGWALManager
 from .transaction import Transaction, TransactionState, generate_transaction_id
 from .config import CDGConfig, RecoveryMode, DurabilityMode
+
+if TYPE_CHECKING:
+    from .index import IndexManager
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +98,7 @@ class CDGTransactionManager:
         config: Optional[CDGConfig] = None,
         entity_factory: Optional[EntityFactory] = None,
         filesystem: Optional[FileSystem] = None,
+        index_manager: Optional["CDGIndexManager"] = None,
     ):
         """
         Initialize transaction manager.
@@ -109,6 +115,7 @@ class CDGTransactionManager:
             entity_factory: Optional factory for creating domain-specific entities
             filesystem: FileSystem implementation (defaults to RealFileSystem).
                        Pass InMemoryFileSystem for test isolation.
+            index_manager: Optional CDGIndexManager for auto-indexing on commit
         """
         self.store_dir = Path(store_dir)
 
@@ -128,6 +135,9 @@ class CDGTransactionManager:
         if self.config.enable_wal:
             wal_dir = self.store_dir / "wal"
             self.wal = CDGWALManager(wal_dir, self.config)
+
+        # Index manager for auto-indexing on commit (optional)
+        self._index_manager = index_manager
 
         # Process lock for mutual exclusion
         self.lock = ProcessLock(self.store_dir / ".cdg.lock", reentrant=True)
@@ -368,10 +378,14 @@ class CDGTransactionManager:
                     version=expected_version
                 )
 
-            # Step 6: Mark committed in memory
+            # Step 6: Auto-index written and deleted entities
+            if self._index_manager is not None:
+                self._update_indexes(tx)
+
+            # Step 7: Mark committed in memory
             tx.state = TransactionState.COMMITTED
 
-            # Step 7: Optionally fsync entity files for extra durability
+            # Step 8: Optionally fsync entity files for extra durability
             if self.config.durability == DurabilityMode.BALANCED:
                 self.store.fsync_all()
 
@@ -405,6 +419,39 @@ class CDGTransactionManager:
 
         # Remove from active
         self._active_tx.pop(tx.id, None)
+
+    def _update_indexes(self, tx: Transaction) -> None:
+        """
+        Update indexes for committed transaction.
+
+        Called automatically after successful commit. Indexes entities
+        based on schema-defined index fields.
+
+        Args:
+            tx: Committed transaction with write_set and delete_set
+        """
+        if self._index_manager is None:
+            return
+
+        # Index written entities
+        for entity_id, entity in tx.write_set.items():
+            # Convert entity to dict for indexing
+            if hasattr(entity, '__dict__'):
+                fields = {k: v for k, v in entity.__dict__.items()
+                          if not k.startswith('_')}
+            elif hasattr(entity, 'to_dict'):
+                fields = entity.to_dict()
+            else:
+                fields = dict(entity) if hasattr(entity, '__iter__') else {}
+
+            self._index_manager.index_entity(entity_id, fields)
+
+        # Remove deleted entities from indexes
+        for entity_id in tx.delete_set:
+            self._index_manager.remove_entity(entity_id)
+
+        # Persist index changes
+        self._index_manager.save()
 
     def recover(self):
         """
