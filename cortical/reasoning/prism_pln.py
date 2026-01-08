@@ -318,6 +318,120 @@ def aggregate_truth_values(
 
 
 # =============================================================================
+# ATTENTIONAL FOCUS
+# =============================================================================
+
+@dataclass
+class AttentionalFocus:
+    """
+    Controls which atoms receive inference attention.
+
+    Implements a bounded attention mechanism that:
+    - Tracks which atoms are currently in focus
+    - Assigns boost values to focused atoms
+    - Supports temporal decay (unfocused atoms fade)
+    - Maintains bounded size (can only focus on N things)
+
+    For audit use cases:
+    - Focus on files with multiple issues
+    - Prioritize recent findings
+    - Shift attention as audit progresses
+    """
+    max_size: int = 100
+    default_boost: float = 1.0
+
+    # Internal state
+    _focused: Dict[str, float] = field(default_factory=dict)
+    _access_order: List[str] = field(default_factory=list)
+
+    def focus_on(self, atoms: List[str], boost: Optional[float] = None) -> None:
+        """
+        Add atoms to the attentional focus.
+
+        Args:
+            atoms: List of atom names to focus on
+            boost: Boost factor for these atoms (default: default_boost)
+        """
+        if boost is None:
+            boost = self.default_boost
+
+        for atom in atoms:
+            # Update or add
+            self._focused[atom] = boost
+
+            # Update access order
+            if atom in self._access_order:
+                self._access_order.remove(atom)
+            self._access_order.append(atom)
+
+        # Enforce max size by evicting oldest
+        self._enforce_size_limit()
+
+    def _enforce_size_limit(self) -> None:
+        """Evict oldest atoms if over max_size."""
+        while len(self._focused) > self.max_size and self._access_order:
+            oldest = self._access_order.pop(0)
+            if oldest in self._focused:
+                del self._focused[oldest]
+
+    def is_focused(self, atom: str) -> bool:
+        """Check if an atom is currently in focus."""
+        return atom in self._focused
+
+    def get_focus_strength(self, atom: str) -> float:
+        """Get the focus strength (boost) for an atom."""
+        return self._focused.get(atom, 0.0)
+
+    def get_focused_atoms(self) -> List[str]:
+        """Get list of all focused atoms."""
+        return list(self._focused.keys())
+
+    def set_boost(self, atom: str, boost: float) -> None:
+        """Set the boost value for a specific atom."""
+        if atom in self._focused:
+            self._focused[atom] = boost
+
+    def decay(self, factor: float = 0.9) -> None:
+        """
+        Apply decay to all focus strengths.
+
+        Args:
+            factor: Multiply all strengths by this factor (0 < factor < 1)
+        """
+        to_remove = []
+        for atom in self._focused:
+            self._focused[atom] *= factor
+            # Remove atoms that decay below threshold
+            if self._focused[atom] < 0.01:
+                to_remove.append(atom)
+
+        for atom in to_remove:
+            del self._focused[atom]
+            if atom in self._access_order:
+                self._access_order.remove(atom)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize to dictionary."""
+        return {
+            "max_size": self.max_size,
+            "default_boost": self.default_boost,
+            "focused": dict(self._focused),
+            "access_order": list(self._access_order),
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "AttentionalFocus":
+        """Deserialize from dictionary."""
+        focus = cls(
+            max_size=data.get("max_size", 100),
+            default_boost=data.get("default_boost", 1.0),
+        )
+        focus._focused = dict(data.get("focused", {}))
+        focus._access_order = list(data.get("access_order", []))
+        return focus
+
+
+# =============================================================================
 # ATOMS
 # =============================================================================
 
@@ -783,6 +897,161 @@ class PLNReasoner:
             result = reasoner.query("needs_review(file_a)", aggregate="revision")  # ~0.82
         """
         return self.graph.infer(statement, max_depth=max_depth, aggregate=aggregate)
+
+    def query_with_attention(
+        self,
+        statement: str,
+        focus: "AttentionalFocus",
+        max_depth: int = 5,
+        aggregate: AggregateStrategy = "first",
+        return_stats: bool = False
+    ) -> Any:  # Returns TruthValue or Tuple[TruthValue, Dict] if return_stats
+        """
+        Query with attention-guided inference.
+
+        Atoms in the attentional focus have their inference paths boosted,
+        making focused atoms more influential in the final result.
+
+        Args:
+            statement: The statement to query
+            focus: AttentionalFocus controlling which atoms to prioritize
+            max_depth: Maximum inference chain depth
+            aggregate: Strategy for combining evidence from multiple rules
+            return_stats: If True, return (result, stats) tuple
+
+        Returns:
+            Inferred truth value, or (truth_value, stats) if return_stats=True
+
+        Example:
+            focus = AttentionalFocus()
+            focus.focus_on(["has_bug(file_a)"], boost=2.0)
+            result = reasoner.query_with_attention(
+                "needs_review(file_a)",
+                focus=focus,
+                aggregate="weighted"
+            )
+        """
+        stats = {"rules_explored": 0, "atoms_boosted": 0}
+
+        # Get base inference result with attention boosting
+        result = self._infer_with_attention(
+            statement, focus, max_depth, aggregate, stats
+        )
+
+        if return_stats:
+            return result, stats
+        return result
+
+    def _infer_with_attention(
+        self,
+        query: str,
+        focus: "AttentionalFocus",
+        max_depth: int,
+        aggregate: AggregateStrategy,
+        stats: Dict[str, int]
+    ) -> Optional[TruthValue]:
+        """
+        Internal attention-guided inference.
+
+        Modifies inference by boosting focused atoms' contributions.
+        """
+        # Direct lookup
+        atom = self.graph.get_atom(query)
+        if atom is not None:
+            tv = atom.truth_value
+            # Apply boost if focused
+            if focus.is_focused(query):
+                boost = focus.get_focus_strength(query)
+                stats["atoms_boosted"] += 1
+                # Boost confidence (more attention = more weight)
+                boosted_conf = min(0.99, tv.confidence * boost)
+                return TruthValue(strength=tv.strength, confidence=boosted_conf)
+            return tv
+
+        # Try pattern matching
+        for name, atom in self.graph._atoms.items():
+            if atom.matches(query):
+                tv = atom.truth_value
+                if focus.is_focused(name):
+                    boost = focus.get_focus_strength(name)
+                    stats["atoms_boosted"] += 1
+                    boosted_conf = min(0.99, tv.confidence * boost)
+                    return TruthValue(strength=tv.strength, confidence=boosted_conf)
+                return tv
+
+        if max_depth <= 0:
+            return None
+
+        # Collect matching rules with attention weighting
+        matching_results: List[TruthValue] = []
+
+        for (ant, cons), link in self.graph._implications.items():
+            stats["rules_explored"] += 1
+
+            # Check if focused atoms are involved - if so, prioritize
+            rule_boost = 1.0
+            if focus.is_focused(ant) or focus.is_focused(cons):
+                rule_boost = max(
+                    focus.get_focus_strength(ant),
+                    focus.get_focus_strength(cons),
+                    1.0
+                )
+
+            # Pattern matching
+            query_matches = False
+            substitutions = {}
+
+            if cons == query:
+                query_matches = True
+            elif "(" in cons and "(" in query:
+                cons_pred = cons[:cons.index("(")]
+                query_pred = query[:query.index("(")]
+
+                if cons_pred == query_pred:
+                    cons_args = cons[cons.index("(") + 1:cons.index(")")].split(",")
+                    query_args = query[query.index("(") + 1:query.index(")")].split(",")
+
+                    if len(cons_args) == len(query_args):
+                        query_matches = True
+                        for c_arg, q_arg in zip(cons_args, query_args):
+                            c_arg = c_arg.strip()
+                            q_arg = q_arg.strip()
+                            if c_arg.isupper() and len(c_arg) == 1:
+                                substitutions[c_arg] = q_arg
+                            elif c_arg != q_arg:
+                                query_matches = False
+                                break
+
+            if query_matches:
+                # Substitute variables
+                ant_query = ant
+                for var, val in substitutions.items():
+                    ant_query = ant_query.replace(var, val)
+
+                # Check if substituted antecedent is focused
+                if focus.is_focused(ant_query):
+                    rule_boost = max(rule_boost, focus.get_focus_strength(ant_query))
+
+                # Recursive inference
+                ant_tv = self._infer_with_attention(
+                    ant_query, focus, max_depth - 1, aggregate, stats
+                )
+
+                if ant_tv is not None:
+                    result = pln_implication(ant_tv, link.truth_value)
+
+                    # Apply rule boost to confidence
+                    if rule_boost > 1.0:
+                        stats["atoms_boosted"] += 1
+                        boosted_conf = min(0.99, result.confidence * rule_boost)
+                        result = TruthValue(strength=result.strength, confidence=boosted_conf)
+
+                    if aggregate == "first":
+                        return result
+
+                    matching_results.append(result)
+
+        return aggregate_truth_values(matching_results, aggregate)
 
     def observe(self, statement: str, is_true: bool) -> None:
         """Observe evidence about a statement."""
