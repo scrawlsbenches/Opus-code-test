@@ -1,0 +1,3914 @@
+{
+  "mind": {
+    "config": {
+      "surprise_threshold": 0.3,
+      "k_winners": 10,
+      "min_frequency": 3,
+      "auto_switch": true,
+      "enable_observability": true,
+      "consolidation_threshold": 3,
+      "consolidation_decay_factor": 0.9,
+      "enable_auto_consolidation": true
+    },
+    "hive_state": {
+      "k_winners": 10,
+      "config": {
+        "k_winners": 10,
+        "lateral_inhibition_strength": 0.3,
+        "spreading_decay": 0.5,
+        "context_size": 3
+      },
+      "model_graph_state": {
+        "context_size": 3,
+        "vocab": [
+          "reasoning",
+          "pattern",
+          "failure",
+          "should",
+          "docs",
+          "trie",
+          "validation",
+          "will",
+          "id",
+          "dag",
+          "crisis",
+          "init",
+          "abstraction",
+          "see",
+          "array",
+          "future",
+          "got",
+          "utils",
+          "api",
+          "ngram",
+          "causal",
+          "suffix",
+          "production",
+          "dir",
+          "file",
+          ":",
+          ".",
+          "lsh",
+          "algorithms",
+          "cli",
+          "cdg",
+          "ml",
+          "pln",
+          "spark",
+          "tokenizer",
+          "audits",
+          "cel",
+          "py",
+          "manager",
+          "wisdom",
+          "generation",
+          "prism",
+          "todo",
+          "storage",
+          "state",
+          "git",
+          "be",
+          "expression",
+          "trainer",
+          "adapters",
+          "executor",
+          "hack"
+        ],
+        "total_tokens": 319,
+        "transitions": {
+          "file": [
+            {
+              "from_token": "file",
+              "to_token": ":",
+              "weight": 2.8800000000000017,
+              "count": 22,
+              "decay_rate": 0.99
+            }
+          ],
+          ":": [
+            {
+              "from_token": ":",
+              "to_token": "tokenizer",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "should",
+              "weight": 2.340000000000001,
+              "count": 16,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "ml",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "see",
+              "weight": 1.3500000000000005,
+              "count": 5,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "cel",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "wisdom",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "dag",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "will",
+              "weight": 1.7100000000000009,
+              "count": 9,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "got",
+              "weight": 1.2600000000000005,
+              "count": 4,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "api",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "validation",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "expression",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "executor",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "cli",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "failure",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "todo",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "spark",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "git",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "ngram",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "audits",
+              "weight": 1.1700000000000004,
+              "count": 3,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "algorithms",
+              "weight": 1.1700000000000004,
+              "count": 3,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "trie",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "lsh",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "future",
+              "weight": 1.3500000000000005,
+              "count": 5,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "pattern",
+              "weight": 1.3500000000000005,
+              "count": 5,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "suffix",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "utils",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "id",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "reasoning",
+              "weight": 1.2600000000000005,
+              "count": 4,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "production",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "hack",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "crisis",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "prism",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "abstraction",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "cdg",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "adapters",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "init",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "tokenizer": [
+            {
+              "from_token": "tokenizer",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ".": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 2.5200000000000014,
+              "count": 18,
+              "decay_rate": 0.99
+            }
+          ],
+          "py": [
+            {
+              "from_token": "py",
+              "to_token": "pattern",
+              "weight": 2.5200000000000014,
+              "count": 18,
+              "decay_rate": 0.99
+            }
+          ],
+          "pattern": [
+            {
+              "from_token": "pattern",
+              "to_token": ":",
+              "weight": 4.32,
+              "count": 38,
+              "decay_rate": 0.99
+            }
+          ],
+          "should": [
+            {
+              "from_token": "should",
+              "to_token": "be",
+              "weight": 2.340000000000001,
+              "count": 16,
+              "decay_rate": 0.99
+            }
+          ],
+          "be": [
+            {
+              "from_token": "be",
+              "to_token": "pattern",
+              "weight": 1.980000000000001,
+              "count": 12,
+              "decay_rate": 0.99
+            }
+          ],
+          "file|:": [
+            {
+              "from_token": ":",
+              "to_token": "tokenizer",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "ml",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "dag",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "api",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "validation",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "executor",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "failure",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "git",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "ngram",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "trie",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "lsh",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "suffix",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "id",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "production",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "crisis",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "prism",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "abstraction",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "init",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|tokenizer": [
+            {
+              "from_token": "tokenizer",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "tokenizer|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ".|py": [
+            {
+              "from_token": "py",
+              "to_token": "pattern",
+              "weight": 2.5200000000000014,
+              "count": 18,
+              "decay_rate": 0.99
+            }
+          ],
+          "py|pattern": [
+            {
+              "from_token": "pattern",
+              "to_token": ":",
+              "weight": 2.5200000000000014,
+              "count": 18,
+              "decay_rate": 0.99
+            }
+          ],
+          "pattern|:": [
+            {
+              "from_token": ":",
+              "to_token": "should",
+              "weight": 2.340000000000001,
+              "count": 16,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "see",
+              "weight": 1.3500000000000005,
+              "count": 5,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "will",
+              "weight": 1.7100000000000009,
+              "count": 9,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "todo",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "future",
+              "weight": 1.3500000000000005,
+              "count": 5,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "hack",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|should": [
+            {
+              "from_token": "should",
+              "to_token": "be",
+              "weight": 2.340000000000001,
+              "count": 16,
+              "decay_rate": 0.99
+            }
+          ],
+          "should|be": [
+            {
+              "from_token": "be",
+              "to_token": "pattern",
+              "weight": 1.6200000000000008,
+              "count": 8,
+              "decay_rate": 0.99
+            }
+          ],
+          "be|pattern": [
+            {
+              "from_token": "pattern",
+              "to_token": ":",
+              "weight": 1.980000000000001,
+              "count": 12,
+              "decay_rate": 0.99
+            }
+          ],
+          "file|:|tokenizer": [
+            {
+              "from_token": "tokenizer",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|tokenizer|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "tokenizer|.|py": [
+            {
+              "from_token": "py",
+              "to_token": "pattern",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ".|py|pattern": [
+            {
+              "from_token": "pattern",
+              "to_token": ":",
+              "weight": 2.5200000000000014,
+              "count": 18,
+              "decay_rate": 0.99
+            }
+          ],
+          "py|pattern|:": [
+            {
+              "from_token": ":",
+              "to_token": "should",
+              "weight": 1.5300000000000007,
+              "count": 7,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "see",
+              "weight": 1.1700000000000004,
+              "count": 3,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "will",
+              "weight": 1.4400000000000006,
+              "count": 6,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "todo",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "future",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "pattern|:|should": [
+            {
+              "from_token": "should",
+              "to_token": "be",
+              "weight": 2.340000000000001,
+              "count": 16,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|should|be": [
+            {
+              "from_token": "be",
+              "to_token": "pattern",
+              "weight": 1.6200000000000008,
+              "count": 8,
+              "decay_rate": 0.99
+            }
+          ],
+          "should|be|pattern": [
+            {
+              "from_token": "pattern",
+              "to_token": ":",
+              "weight": 1.6200000000000008,
+              "count": 8,
+              "decay_rate": 0.99
+            }
+          ],
+          "be|pattern|:": [
+            {
+              "from_token": ":",
+              "to_token": "should",
+              "weight": 1.6200000000000008,
+              "count": 8,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "future",
+              "weight": 1.1700000000000004,
+              "count": 3,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "todo",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "ml": [
+            {
+              "from_token": "ml",
+              "to_token": "storage",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "storage": [
+            {
+              "from_token": "storage",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "see": [
+            {
+              "from_token": "see",
+              "to_token": "docs",
+              "weight": 1.2600000000000005,
+              "count": 4,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": "see",
+              "to_token": ":",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "docs": [
+            {
+              "from_token": "docs",
+              "to_token": "pattern",
+              "weight": 1.1700000000000004,
+              "count": 3,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|ml": [
+            {
+              "from_token": "ml",
+              "to_token": "storage",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "ml|storage": [
+            {
+              "from_token": "storage",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "storage|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|see": [
+            {
+              "from_token": "see",
+              "to_token": "docs",
+              "weight": 1.2600000000000005,
+              "count": 4,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": "see",
+              "to_token": ":",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "see|docs": [
+            {
+              "from_token": "docs",
+              "to_token": "pattern",
+              "weight": 1.1700000000000004,
+              "count": 3,
+              "decay_rate": 0.99
+            }
+          ],
+          "docs|pattern": [
+            {
+              "from_token": "pattern",
+              "to_token": ":",
+              "weight": 1.1700000000000004,
+              "count": 3,
+              "decay_rate": 0.99
+            }
+          ],
+          "file|:|ml": [
+            {
+              "from_token": "ml",
+              "to_token": "storage",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|ml|storage": [
+            {
+              "from_token": "storage",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "ml|storage|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "storage|.|py": [
+            {
+              "from_token": "py",
+              "to_token": "pattern",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "pattern|:|see": [
+            {
+              "from_token": "see",
+              "to_token": "docs",
+              "weight": 1.2600000000000005,
+              "count": 4,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": "see",
+              "to_token": ":",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|see|docs": [
+            {
+              "from_token": "docs",
+              "to_token": "pattern",
+              "weight": 1.1700000000000004,
+              "count": 3,
+              "decay_rate": 0.99
+            }
+          ],
+          "see|docs|pattern": [
+            {
+              "from_token": "pattern",
+              "to_token": ":",
+              "weight": 1.1700000000000004,
+              "count": 3,
+              "decay_rate": 0.99
+            }
+          ],
+          "docs|pattern|:": [
+            {
+              "from_token": ":",
+              "to_token": "see",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "should",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "dir": [
+            {
+              "from_token": "dir",
+              "to_token": ":",
+              "weight": 5.849999999999994,
+              "count": 55,
+              "decay_rate": 0.99
+            }
+          ],
+          "cel": [
+            {
+              "from_token": "cel",
+              "to_token": "dir",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "wisdom": [
+            {
+              "from_token": "wisdom",
+              "to_token": "file",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "dag": [
+            {
+              "from_token": "dag",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "will": [
+            {
+              "from_token": "will",
+              "to_token": "be",
+              "weight": 1.7100000000000009,
+              "count": 9,
+              "decay_rate": 0.99
+            }
+          ],
+          "dir|:": [
+            {
+              "from_token": ":",
+              "to_token": "cel",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "wisdom",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "got",
+              "weight": 1.6200000000000008,
+              "count": 8,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "expression",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "cli",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "spark",
+              "weight": 1.2600000000000005,
+              "count": 4,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "audits",
+              "weight": 1.4400000000000006,
+              "count": 6,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "algorithms",
+              "weight": 1.1700000000000004,
+              "count": 3,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "utils",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "reasoning",
+              "weight": 1.6200000000000008,
+              "count": 8,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "cdg",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "adapters",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|cel": [
+            {
+              "from_token": "cel",
+              "to_token": "dir",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "cel|dir": [
+            {
+              "from_token": "dir",
+              "to_token": ":",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|wisdom": [
+            {
+              "from_token": "wisdom",
+              "to_token": "file",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "wisdom|file": [
+            {
+              "from_token": "file",
+              "to_token": ":",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|dag": [
+            {
+              "from_token": "dag",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "dag|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|will": [
+            {
+              "from_token": "will",
+              "to_token": "be",
+              "weight": 1.7100000000000009,
+              "count": 9,
+              "decay_rate": 0.99
+            }
+          ],
+          "dir|:|cel": [
+            {
+              "from_token": "cel",
+              "to_token": "dir",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|cel|dir": [
+            {
+              "from_token": "dir",
+              "to_token": ":",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "cel|dir|:": [
+            {
+              "from_token": ":",
+              "to_token": "wisdom",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "dir|:|wisdom": [
+            {
+              "from_token": "wisdom",
+              "to_token": "file",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|wisdom|file": [
+            {
+              "from_token": "file",
+              "to_token": ":",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "wisdom|file|:": [
+            {
+              "from_token": ":",
+              "to_token": "dag",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "file|:|dag": [
+            {
+              "from_token": "dag",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|dag|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "dag|.|py": [
+            {
+              "from_token": "py",
+              "to_token": "pattern",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "pattern|:|will": [
+            {
+              "from_token": "will",
+              "to_token": "be",
+              "weight": 1.7100000000000009,
+              "count": 9,
+              "decay_rate": 0.99
+            }
+          ],
+          "got": [
+            {
+              "from_token": "got",
+              "to_token": "file",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": "got",
+              "to_token": "dir",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            }
+          ],
+          "api": [
+            {
+              "from_token": "api",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|got": [
+            {
+              "from_token": "got",
+              "to_token": "file",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": "got",
+              "to_token": "dir",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            }
+          ],
+          "got|file": [
+            {
+              "from_token": "file",
+              "to_token": ":",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|api": [
+            {
+              "from_token": "api",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "api|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "dir|:|got": [
+            {
+              "from_token": "got",
+              "to_token": "file",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": "got",
+              "to_token": "dir",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|got|file": [
+            {
+              "from_token": "file",
+              "to_token": ":",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            }
+          ],
+          "got|file|:": [
+            {
+              "from_token": ":",
+              "to_token": "api",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "validation",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "file|:|api": [
+            {
+              "from_token": "api",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|api|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "api|.|py": [
+            {
+              "from_token": "py",
+              "to_token": "pattern",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "validation": [
+            {
+              "from_token": "validation",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|validation": [
+            {
+              "from_token": "validation",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "validation|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "file|:|validation": [
+            {
+              "from_token": "validation",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|validation|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "validation|.|py": [
+            {
+              "from_token": "py",
+              "to_token": "pattern",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "expression": [
+            {
+              "from_token": "expression",
+              "to_token": "file",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "executor": [
+            {
+              "from_token": "executor",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "got|dir": [
+            {
+              "from_token": "dir",
+              "to_token": ":",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|expression": [
+            {
+              "from_token": "expression",
+              "to_token": "file",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "expression|file": [
+            {
+              "from_token": "file",
+              "to_token": ":",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|executor": [
+            {
+              "from_token": "executor",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "executor|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|got|dir": [
+            {
+              "from_token": "dir",
+              "to_token": ":",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            }
+          ],
+          "got|dir|:": [
+            {
+              "from_token": ":",
+              "to_token": "expression",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "cli",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "dir|:|expression": [
+            {
+              "from_token": "expression",
+              "to_token": "file",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|expression|file": [
+            {
+              "from_token": "file",
+              "to_token": ":",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "expression|file|:": [
+            {
+              "from_token": ":",
+              "to_token": "executor",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "file|:|executor": [
+            {
+              "from_token": "executor",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|executor|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "executor|.|py": [
+            {
+              "from_token": "py",
+              "to_token": "pattern",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "cli": [
+            {
+              "from_token": "cli",
+              "to_token": "file",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "failure": [
+            {
+              "from_token": "failure",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "todo": [
+            {
+              "from_token": "todo",
+              "to_token": ":",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|cli": [
+            {
+              "from_token": "cli",
+              "to_token": "file",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "cli|file": [
+            {
+              "from_token": "file",
+              "to_token": ":",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|failure": [
+            {
+              "from_token": "failure",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "failure|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|todo": [
+            {
+              "from_token": "todo",
+              "to_token": ":",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            }
+          ],
+          "dir|:|cli": [
+            {
+              "from_token": "cli",
+              "to_token": "file",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|cli|file": [
+            {
+              "from_token": "file",
+              "to_token": ":",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "cli|file|:": [
+            {
+              "from_token": ":",
+              "to_token": "failure",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "file|:|failure": [
+            {
+              "from_token": "failure",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|failure|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "failure|.|py": [
+            {
+              "from_token": "py",
+              "to_token": "pattern",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "pattern|:|todo": [
+            {
+              "from_token": "todo",
+              "to_token": ":",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            }
+          ],
+          "spark": [
+            {
+              "from_token": "spark",
+              "to_token": "file",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            }
+          ],
+          "git": [
+            {
+              "from_token": "git",
+              "to_token": "trainer",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "trainer": [
+            {
+              "from_token": "trainer",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|spark": [
+            {
+              "from_token": "spark",
+              "to_token": "file",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            }
+          ],
+          "spark|file": [
+            {
+              "from_token": "file",
+              "to_token": ":",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|git": [
+            {
+              "from_token": "git",
+              "to_token": "trainer",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "git|trainer": [
+            {
+              "from_token": "trainer",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "trainer|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "dir|:|spark": [
+            {
+              "from_token": "spark",
+              "to_token": "file",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|spark|file": [
+            {
+              "from_token": "file",
+              "to_token": ":",
+              "weight": 1.0800000000000003,
+              "count": 2,
+              "decay_rate": 0.99
+            }
+          ],
+          "spark|file|:": [
+            {
+              "from_token": ":",
+              "to_token": "git",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "ngram",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "file|:|git": [
+            {
+              "from_token": "git",
+              "to_token": "trainer",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|git|trainer": [
+            {
+              "from_token": "trainer",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "git|trainer|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "trainer|.|py": [
+            {
+              "from_token": "py",
+              "to_token": "pattern",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "ngram": [
+            {
+              "from_token": "ngram",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|ngram": [
+            {
+              "from_token": "ngram",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "ngram|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "file|:|ngram": [
+            {
+              "from_token": "ngram",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|ngram|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "ngram|.|py": [
+            {
+              "from_token": "py",
+              "to_token": "pattern",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "audits": [
+            {
+              "from_token": "audits",
+              "to_token": "dir",
+              "weight": 1.1700000000000004,
+              "count": 3,
+              "decay_rate": 0.99
+            }
+          ],
+          "algorithms": [
+            {
+              "from_token": "algorithms",
+              "to_token": "file",
+              "weight": 1.1700000000000004,
+              "count": 3,
+              "decay_rate": 0.99
+            }
+          ],
+          "trie": [
+            {
+              "from_token": "trie",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|audits": [
+            {
+              "from_token": "audits",
+              "to_token": "dir",
+              "weight": 1.1700000000000004,
+              "count": 3,
+              "decay_rate": 0.99
+            }
+          ],
+          "audits|dir": [
+            {
+              "from_token": "dir",
+              "to_token": ":",
+              "weight": 1.1700000000000004,
+              "count": 3,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|algorithms": [
+            {
+              "from_token": "algorithms",
+              "to_token": "file",
+              "weight": 1.1700000000000004,
+              "count": 3,
+              "decay_rate": 0.99
+            }
+          ],
+          "algorithms|file": [
+            {
+              "from_token": "file",
+              "to_token": ":",
+              "weight": 1.1700000000000004,
+              "count": 3,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|trie": [
+            {
+              "from_token": "trie",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "trie|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "dir|:|audits": [
+            {
+              "from_token": "audits",
+              "to_token": "dir",
+              "weight": 1.1700000000000004,
+              "count": 3,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|audits|dir": [
+            {
+              "from_token": "dir",
+              "to_token": ":",
+              "weight": 1.1700000000000004,
+              "count": 3,
+              "decay_rate": 0.99
+            }
+          ],
+          "audits|dir|:": [
+            {
+              "from_token": ":",
+              "to_token": "algorithms",
+              "weight": 1.1700000000000004,
+              "count": 3,
+              "decay_rate": 0.99
+            }
+          ],
+          "dir|:|algorithms": [
+            {
+              "from_token": "algorithms",
+              "to_token": "file",
+              "weight": 1.1700000000000004,
+              "count": 3,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|algorithms|file": [
+            {
+              "from_token": "file",
+              "to_token": ":",
+              "weight": 1.1700000000000004,
+              "count": 3,
+              "decay_rate": 0.99
+            }
+          ],
+          "algorithms|file|:": [
+            {
+              "from_token": ":",
+              "to_token": "trie",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "lsh",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "suffix",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "file|:|trie": [
+            {
+              "from_token": "trie",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|trie|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "trie|.|py": [
+            {
+              "from_token": "py",
+              "to_token": "pattern",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "lsh": [
+            {
+              "from_token": "lsh",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "future": [
+            {
+              "from_token": "future",
+              "to_token": ":",
+              "weight": 1.3500000000000005,
+              "count": 5,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|lsh": [
+            {
+              "from_token": "lsh",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "lsh|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|future": [
+            {
+              "from_token": "future",
+              "to_token": ":",
+              "weight": 1.3500000000000005,
+              "count": 5,
+              "decay_rate": 0.99
+            }
+          ],
+          "future|:": [
+            {
+              "from_token": ":",
+              "to_token": "pattern",
+              "weight": 1.2600000000000005,
+              "count": 4,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|pattern": [
+            {
+              "from_token": "pattern",
+              "to_token": ":",
+              "weight": 1.3500000000000005,
+              "count": 5,
+              "decay_rate": 0.99
+            }
+          ],
+          "will|be": [
+            {
+              "from_token": "be",
+              "to_token": "pattern",
+              "weight": 1.2600000000000005,
+              "count": 4,
+              "decay_rate": 0.99
+            }
+          ],
+          "file|:|lsh": [
+            {
+              "from_token": "lsh",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|lsh|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "lsh|.|py": [
+            {
+              "from_token": "py",
+              "to_token": "pattern",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "pattern|:|future": [
+            {
+              "from_token": "future",
+              "to_token": ":",
+              "weight": 1.3500000000000005,
+              "count": 5,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|future|:": [
+            {
+              "from_token": ":",
+              "to_token": "pattern",
+              "weight": 1.2600000000000005,
+              "count": 4,
+              "decay_rate": 0.99
+            }
+          ],
+          "future|:|pattern": [
+            {
+              "from_token": "pattern",
+              "to_token": ":",
+              "weight": 1.2600000000000005,
+              "count": 4,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|pattern|:": [
+            {
+              "from_token": ":",
+              "to_token": "will",
+              "weight": 1.1700000000000004,
+              "count": 3,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "future",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "hack",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|will|be": [
+            {
+              "from_token": "be",
+              "to_token": "pattern",
+              "weight": 1.2600000000000005,
+              "count": 4,
+              "decay_rate": 0.99
+            }
+          ],
+          "will|be|pattern": [
+            {
+              "from_token": "pattern",
+              "to_token": ":",
+              "weight": 1.2600000000000005,
+              "count": 4,
+              "decay_rate": 0.99
+            }
+          ],
+          "suffix": [
+            {
+              "from_token": "suffix",
+              "to_token": "array",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "array": [
+            {
+              "from_token": "array",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|suffix": [
+            {
+              "from_token": "suffix",
+              "to_token": "array",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "suffix|array": [
+            {
+              "from_token": "array",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "array|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "file|:|suffix": [
+            {
+              "from_token": "suffix",
+              "to_token": "array",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|suffix|array": [
+            {
+              "from_token": "array",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "suffix|array|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "array|.|py": [
+            {
+              "from_token": "py",
+              "to_token": "pattern",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "utils": [
+            {
+              "from_token": "utils",
+              "to_token": "file",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "id": [
+            {
+              "from_token": "id",
+              "to_token": "generation",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "generation": [
+            {
+              "from_token": "generation",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|utils": [
+            {
+              "from_token": "utils",
+              "to_token": "file",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "utils|file": [
+            {
+              "from_token": "file",
+              "to_token": ":",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|id": [
+            {
+              "from_token": "id",
+              "to_token": "generation",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "id|generation": [
+            {
+              "from_token": "generation",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "generation|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "dir|:|utils": [
+            {
+              "from_token": "utils",
+              "to_token": "file",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|utils|file": [
+            {
+              "from_token": "file",
+              "to_token": ":",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "utils|file|:": [
+            {
+              "from_token": ":",
+              "to_token": "id",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "file|:|id": [
+            {
+              "from_token": "id",
+              "to_token": "generation",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|id|generation": [
+            {
+              "from_token": "generation",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "id|generation|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "generation|.|py": [
+            {
+              "from_token": "py",
+              "to_token": "pattern",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "reasoning": [
+            {
+              "from_token": "reasoning",
+              "to_token": "file",
+              "weight": 1.2600000000000005,
+              "count": 4,
+              "decay_rate": 0.99
+            }
+          ],
+          "production": [
+            {
+              "from_token": "production",
+              "to_token": "state",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "state": [
+            {
+              "from_token": "state",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "hack": [
+            {
+              "from_token": "hack",
+              "to_token": ":",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|reasoning": [
+            {
+              "from_token": "reasoning",
+              "to_token": "file",
+              "weight": 1.2600000000000005,
+              "count": 4,
+              "decay_rate": 0.99
+            }
+          ],
+          "reasoning|file": [
+            {
+              "from_token": "file",
+              "to_token": ":",
+              "weight": 1.2600000000000005,
+              "count": 4,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|production": [
+            {
+              "from_token": "production",
+              "to_token": "state",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "production|state": [
+            {
+              "from_token": "state",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "state|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "todo|:": [
+            {
+              "from_token": ":",
+              "to_token": "pattern",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|hack": [
+            {
+              "from_token": "hack",
+              "to_token": ":",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "dir|:|reasoning": [
+            {
+              "from_token": "reasoning",
+              "to_token": "file",
+              "weight": 1.2600000000000005,
+              "count": 4,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|reasoning|file": [
+            {
+              "from_token": "file",
+              "to_token": ":",
+              "weight": 1.2600000000000005,
+              "count": 4,
+              "decay_rate": 0.99
+            }
+          ],
+          "reasoning|file|:": [
+            {
+              "from_token": ":",
+              "to_token": "production",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "crisis",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "prism",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            },
+            {
+              "from_token": ":",
+              "to_token": "abstraction",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "file|:|production": [
+            {
+              "from_token": "production",
+              "to_token": "state",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|production|state": [
+            {
+              "from_token": "state",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "production|state|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "state|.|py": [
+            {
+              "from_token": "py",
+              "to_token": "pattern",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|todo|:": [
+            {
+              "from_token": ":",
+              "to_token": "pattern",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "todo|:|pattern": [
+            {
+              "from_token": "pattern",
+              "to_token": ":",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "pattern|:|hack": [
+            {
+              "from_token": "hack",
+              "to_token": ":",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "crisis": [
+            {
+              "from_token": "crisis",
+              "to_token": "manager",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "manager": [
+            {
+              "from_token": "manager",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|crisis": [
+            {
+              "from_token": "crisis",
+              "to_token": "manager",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "crisis|manager": [
+            {
+              "from_token": "manager",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "manager|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "file|:|crisis": [
+            {
+              "from_token": "crisis",
+              "to_token": "manager",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|crisis|manager": [
+            {
+              "from_token": "manager",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "crisis|manager|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "manager|.|py": [
+            {
+              "from_token": "py",
+              "to_token": "pattern",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "prism": [
+            {
+              "from_token": "prism",
+              "to_token": "causal",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "causal": [
+            {
+              "from_token": "causal",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|prism": [
+            {
+              "from_token": "prism",
+              "to_token": "causal",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "prism|causal": [
+            {
+              "from_token": "causal",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "causal|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "file|:|prism": [
+            {
+              "from_token": "prism",
+              "to_token": "causal",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|prism|causal": [
+            {
+              "from_token": "causal",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "prism|causal|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "causal|.|py": [
+            {
+              "from_token": "py",
+              "to_token": "pattern",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "abstraction": [
+            {
+              "from_token": "abstraction",
+              "to_token": "pln",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "pln": [
+            {
+              "from_token": "pln",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|abstraction": [
+            {
+              "from_token": "abstraction",
+              "to_token": "pln",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "abstraction|pln": [
+            {
+              "from_token": "pln",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "pln|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "file|:|abstraction": [
+            {
+              "from_token": "abstraction",
+              "to_token": "pln",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|abstraction|pln": [
+            {
+              "from_token": "pln",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "abstraction|pln|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "pln|.|py": [
+            {
+              "from_token": "py",
+              "to_token": "pattern",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "cdg": [
+            {
+              "from_token": "cdg",
+              "to_token": "dir",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "adapters": [
+            {
+              "from_token": "adapters",
+              "to_token": "file",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "init": [
+            {
+              "from_token": "init",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|cdg": [
+            {
+              "from_token": "cdg",
+              "to_token": "dir",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "cdg|dir": [
+            {
+              "from_token": "dir",
+              "to_token": ":",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|adapters": [
+            {
+              "from_token": "adapters",
+              "to_token": "file",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "adapters|file": [
+            {
+              "from_token": "file",
+              "to_token": ":",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|init": [
+            {
+              "from_token": "init",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "init|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "dir|:|cdg": [
+            {
+              "from_token": "cdg",
+              "to_token": "dir",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|cdg|dir": [
+            {
+              "from_token": "dir",
+              "to_token": ":",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "cdg|dir|:": [
+            {
+              "from_token": ":",
+              "to_token": "adapters",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "dir|:|adapters": [
+            {
+              "from_token": "adapters",
+              "to_token": "file",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|adapters|file": [
+            {
+              "from_token": "file",
+              "to_token": ":",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "adapters|file|:": [
+            {
+              "from_token": ":",
+              "to_token": "init",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "file|:|init": [
+            {
+              "from_token": "init",
+              "to_token": ".",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          ":|init|.": [
+            {
+              "from_token": ".",
+              "to_token": "py",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ],
+          "init|.|py": [
+            {
+              "from_token": "py",
+              "to_token": "pattern",
+              "weight": 0.9900000000000001,
+              "count": 1,
+              "decay_rate": 0.99
+            }
+          ]
+        }
+      },
+      "regulator_state": {
+        "config": {
+          "target_activation": 0.05,
+          "min_excitability": 0.1,
+          "max_excitability": 10.0,
+          "adjustment_rate": 0.01,
+          "history_size": 100,
+          "min_history_for_adjustment": 10
+        },
+        "nodes": {
+          "file:tokenizer.py": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "pattern:should_be": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "total_activations": 16
+          },
+          "file:ml_storage.py": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "pattern:see_docs/": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "total_activations": 4
+          },
+          "dir:cel": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "dir:wisdom": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "file:dag.py": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "pattern:will_be": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "total_activations": 9
+          },
+          "dir:got": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "total_activations": 4
+          },
+          "file:api.py": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "pattern:see:": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "file:validation.py": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "dir:expression": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "file:executor.py": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "dir:cli": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "file:failure.py": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "pattern:todo:": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 2
+          },
+          "dir:spark": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 2
+          },
+          "file:git_trainer.py": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "file:ngram.py": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "dir:audits": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0,
+              1.0
+            ],
+            "total_activations": 3
+          },
+          "dir:algorithms": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0,
+              1.0
+            ],
+            "total_activations": 3
+          },
+          "file:trie.py": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "file:lsh.py": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "pattern:future:": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "total_activations": 5
+          },
+          "file:suffix_array.py": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "dir:utils": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "file:id_generation.py": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "dir:reasoning": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "total_activations": 4
+          },
+          "file:production_state.py": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "pattern:hack:": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "file:crisis_manager.py": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "file:prism_causal.py": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "file:abstraction_pln.py": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "dir:cdg": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "dir:adapters": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          },
+          "file:__init__.py": {
+            "excitability": 1.0,
+            "activation_history": [
+              1.0
+            ],
+            "total_activations": 1
+          }
+        }
+      },
+      "hive_nodes": {
+        "file:tokenizer.py": {
+          "id": "file:tokenizer.py",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 1
+        },
+        "pattern:should_be": {
+          "id": "pattern:should_be",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 16,
+          "last_activation_step": 17
+        },
+        "file:ml_storage.py": {
+          "id": "file:ml_storage.py",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 2
+        },
+        "pattern:see_docs/": {
+          "id": "pattern:see_docs/",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 4,
+          "last_activation_step": 13
+        },
+        "dir:cel": {
+          "id": "dir:cel",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 3
+        },
+        "dir:wisdom": {
+          "id": "dir:wisdom",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 3
+        },
+        "file:dag.py": {
+          "id": "file:dag.py",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 3
+        },
+        "pattern:will_be": {
+          "id": "pattern:will_be",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 9,
+          "last_activation_step": 18
+        },
+        "dir:got": {
+          "id": "dir:got",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 4,
+          "last_activation_step": 7
+        },
+        "file:api.py": {
+          "id": "file:api.py",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 4
+        },
+        "pattern:see:": {
+          "id": "pattern:see:",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 4
+        },
+        "file:validation.py": {
+          "id": "file:validation.py",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 5
+        },
+        "dir:expression": {
+          "id": "dir:expression",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 6
+        },
+        "file:executor.py": {
+          "id": "file:executor.py",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 6
+        },
+        "dir:cli": {
+          "id": "dir:cli",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 7
+        },
+        "file:failure.py": {
+          "id": "file:failure.py",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 7
+        },
+        "pattern:todo:": {
+          "id": "pattern:todo:",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 2,
+          "last_activation_step": 14
+        },
+        "dir:spark": {
+          "id": "dir:spark",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 2,
+          "last_activation_step": 9
+        },
+        "file:git_trainer.py": {
+          "id": "file:git_trainer.py",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 8
+        },
+        "file:ngram.py": {
+          "id": "file:ngram.py",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 9
+        },
+        "dir:audits": {
+          "id": "dir:audits",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 3,
+          "last_activation_step": 12
+        },
+        "dir:algorithms": {
+          "id": "dir:algorithms",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 3,
+          "last_activation_step": 12
+        },
+        "file:trie.py": {
+          "id": "file:trie.py",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 10
+        },
+        "file:lsh.py": {
+          "id": "file:lsh.py",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 11
+        },
+        "pattern:future:": {
+          "id": "pattern:future:",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 5,
+          "last_activation_step": 12
+        },
+        "file:suffix_array.py": {
+          "id": "file:suffix_array.py",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 12
+        },
+        "dir:utils": {
+          "id": "dir:utils",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 13
+        },
+        "file:id_generation.py": {
+          "id": "file:id_generation.py",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 13
+        },
+        "dir:reasoning": {
+          "id": "dir:reasoning",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 4,
+          "last_activation_step": 17
+        },
+        "file:production_state.py": {
+          "id": "file:production_state.py",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 14
+        },
+        "pattern:hack:": {
+          "id": "pattern:hack:",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 14
+        },
+        "file:crisis_manager.py": {
+          "id": "file:crisis_manager.py",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 15
+        },
+        "file:prism_causal.py": {
+          "id": "file:prism_causal.py",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 16
+        },
+        "file:abstraction_pln.py": {
+          "id": "file:abstraction_pln.py",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 17
+        },
+        "dir:cdg": {
+          "id": "dir:cdg",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 18
+        },
+        "dir:adapters": {
+          "id": "dir:adapters",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 18
+        },
+        "file:__init__.py": {
+          "id": "file:__init__.py",
+          "activation": 1.0,
+          "trace": 1.0,
+          "trace_decay": 0.95,
+          "target_activation": 0.05,
+          "excitability": 1.0,
+          "activation_count": 1,
+          "last_activation_step": 18
+        }
+      },
+      "step": 18
+    },
+    "cortex_state": {
+      "min_frequency": 3,
+      "config": {
+        "min_frequency": 3,
+        "max_levels": 5,
+        "auto_form": true
+      },
+      "engine_state": {
+        "abstractions": {
+          "A1-985b8bfd": {
+            "id": "A1-985b8bfd",
+            "source_nodes": [
+              "pattern:should_be",
+              "dir:got"
+            ],
+            "level": 1,
+            "frequency": 3,
+            "formed_at": "2026-01-08T00:39:03.385778",
+            "truth_value": 0.5,
+            "strength": 0.2904701079017974
+          },
+          "A1-2650e82e": {
+            "id": "A1-2650e82e",
+            "source_nodes": [
+              "dir:spark",
+              "pattern:will_be"
+            ],
+            "level": 1,
+            "frequency": 4,
+            "formed_at": "2026-01-08T00:39:03.386128",
+            "truth_value": 0.5,
+            "strength": 0.30838785333137253
+          },
+          "A1-969e4012": {
+            "id": "A1-969e4012",
+            "source_nodes": [
+              "dir:audits",
+              "pattern:should_be"
+            ],
+            "level": 1,
+            "frequency": 6,
+            "formed_at": "2026-01-08T00:39:03.386278",
+            "truth_value": 0.5,
+            "strength": 0.3302731669666372
+          },
+          "A1-393e4dc7": {
+            "id": "A1-393e4dc7",
+            "source_nodes": [
+              "dir:audits",
+              "pattern:will_be"
+            ],
+            "level": 1,
+            "frequency": 4,
+            "formed_at": "2026-01-08T00:39:03.386650",
+            "truth_value": 0.5,
+            "strength": 0.30838785333137253
+          },
+          "A1-e007134c": {
+            "id": "A1-e007134c",
+            "source_nodes": [
+              "pattern:future:",
+              "dir:audits"
+            ],
+            "level": 1,
+            "frequency": 5,
+            "formed_at": "2026-01-08T00:39:03.386701",
+            "truth_value": 0.5,
+            "strength": 0.32090147610809244
+          },
+          "A1-55cfe4fd": {
+            "id": "A1-55cfe4fd",
+            "source_nodes": [
+              "pattern:see_docs/",
+              "dir:utils"
+            ],
+            "level": 1,
+            "frequency": 3,
+            "formed_at": "2026-01-08T00:39:03.386844",
+            "truth_value": 0.5,
+            "strength": 0.2904701079017974
+          },
+          "A1-a6f70cab": {
+            "id": "A1-a6f70cab",
+            "source_nodes": [
+              "pattern:should_be",
+              "dir:reasoning"
+            ],
+            "level": 1,
+            "frequency": 8,
+            "formed_at": "2026-01-08T00:39:03.387071",
+            "truth_value": 0.5,
+            "strength": 0.3436143636752045
+          }
+        },
+        "pattern_to_abstraction": {
+          "['pattern:should_be', 'dir:got']": "A1-985b8bfd",
+          "['dir:spark', 'pattern:will_be']": "A1-2650e82e",
+          "['dir:audits', 'pattern:should_be']": "A1-969e4012",
+          "['dir:audits', 'pattern:will_be']": "A1-393e4dc7",
+          "['pattern:future:', 'dir:audits']": "A1-e007134c",
+          "['pattern:see_docs/', 'dir:utils']": "A1-55cfe4fd",
+          "['pattern:should_be', 'dir:reasoning']": "A1-a6f70cab"
+        },
+        "hierarchy_levels": [
+          [],
+          [
+            "A1-e007134c",
+            "A1-985b8bfd",
+            "A1-a6f70cab",
+            "A1-55cfe4fd",
+            "A1-393e4dc7",
+            "A1-2650e82e",
+            "A1-969e4012"
+          ],
+          [],
+          [],
+          []
+        ],
+        "node_levels": {
+          "A1-985b8bfd": 1,
+          "A1-2650e82e": 1,
+          "A1-969e4012": 1,
+          "A1-393e4dc7": 1,
+          "A1-e007134c": 1,
+          "A1-55cfe4fd": 1,
+          "A1-a6f70cab": 1
+        },
+        "min_frequency": 3,
+        "max_levels": 5
+      },
+      "abstraction_activations": {
+        "A1-985b8bfd": 1.0,
+        "A1-2650e82e": 1.0,
+        "A1-969e4012": 1.0,
+        "A1-393e4dc7": 1.0,
+        "A1-e007134c": 1.0,
+        "A1-55cfe4fd": 1.0,
+        "A1-a6f70cab": 1.0
+      },
+      "last_active": []
+    },
+    "router_state": {
+      "last_predictions": {},
+      "last_context": [
+        "dir:cdg",
+        "dir:adapters",
+        "file:__init__.py",
+        "pattern:will_be"
+      ]
+    },
+    "consolidation_state": {
+      "config": {
+        "transfer_threshold": 3,
+        "decay_factor": 0.9,
+        "min_strength_keep": 0.1,
+        "max_patterns_per_cycle": 10,
+        "max_abstractions_per_cycle": 5
+      },
+      "pattern_frequencies": {},
+      "last_consolidation": "2026-01-08T00:39:14.215252",
+      "history_count": 1
+    }
+  },
+  "metadata": {
+    "sessions": 2,
+    "total_findings": 38,
+    "last_consolidation": "2026-01-08T00:39:14.215352",
+    "saved_at": "2026-01-08T00:39:14.216438"
+  }
+}
