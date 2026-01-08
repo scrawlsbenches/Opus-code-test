@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "created": "2026-01-08T00:14:59.730164",
+  "last_updated": "2026-01-08T00:16:24.652637",
+  "runs": 2,
+  "correlations": {},
+  "aggregates": {
+    "files_with_misleading_and_bugs": 8,
+    "files_with_misleading_no_bugs": 28,
+    "files_with_bugs_no_misleading": 242,
+    "files_clean": 0,
+    "total_bug_fix_commits": 182,
+    "total_files_analyzed": 278
+  },
+  "empirical_strengths": {
+    "misleading_comments_to_bugs": 0.2222222222222222,
+    "high_churn_to_bugs": 1.0,
+    "stale_todos_to_bugs": null
+  }
+}

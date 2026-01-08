@@ -1,255 +1,390 @@
 #!/usr/bin/env python3
 """
-Causal Audit Analyzer - PRISM-Causal Integration for Codebase Health
+Causal Audit Analyzer - Data-Driven Correlation Analysis for Codebase Health
 
-Combines audit findings with causal reasoning to:
-1. Build causal models of code quality issues
-2. Analyze root causes of problems
-3. Predict impact of fixes
-4. Prioritize which issues to address first
+STATUS: Work-in-Progress Data Collection Tool
+=========================================
 
-Uses PRISM-Causal for do-calculus and counterfactual reasoning.
+This script is designed to BUILD UP correlation data over time by mining
+git history. Unlike typical analysis tools that output results immediately,
+this one:
+
+1. MINES real data from git history (bug-fix commits, file changes)
+2. CORRELATES findings from audits with actual bug occurrences
+3. PERSISTS correlations to disk so they accumulate across runs
+4. USES empirical data to estimate causal relationships
+
+HONEST LIMITATIONS:
+- Correlation ≠ Causation: We can measure "files with misleading comments
+  are fixed more often" but can't prove the comments CAUSED the bugs.
+- Data quality depends on commit message conventions (needs "fix", "bug", etc.)
+- Requires multiple runs over time to build meaningful statistics
+- Early runs will have sparse data and low confidence
+
+The goal is to replace gut-feeling heuristics with measurable signals,
+even if those signals are imperfect proxies for true causality.
 
 Usage:
     python scripts/causal_audit_analyzer.py [directory]
     python scripts/causal_audit_analyzer.py --with-git cortical/
+    python scripts/causal_audit_analyzer.py --show-data  # Show accumulated data
+    python scripts/causal_audit_analyzer.py --reset-data # Clear accumulated data
 """
 
 import sys
+import json
+import subprocess
+import re
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Set
 from collections import defaultdict
+from datetime import datetime
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from cortical.reasoning.prism_causal import CausalGraph, CausalExplainer
-
 # Import from our codebase health analyzer
-from scripts.codebase_health import analyze_directory, get_file_churn
-
+from scripts.codebase_health import analyze_directory
 
 # =============================================================================
-# CAUSAL MODEL FOR CODE QUALITY
+# DATA PERSISTENCE - Accumulate correlations over time
 # =============================================================================
 
-class CodeQualityCausalModel:
-    """
-    Causal model for understanding code quality issues.
+DATA_FILE = Path(__file__).parent.parent / ".got" / "causal_correlations.json"
 
-    Models relationships like:
-    - high_churn -> misleading_comments (frequently changed files accumulate stale docs)
-    - misleading_comments -> developer_confusion
-    - developer_confusion -> bugs
-    - stale_todos -> technical_debt
-    """
 
-    def __init__(self):
-        self.graph = CausalGraph()
-        self._build_base_model()
+def load_correlation_data() -> Dict:
+    """Load accumulated correlation data from disk."""
+    if DATA_FILE.exists():
+        try:
+            with open(DATA_FILE, 'r') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            pass
 
-    def _build_base_model(self):
-        """Build the base causal model for code quality."""
-        # File churn effects
-        self.graph.add_cause("high_churn", "misleading_comments", strength=0.6)
-        self.graph.add_cause("high_churn", "stale_todos", strength=0.5)
-        self.graph.add_cause("high_churn", "code_complexity", strength=0.4)
-
-        # Comment quality effects
-        self.graph.add_cause("misleading_comments", "developer_confusion", strength=0.8)
-        self.graph.add_cause("stale_todos", "technical_debt", strength=0.7)
-        self.graph.add_cause("stale_todos", "developer_confusion", strength=0.3)
-
-        # Confusion effects
-        self.graph.add_cause("developer_confusion", "incorrect_assumptions", strength=0.7)
-        self.graph.add_cause("incorrect_assumptions", "bugs", strength=0.6)
-        self.graph.add_cause("incorrect_assumptions", "wasted_time", strength=0.8)
-
-        # Complexity effects
-        self.graph.add_cause("code_complexity", "bugs", strength=0.5)
-        self.graph.add_cause("code_complexity", "developer_confusion", strength=0.4)
-
-        # Technical debt effects
-        self.graph.add_cause("technical_debt", "slow_development", strength=0.7)
-        self.graph.add_cause("technical_debt", "bugs", strength=0.4)
-
-    def add_finding_evidence(self, finding_type: str, count: int):
-        """Add evidence from audit findings to adjust model strengths."""
-        # More findings of a type increase its causal influence
-        if finding_type == "misleading" and count > 5:
-            self.graph.add_cause("misleading_comments", "developer_confusion",
-                               strength=min(0.95, 0.8 + count * 0.02))
-        elif finding_type == "stale_todo" and count > 3:
-            self.graph.add_cause("stale_todos", "technical_debt",
-                               strength=min(0.95, 0.7 + count * 0.03))
-
-    def analyze_intervention(self, fix_target: str) -> Dict[str, float]:
-        """
-        Analyze the impact of fixing a specific issue type.
-
-        Returns probabilities of outcomes if we intervene on the target.
-        """
-        outcomes = {}
-
-        # Key outcomes we care about
-        outcome_vars = ["bugs", "developer_confusion", "wasted_time",
-                       "technical_debt", "slow_development"]
-
-        for outcome in outcome_vars:
-            # P(outcome | do(fix_target = False)) - what if we eliminate the issue?
-            try:
-                p_outcome = self.graph.intervene(outcome, do={fix_target: False})
-                outcomes[outcome] = p_outcome
-            except (KeyError, ValueError):
-                pass
-
-        return outcomes
-
-    def get_root_causes(self, symptom: str) -> List[Tuple[str, float]]:
-        """Find root causes of a symptom with their causal strengths."""
-        causes = []
-
-        # Get direct causes using the internal _edges structure
-        # _edges is: cause -> [CausalEdge(cause, effect, strength), ...]
-        for cause, edges in self.graph._edges.items():
-            for edge in edges:
-                if edge.effect == symptom:
-                    causes.append((edge.cause, edge.strength))
-
-        # Sort by strength
-        causes.sort(key=lambda x: -x[1])
-        return causes
-
-    def prioritize_fixes(self, findings: Dict[str, int]) -> List[Tuple[str, float, str]]:
-        """
-        Prioritize which findings to fix based on causal impact.
-
-        Returns: List of (finding_type, impact_score, reason)
-        """
-        priorities = []
-
-        fix_targets = {
-            "misleading_comments": "misleading",
-            "stale_todos": "stale_todo",
-            "high_churn": "high_churn",
+    # Default structure for new data
+    return {
+        "version": 1,
+        "created": datetime.now().isoformat(),
+        "last_updated": None,
+        "runs": 0,
+        "correlations": {
+            # file_path -> {findings: [...], bug_fixes: [...], churn: int}
+        },
+        "aggregates": {
+            "files_with_misleading_and_bugs": 0,
+            "files_with_misleading_no_bugs": 0,
+            "files_with_bugs_no_misleading": 0,
+            "files_clean": 0,
+            "total_bug_fix_commits": 0,
+            "total_files_analyzed": 0,
+        },
+        "empirical_strengths": {
+            # These get computed from aggregates
+            "misleading_comments_to_bugs": None,
+            "high_churn_to_bugs": None,
+            "stale_todos_to_bugs": None,
         }
+    }
 
-        for causal_var, finding_key in fix_targets.items():
-            count = findings.get(finding_key, 0)
-            if count == 0:
-                continue
 
-            # Get impact of fixing this issue
-            impacts = self.analyze_intervention(causal_var)
-
-            # Calculate aggregate impact score
-            # Weight: bugs most important, then wasted_time, then technical_debt
-            weights = {
-                "bugs": 3.0,
-                "wasted_time": 2.0,
-                "developer_confusion": 1.5,
-                "technical_debt": 1.0,
-                "slow_development": 1.0,
-            }
-
-            impact_score = sum(
-                (1 - p) * weights.get(outcome, 1.0)  # Lower p after fix = higher impact
-                for outcome, p in impacts.items()
-            )
-
-            # Scale by count of findings
-            impact_score *= min(count, 10) / 10  # Cap at 10 for normalization
-
-            # Generate reason
-            top_impact = max(impacts.items(), key=lambda x: (1-x[1]) * weights.get(x[0], 1))
-            reason = f"Fixing {count} {finding_key} issues reduces {top_impact[0]} risk"
-
-            priorities.append((finding_key, impact_score, reason))
-
-        # Sort by impact score descending
-        priorities.sort(key=lambda x: -x[1])
-        return priorities
+def save_correlation_data(data: Dict) -> None:
+    """Save correlation data to disk."""
+    DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
+    data["last_updated"] = datetime.now().isoformat()
+    data["runs"] += 1
+    with open(DATA_FILE, 'w') as f:
+        json.dump(data, f, indent=2)
 
 
 # =============================================================================
-# CAUSAL ANALYSIS REPORT
+# GIT MINING - Extract real data from repository history
 # =============================================================================
 
-def generate_causal_report(findings: List[Dict], churn_data: Dict[str, int]) -> str:
-    """Generate a causal analysis report from audit findings."""
+def mine_bug_fix_commits(directory: str = ".") -> List[Dict]:
+    """
+    Find commits that are likely bug fixes based on commit messages.
 
-    # Count finding types
+    Looks for patterns like:
+    - "fix", "bug", "error", "crash", "issue"
+    - Issue references like "#123", "fixes #456"
+
+    Returns list of {hash, message, files_changed, date}
+    """
+    bug_patterns = [
+        r'\bfix(es|ed|ing)?\b',
+        r'\bbug\b',
+        r'\berror\b',
+        r'\bcrash(es|ed|ing)?\b',
+        r'\bissue\b',
+        r'\bpatch\b',
+        r'\bhotfix\b',
+        r'#\d+',  # Issue references
+    ]
+    pattern = '|'.join(bug_patterns)
+
+    bug_fixes = []
+
+    try:
+        # Get commits with their messages and changed files
+        result = subprocess.run(
+            ["git", "log", "--pretty=format:%H|%s|%ai", "--name-only", "-500"],
+            capture_output=True, text=True, cwd=directory,
+            timeout=30
+        )
+
+        if result.returncode != 0:
+            return []
+
+        # Parse the output
+        current_commit = None
+        current_files = []
+
+        for line in result.stdout.split('\n'):
+            if '|' in line and len(line.split('|')) >= 3:
+                # Save previous commit if it was a bug fix
+                if current_commit and re.search(pattern, current_commit['message'], re.IGNORECASE):
+                    current_commit['files_changed'] = current_files
+                    bug_fixes.append(current_commit)
+
+                # Start new commit
+                parts = line.split('|')
+                current_commit = {
+                    'hash': parts[0],
+                    'message': parts[1],
+                    'date': parts[2] if len(parts) > 2 else '',
+                    'files_changed': []
+                }
+                current_files = []
+            elif line.strip() and current_commit:
+                # This is a changed file
+                current_files.append(line.strip())
+
+        # Don't forget the last commit
+        if current_commit and re.search(pattern, current_commit['message'], re.IGNORECASE):
+            current_commit['files_changed'] = current_files
+            bug_fixes.append(current_commit)
+
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
+
+    return bug_fixes
+
+
+def get_files_with_bugs(bug_fix_commits: List[Dict]) -> Dict[str, List[str]]:
+    """
+    Map files to the bug-fix commits that touched them.
+
+    Returns: {file_path: [commit_hash, ...]}
+    """
+    file_bugs = defaultdict(list)
+
+    for commit in bug_fix_commits:
+        for file_path in commit.get('files_changed', []):
+            # Normalize path
+            if file_path.endswith('.py'):
+                file_bugs[file_path].append(commit['hash'][:8])
+
+    return dict(file_bugs)
+
+
+def calculate_empirical_correlations(
+    findings_by_file: Dict[str, List],
+    files_with_bugs: Dict[str, List[str]],
+    high_churn_files: Set[str],
+    verbose: bool = False
+) -> Dict[str, float]:
+    """
+    Calculate actual correlation strengths from observed data.
+
+    This computes:
+    - P(bug | misleading_comment) - probability of bug given misleading comment
+    - P(bug | high_churn) - probability of bug given high file churn
+
+    These are CORRELATIONS, not causal strengths, but they're based on
+    real data rather than invented numbers.
+    """
+    # Categorize files
+    files_misleading_and_bugs = 0
+    files_misleading_no_bugs = 0
+    files_bugs_no_misleading = 0
+    files_clean = 0
+    files_churn_and_bugs = 0
+    files_churn_no_bugs = 0
+
+    # Track specific files for verbose output
+    high_priority_files = []  # Files with both findings and bugs
+
+    all_files = set(findings_by_file.keys()) | set(files_with_bugs.keys())
+
+    for file_path in all_files:
+        has_findings = file_path in findings_by_file and len(findings_by_file[file_path]) > 0
+        has_bugs = file_path in files_with_bugs
+        has_churn = file_path in high_churn_files
+
+        if has_findings and has_bugs:
+            files_misleading_and_bugs += 1
+            high_priority_files.append({
+                'file': file_path,
+                'findings': len(findings_by_file[file_path]),
+                'bug_fixes': files_with_bugs[file_path]
+            })
+        elif has_findings and not has_bugs:
+            files_misleading_no_bugs += 1
+        elif has_bugs and not has_findings:
+            files_bugs_no_misleading += 1
+        else:
+            files_clean += 1
+
+        if has_churn and has_bugs:
+            files_churn_and_bugs += 1
+        elif has_churn and not has_bugs:
+            files_churn_no_bugs += 1
+
+    # Calculate conditional probabilities
+    correlations = {}
+
+    # P(bug | misleading) = files with both / files with misleading
+    total_misleading = files_misleading_and_bugs + files_misleading_no_bugs
+    if total_misleading > 0:
+        correlations["misleading_to_bugs"] = files_misleading_and_bugs / total_misleading
+    else:
+        correlations["misleading_to_bugs"] = None  # Insufficient data
+
+    # P(bug | churn) = files with both / files with churn
+    total_churn = files_churn_and_bugs + files_churn_no_bugs
+    if total_churn > 0:
+        correlations["churn_to_bugs"] = files_churn_and_bugs / total_churn
+    else:
+        correlations["churn_to_bugs"] = None
+
+    # P(bug | no_misleading) - for comparison
+    total_no_misleading = files_bugs_no_misleading + files_clean
+    if total_no_misleading > 0:
+        correlations["baseline_bug_rate"] = files_bugs_no_misleading / total_no_misleading
+    else:
+        correlations["baseline_bug_rate"] = None
+
+    # Store counts for transparency
+    correlations["_counts"] = {
+        "files_misleading_and_bugs": files_misleading_and_bugs,
+        "files_misleading_no_bugs": files_misleading_no_bugs,
+        "files_bugs_no_misleading": files_bugs_no_misleading,
+        "files_clean": files_clean,
+        "files_churn_and_bugs": files_churn_and_bugs,
+        "files_churn_no_bugs": files_churn_no_bugs,
+        "total_files": len(all_files),
+    }
+
+    # Store high-priority files for detailed output
+    correlations["_high_priority_files"] = high_priority_files
+
+    return correlations
+
+
+# =============================================================================
+# REPORT GENERATION - Show what we actually found
+# =============================================================================
+
+def generate_data_driven_report(
+    findings: List[Dict],
+    bug_fix_commits: List[Dict],
+    correlations: Dict[str, float],
+    accumulated_data: Dict,
+    verbose: bool = False
+) -> str:
+    """Generate a report based on mined data, not invented numbers."""
+
+    lines = []
+    lines.append("=" * 70)
+    lines.append("  CAUSAL AUDIT ANALYSIS - Data-Driven Report")
+    lines.append("=" * 70)
+
+    # Data provenance
+    lines.append("\n[Data Sources]")
+    lines.append(f"  Bug-fix commits analyzed: {len(bug_fix_commits)}")
+    lines.append(f"  Analysis runs accumulated: {accumulated_data.get('runs', 1)}")
+    if accumulated_data.get('last_updated'):
+        lines.append(f"  Last updated: {accumulated_data['last_updated'][:19]}")
+
+    # Finding summary
+    lines.append("\n[Current Findings]")
     finding_counts = defaultdict(int)
     stale_count = 0
-
     for f in findings:
-        pattern = f.get('pattern', 'unknown')
-        finding_counts[pattern] += 1
+        finding_counts[f.get('pattern', 'unknown')] += 1
         if f.get('stale'):
             stale_count += 1
 
-    # Count high-churn files
-    high_churn_count = sum(1 for _, count in churn_data.items() if count > 10)
+    lines.append(f"  Total findings: {len(findings)}")
+    for pattern, count in sorted(finding_counts.items(), key=lambda x: -x[1]):
+        lines.append(f"    {pattern}: {count}")
+    lines.append(f"  Stale TODOs (>180 days): {stale_count}")
 
-    # Build causal model with evidence
-    model = CodeQualityCausalModel()
-    model.add_finding_evidence("misleading", finding_counts.get("FUTURE:", 0))
-    model.add_finding_evidence("stale_todo", stale_count)
+    # Empirical correlations
+    lines.append("\n[Empirical Correlations]")
+    lines.append("  (Based on actual git history, not invented numbers)")
+    lines.append("")
 
-    # Prepare findings dict for prioritization
-    findings_dict = {
-        "misleading": finding_counts.get("FUTURE:", 0) + finding_counts.get("will be", 0),
-        "stale_todo": stale_count,
-        "high_churn": high_churn_count,
-    }
+    counts = correlations.get("_counts", {})
 
-    # Generate report
-    lines = []
-    lines.append("=" * 60)
-    lines.append("  CAUSAL AUDIT ANALYSIS (PRISM-Causal)")
-    lines.append("=" * 60)
+    # Misleading comments correlation
+    misleading_corr = correlations.get("misleading_to_bugs")
+    baseline = correlations.get("baseline_bug_rate")
 
-    # Finding summary
-    lines.append("\n[Finding Summary]")
-    lines.append(f"  Misleading comments: {findings_dict['misleading']}")
-    lines.append(f"  Stale TODOs (>180 days): {findings_dict['stale_todo']}")
-    lines.append(f"  High-churn files (>10 commits): {findings_dict['high_churn']}")
+    if misleading_corr is not None:
+        lines.append(f"  P(bug-fix | file has findings): {misleading_corr:.1%}")
+        lines.append(f"    Based on: {counts.get('files_misleading_and_bugs', 0)} files with both findings and bug-fixes")
+        lines.append(f"              {counts.get('files_misleading_no_bugs', 0)} files with findings but no bug-fixes")
 
-    # Root cause analysis
-    lines.append("\n[Root Cause Analysis]")
-    lines.append("  Causes of developer confusion:")
-    for cause, strength in model.get_root_causes("developer_confusion"):
-        lines.append(f"    • {cause}: {strength:.0%} causal strength")
+        if baseline is not None:
+            lines.append(f"  P(bug-fix | file has NO findings): {baseline:.1%} (baseline)")
+            if misleading_corr > baseline:
+                lift = (misleading_corr - baseline) / baseline * 100 if baseline > 0 else 0
+                lines.append(f"    → Files with findings are {lift:.0f}% more likely to have bug-fixes")
+            else:
+                lines.append(f"    → No elevated risk detected (findings may not predict bugs)")
+    else:
+        lines.append("  P(bug-fix | file has findings): INSUFFICIENT DATA")
+        lines.append("    Need more runs to accumulate correlation data")
 
-    lines.append("\n  Causes of bugs:")
-    for cause, strength in model.get_root_causes("bugs"):
-        lines.append(f"    • {cause}: {strength:.0%} causal strength")
+    lines.append("")
 
-    # Impact analysis
-    lines.append("\n[Intervention Analysis]")
-    lines.append("  What if we fix misleading comments?")
-    impacts = model.analyze_intervention("misleading_comments")
-    for outcome, prob in sorted(impacts.items(), key=lambda x: x[1]):
-        reduction = (1 - prob) * 100
-        lines.append(f"    → {outcome}: {reduction:.0f}% risk reduction")
+    # Churn correlation
+    churn_corr = correlations.get("churn_to_bugs")
+    if churn_corr is not None:
+        lines.append(f"  P(bug-fix | high churn file): {churn_corr:.1%}")
+        lines.append(f"    Based on: {counts.get('files_churn_and_bugs', 0)} high-churn files with bug-fixes")
+    else:
+        lines.append("  P(bug-fix | high churn file): INSUFFICIENT DATA")
 
-    # Prioritization
-    lines.append("\n[Recommended Fix Priority]")
-    priorities = model.prioritize_fixes(findings_dict)
-    for i, (finding_type, score, reason) in enumerate(priorities, 1):
-        lines.append(f"  {i}. {finding_type.upper()} (impact: {score:.1f})")
-        lines.append(f"     {reason}")
+    # Interpretation guidance
+    lines.append("\n[Interpretation Notes]")
+    lines.append("  • These are CORRELATIONS, not proven causal relationships")
+    lines.append("  • Bug-fix detection depends on commit message conventions")
+    lines.append("  • Run this tool periodically to accumulate more accurate data")
+    lines.append("  • Data is stored in .got/causal_correlations.json")
 
-    # Counterfactual
-    lines.append("\n[Counterfactual Reasoning]")
-    if findings_dict['misleading'] > 0:
-        lines.append("  Q: Would bugs decrease if comments were accurate?")
-        p_bugs_now = model.graph.observe("bugs", given={"misleading_comments": True})
-        p_bugs_fixed = model.graph.intervene("bugs", do={"misleading_comments": False})
-        lines.append(f"  A: Bug probability drops from {p_bugs_now:.0%} to {p_bugs_fixed:.0%}")
-        lines.append(f"     → {(p_bugs_now - p_bugs_fixed) * 100:.0f}% fewer bugs expected")
+    # Files of interest
+    lines.append("\n[High-Priority Files]")
+    lines.append("  Files with BOTH findings AND bug-fix history:")
 
-    lines.append("\n" + "=" * 60)
+    high_priority = correlations.get("_high_priority_files", [])
+    if high_priority:
+        lines.append(f"    → {len(high_priority)} files identified")
+        if verbose:
+            lines.append("")
+            for hp in sorted(high_priority, key=lambda x: -x['findings']):
+                lines.append(f"    {hp['file']}")
+                lines.append(f"      Findings: {hp['findings']}, Bug-fix commits: {', '.join(hp['bug_fixes'][:3])}")
+        else:
+            lines.append("    (Run with --verbose for full list)")
+    else:
+        lines.append("    → None found (good news!)")
+
+    lines.append("\n" + "=" * 70)
+    lines.append("  To accumulate more data, run this tool after each audit session")
+    lines.append("=" * 70)
 
     return "\n".join(lines)
 
@@ -260,34 +395,143 @@ def generate_causal_report(findings: List[Dict], churn_data: Dict[str, int]) -> 
 
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description="Causal Audit Analyzer")
+    parser = argparse.ArgumentParser(
+        description="Causal Audit Analyzer - Data-Driven Correlation Analysis",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+This tool mines git history to find empirical correlations between
+code quality findings and actual bug-fix commits.
+
+Unlike analysis tools that use hardcoded heuristics, this one:
+- Extracts real data from your repository's history
+- Accumulates statistics across multiple runs
+- Reports actual correlations with confidence levels
+
+Run it periodically to build up meaningful statistics over time.
+        """
+    )
     parser.add_argument("directory", nargs="?", default="cortical/",
                         help="Directory to analyze")
     parser.add_argument("--with-git", action="store_true",
-                        help="Include git history analysis")
+                        help="Include git history analysis (recommended)")
+    parser.add_argument("--show-data", action="store_true",
+                        help="Show accumulated correlation data and exit")
+    parser.add_argument("--reset-data", action="store_true",
+                        help="Clear accumulated data and start fresh")
+    parser.add_argument("--verbose", "-v", action="store_true",
+                        help="Show detailed file lists")
 
     args = parser.parse_args()
 
-    print("Running codebase health analysis...")
-    print("-" * 60)
+    # Handle data management commands
+    if args.show_data:
+        data = load_correlation_data()
+        print(json.dumps(data, indent=2))
+        return
 
-    # Run the base analysis
+    if args.reset_data:
+        if DATA_FILE.exists():
+            DATA_FILE.unlink()
+            print(f"Cleared accumulated data from {DATA_FILE}")
+        else:
+            print("No accumulated data to clear")
+        return
+
+    # Load accumulated data
+    accumulated_data = load_correlation_data()
+
+    print("=" * 70)
+    print("  Causal Audit Analyzer - Mining Git History for Correlations")
+    print("=" * 70)
+    print()
+
+    # Step 1: Run codebase health analysis to get findings
+    print("[1/3] Running codebase health analysis...")
     results = analyze_directory(args.directory, with_git=args.with_git)
 
     if not results:
         print("No results from analysis")
         return
 
-    # Get churn data if available
-    churn_data = results.get('git_analysis', {}).get('high_churn_files', {})
-    if isinstance(churn_data, list):
-        churn_data = dict(churn_data)
+    findings = results.get('findings', [])
+    print(f"      Found {len(findings)} audit findings")
 
-    # Generate causal analysis report
+    # Step 2: Mine git history for bug-fix commits
+    print("\n[2/3] Mining git history for bug-fix commits...")
+    bug_fix_commits = mine_bug_fix_commits(".")
+    print(f"      Found {len(bug_fix_commits)} bug-fix commits")
+
+    if bug_fix_commits and args.verbose:
+        print("      Recent bug-fixes:")
+        for commit in bug_fix_commits[:5]:
+            print(f"        {commit['hash'][:8]}: {commit['message'][:50]}")
+
+    # Step 3: Calculate correlations
+    print("\n[3/3] Calculating empirical correlations...")
+
+    # Group findings by file
+    # IMPORTANT: Normalize paths to match git's repo-root format
+    # findings have id like "tokenizer.py:27" (filename:line)
+    # git log has paths like "cortical/utils/tokenizer.py"
+    findings_by_file = defaultdict(list)
+    analyzed_dir = args.directory.rstrip('/')
+    for f in findings:
+        # Extract file from id (format: "filename:line")
+        finding_id = f.get('id', '')
+        if ':' in finding_id:
+            file_path = finding_id.rsplit(':', 1)[0]  # Get part before last colon
+        else:
+            file_path = f.get('file', '')
+
+        if file_path:
+            # Normalize to repo-root path
+            if not file_path.startswith(analyzed_dir):
+                file_path = f"{analyzed_dir}/{file_path}"
+            findings_by_file[file_path].append(f)
+
+    # Get files touched by bug-fix commits
+    files_with_bugs = get_files_with_bugs(bug_fix_commits)
+
+    # Get high-churn files from results
+    high_churn = set()
+    git_analysis = results.get('git_analysis', {})
+    for file_path, churn in git_analysis.get('high_churn_files', []):
+        if churn > 10:
+            high_churn.add(file_path)
+
+    # Calculate correlations
+    correlations = calculate_empirical_correlations(
+        findings_by_file,
+        files_with_bugs,
+        high_churn
+    )
+
+    # Update accumulated data
+    counts = correlations.get("_counts", {})
+    agg = accumulated_data["aggregates"]
+    agg["files_with_misleading_and_bugs"] += counts.get("files_misleading_and_bugs", 0)
+    agg["files_with_misleading_no_bugs"] += counts.get("files_misleading_no_bugs", 0)
+    agg["files_with_bugs_no_misleading"] += counts.get("files_bugs_no_misleading", 0)
+    agg["files_clean"] += counts.get("files_clean", 0)
+    agg["total_bug_fix_commits"] += len(bug_fix_commits)
+    agg["total_files_analyzed"] += counts.get("total_files", 0)
+
+    # Update empirical strengths
+    accumulated_data["empirical_strengths"]["misleading_comments_to_bugs"] = correlations.get("misleading_to_bugs")
+    accumulated_data["empirical_strengths"]["high_churn_to_bugs"] = correlations.get("churn_to_bugs")
+
+    # Save accumulated data
+    save_correlation_data(accumulated_data)
+    print(f"      Data saved to {DATA_FILE}")
+
+    # Generate report
     print()
-    report = generate_causal_report(
-        findings=results.get('findings', []),
-        churn_data=churn_data
+    report = generate_data_driven_report(
+        findings=findings,
+        bug_fix_commits=bug_fix_commits,
+        correlations=correlations,
+        accumulated_data=accumulated_data,
+        verbose=args.verbose
     )
     print(report)
 
