@@ -3,12 +3,13 @@
 Synthetic Audit Data Generator
 
 Generates synthetic codebase health audit data with INTENTIONAL, DISCOVERABLE patterns
-for testing WovenMind and PLN (Pattern Learning Network).
+for testing WovenMind and PLN (Pattern Learning Network) with Full PLN features.
 
 The synthetic data contains:
   - 100+ file findings with comment patterns
   - Git analysis (high churn files, bug-prone files)
   - Embedded patterns that should be discoverable by the system
+  - Importance metadata (STI/LTI/VLTI) for Full PLN attention testing
 
 INTENTIONAL PATTERNS EMBEDDED:
 ================================
@@ -29,6 +30,14 @@ PATTERN SET 3 - Cross-Cutting:
 PATTERN SET 4 - Surprising Outliers:
   - 2-3 files that break the normal patterns (for surprise detection)
     Example: legacy/clean_module.py has NO TODOs (surprising!)
+
+IMPORTANCE METADATA (Full PLN):
+================================
+Each file now includes importance values for Full PLN testing:
+  - STI (Short-Term Importance): Based on recent activity and traits
+  - LTI (Long-Term Importance): Based on historical significance
+  - VLTI (Very Long-Term Importance): Critical files that should never decay
+  - Priority tier: Computed from combined importance
 
 Usage:
     python scripts/generate_synthetic_audit.py                    # Print to stdout
@@ -53,17 +62,101 @@ Example - Using in Tests:
     metadata = audit_data['_metadata']
     outliers = metadata['outlier_files']  # Files that break patterns
     expected_patterns = metadata['pattern_sets']  # Expected correlations
+    importance_map = audit_data['file_importance']  # STI/LTI/VLTI per file
 """
 
 import json
 import random
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple, Set
+from typing import Dict, List, Tuple, Set, Any
 from collections import defaultdict
+from dataclasses import dataclass, asdict
 
 # Seed for reproducibility
 random.seed(42)
+
+
+# =============================================================================
+# IMPORTANCE METADATA (Full PLN Support)
+# =============================================================================
+
+@dataclass
+class FileImportance:
+    """Importance metadata for Full PLN attention tracking."""
+    sti: float  # Short-term importance (0.0 - 1.0)
+    lti: float  # Long-term importance (0.0 - 1.0)
+    vlti: bool  # Very long-term importance (pinned)
+    priority_tier: str  # "critical", "high", "medium", "low"
+
+    def total_importance(self) -> float:
+        """Calculate combined importance (matching PLN formula)."""
+        return 0.6 * self.sti + 0.4 * self.lti
+
+
+def calculate_file_importance(
+    filepath: str,
+    is_high_churn: bool,
+    is_bug_prone: bool,
+    is_critical: bool,
+    pattern_count: int
+) -> FileImportance:
+    """
+    Calculate importance values for a file based on its characteristics.
+
+    STI (Short-Term Importance):
+      - Base: 0.2
+      - +0.3 if high churn (recently active)
+      - +0.2 if bug-prone (needs attention)
+      - +0.1 per pattern beyond 2 (more issues = more important)
+
+    LTI (Long-Term Importance):
+      - Base: 0.1
+      - +0.3 if critical module
+      - +0.1 if bug-prone (historically problematic)
+
+    VLTI (Very Long-Term Importance):
+      - True only for critical modules (never decay)
+
+    Priority Tier:
+      - critical: VLTI=True or total >= 0.7
+      - high: total >= 0.5
+      - medium: total >= 0.3
+      - low: total < 0.3
+    """
+    # Calculate STI
+    sti = 0.2  # Base
+    if is_high_churn:
+        sti += 0.3
+    if is_bug_prone:
+        sti += 0.2
+    if pattern_count > 2:
+        sti += 0.1 * min(3, pattern_count - 2)  # Cap at +0.3
+    sti = min(1.0, sti)
+
+    # Calculate LTI
+    lti = 0.1  # Base
+    if is_critical:
+        lti += 0.3
+    if is_bug_prone:
+        lti += 0.1
+    lti = min(1.0, lti)
+
+    # VLTI for critical modules only
+    vlti = is_critical
+
+    # Calculate priority tier
+    total = 0.6 * sti + 0.4 * lti
+    if vlti or total >= 0.7:
+        tier = "critical"
+    elif total >= 0.5:
+        tier = "high"
+    elif total >= 0.3:
+        tier = "medium"
+    else:
+        tier = "low"
+
+    return FileImportance(sti=sti, lti=lti, vlti=vlti, priority_tier=tier)
 
 
 # =============================================================================
@@ -387,6 +480,33 @@ def generate_synthetic_audit_data(apply_outliers_flag: bool = True) -> Dict:
     # Build final result structure
     # ==========================================================================
 
+    # Calculate file importance for each file
+    file_importance: Dict[str, Dict[str, Any]] = {}
+    file_patterns = defaultdict(set)
+    for finding in all_findings:
+        filepath = finding['id'].split(':')[0]
+        file_patterns[filepath].add(finding['pattern'])
+
+    # Get critical modules from git analysis
+    critical_set = {fp for fp, _ in git_analysis.get('critical_modules', [])}
+
+    for filepath in files:
+        is_high_churn = filepath in high_churn_set
+        is_bug_prone = filepath in bug_prone_set
+        is_critical = filepath in critical_set
+        pattern_count = len(file_patterns.get(filepath, set()))
+
+        importance = calculate_file_importance(
+            filepath, is_high_churn, is_bug_prone, is_critical, pattern_count
+        )
+        file_importance[filepath] = asdict(importance)
+        file_importance[filepath]['total'] = importance.total_importance()
+
+    # Count priority tiers
+    tier_counts = defaultdict(int)
+    for imp in file_importance.values():
+        tier_counts[imp['priority_tier']] += 1
+
     result = {
         'files_analyzed': len(files),
         'comments_analyzed': len(all_findings),
@@ -395,6 +515,8 @@ def generate_synthetic_audit_data(apply_outliers_flag: bool = True) -> Dict:
         'similar_groups': [],  # Not critical for WovenMind testing
         'repeated_substrings': [],  # Not critical for WovenMind testing
         'git_analysis': git_analysis,
+        # Full PLN importance metadata
+        'file_importance': file_importance,
         # Metadata about embedded patterns (for validation)
         '_metadata': {
             'pattern_sets': {
@@ -414,6 +536,14 @@ def generate_synthetic_audit_data(apply_outliers_flag: bool = True) -> Dict:
             },
             'outlier_files': sorted(outlier_files),
             'todo_hack_files': sorted(todo_hack_files),
+            # Full PLN metadata
+            'importance_tiers': {
+                'critical': tier_counts['critical'],
+                'high': tier_counts['high'],
+                'medium': tier_counts['medium'],
+                'low': tier_counts['low'],
+            },
+            'vlti_files': [fp for fp, imp in file_importance.items() if imp['vlti']],
         }
     }
 
@@ -586,6 +716,47 @@ def print_pattern_summary(data: Dict) -> None:
     for pattern, count in sorted(data['pattern_counts'].items(), key=lambda x: -x[1]):
         print(f"    {pattern:<15} {count:>4} occurrences")
     print()
+
+    # ==========================================================================
+    # Full PLN Importance Statistics
+    # ==========================================================================
+
+    print("Full PLN Importance Statistics")
+    print("-" * 80)
+    print()
+
+    importance_tiers = data['_metadata'].get('importance_tiers', {})
+    print("  Priority tiers:")
+    print(f"    Critical: {importance_tiers.get('critical', 0)} files")
+    print(f"    High:     {importance_tiers.get('high', 0)} files")
+    print(f"    Medium:   {importance_tiers.get('medium', 0)} files")
+    print(f"    Low:      {importance_tiers.get('low', 0)} files")
+    print()
+
+    vlti_files = data['_metadata'].get('vlti_files', [])
+    print(f"  VLTI (pinned) files: {len(vlti_files)}")
+    for filepath in vlti_files[:5]:
+        print(f"    • {filepath}")
+    print()
+
+    # Show top files by importance
+    file_importance = data.get('file_importance', {})
+    sorted_by_importance = sorted(
+        file_importance.items(),
+        key=lambda x: x[1].get('total', 0),
+        reverse=True
+    )
+    print("  Top 5 files by importance:")
+    for filepath, imp in sorted_by_importance[:5]:
+        sti = imp.get('sti', 0)
+        lti = imp.get('lti', 0)
+        total = imp.get('total', 0)
+        tier = imp.get('priority_tier', 'unknown')
+        vlti_mark = " [VLTI]" if imp.get('vlti', False) else ""
+        print(f"    {total:.2%} - {filepath} ({tier}){vlti_mark}")
+        print(f"           STI: {sti:.2f}, LTI: {lti:.2f}")
+    print()
+
     print("=" * 80)
     print()
 
@@ -635,6 +806,13 @@ def main():
         print(f"✓ Saved to {output_path}")
         print(f"  Files analyzed: {data['files_analyzed']}")
         print(f"  Findings generated: {data['comments_analyzed']}")
+
+        # Show importance metadata summary
+        importance_tiers = data['_metadata'].get('importance_tiers', {})
+        vlti_files = data['_metadata'].get('vlti_files', [])
+        print(f"\n  Full PLN Importance Metadata:")
+        print(f"    Priority tiers: {importance_tiers}")
+        print(f"    VLTI (pinned) files: {len(vlti_files)}")
 
     # Print pattern summary
     if args.verbose or not args.save:
