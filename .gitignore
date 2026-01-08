@@ -153,6 +153,9 @@ corpus_dev/
 !.got/tracked/
 !.got/entities/
 
+# GoT runtime state files (must come AFTER negation rules)
+.got/audit_pln_state.json  # PLN audit persistence state (local, regeneratable)
+
 # GoT migration artifacts
 .got-backup-*/
 .got-tx/
