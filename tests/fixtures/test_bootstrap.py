@@ -11,10 +11,10 @@ Key differences from app bootstrap:
 
 Usage:
     from tests.fixtures.test_bootstrap import create_test_container
-    from cortical.cdg.index import IndexManager
+    from cortical.cdg.index_manager import CDGIndexManager
 
     container = create_test_container()
-    manager = container.resolve(IndexManager)
+    manager = container.resolve(CDGIndexManager)
 
 For pytest fixtures:
     @pytest.fixture
@@ -22,7 +22,7 @@ For pytest fixtures:
         return create_test_container()
 
     def test_something(container):
-        manager = container.resolve(IndexManager)
+        manager = container.resolve(CDGIndexManager)
 """
 
 from pathlib import Path
@@ -48,7 +48,7 @@ def create_test_container(
 
     Example:
         container = create_test_container()
-        index_manager = container.resolve(IndexManager)
+        index_manager = container.resolve(CDGIndexManager)
     """
     container = Container()
 
@@ -75,17 +75,17 @@ def _register_cdg_services(
     filesystem: FileSystem
 ) -> None:
     """Register CDG layer services."""
-    from cortical.cdg.index import IndexManager
+    from cortical.cdg.index_manager import CDGIndexManager
 
-    # IndexManager factory
-    def create_index_manager() -> IndexManager:
-        return IndexManager(
+    # CDGIndexManager factory (schema-driven indexing)
+    def create_index_manager() -> CDGIndexManager:
+        return CDGIndexManager(
             store_dir=base_dir,
             filesystem=filesystem,
         )
 
     container.register(
-        IndexManager,
+        CDGIndexManager,
         create_index_manager,
         lifecycle=Lifecycle.SINGLETON,
     )

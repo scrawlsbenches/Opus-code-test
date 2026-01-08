@@ -32,7 +32,7 @@ from .transaction import Transaction, TransactionState, generate_transaction_id
 from .config import CDGConfig, RecoveryMode, DurabilityMode
 
 if TYPE_CHECKING:
-    from .index import IndexManager
+    from .index_manager import CDGIndexManager
 
 logger = logging.getLogger(__name__)
 
