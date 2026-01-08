@@ -6,15 +6,27 @@ This tool integrates all 11 algorithm implementations from cortical/audits/algor
 to help maintain code quality during refactoring.
 
 Commands:
-    scan <directory>      - Scan for suspicious comments using Bloom filter + Naive Bayes
+    generate <directory>  - Generate training data from codebase comments
     train <findings_dir>  - Train classifiers from labeled findings
+    scan <directory>      - Scan for suspicious comments using Bloom filter + Naive Bayes
     patterns <directory>  - Find repeated patterns using Suffix Array + Count-Min Sketch
     similar <comment>     - Find similar comments using LSH
     index <directory>     - Build search index using Inverted Index + Trie
 
-Examples:
-    python scripts/audit_tool.py scan cortical/
+Workflow:
+    # 1. Generate training data from your codebase
+    python scripts/audit_tool.py generate cortical/ --include-scripts
+
+    # 2. Train the classifier
     python scripts/audit_tool.py train docs/audits/
+
+    # 3. Scan for suspicious comments
+    python scripts/audit_tool.py scan cortical/
+
+Examples:
+    python scripts/audit_tool.py generate cortical/ -o docs/audits/
+    python scripts/audit_tool.py train docs/audits/
+    python scripts/audit_tool.py scan cortical/
     python scripts/audit_tool.py patterns cortical/got/
     python scripts/audit_tool.py similar "FUTURE: When CDG index is implemented"
     python scripts/audit_tool.py index cortical/
@@ -98,6 +110,89 @@ LSH_MODEL = MODEL_DIR / "lsh_index.pkl"
 INDEX_MODEL = MODEL_DIR / "inverted_index.pkl"
 TRIE_MODEL = MODEL_DIR / "marker_trie.pkl"
 
+# Default output directory for training data
+DEFAULT_TRAINING_DIR = Path("docs/audits")
+
+# Patterns that indicate MISLEADING comments (speculative, outdated, uncertain)
+MISLEADING_PATTERNS = [
+    # Speculative "will be" patterns
+    (r'will be implemented', 'speculative'),
+    (r'will be added', 'speculative'),
+    (r'will be handled', 'speculative'),
+    (r'will be replaced', 'speculative'),
+    (r'will be done', 'speculative'),
+    (r'will be fixed', 'speculative'),
+    # FUTURE markers (often outdated)
+    (r'^FUTURE:', 'future_marker'),
+    (r'FUTURE\s*when', 'future_marker'),
+    # "When X is implemented" patterns
+    (r'when .* is implemented', 'speculative'),
+    (r'when .* is ready', 'speculative'),
+    (r'when .* is done', 'speculative'),
+    (r'when feature is', 'speculative'),
+    # Placeholder/stub markers
+    (r'placeholder', 'placeholder'),
+    (r'\bstub\b', 'placeholder'),
+    (r'not implemented yet', 'placeholder'),
+    # Vague future references
+    (r'eventually', 'vague'),
+    (r'someday', 'vague'),
+    (r'in the future', 'vague'),
+    (r'later we', 'vague'),
+    (r'planned to', 'vague'),
+    # Potentially stale references
+    (r'See:.*\.md', 'doc_reference'),
+    (r'see docs/', 'doc_reference'),
+]
+
+# Patterns that indicate ACCURATE comments (factual, documented behavior)
+ACCURATE_PATTERNS = [
+    # Return value documentation
+    (r'^Returns?\s+', 'returns'),
+    (r'^Returns:\s+', 'returns'),
+    (r'returns\s+(True|False|None|the|a|an)\b', 'returns'),
+    # Parameter documentation
+    (r'^Args?:\s*', 'args'),
+    (r'^Parameters?:\s*', 'args'),
+    (r'^Params?:\s*', 'args'),
+    # Exception documentation
+    (r'^Raises?\s+', 'raises'),
+    (r'^Raises:\s+', 'raises'),
+    (r'raises\s+(ValueError|TypeError|KeyError|RuntimeError)', 'raises'),
+    # Implementation facts
+    (r'^This (is|uses|implements|creates|computes|validates)', 'implementation'),
+    (r'^Implements\s+', 'implementation'),
+    (r'^Uses\s+', 'implementation'),
+    (r'^Creates\s+', 'implementation'),
+    # Complexity/performance notes
+    (r'O\([nN1]\)', 'complexity'),
+    (r'O\(n\s*(log\s*n)?\)', 'complexity'),
+    (r'runs in O\(', 'complexity'),
+    (r'time complexity', 'complexity'),
+    # Type annotations
+    (r'^type:\s*', 'type_hint'),
+    # Factual notes
+    (r'^NOTE:\s+\w', 'note'),
+    (r'^IMPORTANT:\s+', 'note'),
+    # Valid TODOs with specific actions
+    (r'^TODO:\s+[A-Z]', 'todo'),
+    (r'^FIXME:\s+[A-Z]', 'todo'),
+]
+
+# Comments to EXCLUDE from training (noise)
+EXCLUDE_PATTERNS = [
+    r'^-+$',            # Separator lines
+    r'^=+$',            # Separator lines
+    r'^\s*$',           # Empty
+    r'^#\s*$',          # Just hash
+    r'^\d+$',           # Just numbers
+    r'^[a-z]$',         # Single letter
+    r'^type:\s*ignore', # Type ignore comments
+    r'^noqa',           # Linter ignores
+    r'^pylint',         # Linter directives
+    r'^pragma',         # Pragma directives
+]
+
 
 # ==============================================================================
 # UTILITIES
@@ -174,6 +269,178 @@ def load_model(path: Path):
         return None
     with open(path, 'rb') as f:
         return pickle.load(f)
+
+
+# ==============================================================================
+# COMMAND: GENERATE
+# ==============================================================================
+
+def should_exclude_comment(comment: str) -> bool:
+    """Check if comment should be excluded from training."""
+    for pattern in EXCLUDE_PATTERNS:
+        if re.search(pattern, comment, re.IGNORECASE):
+            return True
+    return False
+
+
+def classify_comment_for_training(comment: str) -> Tuple[str, str, str]:
+    """
+    Classify a comment as misleading, accurate, or unknown.
+
+    Returns: (classification, pattern_type, matched_pattern)
+    """
+    comment_lower = comment.lower()
+
+    # Check misleading patterns first
+    for pattern, pattern_type in MISLEADING_PATTERNS:
+        if re.search(pattern, comment_lower, re.IGNORECASE):
+            return ('misleading', pattern_type, pattern)
+
+    # Check accurate patterns
+    for pattern, pattern_type in ACCURATE_PATTERNS:
+        if re.search(pattern, comment, re.IGNORECASE):
+            return ('accurate', pattern_type, pattern)
+
+    return ('unknown', '', '')
+
+
+def cmd_generate(args):
+    """
+    Generate training data from codebase comments.
+
+    Extracts comments and classifies them based on patterns to create
+    labeled training data for the Naive Bayes classifier.
+    """
+    print("=" * 70)
+    print("  Training Data Generator")
+    print("=" * 70)
+
+    directories = [args.directory]
+    if hasattr(args, 'include_scripts') and args.include_scripts:
+        directories.append("scripts/")
+
+    misleading = []
+    accurate = []
+    seen = set()
+    max_per_class = args.max_per_class if hasattr(args, 'max_per_class') else 50
+
+    stats = {
+        'total_comments': 0,
+        'excluded': 0,
+        'misleading': 0,
+        'accurate': 0,
+        'unknown': 0,
+        'by_pattern': {}
+    }
+
+    for directory in directories:
+        if not os.path.isdir(directory):
+            print(f"Warning: Directory not found: {directory}")
+            continue
+
+        python_files = find_python_files(directory)
+        print(f"\nScanning {len(python_files)} Python files in {directory}...")
+
+        for file_path in python_files:
+            comments = extract_comments_from_file(file_path)
+
+            for line_num, comment in comments:
+                stats['total_comments'] += 1
+
+                # Skip short comments
+                if len(comment) <= 3:
+                    stats['excluded'] += 1
+                    continue
+
+                # Skip excluded patterns
+                if should_exclude_comment(comment):
+                    stats['excluded'] += 1
+                    continue
+
+                # Skip duplicates
+                comment_normalized = comment.lower().strip()
+                if comment_normalized in seen:
+                    continue
+                seen.add(comment_normalized)
+
+                # Classify
+                classification, pattern_type, pattern = classify_comment_for_training(comment)
+
+                if classification == 'misleading' and len(misleading) < max_per_class:
+                    misleading.append(comment)
+                    stats['misleading'] += 1
+                    stats['by_pattern'][pattern_type] = stats['by_pattern'].get(pattern_type, 0) + 1
+                    if hasattr(args, 'verbose') and args.verbose:
+                        print(f"  [MISLEADING] {file_path}:{line_num}")
+
+                elif classification == 'accurate' and len(accurate) < max_per_class:
+                    accurate.append(comment)
+                    stats['accurate'] += 1
+                    stats['by_pattern'][pattern_type] = stats['by_pattern'].get(pattern_type, 0) + 1
+                    if hasattr(args, 'verbose') and args.verbose:
+                        print(f"  [ACCURATE] {file_path}:{line_num}")
+                else:
+                    stats['unknown'] += 1
+
+    # Print statistics
+    print(f"\nExtraction Statistics:")
+    print(f"  Total comments scanned: {stats['total_comments']}")
+    print(f"  Excluded (noise): {stats['excluded']}")
+    print(f"  Classified as misleading: {stats['misleading']}")
+    print(f"  Classified as accurate: {stats['accurate']}")
+    print(f"  Unknown (not used): {stats['unknown']}")
+
+    if stats['by_pattern']:
+        print(f"\nPattern breakdown:")
+        for pattern_type, count in sorted(stats['by_pattern'].items(), key=lambda x: -x[1]):
+            print(f"    {pattern_type}: {count}")
+
+    # Deduplicate final lists
+    misleading = list(dict.fromkeys(misleading))[:max_per_class]
+    accurate = list(dict.fromkeys(accurate))[:max_per_class]
+
+    print(f"\nFinal counts:")
+    print(f"  Misleading examples: {len(misleading)}")
+    print(f"  Accurate examples: {len(accurate)}")
+
+    # Handle dry-run
+    if hasattr(args, 'dry_run') and args.dry_run:
+        print("\n[DRY RUN] Would write to:")
+        print(f"  - {args.output}/misleading.txt")
+        print(f"  - {args.output}/accurate.txt")
+        print("\nSample misleading comments:")
+        for c in misleading[:5]:
+            print(f"  - {c[:70]}...")
+        print("\nSample accurate comments:")
+        for c in accurate[:5]:
+            print(f"  - {c[:70]}...")
+        return
+
+    # Write training files
+    output_path = Path(args.output)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    misleading_file = output_path / "misleading.txt"
+    with open(misleading_file, 'w', encoding='utf-8') as f:
+        f.write("# Misleading comments - speculative, outdated, or referencing non-existent resources\n")
+        f.write("# Auto-generated by: python scripts/audit_tool.py generate\n")
+        f.write("# One comment per line\n\n")
+        for comment in misleading:
+            f.write(comment.strip() + "\n")
+    print(f"\nWrote {len(misleading)} examples to {misleading_file}")
+
+    accurate_file = output_path / "accurate.txt"
+    with open(accurate_file, 'w', encoding='utf-8') as f:
+        f.write("# Accurate comments - factual descriptions, valid documentation\n")
+        f.write("# Auto-generated by: python scripts/audit_tool.py generate\n")
+        f.write("# One comment per line\n\n")
+        for comment in accurate:
+            f.write(comment.strip() + "\n")
+    print(f"Wrote {len(accurate)} examples to {accurate_file}")
+
+    print(f"\n" + "=" * 70)
+    print("Generation complete!")
+    print(f"\nNext step: python scripts/audit_tool.py train {args.output}")
 
 
 # ==============================================================================
@@ -590,13 +857,27 @@ def main():
 
     subparsers = parser.add_subparsers(dest='command', help='Command to run')
 
-    # Scan command
-    scan_parser = subparsers.add_parser('scan', help='Scan for suspicious comments')
-    scan_parser.add_argument('directory', help='Directory to scan')
+    # Generate command (should be run first)
+    generate_parser = subparsers.add_parser('generate', help='Generate training data from codebase')
+    generate_parser.add_argument('directory', help='Directory to scan for comments')
+    generate_parser.add_argument('-o', '--output', default='docs/audits',
+                                 help='Output directory for training files (default: docs/audits)')
+    generate_parser.add_argument('-m', '--max-per-class', type=int, default=50,
+                                 help='Maximum examples per class (default: 50)')
+    generate_parser.add_argument('--include-scripts', action='store_true',
+                                 help='Also scan scripts/ directory')
+    generate_parser.add_argument('--dry-run', action='store_true',
+                                 help='Preview without writing files')
+    generate_parser.add_argument('-v', '--verbose', action='store_true',
+                                 help='Show all extracted comments')
 
     # Train command
     train_parser = subparsers.add_parser('train', help='Train classifiers')
     train_parser.add_argument('findings_dir', help='Directory with labeled findings')
+
+    # Scan command
+    scan_parser = subparsers.add_parser('scan', help='Scan for suspicious comments')
+    scan_parser.add_argument('directory', help='Directory to scan')
 
     # Patterns command
     patterns_parser = subparsers.add_parser('patterns', help='Find repeated patterns')
@@ -621,10 +902,12 @@ def main():
         return 1
 
     # Dispatch to command handler
-    if args.command == 'scan':
-        cmd_scan(args)
+    if args.command == 'generate':
+        cmd_generate(args)
     elif args.command == 'train':
         cmd_train(args)
+    elif args.command == 'scan':
+        cmd_scan(args)
     elif args.command == 'patterns':
         cmd_patterns(args)
     elif args.command == 'similar':
