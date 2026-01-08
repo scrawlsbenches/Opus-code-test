@@ -1209,6 +1209,7 @@ class AuditReasoner:
             "traces": {name: trace.explain() for name, trace in traces.items()},
             "summary": "\n".join(summary_lines),
             "raw_traces": raw_traces,
+            "suggestions": suggestions,
         }
 
         # Add importance info if tracked
