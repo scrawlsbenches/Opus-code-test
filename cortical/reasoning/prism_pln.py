@@ -432,6 +432,109 @@ class AttentionalFocus:
 
 
 # =============================================================================
+# ATTENTION VALUE (STI/LTI/VLTI)
+# =============================================================================
+
+@dataclass
+class AttentionValue:
+    """
+    Importance metadata for atoms (inspired by OpenCog ECAN).
+
+    - STI (Short-Term Importance): Urgency, recent relevance [0, 1]
+    - LTI (Long-Term Importance): Persistent, foundational relevance [0, 1]
+    - VLTI (Very Long-Term Importance): If True, atom is pinned and never fully decays
+
+    For audit use cases:
+    - STI: Files with recent issues (just discovered bugs)
+    - LTI: Files with persistent problems (known tech debt)
+    - VLTI: Critical infrastructure that must always be reviewed
+    """
+    sti: float = 0.0
+    lti: float = 0.0
+    vlti: bool = False
+
+    def __post_init__(self):
+        """Clamp values to valid range."""
+        self.sti = max(0.0, min(1.0, self.sti))
+        self.lti = max(0.0, min(1.0, self.lti))
+
+    def total_importance(self) -> float:
+        """
+        Compute total importance combining STI and LTI.
+
+        Returns a weighted sum with VLTI floor protection.
+        """
+        # Base importance is weighted combination
+        base = 0.6 * self.sti + 0.4 * self.lti
+
+        # VLTI provides minimum floor
+        if self.vlti:
+            return max(base, 0.5)  # Never drop below 0.5 if pinned
+
+        return base
+
+    def decay_sti(self, factor: float = 0.9) -> None:
+        """
+        Decay STI (urgency fades over time).
+
+        Args:
+            factor: Multiply STI by this factor (0 < factor < 1)
+        """
+        if self.vlti:
+            # VLTI atoms decay slower
+            self.sti *= max(factor, 0.95)
+        else:
+            self.sti *= factor
+
+        # Clamp to valid range
+        self.sti = max(0.0, min(1.0, self.sti))
+
+    def decay_lti(self, factor: float = 0.99) -> None:
+        """
+        Decay LTI (long-term importance fades very slowly).
+
+        Args:
+            factor: Multiply LTI by this factor (typically close to 1)
+        """
+        if self.vlti:
+            # VLTI atoms don't decay LTI
+            return
+
+        self.lti *= factor
+        self.lti = max(0.0, min(1.0, self.lti))
+
+    def stimulate(self, amount: float = 0.1) -> None:
+        """
+        Increase STI (discovering/accessing an atom boosts urgency).
+
+        Args:
+            amount: Amount to increase STI by
+        """
+        self.sti = min(1.0, self.sti + amount)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize to dictionary."""
+        return {
+            "sti": self.sti,
+            "lti": self.lti,
+            "vlti": self.vlti
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "AttentionValue":
+        """Deserialize from dictionary."""
+        return cls(
+            sti=data.get("sti", 0.0),
+            lti=data.get("lti", 0.0),
+            vlti=data.get("vlti", False)
+        )
+
+    def __repr__(self) -> str:
+        vlti_mark = " VLTI" if self.vlti else ""
+        return f"AV(sti={self.sti:.2f}, lti={self.lti:.2f}{vlti_mark})"
+
+
+# =============================================================================
 # ATOMS
 # =============================================================================
 
@@ -446,6 +549,7 @@ class Atom:
     predicate: str = ""
     arguments: List[str] = field(default_factory=list)
     truth_value: TruthValue = field(default_factory=TruthValue)
+    attention_value: AttentionValue = field(default_factory=AttentionValue)
 
     def __post_init__(self):
         if not self.name and self.predicate:
@@ -493,7 +597,8 @@ class Atom:
             "name": self.name,
             "predicate": self.predicate,
             "arguments": self.arguments,
-            "truth_value": self.truth_value.to_dict()
+            "truth_value": self.truth_value.to_dict(),
+            "attention_value": self.attention_value.to_dict()
         }
 
     @classmethod
@@ -503,7 +608,8 @@ class Atom:
             name=data.get("name", ""),
             predicate=data.get("predicate", ""),
             arguments=data.get("arguments", []),
-            truth_value=TruthValue.from_dict(data.get("truth_value", {}))
+            truth_value=TruthValue.from_dict(data.get("truth_value", {})),
+            attention_value=AttentionValue.from_dict(data.get("attention_value", {}))
         )
 
 
@@ -1118,3 +1224,331 @@ class PLNReasoner:
                     explanations.append(f"  Antecedent: {ant} = {ant_tv}")
 
         return explanations
+
+    # =========================================================================
+    # IMPORTANCE (STI/LTI) METHODS
+    # =========================================================================
+
+    def get_attention(self, atom_name: str) -> AttentionValue:
+        """
+        Get the AttentionValue for an atom.
+
+        Args:
+            atom_name: Name of the atom
+
+        Returns:
+            AttentionValue for the atom (default if not found)
+        """
+        atom = self.graph.get_atom(atom_name)
+        if atom is not None:
+            return atom.attention_value
+        return AttentionValue()  # Default
+
+    def set_attention(self, atom_name: str, attention_value: AttentionValue) -> None:
+        """
+        Set the AttentionValue for an atom.
+
+        Args:
+            atom_name: Name of the atom
+            attention_value: AttentionValue to set
+        """
+        atom = self.graph.get_atom(atom_name)
+        if atom is not None:
+            atom.attention_value = attention_value
+
+    def stimulate(self, atom_name: str, amount: float = 0.1) -> None:
+        """
+        Stimulate an atom (increase its STI).
+
+        Use when discovering or accessing an atom to boost its urgency.
+
+        Args:
+            atom_name: Name of the atom to stimulate
+            amount: Amount to increase STI by
+        """
+        atom = self.graph.get_atom(atom_name)
+        if atom is not None:
+            atom.attention_value.stimulate(amount)
+
+    def collect_rent(
+        self,
+        sti_decay: float = 0.9,
+        lti_decay: float = 0.99
+    ) -> None:
+        """
+        Apply decay to all atoms (rent collection cycle).
+
+        Simulates importance fading over time. VLTI atoms are protected.
+
+        Args:
+            sti_decay: Factor to multiply STI by (0 < factor < 1)
+            lti_decay: Factor to multiply LTI by (typically close to 1)
+        """
+        for atom in self.graph._atoms.values():
+            atom.attention_value.decay_sti(sti_decay)
+            atom.attention_value.decay_lti(lti_decay)
+
+    def get_atoms_by_sti(self, min_sti: float = 0.5) -> List[str]:
+        """
+        Get atoms with STI above threshold.
+
+        For audits: Find urgent items.
+
+        Args:
+            min_sti: Minimum STI threshold
+
+        Returns:
+            List of atom names with STI >= min_sti
+        """
+        return [
+            name for name, atom in self.graph._atoms.items()
+            if atom.attention_value.sti >= min_sti
+        ]
+
+    def get_atoms_by_lti(self, min_lti: float = 0.5) -> List[str]:
+        """
+        Get atoms with LTI above threshold.
+
+        For audits: Find persistent issues.
+
+        Args:
+            min_lti: Minimum LTI threshold
+
+        Returns:
+            List of atom names with LTI >= min_lti
+        """
+        return [
+            name for name, atom in self.graph._atoms.items()
+            if atom.attention_value.lti >= min_lti
+        ]
+
+    def get_vlti_atoms(self) -> List[str]:
+        """
+        Get all VLTI (pinned) atoms.
+
+        For audits: Get critical items that must always be reviewed.
+
+        Returns:
+            List of atom names with VLTI=True
+        """
+        return [
+            name for name, atom in self.graph._atoms.items()
+            if atom.attention_value.vlti
+        ]
+
+    def get_atoms_by_importance(self) -> List[str]:
+        """
+        Get all atoms sorted by total importance (descending).
+
+        Returns:
+            List of atom names sorted by total_importance()
+        """
+        atoms_with_importance = [
+            (name, atom.attention_value.total_importance())
+            for name, atom in self.graph._atoms.items()
+        ]
+        atoms_with_importance.sort(key=lambda x: x[1], reverse=True)
+        return [name for name, _ in atoms_with_importance]
+
+    def query_with_importance(
+        self,
+        statement: str,
+        spread_importance: bool = True,
+        min_importance: float = 0.0,
+        max_depth: int = 5,
+        aggregate: AggregateStrategy = "first"
+    ) -> Any:  # Returns TruthValue or List[TruthValue]
+        """
+        Query with importance spreading through inference chains.
+
+        Args:
+            statement: The statement to query
+            spread_importance: If True, importance spreads to inferred atoms
+            min_importance: Only return results from atoms with importance >= this
+            max_depth: Maximum inference chain depth
+            aggregate: Strategy for combining evidence
+
+        Returns:
+            TruthValue (if min_importance=0) or List[TruthValue] (if filtering)
+        """
+        # Perform inference
+        result = self._infer_with_importance(
+            statement,
+            spread_importance=spread_importance,
+            max_depth=max_depth,
+            aggregate=aggregate,
+            spread_factor=0.7  # How much importance attenuates per hop
+        )
+
+        # If filtering by importance, return list
+        if min_importance > 0:
+            # Get all atoms matching the pattern and filter
+            filtered = []
+            for name, atom in self.graph._atoms.items():
+                if atom.matches(statement) and atom.attention_value.sti >= min_importance:
+                    filtered.append(atom.truth_value)
+            return filtered
+
+        return result
+
+    def _infer_with_importance(
+        self,
+        query: str,
+        spread_importance: bool,
+        max_depth: int,
+        aggregate: AggregateStrategy,
+        spread_factor: float,
+        source_importance: Optional[float] = None
+    ) -> Optional[TruthValue]:
+        """
+        Internal importance-spreading inference.
+
+        Spreads importance from source atoms to inferred conclusions.
+        """
+        # Direct lookup
+        atom = self.graph.get_atom(query)
+        if atom is not None:
+            if spread_importance and source_importance is not None:
+                # Spread importance from source to this atom
+                inherited = source_importance * spread_factor
+                atom.attention_value.sti = max(
+                    atom.attention_value.sti,
+                    inherited
+                )
+            return atom.truth_value
+
+        # Try pattern matching
+        for name, atom in self.graph._atoms.items():
+            if atom.matches(query):
+                if spread_importance and source_importance is not None:
+                    inherited = source_importance * spread_factor
+                    atom.attention_value.sti = max(
+                        atom.attention_value.sti,
+                        inherited
+                    )
+                return atom.truth_value
+
+        if max_depth <= 0:
+            return None
+
+        # Backward chaining with importance spreading
+        matching_results: List[TruthValue] = []
+
+        for (ant, cons), link in self.graph._implications.items():
+            # Pattern matching
+            query_matches = False
+            substitutions = {}
+
+            if cons == query:
+                query_matches = True
+            elif "(" in cons and "(" in query:
+                cons_pred = cons[:cons.index("(")]
+                query_pred = query[:query.index("(")]
+
+                if cons_pred == query_pred:
+                    cons_args = cons[cons.index("(") + 1:cons.index(")")].split(",")
+                    query_args = query[query.index("(") + 1:query.index(")")].split(",")
+
+                    if len(cons_args) == len(query_args):
+                        query_matches = True
+                        for c_arg, q_arg in zip(cons_args, query_args):
+                            c_arg = c_arg.strip()
+                            q_arg = q_arg.strip()
+                            if c_arg.isupper() and len(c_arg) == 1:
+                                substitutions[c_arg] = q_arg
+                            elif c_arg != q_arg:
+                                query_matches = False
+                                break
+
+            if query_matches:
+                # Substitute variables
+                ant_query = ant
+                for var, val in substitutions.items():
+                    ant_query = ant_query.replace(var, val)
+
+                # Get source atom's importance for spreading
+                ant_atom = self.graph.get_atom(ant_query)
+                ant_importance = None
+                if ant_atom is not None:
+                    ant_importance = ant_atom.attention_value.sti
+
+                # Recursive inference with importance spreading
+                ant_tv = self._infer_with_importance(
+                    ant_query,
+                    spread_importance=spread_importance,
+                    max_depth=max_depth - 1,
+                    aggregate=aggregate,
+                    spread_factor=spread_factor,
+                    source_importance=source_importance
+                )
+
+                if ant_tv is not None:
+                    result = pln_implication(ant_tv, link.truth_value)
+
+                    # Spread importance to conclusion
+                    if spread_importance and ant_importance is not None:
+                        # Create/update atom for conclusion if needed
+                        conclusion_atom = self.graph.get_atom(query)
+                        if conclusion_atom is None:
+                            conclusion_atom = self.graph.add_atom(
+                                query, TruthValue(result.strength, result.confidence)
+                            )
+                        # Spread importance
+                        inherited = ant_importance * spread_factor
+                        conclusion_atom.attention_value.sti = max(
+                            conclusion_atom.attention_value.sti,
+                            inherited
+                        )
+
+                    if aggregate == "first":
+                        return result
+
+                    matching_results.append(result)
+
+        return aggregate_truth_values(matching_results, aggregate)
+
+    def query_by_importance(
+        self,
+        statement: str,
+        return_stats: bool = False
+    ) -> Any:  # Returns List[TruthValue] or Tuple[List[TruthValue], Dict]
+        """
+        Query with importance-guided exploration order.
+
+        Explores high-importance atoms first.
+
+        Args:
+            statement: Pattern to query (can contain variables like X)
+            return_stats: If True, return (results, stats) tuple
+
+        Returns:
+            List of matching TruthValues, or (list, stats) if return_stats=True
+        """
+        stats = {
+            "first_explored": None,
+            "exploration_order": [],
+            "total_explored": 0
+        }
+
+        # Get atoms sorted by importance
+        sorted_atoms = self.get_atoms_by_importance()
+
+        results = []
+
+        for atom_name in sorted_atoms:
+            atom = self.graph.get_atom(atom_name)
+            if atom is None:
+                continue
+
+            stats["total_explored"] += 1
+            if stats["first_explored"] is None:
+                stats["first_explored"] = atom_name
+            stats["exploration_order"].append(atom_name)
+
+            # Check if atom matches pattern
+            if atom.matches(statement):
+                results.append(atom.truth_value)
+
+        if return_stats:
+            return results, stats
+        return results
