@@ -775,6 +775,32 @@ make test-precommit   # Smoke + unit + integration
 make test-coverage    # With coverage report
 ```
 
+### Test Writing Rules
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     NO SLEEP CALLS IN TESTS                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  NEVER add time.sleep() to automated tests without explicit approval.   │
+│                                                                          │
+│  Before adding ANY sleep call to a test, you MUST:                      │
+│  1. Ask: "I need to add a sleep call to test X. Do you approve?"        │
+│  2. Wait for explicit approval                                          │
+│  3. If approved, use the MINIMUM duration necessary (prefer ms, not s)  │
+│                                                                          │
+│  WHY: Sleep calls are the #1 cause of slow test suites.                 │
+│  A 2-second sleep in 10 tests = 20 seconds of wasted CI time.           │
+│                                                                          │
+│  ALTERNATIVES to sleep:                                                 │
+│  - Mock time with freezegun or unittest.mock                            │
+│  - Use polling with short intervals and timeout                         │
+│  - Inject clock/timer dependencies for testing                          │
+│  - Use asyncio.sleep with test event loops                              │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
 ---
 
 ## Metus Philosophy
