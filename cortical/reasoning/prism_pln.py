@@ -25,15 +25,400 @@ Example:
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple, Any, Literal
+from typing import Dict, List, Optional, Tuple, Any, Literal, Union
 from collections import defaultdict
 from functools import reduce
 import json
 import math
+import re
 
 
 # Aggregation strategies for multi-rule inference
 AggregateStrategy = Literal["first", "revision", "max", "or", "weighted"]
+
+
+# =============================================================================
+# TERMS AND UNIFICATION
+# =============================================================================
+
+@dataclass
+class Term:
+    """
+    A logical term that can be an atom, variable, or compound term.
+
+    Supports:
+    - Atoms: constants like 'auth.py', 'high'
+    - Variables: uppercase names like 'X', 'Y' (optionally typed: 'X:File')
+    - Compound terms: functor(arg1, arg2, ...) like 'file(auth.py, metrics(high))'
+    """
+    functor: str = ""
+    args: List[Any] = field(default_factory=list)  # List of Term or str
+    is_variable: bool = False
+    name: str = ""  # For variables
+    type_constraint: Optional[str] = None  # For typed variables like X:File
+
+    def __post_init__(self):
+        """Normalize term representation."""
+        if self.is_variable and not self.name:
+            self.name = self.functor
+            self.functor = ""
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, Term):
+            return False
+        if self.is_variable and other.is_variable:
+            return self.name == other.name
+        if self.is_variable or other.is_variable:
+            return False  # Variable != non-variable
+        if self.functor != other.functor:
+            return False
+        if len(self.args) != len(other.args):
+            return False
+        return all(
+            _args_equal(a, b) for a, b in zip(self.args, other.args)
+        )
+
+    def __hash__(self) -> int:
+        if self.is_variable:
+            return hash(("var", self.name))
+        args_tuple = tuple(
+            a if isinstance(a, str) else hash(a) for a in self.args
+        )
+        return hash((self.functor, args_tuple))
+
+    def __str__(self) -> str:
+        if self.is_variable:
+            if self.type_constraint:
+                return f"{self.name}:{self.type_constraint}"
+            return self.name
+        if not self.args:
+            return self.functor
+        args_str = ", ".join(
+            str(a) if isinstance(a, Term) else str(a) for a in self.args
+        )
+        return f"{self.functor}({args_str})"
+
+    def __repr__(self) -> str:
+        return f"Term({str(self)})"
+
+
+def _args_equal(a: Any, b: Any) -> bool:
+    """Compare two term arguments for equality."""
+    if isinstance(a, Term) and isinstance(b, Term):
+        return a == b
+    if isinstance(a, str) and isinstance(b, str):
+        return a == b
+    if isinstance(a, str) and isinstance(b, Term):
+        return not b.is_variable and b.functor == a and not b.args
+    if isinstance(a, Term) and isinstance(b, str):
+        return not a.is_variable and a.functor == b and not a.args
+    return False
+
+
+def parse_term(text: str) -> Term:
+    """
+    Parse a string into a Term structure.
+
+    Supports:
+    - Atoms: 'auth.py', 'high'
+    - Variables: 'X', 'Y' (single uppercase letter or starting with uppercase)
+    - Typed variables: 'X:File', 'F:Directory'
+    - Compound terms: 'file(auth.py)', 'metrics(high, old)'
+    - Nested terms: 'issue(file(auth.py), severity(high))'
+
+    Args:
+        text: String representation of term
+
+    Returns:
+        Parsed Term object
+    """
+    text = text.strip()
+
+    # Check for typed variable: X:Type
+    if ":" in text and "(" not in text:
+        parts = text.split(":", 1)
+        var_name = parts[0].strip()
+        type_name = parts[1].strip()
+        return Term(
+            is_variable=True,
+            name=var_name,
+            type_constraint=type_name
+        )
+
+    # Check for variable (uppercase single letter or CamelCase starting uppercase)
+    if text and text[0].isupper() and "(" not in text:
+        # Single uppercase letter or word starting with uppercase = variable
+        if len(text) == 1 or (text.isalnum() and text[0].isupper()):
+            return Term(is_variable=True, name=text)
+
+    # Check for compound term: functor(args)
+    if "(" in text:
+        # Find the functor and args
+        paren_idx = text.index("(")
+        functor = text[:paren_idx].strip()
+
+        # Extract args string (handle nested parens)
+        args_str = text[paren_idx + 1:-1]  # Remove outer parens
+        args = _parse_args(args_str)
+
+        return Term(functor=functor, args=args)
+
+    # Simple atom
+    return Term(functor=text, args=[])
+
+
+def _parse_args(args_str: str) -> List[Any]:
+    """Parse comma-separated arguments, handling nested parens."""
+    args = []
+    current = ""
+    depth = 0
+
+    for char in args_str:
+        if char == "(":
+            depth += 1
+            current += char
+        elif char == ")":
+            depth -= 1
+            current += char
+        elif char == "," and depth == 0:
+            if current.strip():
+                args.append(parse_term(current.strip()))
+            current = ""
+        else:
+            current += char
+
+    if current.strip():
+        args.append(parse_term(current.strip()))
+
+    return args
+
+
+def unify(
+    t1: Term,
+    t2: Term,
+    substitution: Optional[Dict[str, Any]] = None,
+    type_registry: Optional["TypeRegistry"] = None
+) -> Optional[Dict[str, Any]]:
+    """
+    Robinson's unification algorithm with occurs check.
+
+    Finds a substitution that makes t1 and t2 identical, or returns None
+    if unification fails.
+
+    Args:
+        t1: First term
+        t2: Second term
+        substitution: Optional initial substitution to extend
+        type_registry: Optional type registry for type constraints
+
+    Returns:
+        Substitution dict mapping variable names to values, or None if fails
+    """
+    if substitution is None:
+        substitution = {}
+    else:
+        substitution = dict(substitution)  # Copy to avoid mutation
+
+    return _unify_impl(t1, t2, substitution, type_registry)
+
+
+def _unify_impl(
+    t1: Term,
+    t2: Term,
+    subst: Dict[str, Any],
+    registry: Optional["TypeRegistry"]
+) -> Optional[Dict[str, Any]]:
+    """Internal unification implementation."""
+
+    # Apply current substitution
+    t1 = _apply_subst_to_term(t1, subst)
+    t2 = _apply_subst_to_term(t2, subst)
+
+    # Both are atoms/constants
+    if not t1.is_variable and not t1.args and not t2.is_variable and not t2.args:
+        if t1.functor == t2.functor:
+            return subst
+        return None
+
+    # t1 is variable
+    if t1.is_variable:
+        return _unify_variable(t1, t2, subst, registry)
+
+    # t2 is variable
+    if t2.is_variable:
+        return _unify_variable(t2, t1, subst, registry)
+
+    # Both are compound terms
+    if t1.functor != t2.functor:
+        return None
+    if len(t1.args) != len(t2.args):
+        return None
+
+    # Unify arguments
+    for arg1, arg2 in zip(t1.args, t2.args):
+        # Convert string args to terms
+        if isinstance(arg1, str):
+            arg1 = parse_term(arg1)
+        if isinstance(arg2, str):
+            arg2 = parse_term(arg2)
+
+        result = _unify_impl(arg1, arg2, subst, registry)
+        if result is None:
+            return None
+        subst = result
+
+    return subst
+
+
+def _unify_variable(
+    var: Term,
+    term: Term,
+    subst: Dict[str, Any],
+    registry: Optional["TypeRegistry"]
+) -> Optional[Dict[str, Any]]:
+    """Unify a variable with a term."""
+
+    # Check if already bound
+    if var.name in subst:
+        bound_value = subst[var.name]
+        if isinstance(bound_value, str):
+            bound_term = parse_term(bound_value)
+        elif isinstance(bound_value, Term):
+            bound_term = bound_value
+        else:
+            bound_term = parse_term(str(bound_value))
+        return _unify_impl(bound_term, term, subst, registry)
+
+    # Variable unifying with itself
+    if term.is_variable and term.name == var.name:
+        return subst
+
+    # Occurs check: var cannot appear in term
+    if _occurs_in(var.name, term):
+        return None
+
+    # Type constraint check
+    if var.type_constraint and registry:
+        term_value = term.functor if not term.args and not term.is_variable else str(term)
+        if not registry.is_type(term_value, var.type_constraint):
+            return None
+
+    # Bind variable
+    if term.is_variable:
+        subst[var.name] = term.name
+    elif not term.args:
+        subst[var.name] = term.functor
+    else:
+        subst[var.name] = term
+
+    return subst
+
+
+def _occurs_in(var_name: str, term: Term) -> bool:
+    """Check if variable appears in term (occurs check)."""
+    if term.is_variable:
+        return term.name == var_name
+    for arg in term.args:
+        if isinstance(arg, Term):
+            if _occurs_in(var_name, arg):
+                return True
+        elif isinstance(arg, str):
+            if arg == var_name and arg[0].isupper():
+                return True
+    return False
+
+
+def _apply_subst_to_term(term: Term, subst: Dict[str, Any]) -> Term:
+    """Apply substitution to a term."""
+    if term.is_variable:
+        if term.name in subst:
+            value = subst[term.name]
+            if isinstance(value, Term):
+                return value
+            elif isinstance(value, str):
+                return parse_term(value)
+            else:
+                return parse_term(str(value))
+        return term
+
+    if not term.args:
+        return term
+
+    new_args = []
+    for arg in term.args:
+        if isinstance(arg, Term):
+            new_args.append(_apply_subst_to_term(arg, subst))
+        elif isinstance(arg, str) and arg in subst:
+            new_args.append(subst[arg])
+        else:
+            new_args.append(arg)
+
+    return Term(functor=term.functor, args=new_args)
+
+
+def apply_substitution(term: Term, substitution: Dict[str, Any]) -> Term:
+    """
+    Apply a substitution to a term, replacing variables with their bindings.
+
+    Args:
+        term: Term to apply substitution to
+        substitution: Dict mapping variable names to values
+
+    Returns:
+        New term with variables replaced
+    """
+    return _apply_subst_to_term(term, substitution)
+
+
+# =============================================================================
+# TYPE REGISTRY
+# =============================================================================
+
+class TypeRegistry:
+    """
+    Registry for type constraints in unification.
+
+    Supports:
+    - Simple types: register_type("File", ["auth.py", "config.py"])
+    - Type hierarchies: register_subtype("PythonFile", "File", [...])
+    """
+
+    def __init__(self):
+        self._types: Dict[str, set] = {}
+        self._subtypes: Dict[str, str] = {}  # subtype -> parent type
+
+    def register_type(self, type_name: str, members: List[str]) -> None:
+        """Register a type with its members."""
+        self._types[type_name] = set(members)
+
+    def register_subtype(
+        self,
+        subtype_name: str,
+        parent_type: str,
+        members: List[str]
+    ) -> None:
+        """Register a subtype of an existing type."""
+        self._types[subtype_name] = set(members)
+        self._subtypes[subtype_name] = parent_type
+
+    def is_type(self, value: str, type_name: str) -> bool:
+        """Check if value is of given type (including subtypes)."""
+        # Direct membership
+        if type_name in self._types:
+            if value in self._types[type_name]:
+                return True
+
+        # Check subtypes
+        for subtype, parent in self._subtypes.items():
+            if parent == type_name:
+                if subtype in self._types and value in self._types[subtype]:
+                    return True
+
+        return False
+
+    def get_type_members(self, type_name: str) -> set:
+        """Get all members of a type."""
+        return self._types.get(type_name, set())
 
 
 @dataclass
@@ -1552,3 +1937,209 @@ class PLNReasoner:
         if return_stats:
             return results, stats
         return results
+
+    # =========================================================================
+    # COMPOUND TERM METHODS
+    # =========================================================================
+
+    def set_type_registry(self, registry: TypeRegistry) -> None:
+        """Set the type registry for type-constrained unification."""
+        self._type_registry = registry
+
+    def assert_compound_fact(
+        self,
+        term_str: str,
+        strength: float = 0.9,
+        confidence: float = 0.9
+    ) -> None:
+        """
+        Assert a compound fact with the given truth value.
+
+        Args:
+            term_str: String representation of compound term
+            strength: Truth value strength
+            confidence: Truth value confidence
+
+        Example:
+            reasoner.assert_compound_fact(
+                "file_info(auth.py, metrics(high_churn, security_critical))",
+                strength=0.95
+            )
+        """
+        # Store the term string and its parsed form
+        term = parse_term(term_str)
+        tv = SynapticTruthValue(strength=strength, confidence=confidence)
+        self.graph.add_atom(term_str, tv)
+
+        # Also store with canonical string representation
+        canonical = str(term)
+        if canonical != term_str:
+            self.graph.add_atom(canonical, tv)
+
+    def assert_compound_rule(
+        self,
+        antecedent_str: str,
+        consequent_str: str,
+        strength: float = 0.9,
+        confidence: float = 0.9
+    ) -> None:
+        """
+        Assert a rule with compound terms.
+
+        Args:
+            antecedent_str: Antecedent term string (can have variables)
+            consequent_str: Consequent term string
+            strength: Rule strength
+            confidence: Rule confidence
+
+        Example:
+            reasoner.assert_compound_rule(
+                "file_info(X, metrics(high_churn, security_critical))",
+                "needs_immediate_review(X)",
+                strength=0.95
+            )
+        """
+        tv = SynapticTruthValue(strength=strength, confidence=confidence)
+        self.graph.add_implication(antecedent_str, consequent_str, tv)
+        self._rules[(antecedent_str, consequent_str)] = tv
+
+    def query_compound(
+        self,
+        term_str: str,
+        max_depth: int = 5
+    ) -> Any:  # Returns QueryResult or List[QueryResult]
+        """
+        Query using compound term with unification.
+
+        Args:
+            term_str: Query term (can contain variables)
+            max_depth: Maximum inference depth
+
+        Returns:
+            Single QueryResult if no variables, List[QueryResult] if variables
+
+        Example:
+            # Exact match query
+            result = reasoner.query_compound(
+                "file_info(auth.py, metrics(high_churn, security_critical))"
+            )
+
+            # Variable query - returns all matches
+            results = reasoner.query_compound("file_info(X, metrics(high, Y))")
+        """
+        query_term = parse_term(term_str)
+        has_variables = _term_has_variables(query_term)
+
+        registry = getattr(self, '_type_registry', None)
+
+        if has_variables:
+            # Find all matching atoms
+            results = []
+            for name, atom in self.graph._atoms.items():
+                atom_term = parse_term(name)
+                subst = unify(query_term, atom_term, type_registry=registry)
+                if subst is not None:
+                    results.append(QueryResult(
+                        truth_value=atom.truth_value,
+                        bindings=subst
+                    ))
+
+            # Also try inference through rules
+            inferred = self._infer_compound(
+                query_term, max_depth, registry
+            )
+            results.extend(inferred)
+
+            return results
+        else:
+            # Exact match or inference
+            direct = self.graph.get_atom(term_str)
+            if direct:
+                return QueryResult(
+                    truth_value=direct.truth_value,
+                    bindings={}
+                )
+
+            # Try inference
+            inferred = self._infer_compound(query_term, max_depth, registry)
+            if inferred:
+                return inferred[0]
+
+            return None
+
+    def _infer_compound(
+        self,
+        query_term: Term,
+        max_depth: int,
+        registry: Optional[TypeRegistry]
+    ) -> List["QueryResult"]:
+        """Internal compound inference with unification."""
+        if max_depth <= 0:
+            return []
+
+        results = []
+
+        for (ant_str, cons_str), link in self.graph._implications.items():
+            cons_term = parse_term(cons_str)
+
+            # Try to unify query with consequent
+            subst = unify(query_term, cons_term, type_registry=registry)
+            if subst is None:
+                continue
+
+            # Apply substitution to antecedent
+            ant_term = parse_term(ant_str)
+            ant_resolved = apply_substitution(ant_term, subst)
+            ant_resolved_str = str(ant_resolved)
+
+            # Check if antecedent is satisfied
+            ant_result = None
+
+            # Direct lookup
+            ant_atom = self.graph.get_atom(ant_resolved_str)
+            if ant_atom:
+                ant_result = ant_atom.truth_value
+            else:
+                # Try to find matching atom with unification
+                for name, atom in self.graph._atoms.items():
+                    atom_term = parse_term(name)
+                    match_subst = unify(ant_resolved, atom_term, subst, registry)
+                    if match_subst is not None:
+                        ant_result = atom.truth_value
+                        subst = match_subst
+                        break
+
+            if ant_result is not None:
+                # Apply modus ponens
+                inferred_tv = pln_implication(ant_result, link.truth_value)
+                results.append(QueryResult(
+                    truth_value=inferred_tv,
+                    bindings=subst
+                ))
+
+        return results
+
+
+def _term_has_variables(term: Term) -> bool:
+    """Check if a term contains any variables."""
+    if term.is_variable:
+        return True
+    for arg in term.args:
+        if isinstance(arg, Term) and _term_has_variables(arg):
+            return True
+    return False
+
+
+@dataclass
+class QueryResult:
+    """Result of a compound query with variable bindings."""
+    truth_value: TruthValue
+    bindings: Dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def strength(self) -> float:
+        return self.truth_value.strength
+
+    @property
+    def confidence(self) -> float:
+        return self.truth_value.confidence
