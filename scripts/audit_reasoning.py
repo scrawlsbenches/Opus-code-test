@@ -1011,6 +1011,63 @@ class AuditReasoner:
         """Get files marked as critically important (VLTI=True)."""
         return [f for f, a in self.file_importance.items() if a.vlti]
 
+    def _generate_suggestions(
+        self,
+        facts: Dict[str, Any],
+        traces: Dict[str, "InferenceTrace"]
+    ) -> List[str]:
+        """
+        Generate actionable suggestions based on detected patterns.
+
+        Maps inference results to concrete actions the developer can take.
+        """
+        suggestions = []
+        seen = set()
+
+        # Pattern-to-suggestion mapping
+        suggestion_map = {
+            # Pattern markers
+            "todo": "Review and resolve TODO comments",
+            "fixme": "Address FIXME items - these indicate known bugs",
+            "hack": "Refactor HACK workarounds into proper solutions",
+            "future": "Plan implementation of FUTURE items or remove if obsolete",
+            "should_be": "Investigate 'should be' comments - may indicate spec deviations",
+            "will_be": "Verify 'will be' items are tracked or implemented",
+            "see_docs": "Ensure referenced documentation is up to date",
+
+            # Inferred states
+            "incomplete": "Complete unfinished implementations",
+            "needs_review": "Schedule code review for this file",
+            "needs_urgent_review": "Prioritize review - multiple risk signals",
+            "has_known_issue": "Triage known issues before adding features",
+            "technical_debt": "Schedule refactoring to reduce technical debt",
+            "risky": "Add tests before modifying this file",
+            "critical_review": "Block merges until critical issues resolved",
+
+            # Git-based
+            "high_churn": "Consider splitting into smaller modules",
+            "bug_prone": "Add regression tests for frequently-fixed areas",
+        }
+
+        # Check facts for pattern markers
+        for fact_name in facts.keys():
+            fact_lower = fact_name.lower()
+            for pattern, suggestion in suggestion_map.items():
+                if pattern in fact_lower and suggestion not in seen:
+                    suggestions.append(suggestion)
+                    seen.add(suggestion)
+
+        # Check traces for inferred states
+        for trace_name, trace in traces.items():
+            if trace.final_result and trace.final_result.strength > 0.4:
+                trace_lower = trace_name.lower()
+                for pattern, suggestion in suggestion_map.items():
+                    if pattern in trace_lower and suggestion not in seen:
+                        suggestions.append(suggestion)
+                        seen.add(suggestion)
+
+        return suggestions[:5]  # Limit to top 5 most relevant
+
     def explain_file_risk(
         self,
         file_path: str,
@@ -1132,6 +1189,14 @@ class AuditReasoner:
                             )
         else:
             summary_lines.append("  (no inferences triggered for this file)")
+
+        # Generate suggested actions based on what triggered
+        suggestions = self._generate_suggestions(file_facts, traces)
+        if suggestions:
+            summary_lines.append("")
+            summary_lines.append("SUGGESTED ACTIONS:")
+            for suggestion in suggestions:
+                summary_lines.append(f"  → {suggestion}")
 
         summary_lines.append("")
         summary_lines.append("=" * 50)
