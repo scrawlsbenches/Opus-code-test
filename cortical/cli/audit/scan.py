@@ -103,11 +103,22 @@ def run(args: Any) -> None:
                             # Classifier might not be trained on all classes
                             pass
 
-                # Detect markers
+                # Detect markers (check both with and without colon)
                 markers = []
                 for marker in COMMENT_MARKERS:
-                    if trie.search(marker.lower()) and marker.lower() in comment_lower:
+                    # Check for marker with colon (e.g., "FIXME:")
+                    if marker.lower() in comment_lower:
                         markers.append(marker)
+                    # Check for marker without colon (e.g., "FIXME" in "(FIXME)")
+                    else:
+                        marker_base = marker.rstrip(':').lower()
+                        if marker_base in comment_lower:
+                            markers.append(marker)
+
+                # Only report if confidence >= 0.65 or has markers
+                # Low confidence without markers is likely a false positive
+                if confidence < 0.65 and not markers:
+                    continue
 
                 # Record finding
                 finding = {
