@@ -363,6 +363,11 @@ class Task(Entity):
     properties: Dict[str, Any] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
 
+    @property
+    def content(self) -> str:
+        """Alias for title - provides CLI/ThoughtNode compatibility."""
+        return self.title
+
     def __post_init__(self):
         """Validate task fields after initialization."""
         self.entity_type = "task"
@@ -423,6 +428,11 @@ class Decision(Entity):
     affects: List[str] = field(default_factory=list)
     properties: Dict[str, Any] = field(default_factory=dict)
 
+    @property
+    def content(self) -> str:
+        """Alias for title - provides CLI/ThoughtNode compatibility."""
+        return self.title
+
     def __post_init__(self):
         """Set entity type after initialization."""
         self.entity_type = "decision"
@@ -473,6 +483,11 @@ class Sprint(Entity):
     notes: List[str] = field(default_factory=list)
     properties: Dict[str, Any] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def content(self) -> str:
+        """Alias for title - provides CLI/ThoughtNode compatibility."""
+        return self.title
 
     def __post_init__(self):
         """Validate sprint fields after initialization."""
@@ -538,6 +553,11 @@ class Epic(Entity):
     phases: List[Dict[str, Any]] = field(default_factory=list)
     properties: Dict[str, Any] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def content(self) -> str:
+        """Alias for title - provides CLI/ThoughtNode compatibility."""
+        return self.title
 
     def __post_init__(self):
         """Validate epic fields after initialization."""

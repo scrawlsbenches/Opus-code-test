@@ -140,14 +140,14 @@ def cmd_validate(args, manager: "TransactionalGoTAdapter") -> int:
     total_nodes = len(manager.graph.nodes)
     total_edges = len(manager.graph.edges)
 
-    # Count tasks by status
-    tasks = [n for n in manager.graph.nodes.values() if n.node_type == NodeType.TASK]
+    # Count tasks by status - use list_all_tasks for compatibility with both adapters
+    tasks = manager.list_all_tasks()
     task_count = len(tasks)
 
-    # Count by status
+    # Count by status - support both Task objects (.status) and ThoughtNode (.properties["status"])
     by_status = {}
     for task in tasks:
-        status = str(task.properties.get("status", "unknown"))
+        status = getattr(task, 'status', None) or task.properties.get("status", "unknown")
         by_status[status] = by_status.get(status, 0) + 1
 
     # Check for orphan nodes (no edges)
