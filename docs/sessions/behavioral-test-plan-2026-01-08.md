@@ -146,3 +146,24 @@ Tests using `time.sleep()` with unnecessarily long durations:
 
 **Fix 1 (DONE):** Mark `shared_processor` tests as slow - 3x speedup
 **Fix 2 (PENDING):** Reduce TTL/timeout test sleeps - est 7s savings
+
+---
+
+## Git Audit: Origin of Slow Tests
+
+### Question: When did the slow sleep-based tests enter the codebase?
+
+**Answer:** Two commits on **Dec 31, 2025**, both authored by Claude during bulk conversion of demo files:
+
+| Commit | Message | Tests Added |
+|--------|---------|-------------|
+| `e67072b5` | "test(behavioral): Add 778 behavioral tests converted from demos" | `agents_coordinate_via_context_stories.py`, `test_developer_verifies_qapv_cycles.py` |
+| `fcf0c79b` | "test(behavioral+contracts): Add comprehensive API and contract tests" | `test_pubsub_messaging_stories.py` |
+
+**Root Cause Analysis:**
+- Original demo scripts used human-observable timing (1-2 second delays)
+- When converted to automated tests, timing values were preserved verbatim
+- No optimization pass was done to reduce delays for automated testing
+- CLAUDE.md rule added (2026-01-08): Require approval before adding sleep calls to tests
+
+**Lesson Learned:** Demo-to-test conversions should include a timing optimization pass to replace human-observable delays with minimum viable delays for automated testing.
