@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any, List
 from .shared import format_task_table
 
 if TYPE_CHECKING:
-    from scripts.got_utils import TransactionalGoTAdapter
+    from cortical.got.adapter import TransactionalGoTAdapter
 
 
 # 

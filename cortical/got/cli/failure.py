@@ -20,7 +20,7 @@ from cortical.utils.persistence import atomic_write_json
 from cortical.utils.id_generation import generate_short_id
 
 if TYPE_CHECKING:
-    from scripts.got_utils import TransactionalGoTAdapter
+    from cortical.got.adapter import TransactionalGoTAdapter
 
 
 # =============================================================================

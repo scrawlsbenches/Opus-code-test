@@ -27,7 +27,7 @@ from .shared import (
 )
 
 if TYPE_CHECKING:
-    from scripts.got_utils import TransactionalGoTAdapter
+    from cortical.got.adapter import TransactionalGoTAdapter
 
 # Learning integration
 try:

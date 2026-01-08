@@ -19,7 +19,7 @@ import json
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from scripts.got_utils import TransactionalGoTAdapter
+    from cortical.got.adapter import TransactionalGoTAdapter
 
 from ..entity_schemas import get_valid_statuses
 from ..orphan import OrphanDetector

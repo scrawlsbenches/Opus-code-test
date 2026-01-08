@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 from .shared import format_sprint_status, PRIORITY_SCORES
 
 if TYPE_CHECKING:
-    from scripts.got_utils import TransactionalGoTAdapter
+    from cortical.got.adapter import TransactionalGoTAdapter
 
 
 # =============================================================================
