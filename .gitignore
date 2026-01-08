@@ -170,6 +170,7 @@ corpus_dev/
 .got/**/*.lock
 .spark_intelligence_model.json
 
+
 # Generated training corpus (regenerate with: python -m benchmarks.codebase_slm.generate_corpus --full)
 benchmarks/codebase_slm/corpus/
 
@@ -178,3 +179,7 @@ benchmarks/codebase_slm/corpus/
 benchmarks/codebase_slm/models/backups/
 docs/audits/audit_index.pkl
 .got/woven_audit_mind.json
+
+# Ensure git-ml tracked directories are not ignored
+!.git-ml/tracked/
+!.git-ml/tracked/**
