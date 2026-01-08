@@ -1,0 +1,21 @@
+# Misleading comments - speculative, outdated, or referencing non-existent resources
+# One comment per line
+
+FUTURE: When CDG index is implemented this will be handled
+FUTURE: When feature is implemented this will be done
+This workaround will be replaced when that API is added
+Actual git integration will be added in separate task
+Parent not loaded yet - will be handled by second pass
+Adapters will be added as they are implemented
+This will be overridden by subclasses
+Invalidate cache will be rebuilt on first fallback
+placeholder for the identifier
+Stub classes for extension
+will be implemented later
+will be handled when ready
+will be done in next iteration
+this is temporary until we implement proper solution
+See docs design cdg-transactional-indexing-design.md
+when the feature is ready this will work
+eventually this should be refactored
+planned to be replaced with better implementation
