@@ -410,6 +410,25 @@ class PLNGraph:
 
         Returns:
             Inferred truth value or None if no inference possible
+
+        LIMITATION: Currently returns on first matching rule (single-rule firing).
+
+        TODO: For multi-rule aggregation (combining evidence from multiple paths):
+        1. Collect ALL matching rules instead of returning on first match
+        2. Infer truth value through each applicable rule
+        3. Aggregate results using revision formula (TruthValue.revise)
+           or use pln_or for independent evidence paths
+        4. Consider attention/importance weights for prioritizing rules
+
+        Example DSL extension for multi-path queries:
+            query("needs_review(X)", aggregate="revision")  # Combine via revision
+            query("needs_review(X)", aggregate="max")       # Take strongest path
+            query("needs_review(X)", aggregate="weighted")  # Weight by confidence
+
+        For audit use cases, multi-rule aggregation would allow:
+            has_todo(X) → needs_review(X) [0.6]
+            high_churn(X) → needs_review(X) [0.7]
+            → Combined: needs_review(file_a) should be ~0.82 not 0.6
         """
         # Direct lookup
         if query in self._atoms:
