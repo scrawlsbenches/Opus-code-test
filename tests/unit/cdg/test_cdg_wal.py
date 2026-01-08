@@ -375,10 +375,10 @@ class TestCDGWALManager:
         # Should complete without error (fsync is called)
         assert manager.wal_file.exists()
 
-    def test_durability_mode_fast(self, wal_dir):
-        """Test WAL with FAST durability mode (no fsync)."""
+    def test_durability_mode_relaxed(self, wal_dir):
+        """Test WAL with RELAXED durability mode (no fsync)."""
         config = CDGConfig.for_simple_storage()
-        config.durability = DurabilityMode.FAST
+        config.durability = DurabilityMode.RELAXED
 
         manager = CDGWALManager(wal_dir, config)
         manager.log_tx_begin("TX-001", 0)

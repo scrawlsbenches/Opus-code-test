@@ -1,0 +1,19 @@
+{
+  "_checksum": "d9269200e305d7ad",
+  "_written_at": "2025-12-24T10:40:58.614003+00:00",
+  "data": {
+    "created_at": "2025-12-24T10:40:58.606869+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251224-104058-febf3517",
+    "metadata": {},
+    "modified_at": "2025-12-24T10:40:58.613952+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Audit 28 tests with setUp but no tearDown - add proper cleanup where needed",
+    "version": 2
+  }
+}

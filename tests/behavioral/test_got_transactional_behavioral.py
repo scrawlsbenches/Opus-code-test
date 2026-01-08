@@ -32,7 +32,7 @@ from cortical.got import (
     Task,
     Decision,
     Edge,
-    WALManager,
+    CDGWALManager as WALManager,
     RecoveryManager,
     ConflictResolver,
     ConflictStrategy,
@@ -501,10 +501,14 @@ class TestSystemHandlesEdgeCases:
         Then a CorruptionError is raised
         """
         # Given: I write a task to storage
-        from cortical.got import VersionedStore
+        from cortical.cdg.storage import CDGStore
+        from cortical.got.types import create_entity_from_dict
         import json
 
-        store = VersionedStore(temp_got_dir / "entities")
+        store = CDGStore(
+            temp_got_dir / "entities",
+            entity_factory=create_entity_from_dict,
+        )
         task = Task(
             id=generate_task_id(),
             title="Checksum test task",
@@ -523,7 +527,8 @@ class TestSystemHandlesEdgeCases:
 
         # And: I attempt to read it
         # Then: a CorruptionError is raised
-        with pytest.raises(CorruptionError):
+        from cortical.cdg.errors import CorruptionError as CDGCorruptionError
+        with pytest.raises(CDGCorruptionError):
             store.read(task.id)
 
 

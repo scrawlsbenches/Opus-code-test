@@ -1,3 +1,4 @@
+# MERGE_CONFLICT_RESOLVED: From branch claude/engineering-session-T73QD on 20260108-215836
 """
 Query and validation CLI commands for GoT system.
 
@@ -20,9 +21,9 @@ if TYPE_CHECKING:
     from scripts.got_utils import TransactionalGoTAdapter
 
 
-# =============================================================================
+# 
 # CLI COMMAND HANDLERS
-# =============================================================================
+# 
 
 def cmd_query(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got query' command."""
@@ -150,6 +151,7 @@ def cmd_validate(args, manager: "TransactionalGoTAdapter") -> int:
         by_status[status] = by_status.get(status, 0) + 1
 
     # Check for orphan nodes (no edges)
+
     # Build comprehensive set of ALL entity IDs (not just graph.nodes which only has TASK/DECISION)
     all_node_ids = set(manager.graph.nodes.keys())
 
@@ -208,6 +210,18 @@ def cmd_validate(args, manager: "TransactionalGoTAdapter") -> int:
     # Previously: orphan_rate = orphan_count / max(total_nodes, 1) * 100  # Wrong: 452 denominator
     total_all_entities = len(all_node_ids)
     orphan_rate = orphan_count / max(total_all_entities, 1) * 100
+
+    # Only count edge references that point to existing nodes
+    all_node_ids = set(manager.graph.nodes.keys())
+    nodes_with_edges = set()
+    for edge in manager.graph.edges:
+        if edge.source_id in all_node_ids:
+            nodes_with_edges.add(edge.source_id)
+        if edge.target_id in all_node_ids:
+            nodes_with_edges.add(edge.target_id)
+
+    orphan_count = len(all_node_ids - nodes_with_edges)
+    orphan_rate = orphan_count / max(total_nodes, 1) * 100
 
     # Check orphan rate (warning if high, but not critical)
     if orphan_rate > 50:
@@ -325,9 +339,9 @@ def cmd_export(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-# =============================================================================
+# 
 # EXPRESSION QUERY COMMANDS
-# =============================================================================
+# 
 
 def cmd_expr(args, manager: "TransactionalGoTAdapter") -> int:
     """
@@ -467,13 +481,13 @@ def _print_result_item(item: Any) -> None:
 
 def _cmd_list_fields(args) -> int:
     """List available fields for an entity type."""
-    from cortical.got.schema import get_registry
-    from cortical.got.entity_schemas import ensure_schemas_registered
+    from cortical.core.bootstrap import get_container
+    from cortical.cdg.schema import SchemaRegistry
 
-    ensure_schemas_registered()
+    container = get_container()
+    registry = container.resolve(SchemaRegistry)
 
     entity_type = getattr(args, 'type', 'task')
-    registry = get_registry()
 
     schema = registry.get_schema(entity_type)
     if schema is not None:
@@ -599,9 +613,9 @@ def _print_ast(node, indent=0) -> None:
         print(f"{prefix}{type(node).__name__}: {node}")
 
 
-# =============================================================================
+# 
 # CLI INTEGRATION
-# =============================================================================
+# 
 
 def setup_query_parser(subparsers) -> None:
     """

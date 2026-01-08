@@ -1,42 +1,23 @@
-# CLAUDE.md — Team Lead & Repository Guardian
+# CLAUDE.md — Graph of Thought Operations Guide
 
-*Last updated: 2026-01-04*
+
+*Last updated: 2026-01-07*
+
+*Last updated: 2026-01-05*
 
 ---
 
 ## Identity
 
-I am the Team Lead for this repository—a senior computational scientist and software engineer with deep expertise in:
-- Information retrieval, graph algorithms, and semantic analysis
-- ACID-compliant transactional systems
-- AI agent orchestration and cognitive architecture
-- Test-driven and behavior-driven development
-
-**My role is not just to complete tasks, but to protect this codebase and guide those who work in it.**
-
----
-
-## The Three Promises
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                        THE THREE PROMISES                                │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│  1. I WILL NOT BREAK WHAT WORKS                                         │
-│     Every change runs through tests. No exceptions. No shortcuts.       │
-│     When I'm unsure, I ask. When I'm wrong, I admit it.                 │
-│                                                                          │
-│  2. I WILL EXPLAIN MY REASONING                                         │
-│     "Because I said so" is not acceptable. Every decision has          │
-│     rationale. Every trade-off is documented. Clarity over speed.       │
-│                                                                          │
-│  3. I WILL LEAVE THE CODE BETTER THAN I FOUND IT                        │
-│     Technical debt is acknowledged, not hidden. If I can't fix it       │
-│     now, I'll document it. Future me deserves the same respect.         │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
-```
+<system>
+You are an expert Graph of Thought database designer and computer scientist with a background in computer science, graph of thought theory and practical applications. You understand:
+- Entity storage, relationships, graph traversal and the pitfalls with all of them
+- ACID transactions and WAL-based recovery
+- The GoT CLI (got_utils.py) and its commands
+- When to execute vs when to ask for clarification
+- We are in the middle of refactoring a large project and bugs need to be fixed when they are found
+- Scratchpad usage patterns that work
+</system>
 
 ---
 
@@ -74,6 +55,12 @@ Before ANY work begins:
 │                          ENTRY GATE CHECKLIST                            │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
+│  □ 0. CHECK FOR SESSION SCRATCHPADS (if continuing previous work)       │
+│       cat docs/sessions/*.md 2>/dev/null | head -100                    │
+│       Look for "SESSION OVERRIDES" section at the top.                  │
+│       ⚠️  SCRATCHPAD OVERRIDES SUPERSEDE THIS CHECKLIST                 │
+│       If scratchpad says "DO NOT RUN TESTS", skip step 1.               │
+│                                                                          │
 │  □ 1. SMOKE TESTS PASS                                                  │
 │       python -m pytest tests/smoke/ -v --tb=short                       │
 │       If this fails, DO NOT PROCEED. Fix it or escalate.                │
@@ -82,12 +69,7 @@ Before ANY work begins:
 │       python scripts/got_utils.py validate                              │
 │       Corruption detected? Run recovery first.                          │
 │                                                                          │
-│  □ 3. UNDERSTAND THE REQUEST                                            │
-│       Can you state it in one sentence?                                 │
-│       NO  → Ask for clarification. Don't guess.                         │
-│       YES → Continue.                                                   │
-│                                                                          │
-│  □ 4. CHECK FOR EXISTING WORK                                           │
+│  □ 3. CHECK FOR EXISTING WORK                                           │
 │       python scripts/got_utils.py task list --status in_progress        │
 │       Is someone already working on this? Coordinate, don't duplicate.  │
 │                                                                          │
@@ -364,6 +346,39 @@ that you understand the tradeoff.
 │                                                                          │
 │  7. QAPV                — Question → Answer → Produce → Verify cycle    │
 │                           Location: cortical/reasoning/cognitive_loop.py│
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Technical Debt: Reduce It When You Can
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    TECHNICAL DEBT REDUCTION                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  When you see technical debt, REDUCE IT if you can.                     │
+│                                                                          │
+│  This means:                                                            │
+│  - Consolidate duplicated code when discovered                          │
+│  - Remove dead code, don't comment it out                               │
+│  - Fix misleading names when you understand the intent                  │
+│  - Simplify complex logic when the simpler version is clear             │
+│  - Delete backward-compatibility shims when safe                        │
+│  - Replace if/elif chains with data structures                          │
+│                                                                          │
+│  The rule is simple:                                                    │
+│  IF you can reduce debt without breaking things,                        │
+│  AND it takes less than 30 minutes,                                     │
+│  THEN do it now, not later.                                             │
+│                                                                          │
+│  "Later" never comes. The next session won't remember.                  │
+│  The codebase accumulates cruft. Do it now.                             │
+│                                                                          │
+│  Exception: If you're in the middle of a larger task, note the debt     │
+│  and complete your current task first. Context-switching is expensive.  │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -796,40 +811,28 @@ make test-precommit   # Smoke + unit + integration
 make test-coverage    # With coverage report
 ```
 
----
-
-## When to Use Sub-Agents
+### Test Writing Rules
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    SUB-AGENT DELEGATION GUIDE                            │
+│                     NO SLEEP CALLS IN TESTS                              │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
-│  USE SUB-AGENTS FOR:                                                    │
-│  ─────────────────────                                                  │
-│  • Exploration/Research - "Find all usages of X"                        │
-│  • Parallel independent tasks - Multiple files, no dependencies         │
-│  • Mechanical work - Rename, format, generate                           │
-│  • Verification - Run tests, check coverage                             │
+│  NEVER add time.sleep() to automated tests without explicit approval.   │
 │                                                                          │
-│  KEEP IN MAIN CONTEXT:                                                  │
-│  ─────────────────────                                                  │
-│  • Architectural decisions - Need full context                          │
-│  • Cross-cutting changes - Affect multiple systems                      │
-│  • User communication - Responses require judgment                      │
-│  • Recovery from failures - Need to understand what went wrong          │
+│  Before adding ANY sleep call to a test, you MUST:                      │
+│  1. Ask: "I need to add a sleep call to test X. Do you approve?"        │
+│  2. Wait for explicit approval                                          │
+│  3. If approved, use the MINIMUM duration necessary (prefer ms, not s)  │
 │                                                                          │
-│  SUB-AGENT TYPES:                                                       │
-│  ─────────────────                                                      │
-│  • Explore (quick/medium/thorough) - Research and find                  │
-│  • Plan - Architecture and design                                       │
-│  • general-purpose - Implementation and testing                         │
+│  WHY: Sleep calls are the #1 cause of slow test suites.                 │
+│  A 2-second sleep in 10 tests = 20 seconds of wasted CI time.           │
 │                                                                          │
-│  ALWAYS VERIFY:                                                         │
-│  ─────────────────                                                      │
-│  After sub-agent completes, verify changes persisted:                   │
-│    git status                                                           │
-│    git diff path/to/file.py                                             │
+│  ALTERNATIVES to sleep:                                                 │
+│  - Mock time with freezegun or unittest.mock                            │
+│  - Use polling with short intervals and timeout                         │
+│  - Inject clock/timer dependencies for testing                          │
+│  - Use asyncio.sleep with test event loops                              │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -917,6 +920,687 @@ Recognize these patterns and **STOP**:
 | Contradicting earlier statements | State confusion | Re-read context, reconcile |
 | Making changes without reading | Premature action | Read first, then act |
 | Generating placeholder content | Uncertainty masked | Admit uncertainty, ask |
+
+---
+
+## API Exploration with inspect
+
+When encountering unfamiliar APIs, classes, or functions, **use Python's `inspect` module** to understand them before writing code. This is faster and more accurate than guessing.
+
+### Examine Function/Method Signatures
+
+```python
+
+# Quick signature check
+python3 -c "
+import inspect
+from cortical.got.tx_manager import TransactionManager
+
+sig = inspect.signature(TransactionManager.__init__)
+print('TransactionManager.__init__ signature:')
+print(sig)
+print()
+for param_name, param in sig.parameters.items():
+    if param_name != 'self':
+        default = 'REQUIRED' if param.default == inspect.Parameter.empty else repr(param.default)
+        print(f'  {param_name} = {default}')
+
+# tests/regression/test_regressions.py
+import pytest
+
+class TestYourBugFix:
+    """
+    Task #XXX: Description of the bug that was fixed.
+    """
+
+    def test_bug_is_fixed(self, small_processor):
+        """Verify the specific bug is fixed."""
+        # small_processor fixture provides pre-loaded corpus
+        result = small_processor.your_feature()
+        assert result is not None
+
+    def test_edge_case(self, fresh_processor):
+        """Test with empty processor."""
+        # fresh_processor fixture provides empty processor
+        result = fresh_processor.your_feature()
+        assert result == expected_value
+```
+
+### Unittest Pattern (Legacy Tests)
+
+```python
+# tests/test_processor.py
+class TestYourFeature(unittest.TestCase):
+    def setUp(self):
+        self.processor = CorticalTextProcessor()
+        self.processor.process_document("doc1", "Test content here.")
+        self.processor.compute_all()
+
+    def test_feature_basic(self):
+        """Test basic functionality."""
+        result = self.processor.your_feature()
+        self.assertIsNotNone(result)
+```
+
+### Available Fixtures (pytest)
+
+| Fixture | Scope | Description |
+|---------|-------|-------------|
+| `small_processor` | session | 25-doc synthetic corpus, pre-computed |
+| `shared_processor` | session | Full samples/ corpus (~125 docs) |
+| `fresh_processor` | function | Empty processor for isolated tests |
+| `small_corpus_docs` | function | Raw document dict |
+
+### Test Markers for Optional Dependencies
+
+Tests requiring optional dependencies are excluded by default during development for faster iteration.
+
+**Markers defined in pyproject.toml:**
+
+| Marker | Tests | Dependency |
+|--------|-------|------------|
+| `optional` | All optional tests | (meta-marker) |
+| `protobuf` | Serialization tests | `protobuf>=4.0` |
+| `fuzz` | Property-based tests | `hypothesis>=6.0` |
+| `slow` | Long-running tests | (none) |
+
+**Running tests:**
+
+```bash
+# Development (default) - excludes optional tests
+pytest tests/
+
+# Include optional tests (like CI)
+pytest tests/ -m ""
+
+# Using run_tests.py
+python scripts/run_tests.py unit --include-optional
+
+# Run only fuzzing tests
+pytest tests/ -m "fuzz"
+```
+
+**CI behavior:** All CI stages use `-m ""` to run the complete test suite including optional tests.
+
+**Always test:**
+- Empty corpus case
+- Single document case
+- Multiple documents case
+- Edge cases specific to your feature
+- Add regression test if fixing a bug
+
+### Intentionally Skipped Tests
+
+Some tests are designed to skip under certain conditions. This is intentional, not a bug:
+
+| Test File | Skip Condition | Reason |
+|-----------|----------------|--------|
+| `tests/unit/test_protobuf_serialization.py` | `protobuf` not installed | Optional dependency for cross-language serialization |
+| `tests/test_evaluate_cluster.py` | `samples/` missing or < 5 files | Integration test requiring sample corpus |
+| `tests/unit/test_suggest_tasks.py` | `task_utils` not available | Optional task management feature |
+
+**Pattern for optional dependencies:**
+```python
+try:
+    from cortical.projects.proto import to_proto, from_proto
+    PROTOBUF_AVAILABLE = True
+except ImportError:
+    PROTOBUF_AVAILABLE = False
+
+@unittest.skipIf(not PROTOBUF_AVAILABLE, "protobuf package not installed")
+class TestProtobufSerialization(unittest.TestCase):
+    ...
+```
+
+**Pattern for conditional resources:**
+```python
+def setUp(self):
+    if not os.path.exists(self.required_resource):
+        self.skipTest("Required resource not available")
+```
+
+### CI/CD Best Practices
+
+**CRITICAL: Pytest runs unittest-based tests natively!**
+
+Never run both pytest and unittest on the same test files - this doubles CI time:
+
+```bash
+# ❌ WRONG - runs tests twice (doubles CI time from ~7min to ~15min+)
+coverage run -m pytest tests/
+coverage run --append -m unittest discover -s tests
+
+# ✅ CORRECT - pytest handles both pytest AND unittest style tests
+coverage run -m pytest tests/
+```
+
+**Why this matters:**
+- All `test_*.py` files using `unittest.TestCase` are discovered and run by pytest
+- Running unittest separately re-runs the exact same tests
+- With 3000+ tests and coverage overhead, this can add 10+ minutes to CI
+
+**When modifying `.github/workflows/ci.yml`:**
+1. Read the header comment explaining the test architecture
+2. Add new tests to the appropriate stage (smoke, unit, integration, etc.)
+3. Never add duplicate test runners in the coverage-report job
+4. When in doubt, run locally first: `time python -m pytest tests/ -v`
+
+**Scripts called from CI must add project root to sys.path:**
+
+Scripts in `scripts/` that import from `cortical` need path setup because CI runs them directly without installing the package:
+
+```python
+# At the top of the script, BEFORE any cortical imports:
+import sys
+from pathlib import Path
+
+_PROJECT_ROOT = Path(__file__).parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
+# Now cortical imports will work
+from cortical.utils.id_generation import generate_task_id
+```
+
+**Scripts currently called from CI:**
+- `ci_task_report.py` → imports `task_utils.py` → imports from `cortical.utils`
+- `ml_data_collector.py` → handles missing cortical gracefully (try/except)
+- `validate_tasks.py`, `resolve_wiki_links.py` → no cortical imports
+
+---
+
+## Common Tasks
+
+### Adding a New Analysis Function
+
+1. Add function to `analysis.py` with proper signature:
+   ```python
+   def compute_your_analysis(
+       layers: Dict[CorticalLayer, HierarchicalLayer],
+       **kwargs
+   ) -> Dict[str, Any]:
+       """Your analysis description."""
+       layer0 = layers[CorticalLayer.TOKENS]
+       # Implementation
+       return {'result': ..., 'stats': ...}
+   ```
+
+2. Add wrapper method to `CorticalTextProcessor` in the `processor/` package (appropriate mixin):
+   ```python
+   def compute_your_analysis(self, **kwargs) -> Dict[str, Any]:
+       """Wrapper with docstring."""
+       return compute_your_analysis(self.layers, **kwargs)
+   ```
+
+3. Add tests in `tests/test_analysis.py`
+
+### Adding a New Query Function
+
+1. Add to the `query/` package following existing patterns (e.g., `query/search.py`)
+2. Use `get_expanded_query_terms()` helper for query expansion
+3. Use `layer.get_by_id()` for O(1) lookups, not iteration
+4. Add wrapper to the `processor/` package (likely `processor/query_api.py`)
+5. Add tests in `tests/test_processor.py`
+
+### Modifying Minicolumn Structure
+
+1. Update `Minicolumn` class in `minicolumn.py`
+2. Update `to_dict()` and `from_dict()` for persistence
+3. Update `__slots__` if adding new fields
+4. Increment state version in `persistence.py` if breaking change
+5. Add migration logic for backward compatibility
+
+---
+
+## Code Style Guidelines
+
+```python
+# Imports: stdlib, then local
+from typing import Dict, List, Optional, Tuple
+from collections import defaultdict
+
+from .layers import CorticalLayer, HierarchicalLayer
+from .minicolumn import Minicolumn
+
+# Type hints on all public functions
+def find_documents(
+    query: str,
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    top_n: int = 5
+) -> List[Tuple[str, float]]:
+    """
+    Find documents matching query.
+
+    Args:
+        query: Search query string
+        layers: Dictionary of hierarchical layers
+        top_n: Number of results to return
+
+    Returns:
+        List of (doc_id, score) tuples sorted by relevance
+    """
+    # Implementation
+```
+
+---
+
+## Scoring Algorithms
+
+The processor supports multiple scoring algorithms for term weighting:
+
+### BM25 (Default)
+
+BM25 (Best Match 25) is the default scoring algorithm, optimized for code search:
+
+```python
+from cortical import CorticalTextProcessor
+from cortical.config import CorticalConfig
+
+# BM25 with default parameters (recommended)
+config = CorticalConfig(scoring_algorithm='bm25')
+
+# Tune BM25 parameters if needed
+config = CorticalConfig(
+    scoring_algorithm='bm25',
+    bm25_k1=1.2,  # Term frequency saturation (0.0-3.0, default 1.2)
+    bm25_b=0.75   # Length normalization (0.0-1.0, default 0.75)
+)
+processor = CorticalTextProcessor(config=config)
+```
+
+**Parameters:**
+- `bm25_k1`: Controls term frequency saturation. Higher values give more weight to term frequency.
+- `bm25_b`: Controls document length normalization. Set to 0.0 to disable length normalization.
+
+### TF-IDF (Legacy)
+
+Traditional TF-IDF scoring is still available:
+
+```python
+config = CorticalConfig(scoring_algorithm='tfidf')
+```
+
+### Graph-Boosted Search (GB-BM25)
+
+A hybrid search combining BM25 with graph signals:
+
+```python
+# Standard search (uses BM25 under the hood)
+results = processor.find_documents_for_query("query")
+
+# Graph-boosted search (adds PageRank + proximity signals)
+results = processor.graph_boosted_search(
+    "query",
+    pagerank_weight=0.3,   # Weight for term importance (0-1)
+    proximity_weight=0.2   # Weight for connected terms (0-1)
+)
+```
+
+**GB-BM25 combines:**
+1. BM25 base score (term relevance)
+2. PageRank boost (important terms rank higher)
+3. Proximity boost (connected query terms boost documents)
+4. Coverage boost (documents matching more terms rank higher)
+
+---
+
+## Performance Considerations
+
+1. **Use `get_by_id()` for ID lookups** - O(1) vs O(n) iteration
+2. **Batch document additions** with `add_documents_batch()` for bulk imports
+3. **Use incremental updates** with `add_document_incremental()` for live systems
+4. **Cache query expansions** when processing multiple similar queries
+5. **Pre-compute chunks** in `find_passages_batch()` to avoid redundant work
+6. **Use `fast_find_documents()`** for ~2-3x faster search on large corpora
+7. **Pre-build index** with `build_search_index()` for fastest repeated queries
+8. **Watch for O(n²) patterns** in loops over connections—use limits like `max_bigrams_per_term`
+9. **Use `graph_boosted_search()`** for hybrid scoring with PageRank signals
+
+---
+
+## Code Search Capabilities
+
+### Code-Aware Tokenization
+```python
+# Enable identifier splitting for code search
+tokenizer = Tokenizer(split_identifiers=True)
+tokens = tokenizer.tokenize("getUserCredentials")
+# ['getusercredentials', 'get', 'user', 'credentials']
+```
+
+### Programming Concept Expansion
+```python
+# Expand queries with programming synonyms (get/fetch/load)
+results = processor.expand_query("fetch data", use_code_concepts=True)
+# Or use the convenience method
+results = processor.expand_query_for_code("fetch data")
+```
+
+### Intent-Based Search
+```python
+# Parse natural language queries
+parsed = processor.parse_intent_query("where do we handle authentication?")
+# {'intent': 'location', 'action': 'handle', 'subject': 'authentication', ...}
+
+# Search with intent understanding
+results = processor.search_by_intent("how do we validate input?")
+```
+
+### Semantic Fingerprinting
+```python
+# Compare code similarity
+fp1 = processor.get_fingerprint(code_block_1)
+fp2 = processor.get_fingerprint(code_block_2)
+comparison = processor.compare_fingerprints(fp1, fp2)
+explanation = processor.explain_similarity(fp1, fp2)
+```
+
+### Fast Search
+```python
+# Fast document search (~2-3x faster)
+results = processor.fast_find_documents("authentication")
+
+# Pre-built index for fastest search
+index = processor.build_search_index()
+results = processor.search_with_index("query", index)
+```
+
+---
+
+## Debugging Tips
+
+### Inspecting Layer State
+```python
+processor = CorticalTextProcessor()
+processor.process_document("test", "Neural networks process data.")
+processor.compute_all()
+
+# Check layer sizes
+for layer_enum, layer in processor.layers.items():
+    print(f"{layer_enum.name}: {layer.column_count()} minicolumns")
+
+# Inspect a specific minicolumn
+col = processor.layers[CorticalLayer.TOKENS].get_minicolumn("neural")
+print(f"PageRank: {col.pagerank}")
+print(f"TF-IDF: {col.tfidf}")
+print(f"Connections: {len(col.lateral_connections)}")
+print(f"Documents: {col.document_ids}")
+```
+
+### Tracing Query Expansion
+```python
+expanded = processor.expand_query("neural networks", max_expansions=10)
+for term, weight in sorted(expanded.items(), key=lambda x: -x[1]):
+    print(f"  {term}: {weight:.3f}")
+```
+
+### Checking Semantic Relations
+```python
+processor.extract_corpus_semantics()
+for t1, rel, t2, weight in processor.semantic_relations[:10]:
+    print(f"{t1} --{rel}--> {t2} ({weight:.2f})")
+```
+
+### Profiling Performance
+```bash
+# Profile full analysis phases with timeout detection
+python scripts/profile_full_analysis.py
+
+# This reveals which phases are slow and helps identify O(n²) bottlenecks
+```
+
+### Observability and Metrics
+
+The processor includes built-in observability features for tracking performance and operational metrics.
+
+**Enable metrics collection:**
+```python
+# Create processor with metrics enabled
+processor = CorticalTextProcessor(enable_metrics=True)
+
+# Process documents and run queries (all operations are timed)
+processor.process_document("doc1", "Neural networks process data.")
+processor.compute_all()
+processor.find_documents_for_query("neural networks")
+
+# Get metrics summary
+print(processor.get_metrics_summary())
+```
+
+**Access metrics programmatically:**
+```python
+metrics = processor.get_metrics()
+
+# Check specific operation stats
+if "compute_all" in metrics:
+    stats = metrics["compute_all"]
+    print(f"Average: {stats['avg_ms']:.2f}ms")
+    print(f"Count: {stats['count']}")
+    print(f"Min: {stats['min_ms']:.2f}ms")
+    print(f"Max: {stats['max_ms']:.2f}ms")
+
+# Check cache performance
+if "query_cache_hits" in metrics:
+    hits = metrics["query_cache_hits"]["count"]
+    misses = metrics["query_cache_misses"]["count"]
+    hit_rate = hits / (hits + misses) * 100
+    print(f"Cache hit rate: {hit_rate:.1f}%")
+```
+
+**Automatically timed operations:**
+- `compute_all()` and all compute phases (PageRank, TF-IDF, clustering, etc.)
+- `process_document()` with doc_id context
+- `find_documents_for_query()` with query context
+- `save()` operations
+- Query cache hits/misses via `expand_query_cached()`
+
+**Control metrics collection:**
+```python
+# Disable metrics temporarily
+processor.disable_metrics()
+# ... operations not timed ...
+processor.enable_metrics()
+
+# Reset all metrics
+processor.reset_metrics()
+
+# Record custom metrics
+processor.record_metric("api_calls", 10)
+processor.record_metric("documents_processed", 100)
+```
+
+**Demo:**
+```bash
+# Run the observability demo
+python examples/observability_demo.py
+```
+
+---
+
+## Quick Reference
+
+| Task | Command/Method |
+|------|----------------|
+| Process document | `processor.process_document(id, text)` |
+| Build network | `processor.compute_all()` |
+| Search | `processor.find_documents_for_query(query)` |
+| Fast search | `processor.fast_find_documents(query)` |
+| Hybrid search | `processor.graph_boosted_search(query)` |
+| Code search | `processor.expand_query_for_code(query)` |
+| Intent search | `processor.search_by_intent("where do we...")` |
+| RAG passages | `processor.find_passages_for_query(query)` |
+| Fingerprint | `processor.get_fingerprint(text)` |
+| Compare | `processor.compare_fingerprints(fp1, fp2)` |
+| Save state (JSON) | `processor.save("corpus_state")` (recommended) |
+| Save state (pkl) | `processor.save("corpus.pkl", format='pickle')` (deprecated) |
+| Load state | `processor = CorticalTextProcessor.load("corpus_state")` (auto-detects format) |
+| Enable metrics | `processor = CorticalTextProcessor(enable_metrics=True)` |
+| Get metrics | `processor.get_metrics()` |
+| Metrics summary | `processor.get_metrics_summary()` |
+| Reset metrics | `processor.reset_metrics()` |
+| Record metric | `processor.record_metric("name", count)` |
+| Run smoke tests | `make test-smoke` or `python scripts/run_tests.py smoke` |
+| Run fast tests | `make test-fast` (~5s, no slow tests) |
+| Run quick tests | `make test-quick` or `python scripts/run_tests.py quick` |
+| Run parallel | `make test-parallel` or `python scripts/run_tests.py unit -j 4` |
+| Run pre-commit | `python scripts/run_tests.py precommit` (smoke + unit + integration) |
+| Run all tests | `python scripts/run_tests.py all` |
+| Run performance | `python scripts/run_tests.py performance` (no coverage) |
+| Check coverage | `python -m coverage run --source=cortical -m pytest tests/ && python -m coverage report --include="cortical/*"` |
+| Run showcase | `python showcase.py` |
+| Profile analysis | `python scripts/profile_full_analysis.py` |
+| Create memory | `python scripts/new_memory.py "topic"` |
+| Create decision | `python scripts/new_memory.py "topic" --decision` |
+| Session handoff | `python scripts/session_handoff.py` |
+| Generate session memory | `python scripts/session_memory_generator.py --session-id ID` |
+| Check wiki-links | `python scripts/resolve_wiki_links.py FILE` |
+| Find backlinks | `python scripts/resolve_wiki_links.py --backlinks FILE` |
+| Complete task with memory | `python scripts/task_utils.py complete TASK_ID --create-memory` |
+| View sprint status | `python scripts/got_utils.py sprint status` |
+| List all sprints | `python scripts/got_utils.py sprint list` |
+| Create sprint | `python scripts/got_utils.py sprint create "Title" --number N` |
+| Create orchestration plan | `python scripts/orchestration_utils.py generate --type plan` |
+| List orchestration plans | `python scripts/orchestration_utils.py list` |
+| Verify batch | `python scripts/verify_batch.py --quick` |
+| View orchestration metrics | From Python: `OrchestrationMetrics().get_summary()` |
+| **Reasoning Framework** | |
+| Reasoning demo | `python scripts/reasoning_demo.py --quick` |
+| Reasoning with persistence | `python scripts/reasoning_demo.py --quick --persist` |
+| Graph persistence demo | `python examples/graph_persistence_demo.py` |
+| Validate persistence | `python scripts/validate_reasoning_persistence.py` |
+| **Graph Persistence API** | |
+| Create GraphWAL | `GraphWAL(wal_dir="/path/to/wal")` |
+| Log node | `wal.log_add_node(node_id, node_type, content)` |
+| Log edge | `wal.log_add_edge(source_id, target_id, edge_type)` |
+| Create snapshot | `wal.create_snapshot(graph, compress=True)` |
+| Load snapshot | `graph = wal.load_snapshot(snapshot_id)` |
+| Check recovery needed | `GraphRecovery(wal_dir).needs_recovery()` |
+| Recover graph | `result = GraphRecovery(wal_dir).recover()` |
+| Git auto-commit | `GitAutoCommitter(repo_path).commit_on_save(path, graph)` |
+| **GoT Handoff Primitives** | |
+| Initiate handoff | `python scripts/got_utils.py handoff initiate TASK_ID --target AGENT --instructions "..."` |
+| Accept handoff | `python scripts/got_utils.py handoff accept HANDOFF_ID --agent AGENT` |
+| Complete handoff | `python scripts/got_utils.py handoff complete HANDOFF_ID --agent AGENT --result JSON` |
+| Reject handoff | `python scripts/got_utils.py handoff reject HANDOFF_ID --agent AGENT --reason "..."` |
+| List handoffs | `python scripts/got_utils.py handoff list [--status STATUS]` |
+| Compact events | `python scripts/got_utils.py compact [--preserve-days N]` |
+| **GoT Query Language** | |
+| What blocks task | `python scripts/got_utils.py query "what blocks TASK_ID"` |
+| What depends on | `python scripts/got_utils.py query "what depends on TASK_ID"` |
+| Find path | `python scripts/got_utils.py query "path from ID1 to ID2"` |
+| All relationships | `python scripts/got_utils.py query "relationships TASK_ID"` |
+| Active tasks | `python scripts/got_utils.py query "active tasks"` |
+| Pending tasks | `python scripts/got_utils.py query "pending tasks"` |
+| Blocked tasks | `python scripts/got_utils.py query "blocked tasks"` |
+| **Performance Tests** | |
+| Run perf tests | `python -m pytest tests/performance/test_graph_persistence_perf.py -v` |
+| Run E2E tests | `python -m pytest tests/integration/test_reasoning_persistence_e2e.py -v` |
+
+### Orchestration Utilities
+
+For Director orchestration and parallel agent workflows:
+
+- `scripts/orchestration_utils.py` - Director orchestration tracking (plans, batches, metrics)
+- `scripts/verify_batch.py` - Automated batch verification
+
+See `.claude/commands/director.md` for comprehensive orchestration documentation.
+
+---
+
+## Persistence Format Migration
+
+**⚠️ IMPORTANT:** Pickle format is deprecated due to security concerns (Remote Code Execution vulnerability). JSON is now the default and recommended format.
+
+### Why JSON?
+
+- **Secure**: No code execution risk (pickle can execute arbitrary code when loading)
+- **Git-friendly**: Human-readable diffs, no merge conflicts
+- **Cross-platform**: Works across Python versions and platforms
+- **Debuggable**: Can inspect state without loading into Python
+
+### Migration from Pickle to JSON
+
+```bash
+# Migrate existing pickle files to JSON
+python -c "
+from cortical.processor import CorticalTextProcessor
+processor = CorticalTextProcessor.load('corpus_dev.pkl')  # Auto-detects pickle
+processor.save('corpus_dev.json')  # Saves as JSON directory
+"
+```
+
+### Common inspect Patterns
+
+```python
+import inspect
+
+# 1. Get function signature
+sig = inspect.signature(some_function)
+print(sig)  # (param1, param2, *, keyword_only=None)
+
+# 2. List all public methods of a class
+methods = [m for m in dir(SomeClass) if not m.startswith('_') and callable(getattr(SomeClass, m))]
+
+# 3. Get source code location
+file_path = inspect.getfile(SomeClass)
+source_lines, start_line = inspect.getsourcelines(SomeClass.some_method)
+
+# 4. Check if something is a class, function, or method
+inspect.isclass(obj)
+inspect.isfunction(obj)
+inspect.ismethod(obj)
+
+# 5. Get the full source code
+source = inspect.getsource(SomeClass)
+
+# 6. Examine class hierarchy
+inspect.getmro(SomeClass)  # Method Resolution Order
+
+# 7. Get all members of a module
+inspect.getmembers(some_module, inspect.isclass)  # All classes
+inspect.getmembers(some_module, inspect.isfunction)  # All functions
+```
+
+### When to Use inspect
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    USE inspect WHEN:                                     │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  • You need to call a class/function you haven't used before            │
+│  • Documentation is missing or unclear                                  │
+│  • You want to verify required vs optional parameters                   │
+│  • You need to understand the inheritance hierarchy                     │
+│  • You're debugging and need to find where code is defined              │
+│  • You want to list all available methods on an object                  │
+│                                                                          │
+│  PREFER inspect OVER:                                                   │
+│  ────────────────────                                                   │
+│  • Guessing parameter names or order                                    │
+│  • Reading entire source files to find one signature                    │
+│  • Trial-and-error with function calls                                  │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Practical Examples
+
+```bash
+# Check what parameters TransactionManager needs
+python3 -c "import inspect; from cortical.cdg.transaction_manager import TransactionManager; print(inspect.signature(TransactionManager.__init__))"
+
+# Find all public methods on a class
+python3 -c "from cortical.got.api import GoTAPI; print([m for m in dir(GoTAPI) if not m.startswith('_')])"
+
+# Get the file where a class is defined
+python3 -c "import inspect; from cortical.got.indexer import GoTIndexer; print(inspect.getfile(GoTIndexer))"
+
+# Show class inheritance chain
+python3 -c "import inspect; from cortical.cdg.storage import StorageBackend; print(inspect.getmro(StorageBackend))"
+```
+
+**Remember:** Understanding before implementing. `inspect` is your tool for rapid API comprehension.
 
 ---
 
@@ -1079,8 +1763,58 @@ A professional design review has this structure:
 ### Approval Signoff
 [Checklist of items approved/not approved]
 
+
 ## Closing Remarks
 [Constructive, forward-looking conclusion]
+
+### What Gets Collected
+
+| Data Type | Location | Contents |
+|-----------|----------|----------|
+| **Commits** | `.git-ml/commits/` | Git history with diff hunks, temporal context, CI results |
+| **Chats** | `.git-ml/chats/` | Query/response pairs with files touched and tools used |
+| **Sessions** | `.git-ml/sessions/` | Development sessions linking chats to commits |
+| **Actions** | `.git-ml/actions/` | Individual tool uses and operations |
+
+**Note:** ML data in `.git-ml/` has two tiers:
+- **Tracked** (`.git-ml/tracked/`, `.git-ml/cali/`): JSONL files - commits, sessions summaries, CALI logs/objects - persisted in git
+- **Local** (`.git-ml/chats/`, `actions/`, `cali/local/`): Rich data - gitignored, **NOT regeneratable** (chats/actions) or regeneratable indices (cali/local/)
+
+**⚠️ WARNING:** Chat transcripts (`.git-ml/chats/`) and action logs (`.git-ml/actions/`) are **irreplaceable** if lost and currently gitignored. CALI data is now preserved (logs/ and objects/ tracked, only local/ indices ignored). See `docs/ml-ephemeral-architecture.md` for the migration plan to fix remaining chat/action data loss.
+
+### Quick Commands
+
+```bash
+# Check collection progress
+python scripts/ml_data_collector.py stats
+
+# Estimate when training becomes viable
+python scripts/ml_data_collector.py estimate
+
+# Validate collected data
+python scripts/ml_data_collector.py validate
+
+# Session management
+python scripts/ml_data_collector.py session status
+python scripts/ml_data_collector.py session start
+python scripts/ml_data_collector.py session end --summary "What was accomplished"
+
+# Generate session handoff document
+python scripts/ml_data_collector.py handoff
+
+# Record CI results (manual)
+python scripts/ml_data_collector.py ci set --commit abc123 --result pass --coverage 89.5
+
+# CI auto-capture (reads from GitHub Actions environment)
+python scripts/ml_data_collector.py ci-autocapture
+
+# Backfill historical commits
+python scripts/ml_data_collector.py backfill -n 100
+
+# Collect GitHub PR/Issue data (requires gh CLI)
+python scripts/ml_data_collector.py github collect           # Collect recent PRs and issues
+python scripts/ml_data_collector.py github stats             # Show GitHub data counts
+python scripts/ml_data_collector.py github fetch-pr --number 42  # Fetch specific PR
 ```
 
 ### What Good Reviews Look Like

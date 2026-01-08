@@ -8,39 +8,22 @@ Services Provided:
     - CDGWALManager: Write-ahead logging
     - CDGTransactionManager: ACID transactions
     - CDGRecoveryManager: Crash recovery
+    - CDGIndexManager: Schema-based index maintenance
 
 Usage:
     from cortical.core.modules import CDGModule
 
     container = Container()
-    container.apply_module(CDGModule(got_dir=Path(".got")))
+    container.apply_module(CDGModule(base_dir=Path(".got")))
 
     store = container.resolve(CDGStore)
     tx_manager = container.resolve(CDGTransactionManager)
 """
 
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
 from cortical.common import Container, ContainerModule, Lifecycle, FileSystem
-
-
-@dataclass
-class CDGConfig:
-    """Configuration for CDG services."""
-
-    base_dir: Path
-    """Base directory for CDG storage."""
-
-    wal_enabled: bool = True
-    """Enable write-ahead logging."""
-
-    fsync_on_commit: bool = True
-    """Force fsync on commit for durability."""
-
-    use_memory: bool = False
-    """Use in-memory storage instead of disk (for testing)."""
 
 
 class CDGModule(ContainerModule):
@@ -53,25 +36,21 @@ class CDGModule(ContainerModule):
 
     def __init__(
         self,
-        config: Optional[CDGConfig] = None,
-        got_dir: Optional[Path] = None,
+        base_dir: Optional[Path] = None,
         use_memory: bool = False,
+        # Legacy parameter name for backward compatibility during refactor
+        got_dir: Optional[Path] = None,
     ):
         """
         Initialize CDG module.
 
         Args:
-            config: CDG configuration (preferred)
-            got_dir: Shorthand for base_dir (creates default config)
+            base_dir: Base directory for CDG storage
             use_memory: Use in-memory storage (for testing)
+            got_dir: Legacy alias for base_dir (will be removed)
         """
-        if config is not None:
-            self.config = config
-        elif got_dir is not None:
-            self.config = CDGConfig(base_dir=got_dir, use_memory=use_memory)
-        else:
-            # Default to .got in current directory
-            self.config = CDGConfig(base_dir=Path(".got"), use_memory=use_memory)
+        self.base_dir = base_dir or got_dir or Path(".got")
+        self.use_memory = use_memory
 
     def register(self, container: Container) -> None:
         """Register CDG services with the container."""
@@ -79,24 +58,44 @@ class CDGModule(ContainerModule):
         from cortical.cdg.wal import CDGWALManager
         from cortical.cdg.transaction_manager import CDGTransactionManager
         from cortical.cdg.recovery import CDGRecoveryManager
-        from cortical.cdg.config import CDGConfig as CDGInternalConfig
+        from cortical.cdg.config import CDGConfig
+        from cortical.cdg.index_manager import CDGIndexManager
+        from cortical.cdg.schema import SchemaRegistry
 
-        # Register configuration
-        container.register_instance(CDGConfig, self.config)
-
-        # Create internal CDG config from our config
-        internal_config = CDGInternalConfig()
-        container.register_instance(CDGInternalConfig, internal_config)
+        # Create CDGConfig (the real one from cortical.cdg.config)
+        config = CDGConfig()
+        container.register_instance(CDGConfig, config)
 
         # Resolve FileSystem from container (registered by bootstrap)
         filesystem = container.resolve(FileSystem)
 
-        # Register factory for store (always CDGStore, different filesystem)
+        # Resolve SchemaRegistry (registered by SchemaModule, applied before CDGModule)
+        schema_registry = container.resolve(SchemaRegistry)
+
+        # Create CDGIndexManager for schema-based indexes
+        entities_dir = self.base_dir / "entities"
+        if not self.use_memory:
+            entities_dir.mkdir(parents=True, exist_ok=True)
+
+        index_manager = CDGIndexManager(
+            store_dir=entities_dir,
+            schema_registry=schema_registry,
+            config=config,
+            filesystem=filesystem,
+        )
+        container.register_instance(CDGIndexManager, index_manager)
+
+        # Register factory for store
         def create_store() -> CDGStore:
-            entities_dir = self.config.base_dir / "entities"
-            if not self.config.use_memory:
+            if not self.use_memory:
                 entities_dir.mkdir(parents=True, exist_ok=True)
-            return CDGStore(entities_dir, config=internal_config, filesystem=filesystem)
+            return CDGStore(
+                entities_dir,
+                config=config,
+                filesystem=filesystem,
+                schema_registry=schema_registry,
+                index_manager=index_manager,
+            )
 
         container.register_factory("cdg_store", create_store)
 
@@ -107,16 +106,15 @@ class CDGModule(ContainerModule):
             lifecycle=Lifecycle.SINGLETON,
         )
 
-        # Register factory for WAL (skip in memory mode - no WAL needed)
-        if not self.config.use_memory:
+        # Register factory for WAL (skip in memory mode)
+        if not self.use_memory:
             def create_wal() -> CDGWALManager:
-                wal_dir = self.config.base_dir / "wal"
+                wal_dir = self.base_dir / "wal"
                 wal_dir.mkdir(parents=True, exist_ok=True)
-                return CDGWALManager(wal_dir, config=internal_config)
+                return CDGWALManager(wal_dir, config=config)
 
             container.register_factory("cdg_wal", create_wal)
 
-            # Register WAL as singleton using factory
             container.register(
                 CDGWALManager,
                 lambda: container.create("cdg_wal"),
@@ -125,13 +123,11 @@ class CDGModule(ContainerModule):
 
         # Register transaction manager factory
         def create_tx_manager() -> CDGTransactionManager:
-            # CDGTransactionManager creates its own store and wal internally
-            # when given store_dir. Pass store_dir, not individual components.
-            store_dir = self.config.base_dir / "entities"
+            store_dir = self.base_dir / "entities"
             store_dir.mkdir(parents=True, exist_ok=True)
             return CDGTransactionManager(
                 store_dir=store_dir,
-                config=internal_config,
+                config=config,
             )
 
         container.register(
@@ -143,8 +139,9 @@ class CDGModule(ContainerModule):
         # Register recovery manager factory
         def create_recovery() -> CDGRecoveryManager:
             return CDGRecoveryManager(
-                store_dir=self.config.base_dir,
-                config=internal_config,
+                store_dir=self.base_dir,
+                config=config,
+                index_manager=index_manager,
             )
 
         container.register(

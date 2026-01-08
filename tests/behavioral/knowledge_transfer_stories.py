@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from cortical.got.tx_manager import TransactionManager
+from cortical.cdg.transaction_manager import CDGTransactionManager as TransactionManager
 from cortical.got.types import KnowledgeTransfer, Task, Decision, Handoff
 from cortical.got.config import DurabilityMode
 from cortical.got.errors import TransactionError

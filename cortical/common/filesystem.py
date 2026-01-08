@@ -78,6 +78,18 @@ class FileSystem(Protocol):
         """
         ...
 
+    def iterdir(self, path: Path) -> Iterator[Path]:
+        """
+        Iterate over directory contents.
+
+        Args:
+            path: Directory path to iterate
+
+        Returns:
+            Iterator of Path objects for directory contents
+        """
+        ...
+
     # =========================================================================
     # File Operations
     # =========================================================================
@@ -183,6 +195,9 @@ class RealFileSystem:
     def glob(self, path: Path, pattern: str) -> List[Path]:
         return list(path.glob(pattern))
 
+    def iterdir(self, path: Path) -> Iterator[Path]:
+        return path.iterdir()
+
     def read_text(self, path: Path) -> str:
         return path.read_text(encoding='utf-8')
 
@@ -229,12 +244,17 @@ class InMemoryFileSystem:
     - Simulates directory structure
     - Supports glob patterns
     - fsync operations are no-ops (instant)
+    - Operation tracking for behavioral test assertions
 
     Example:
         fs = InMemoryFileSystem()
         fs.mkdir(Path("/data"), parents=True)
         fs.write_text(Path("/data/test.json"), '{"key": "value"}')
         content = fs.read_text(Path("/data/test.json"))
+
+        # Assert operations occurred
+        fs.assert_file_was_read(Path("/data/test.json"))
+        fs.assert_directory_was_created(Path("/data"))
     """
 
     def __init__(self):
@@ -245,9 +265,24 @@ class InMemoryFileSystem:
         # Root always exists
         self._dirs.add("/")
 
+        # Operation tracking for assertions
+        self._operations: List[Dict[str, any]] = []
+        self._files_read: Set[str] = set()
+        self._files_written: Set[str] = set()
+        self._directories_created: Set[str] = set()
+        self._directories_scanned: Set[str] = set()
+
     def _normalize(self, path: Path) -> str:
         """Normalize path to string for dict keys."""
         return str(path.resolve())
+
+    def _record_operation(self, op_type: str, path: Path, **kwargs) -> None:
+        """Record an operation for later assertion."""
+        self._operations.append({
+            "type": op_type,
+            "path": str(path),
+            **kwargs
+        })
 
     def mkdir(self, path: Path, parents: bool = False, exist_ok: bool = False) -> None:
         path_str = self._normalize(path)
@@ -269,6 +304,8 @@ class InMemoryFileSystem:
                 raise FileNotFoundError(f"Parent directory doesn't exist: {path.parent}")
 
         self._dirs.add(path_str)
+        self._directories_created.add(path_str)
+        self._record_operation("mkdir", path, parents=parents, exist_ok=exist_ok)
 
     def exists(self, path: Path) -> bool:
         path_str = self._normalize(path)
@@ -286,6 +323,9 @@ class InMemoryFileSystem:
         import fnmatch
 
         base_str = self._normalize(path)
+        self._directories_scanned.add(base_str)
+        self._record_operation("glob", path, pattern=pattern)
+
         results = []
 
         # Combine normalized base path with pattern (use / to join, not Path)
@@ -307,10 +347,42 @@ class InMemoryFileSystem:
 
         return sorted(set(results))
 
+    def iterdir(self, path: Path) -> Iterator[Path]:
+        """Iterate over directory contents."""
+        path_str = self._normalize(path)
+        if path_str not in self._dirs:
+            raise FileNotFoundError(f"Directory not found: {path}")
+
+        self._directories_scanned.add(path_str)
+        self._record_operation("iterdir", path)
+
+        # Find all files and dirs that are direct children of this directory
+        children = set()
+        prefix = path_str.rstrip("/") + "/"
+
+        # Check files
+        for file_path in self._files.keys():
+            if file_path.startswith(prefix):
+                # Get the immediate child name
+                remainder = file_path[len(prefix):]
+                if "/" not in remainder:
+                    children.add(file_path)
+
+        # Check directories
+        for dir_path in self._dirs:
+            if dir_path.startswith(prefix) and dir_path != path_str:
+                remainder = dir_path[len(prefix):]
+                if "/" not in remainder:
+                    children.add(dir_path)
+
+        return iter(sorted(Path(p) for p in children))
+
     def read_text(self, path: Path) -> str:
         path_str = self._normalize(path)
         if path_str not in self._files:
             raise FileNotFoundError(f"File not found: {path}")
+        self._files_read.add(path_str)
+        self._record_operation("read", path)
         return self._files[path_str]
 
     def write_text(self, path: Path, content: str) -> None:
@@ -322,6 +394,8 @@ class InMemoryFileSystem:
             raise FileNotFoundError(f"Parent directory doesn't exist: {path.parent}")
 
         self._files[path_str] = content
+        self._files_written.add(path_str)
+        self._record_operation("write", path, content_length=len(content))
 
     def append_text(self, path: Path, content: str) -> None:
         path_str = self._normalize(path)
@@ -377,6 +451,15 @@ class InMemoryFileSystem:
         self._files.clear()
         self._dirs.clear()
         self._dirs.add("/")
+        self.reset_tracking()
+
+    def reset_tracking(self) -> None:
+        """Reset operation tracking (keeps files/dirs intact)."""
+        self._operations.clear()
+        self._files_read.clear()
+        self._files_written.clear()
+        self._directories_created.clear()
+        self._directories_scanned.clear()
 
     def list_all_files(self) -> List[str]:
         """List all files (for debugging)."""
@@ -386,9 +469,173 @@ class InMemoryFileSystem:
         """List all directories (for debugging)."""
         return sorted(self._dirs)
 
-    def dump(self) -> Dict[str, str]:
+    def dump(self) -> Dict[str, any]:
         """Dump entire filesystem state (for debugging/assertions)."""
         return {
             "files": dict(self._files),
             "dirs": list(self._dirs),
         }
+
+    # =========================================================================
+    # Operation Tracking - Properties
+    # =========================================================================
+
+    @property
+    def operations(self) -> List[Dict[str, any]]:
+        """Get list of all operations performed."""
+        return list(self._operations)
+
+    @property
+    def files_read(self) -> Set[str]:
+        """Get set of files that were read."""
+        return set(self._files_read)
+
+    @property
+    def files_written(self) -> Set[str]:
+        """Get set of files that were written."""
+        return set(self._files_written)
+
+    @property
+    def directories_created(self) -> Set[str]:
+        """Get set of directories that were created."""
+        return set(self._directories_created)
+
+    @property
+    def directories_scanned(self) -> Set[str]:
+        """Get set of directories that were scanned (via glob or iterdir)."""
+        return set(self._directories_scanned)
+
+    @property
+    def read_count(self) -> int:
+        """Count of read operations."""
+        return len(self._files_read)
+
+    @property
+    def write_count(self) -> int:
+        """Count of write operations."""
+        return len(self._files_written)
+
+    # =========================================================================
+    # Assertions - For Behavioral Tests
+    # =========================================================================
+
+    def assert_file_was_read(self, path: Path) -> None:
+        """
+        Assert that a specific file was read.
+
+        Args:
+            path: The file path that should have been read
+
+        Raises:
+            AssertionError: If the file was not read
+        """
+        path_str = self._normalize(path)
+        if path_str not in self._files_read:
+            read_list = ", ".join(sorted(self._files_read)[:5])
+            if len(self._files_read) > 5:
+                read_list += f"... ({len(self._files_read)} total)"
+            raise AssertionError(
+                f"Expected file to be read: {path}\n"
+                f"Files actually read: [{read_list}]"
+            )
+
+    def assert_file_was_written(self, path: Path) -> None:
+        """
+        Assert that a specific file was written.
+
+        Args:
+            path: The file path that should have been written
+
+        Raises:
+            AssertionError: If the file was not written
+        """
+        path_str = self._normalize(path)
+        if path_str not in self._files_written:
+            written_list = ", ".join(sorted(self._files_written)[:5])
+            if len(self._files_written) > 5:
+                written_list += f"... ({len(self._files_written)} total)"
+            raise AssertionError(
+                f"Expected file to be written: {path}\n"
+                f"Files actually written: [{written_list}]"
+            )
+
+    def assert_directory_was_created(self, path: Path) -> None:
+        """
+        Assert that a specific directory was created.
+
+        Args:
+            path: The directory path that should have been created
+
+        Raises:
+            AssertionError: If the directory was not created
+        """
+        path_str = self._normalize(path)
+        if path_str not in self._directories_created:
+            raise AssertionError(
+                f"Expected directory to be created: {path}\n"
+                f"Directories created: {sorted(self._directories_created)}"
+            )
+
+    def assert_directory_was_scanned(self, path: Path) -> None:
+        """
+        Assert that a specific directory was scanned (glob or iterdir).
+
+        Args:
+            path: The directory path that should have been scanned
+
+        Raises:
+            AssertionError: If the directory was not scanned
+        """
+        path_str = self._normalize(path)
+        if path_str not in self._directories_scanned:
+            raise AssertionError(
+                f"Expected directory to be scanned: {path}\n"
+                f"Directories scanned: {sorted(self._directories_scanned)}"
+            )
+
+    def assert_no_writes(self) -> None:
+        """
+        Assert that no files were written.
+
+        Raises:
+            AssertionError: If any files were written
+        """
+        if self._files_written:
+            raise AssertionError(
+                f"Expected no writes, but {len(self._files_written)} files were written: "
+                f"{sorted(self._files_written)}"
+            )
+
+    def assert_file_count_read(self, expected: int) -> None:
+        """
+        Assert that exactly N files were read.
+
+        Args:
+            expected: The expected number of files read
+
+        Raises:
+            AssertionError: If the count doesn't match
+        """
+        actual = len(self._files_read)
+        if actual != expected:
+            raise AssertionError(
+                f"Expected {expected} files to be read, but {actual} were read"
+            )
+
+    def assert_operation_sequence(self, expected_types: List[str]) -> None:
+        """
+        Assert that operations occurred in a specific sequence.
+
+        Args:
+            expected_types: List of operation types in expected order
+
+        Raises:
+            AssertionError: If the sequence doesn't match
+        """
+        actual_types = [op["type"] for op in self._operations]
+        if actual_types != expected_types:
+            raise AssertionError(
+                f"Operation sequence mismatch:\n"
+                f"  Expected: {expected_types}\n"
+                f"  Actual:   {actual_types}"
+            )

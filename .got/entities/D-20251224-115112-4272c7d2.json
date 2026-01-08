@@ -1,0 +1,15 @@
+{
+  "_checksum": "e905622cf1affe97",
+  "_written_at": "2025-12-24T11:51:12.504835+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2025-12-24T11:51:12.498164+00:00",
+    "entity_type": "decision",
+    "id": "D-20251224-115112-4272c7d2",
+    "modified_at": "2025-12-24T11:51:12.504771+00:00",
+    "properties": {},
+    "rationale": "Previous fix T-20251223-005914-f298d276 was incomplete - only added a comment to .gitignore, not an actual ignore rule. The file caused merge conflicts in session T73QD. Fix: added actual .gitignore entry + git rm --cached. File remains locally and is self-healing on load.",
+    "title": "Remove _version.json from git tracking to eliminate merge conflicts",
+    "version": 2
+  }
+}

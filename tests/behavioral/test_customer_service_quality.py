@@ -8,12 +8,17 @@ Tests verify that the system can retrieve relevant customer service
 documentation for common support scenarios.
 
 Run with: pytest tests/behavioral/test_customer_service_quality.py -v
+
+NOTE: All tests in this module are marked slow because they use the
+shared_processor fixture which loads the full samples/ corpus (~92s setup).
 """
 
 import pytest
 
+# Mark entire module as slow - uses shared_processor with 92s setup time
+pytestmark = pytest.mark.slow
 
-@pytest.mark.slow
+
 class TestCustomerServiceRetrieval:
     """
     Test retrieval quality for customer service domain.

@@ -59,6 +59,16 @@ from .recovery import (
     RecoveryResult,
     RepairResult,
 )
+from .schema import (
+    SchemaRegistry,
+    BaseSchema,
+    Field,
+    FieldType,
+    ValidationResult,
+    OnDeleteAction,
+    ReferenceRule,
+)
+from .index_manager import CDGIndexManager
 
 __all__ = [
     # Types
@@ -97,4 +107,14 @@ __all__ = [
     "IsolationLevel",
     "RecoveryMode",
     "OrphanStrategy",
+    # Schema
+    "SchemaRegistry",
+    "BaseSchema",
+    "Field",
+    "FieldType",
+    "ValidationResult",
+    "OnDeleteAction",
+    "ReferenceRule",
+    # Index
+    "CDGIndexManager",
 ]

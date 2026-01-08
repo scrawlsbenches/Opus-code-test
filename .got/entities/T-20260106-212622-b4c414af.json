@@ -1,0 +1,17 @@
+{
+  "_checksum": "731cd896e35751c6",
+  "_written_at": "2026-01-06T21:26:22.191381+00:00",
+  "data": {
+    "created_at": "2026-01-06T21:26:22.189521+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260106-212622-b4c414af",
+    "metadata": {},
+    "modified_at": "2026-01-06T21:26:22.191292+00:00",
+    "priority": "medium",
+    "properties": {},
+    "status": "pending",
+    "title": "Smoke test task",
+    "version": 2
+  }
+}

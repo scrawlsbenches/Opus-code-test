@@ -6,30 +6,33 @@ Defines declarative schemas for validation and migration of:
 - Handoff, KnowledgeTransfer, ClaudeMdLayer, ClaudeMdVersion
 - Team, PersonaProfile, Document
 
-All schemas are registered with the global registry on module import.
+Schemas are registered once at application startup via SchemaModule.
+Schema classes are stored in ALL_SCHEMAS dict for direct lookup.
 
 Usage:
-    from cortical.got.entity_schemas import ensure_schemas_registered
+    # Get schema class directly (no registry needed)
+    from cortical.got.entity_schemas import get_schema_for_entity_type
+    schema = get_schema_for_entity_type('task')
 
-    # Schemas are auto-registered on import, but can be explicitly ensured
-    ensure_schemas_registered()
-
-    # Then use registry
-    from cortical.got.schema import validate_entity, migrate_entity
-    result = validate_entity('task', data)
+    # For registry-dependent operations, pass registry from Container
+    from cortical.got.entity_schemas import get_entity_type_for_prefix
+    entity_type = get_entity_type_for_prefix(registry, 'T-')
 """
 
 from __future__ import annotations
 
 from typing import Any, Dict
 
-from .schema import (
+from typing import TYPE_CHECKING
+
+from cortical.cdg.schema import (
     BaseSchema,
     Field,
     FieldType,
-    register_schema,
-    get_registry,
 )
+
+if TYPE_CHECKING:
+    from cortical.cdg.schema import SchemaRegistry
 from .types import VALID_EDGE_TYPES
 
 
@@ -72,10 +75,12 @@ class TaskSchema(BaseSchema):
         'status': Field('status', FieldType.ENUM, required=True,
                        choices=['pending', 'in_progress', 'completed', 'blocked'],
                        default='pending',
+                       indexed=True,  # CDGIndexManager maintains status index
                        description="Current task status"),
         'priority': Field('priority', FieldType.ENUM, required=False,
                          choices=['low', 'medium', 'high', 'critical'],
                          default='medium',
+                         indexed=True,  # CDGIndexManager maintains priority index
                          description="Task priority level"),
         'description': Field('description', FieldType.STRING, required=False,
                             default='',
@@ -87,6 +92,9 @@ class TaskSchema(BaseSchema):
                          default={},
                          description="System metadata"),
     }
+
+    # Indexes for fast lookups (created automatically by IndexManager)
+    indexes = ['status', 'priority']
 
 
 # =============================================================================
@@ -141,6 +149,7 @@ class SprintSchema(BaseSchema):
         'status': Field('status', FieldType.ENUM, required=True,
                        choices=['available', 'in_progress', 'completed', 'blocked'],
                        default='available',
+                       indexed=True,  # CDGIndexManager maintains status index
                        description="Sprint status"),
         'epic_id': Field('epic_id', FieldType.STRING, required=False,
                         default='',
@@ -170,6 +179,9 @@ class SprintSchema(BaseSchema):
                          description="System metadata"),
     }
 
+    # Indexes for fast lookups
+    indexes = ['status']
+
 
 # =============================================================================
 # Epic Schema
@@ -192,6 +204,7 @@ class EpicSchema(BaseSchema):
         'status': Field('status', FieldType.ENUM, required=True,
                        choices=['active', 'completed', 'on_hold'],
                        default='active',
+                       indexed=True,  # CDGIndexManager maintains status index
                        description="Epic status"),
         'phase': Field('phase', FieldType.INTEGER, required=False,
                       default=1,
@@ -239,10 +252,13 @@ class EdgeSchema(BaseSchema):
     fields = {
         **BASE_ENTITY_FIELDS,
         'source_id': Field('source_id', FieldType.STRING, required=True,
+                          indexed=True,  # CDGIndexManager maintains source index
                           description="Source entity ID"),
         'target_id': Field('target_id', FieldType.STRING, required=True,
+                          indexed=True,  # CDGIndexManager maintains target index
                           description="Target entity ID"),
         'edge_type': Field('edge_type', FieldType.STRING, required=True,
+                          indexed=True,  # CDGIndexManager maintains type index
                           description="Relationship type"),
         'weight': Field('weight', FieldType.FLOAT, required=False,
                        default=1.0,
@@ -272,15 +288,19 @@ class HandoffSchema(BaseSchema):
     fields = {
         **BASE_ENTITY_FIELDS,
         'source_agent': Field('source_agent', FieldType.STRING, required=True,
+                             indexed=True,  # CDGIndexManager maintains source agent index
                              description="Initiating agent ID"),
         'target_agent': Field('target_agent', FieldType.STRING, required=True,
+                             indexed=True,  # CDGIndexManager maintains target agent index
                              description="Receiving agent ID"),
         'task_id': Field('task_id', FieldType.STRING, required=False,
                         default='',
+                        indexed=True,  # CDGIndexManager maintains task index
                         description="Associated task ID"),
         'status': Field('status', FieldType.ENUM, required=True,
                        choices=['initiated', 'accepted', 'completed', 'rejected'],
                        default='initiated',
+                       indexed=True,  # CDGIndexManager maintains status index
                        description="Handoff status"),
         'instructions': Field('instructions', FieldType.STRING, required=False,
                              default='',
@@ -336,6 +356,7 @@ class KnowledgeTransferSchema(BaseSchema):
                       description="Knowledge transfer document title"),
         'session_id': Field('session_id', FieldType.STRING, required=False,
                            default='',
+                           indexed=True,  # CDGIndexManager maintains session index
                            description="Associated session identifier"),
         'session_date': Field('session_date', FieldType.STRING, required=False,
                              default='',
@@ -372,6 +393,7 @@ class KnowledgeTransferSchema(BaseSchema):
         'status': Field('status', FieldType.ENUM, required=False,
                        choices=['draft', 'published', 'archived'],
                        default='published',
+                       indexed=True,  # CDGIndexManager maintains status index
                        description="Publication status"),
         'properties': Field('properties', FieldType.DICT, required=False,
                            default={},
@@ -398,6 +420,7 @@ class ClaudeMdLayerSchema(BaseSchema):
         'layer_type': Field('layer_type', FieldType.ENUM, required=False,
                            choices=['core', 'operational', 'contextual', 'persona', 'ephemeral', ''],
                            default='',
+                           indexed=True,  # CDGIndexManager maintains layer type index
                            description="Layer type classification"),
         'layer_number': Field('layer_number', FieldType.INTEGER, required=False,
                              default=0,
@@ -414,6 +437,7 @@ class ClaudeMdLayerSchema(BaseSchema):
         'freshness_status': Field('freshness_status', FieldType.ENUM, required=False,
                                  choices=['fresh', 'stale', 'regenerating'],
                                  default='fresh',
+                                 indexed=True,  # CDGIndexManager maintains freshness index
                                  description="Content freshness status"),
         'freshness_decay_days': Field('freshness_decay_days', FieldType.INTEGER, required=False,
                                      default=0,
@@ -427,6 +451,7 @@ class ClaudeMdLayerSchema(BaseSchema):
         'inclusion_rule': Field('inclusion_rule', FieldType.ENUM, required=False,
                                choices=['always', 'context', 'user_pref'],
                                default='always',
+                               indexed=True,  # CDGIndexManager maintains inclusion rule index
                                description="When to include this layer"),
         'context_modules': Field('context_modules', FieldType.LIST, required=False,
                                 default=[],
@@ -651,23 +676,17 @@ ALL_SCHEMAS = {
     'document': DocumentSchema,
 }
 
-_schemas_registered = False
-
-
-def ensure_schemas_registered() -> None:
+def register_all_schemas(registry: "SchemaRegistry") -> None:
     """
-    Ensure all entity schemas are registered in the global registry.
+    Register all GoT entity schemas to the given registry.
 
-    Safe to call multiple times - only registers once.
+    Called by SchemaModule during container setup.
+
+    Args:
+        registry: SchemaRegistry instance to register schemas to
     """
-    global _schemas_registered
-    if _schemas_registered:
-        return
-
     for entity_type, schema_class in ALL_SCHEMAS.items():
-        register_schema(entity_type, schema_class)
-
-    _schemas_registered = True
+        registry.register(entity_type, schema_class)
 
 
 def get_schema_for_entity_type(entity_type: str) -> type:
@@ -709,7 +728,6 @@ def get_valid_statuses(entity_type: str) -> set:
         >>> get_valid_statuses('task')
         {'pending', 'in_progress', 'completed', 'blocked'}
     """
-    ensure_schemas_registered()
     schema = get_schema_for_entity_type(entity_type)
     if schema is None:
         raise KeyError(f"Entity type '{entity_type}' does not exist")
@@ -736,17 +754,17 @@ def get_id_prefix(entity_type: str) -> str:
         >>> get_id_prefix('knowledge_transfer')
         'KT-'
     """
-    ensure_schemas_registered()
     schema = get_schema_for_entity_type(entity_type)
     if schema is None:
         raise KeyError(f"Entity type '{entity_type}' does not exist")
     return schema.id_prefix
 
 
-def get_entity_type_for_prefix(prefix: str) -> str:
+def get_entity_type_for_prefix(registry: "SchemaRegistry", prefix: str) -> str:
     """Get the entity type for an ID prefix.
 
     Args:
+        registry: SchemaRegistry instance (from Container)
         prefix: Entity ID prefix (e.g., 'T-', 'E-', 'KT-')
 
     Returns:
@@ -756,35 +774,29 @@ def get_entity_type_for_prefix(prefix: str) -> str:
         KeyError: If prefix doesn't match any entity type
 
     Example:
-        >>> get_entity_type_for_prefix('T-')
+        >>> registry = container.resolve(SchemaRegistry)
+        >>> get_entity_type_for_prefix(registry, 'T-')
         'task'
-        >>> get_entity_type_for_prefix('KT-')
-        'knowledge_transfer'
     """
-    ensure_schemas_registered()
-    registry = get_registry()
     entity_type = registry.get_entity_type_by_prefix(prefix)
     if entity_type is None:
         raise KeyError(f"No entity type found for prefix '{prefix}'")
     return entity_type
 
 
-def list_id_prefixes() -> Dict[str, str]:
+def list_id_prefixes(registry: "SchemaRegistry") -> Dict[str, str]:
     """List all entity ID prefixes and their types.
+
+    Args:
+        registry: SchemaRegistry instance (from Container)
 
     Returns:
         Dict mapping id_prefix to entity_type
 
     Example:
-        >>> prefixes = list_id_prefixes()
+        >>> registry = container.resolve(SchemaRegistry)
+        >>> prefixes = list_id_prefixes(registry)
         >>> prefixes['T-']
         'task'
-        >>> prefixes['KT-']
-        'knowledge_transfer'
     """
-    ensure_schemas_registered()
-    return get_registry().list_prefixes()
-
-
-# Auto-register schemas on module import
-ensure_schemas_registered()
+    return registry.list_prefixes()

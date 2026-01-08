@@ -1,3 +1,4 @@
+# MERGE_CONFLICT_RESOLVED: From branch claude/engineering-session-T73QD on 20260108-215836
 """
 Handoff CLI commands for GoT system.
 
@@ -19,9 +20,9 @@ if TYPE_CHECKING:
     from scripts.got_utils import TransactionalGoTAdapter
 
 
-# =============================================================================
+# 
 # CLI COMMAND HANDLERS
-# =============================================================================
+# 
 
 def cmd_handoff_initiate(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got handoff initiate' command."""
@@ -234,9 +235,27 @@ def cmd_handoff_list(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-# =============================================================================
+def cmd_handoff_reject(args, manager: "TransactionalGoTAdapter") -> int:
+    """Handle 'got handoff reject' command."""
+    success = manager.reject_handoff(
+        handoff_id=args.handoff_id,
+        agent=args.agent,
+        reason=args.reason,
+    )
+
+    if not success:
+        print(f"Failed to reject handoff: {args.handoff_id}")
+        return 1
+
+    print(f"Handoff rejected: {args.handoff_id}")
+    print(f"  Agent: {args.agent}")
+    print(f"  Reason: {args.reason}")
+    return 0
+
+
+# 
 # CLI INTEGRATION
-# =============================================================================
+# 
 
 def setup_handoff_parser(subparsers) -> None:
     """
@@ -295,6 +314,7 @@ def setup_handoff_parser(subparsers) -> None:
     handoff_reject = handoff_subparsers.add_parser("reject", help="Reject a handoff")
     handoff_reject.add_argument("handoff_id", help="Handoff ID to reject")
     handoff_reject.add_argument("--agent", "-a", required=True, help="Agent rejecting")
+
     handoff_reject.add_argument(
         "--reason", "-r",
         required=True,
@@ -304,6 +324,8 @@ def setup_handoff_parser(subparsers) -> None:
     # handoff show
     handoff_show = handoff_subparsers.add_parser("show", help="Show handoff details")
     handoff_show.add_argument("handoff_id", help="Handoff ID to display")
+
+    handoff_reject.add_argument("--reason", "-r", default="", help="Reason for rejection")
 
     # handoff list
     handoff_list = handoff_subparsers.add_parser("list", help="List handoffs")
@@ -339,7 +361,9 @@ def handle_handoff_command(args, manager: "TransactionalGoTAdapter") -> int:
         "accept": cmd_handoff_accept,
         "complete": cmd_handoff_complete,
         "reject": cmd_handoff_reject,
+
         "show": cmd_handoff_show,
+
         "list": cmd_handoff_list,
     }
 

@@ -26,7 +26,7 @@ from typing import List
 
 import pytest
 
-from cortical.got.tx_manager import TransactionManager
+from cortical.cdg.transaction_manager import CDGTransactionManager as TransactionManager
 from cortical.got.types import Task
 from cortical.got.config import DurabilityMode
 from tests.conftest import _create_tx_manager, _create_got_manager

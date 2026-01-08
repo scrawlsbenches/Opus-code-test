@@ -5,13 +5,14 @@ Validates field names against SchemaRegistry, providing helpful error
 messages with suggestions for typos.
 
 Usage:
-    validator = FieldValidator(entity_type='task')
+    registry = container.resolve(SchemaRegistry)
+    validator = FieldValidator(registry, entity_type='task')
     validator.validate_expression(expr)  # Raises QueryValidationError if invalid
 """
 
 from typing import Optional, List, Set
 
-from ..schema import get_registry
+from cortical.cdg.schema import SchemaRegistry
 from .ast import (
     Expression,
     Field,
@@ -31,16 +32,17 @@ COMMON_FIELDS = {'id', 'title', 'status', 'created_at', 'modified_at'}
 class FieldValidator:
     """Validates field names against SchemaRegistry."""
 
-    def __init__(self, entity_type: Optional[str] = None):
+    def __init__(self, registry: SchemaRegistry, entity_type: Optional[str] = None):
         """
         Initialize validator.
 
         Args:
+            registry: SchemaRegistry instance (from Container)
             entity_type: If specified, validate against this entity's schema.
                         If None, validate against all common fields only.
         """
+        self.registry = registry
         self.entity_type = entity_type
-        self.registry = get_registry()
         self._valid_fields: Optional[Set[str]] = None
 
     def _get_valid_fields(self) -> Set[str]:

@@ -120,12 +120,12 @@ cortical/proto/__pycache__/
 # .git-ml/contribution_consent.json  # Uncomment to ignore consent file
 .git-ml/current_session.json.lock
 .git-ml/.last_activity  # Session continuity tracking (local only)
-.git-ml/cali/  # CALI storage (local indices, objects, manifest - all regeneratable)
+.git-ml/cali/local/  # CALI local indices (regeneratable) - logs/ and objects/ are tracked
 .git-ml/predictions/  # Hubris prediction state (local, regeneratable)
 
 # Clean ignores for local ML data
 .git-ml/.last_activity
-.git-ml/cali/
+.git-ml/cali/local/
 .git-ml/predictions/
 samples/memories/\[DRAFT\]-*
 .git-ml/current_session.json
@@ -137,21 +137,31 @@ corpus_dev/
 #   - .got/snapshots/       - Compressed graph snapshots (cache, can rebuild)
 #   - .got/tracked/         - Exported task/sprint/epic state
 #   - .got/entities/        - Entity JSON files (tasks, decisions, edges)
-# LOCAL ONLY (transient recovery data, self-healing):
+# LOCAL ONLY (transient recovery data):
 #   - .got/wal/             - Write-ahead logs (crash recovery only)
 #   - .got/chunks/          - Chunk-based storage (local cache)
-#   - .got/entities/_version.json - Version counter (self-healing, computed from entity count)
+#   - .got/entities/_version.json - Version counter (self-healing, merge-conflict-free)
 .got/wal/
 .got/chunks/
-.got/entities/_version.json
+
 .got/learning/experiences/
+
+.got/entities/_version.json
 
 # Ensure git-tracked directories are not ignored
 !.got/
 !.got/events/
 !.got/snapshots/
 !.got/tracked/
+
 !.got/entities/
+
+# GoT runtime state files (must come AFTER negation rules)
+# PLN audit persistence state (local, regeneratable)
+.got/audit_pln_state.json
+
+!.git-ml/cali/logs/
+!.git-ml/cali/objects/
 
 # GoT migration artifacts
 .got-backup-*/
@@ -160,9 +170,16 @@ corpus_dev/
 .got/**/*.lock
 .spark_intelligence_model.json
 
+
 # Generated training corpus (regenerate with: python -m benchmarks.codebase_slm.generate_corpus --full)
 benchmarks/codebase_slm/corpus/
 
 # PRISM model backups (created by train_augmented.py safeguards)
 # These are local recovery copies, not meant for git
 benchmarks/codebase_slm/models/backups/
+docs/audits/audit_index.pkl
+.got/woven_audit_mind.json
+
+# Ensure git-ml tracked directories are not ignored
+!.git-ml/tracked/
+!.git-ml/tracked/**

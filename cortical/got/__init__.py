@@ -8,8 +8,9 @@ Key components:
 - TransactionManager: Main entry point for transactional operations
 - Transaction: Transaction object with snapshot isolation
 - Entity types: Task, Decision, Edge, Sprint, Epic, Handoff
-- VersionedStore: File-based storage with checksums and versioning
 - WALManager: Write-ahead log for crash recovery
+
+Storage is delegated to CDG (Cortical Distributed Graph) layer.
 """
 
 from .errors import (
@@ -61,22 +62,23 @@ from .transaction import (
     generate_transaction_id,
 )
 
-from .versioned_store import VersionedStore
+# WAL infrastructure from CDG (no GoT wrapper needed)
+from cortical.cdg.wal import CDGWALManager
 
-from .wal import WALManager
-
-from .tx_manager import (
-    TransactionManager,
+# Transaction infrastructure from CDG (no GoT wrapper needed)
+from cortical.cdg.transaction_manager import (
+    CDGTransactionManager as TransactionManager,  # Alias for backward compatibility
     CommitResult,
     Conflict,
-    ProcessLock,
 )
+from cortical.utils.locking import ProcessLock
 
-from .recovery import (
-    RecoveryManager,
+# Recovery types from common (RecoveryManager is now CDGRecoveryManager)
+from cortical.common.recovery_types import (
     RecoveryResult,
     RepairResult,
 )
+from cortical.cdg.recovery import CDGRecoveryManager as RecoveryManager
 
 from .sync import (
     SyncManager,
@@ -106,20 +108,7 @@ from .query_api import QueryAPI
 
 from .protocol import GoTBackend
 
-from .schema import (
-    BaseSchema,
-    Field,
-    FieldType,
-    SchemaRegistry,
-    ValidationResult,
-    get_registry,
-    register_schema,
-    validate_entity,
-    migrate_entity,
-)
-
 from .entity_schemas import (
-    ensure_schemas_registered,
     get_schema_for_entity_type,
     list_entity_types,
     TaskSchema,
@@ -131,8 +120,6 @@ from .entity_schemas import (
     ClaudeMdLayerSchema,
     ClaudeMdVersionSchema,
     TeamSchema,
-    PersonaProfileSchema,
-    DocumentSchema,
 )
 
 from .orphan import (
@@ -165,12 +152,6 @@ from .query_builder import (
     QueryValidationError,
     enable_syntax_validation,
     disable_syntax_validation,
-)
-
-from .indexer import (
-    QueryIndexManager,
-    IndexEntry,
-    IndexStats,
 )
 
 from .graph_walker import GraphWalker, WalkerPlan
@@ -226,10 +207,8 @@ __all__ = [
     'Transaction',
     'TransactionState',
     'generate_transaction_id',
-    # Storage
-    'VersionedStore',
-    # WAL
-    'WALManager',
+    # WAL (from CDG)
+    'CDGWALManager',
     # Transaction Manager
     'TransactionManager',
     'CommitResult',
@@ -259,18 +238,7 @@ __all__ = [
     'QueryAPI',
     # Protocol
     'GoTBackend',
-    # Schema
-    'BaseSchema',
-    'Field',
-    'FieldType',
-    'SchemaRegistry',
-    'ValidationResult',
-    'get_registry',
-    'register_schema',
-    'validate_entity',
-    'migrate_entity',
-    # Entity Schemas
-    'ensure_schemas_registered',
+    # Entity Schemas (for querying - schema infrastructure lives in CDG)
     'get_schema_for_entity_type',
     'list_entity_types',
     'TaskSchema',
@@ -282,8 +250,6 @@ __all__ = [
     'ClaudeMdLayerSchema',
     'ClaudeMdVersionSchema',
     'TeamSchema',
-    'PersonaProfileSchema',
-    'DocumentSchema',
     # Orphan Detection
     'OrphanDetector',
     'OrphanReport',
@@ -313,10 +279,6 @@ __all__ = [
     'QueryValidationError',
     'enable_syntax_validation',
     'disable_syntax_validation',
-    # Query Indexing
-    'QueryIndexManager',
-    'IndexEntry',
-    'IndexStats',
     # Graph Walker
     'GraphWalker',
     'WalkerPlan',

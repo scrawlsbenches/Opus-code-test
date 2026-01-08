@@ -20,7 +20,7 @@ PRESETS:
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, Callable, Any
+from typing import Optional
 
 
 class DurabilityMode(Enum):
@@ -29,16 +29,16 @@ class DurabilityMode(Enum):
 
     Controls the trade-off between write performance and data safety:
 
-    - FAST: No fsync, maximum performance, data loss possible on crash
+    - RELAXED: No fsync, maximum performance, data loss possible on crash
     - BALANCED: Fsync on commit, good balance of safety and performance
     - PARANOID: Fsync on every write, maximum safety, slower writes
 
     Recommendation:
-    - Development: FAST (quick iteration, data is disposable)
+    - Development: RELAXED (quick iteration, data is disposable)
     - Testing: BALANCED (catch timing issues, reasonable performance)
     - Production: BALANCED or PARANOID (based on data criticality)
     """
-    FAST = "fast"           # No fsync, maximum performance
+    RELAXED = "relaxed"     # No fsync, maximum performance
     BALANCED = "balanced"   # Fsync on commit
     PARANOID = "paranoid"   # Fsync on every write
 
@@ -162,11 +162,6 @@ class CDGConfig:
     enable_history: bool = True
     history_retention_days: int = 30
 
-    # Index callback (for GoT integration)
-    # Called during recovery to rebuild indexes
-    # Signature: Callable[[Path], int] where Path is store_dir, returns count
-    index_rebuild_callback: Optional[Callable[[Any], int]] = None
-
     # Storage optimization
     compression_enabled: bool = False
     encryption_enabled: bool = False
@@ -284,7 +279,7 @@ class CDGConfig:
             recovery_mode=RecoveryMode.NONE,
             orphan_strategy=OrphanStrategy.DELETE,
             auto_recover_on_startup=False,
-            durability=DurabilityMode.FAST,
+            durability=DurabilityMode.RELAXED,
             enable_history=False,
             validate_on_write=False,
         )

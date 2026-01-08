@@ -885,13 +885,8 @@ class Query(Generic[T]):
         """
         entity_type = entity_type.lower()
 
-        # Import here to avoid circular dependencies
-        from cortical.got.entity_schemas import ensure_schemas_registered
-        from cortical.got.schema import get_registry
-
-        # Ensure schemas are registered
-        ensure_schemas_registered()
-        registry = get_registry()
+        # Access schema registry from manager (injected via Container)
+        registry = self._manager._schema_registry
 
         # Validate entity type exists in registry
         if not registry.has_schema(entity_type):
@@ -1405,7 +1400,7 @@ class Query(Generic[T]):
             List of entities of the specified type
         """
         import json
-        from cortical.got.versioned_store import _got_entity_factory
+        from cortical.got.types import create_entity_from_dict
 
         # Use store's iter_entities if available (works with in-memory storage)
         store = getattr(self._manager.tx_manager, 'store', None)
@@ -1444,7 +1439,7 @@ class Query(Generic[T]):
                     continue
 
                 # Create entity object using factory
-                entity = _got_entity_factory(entity_data)
+                entity = create_entity_from_dict(entity_data)
                 entities.append(entity)
 
             except Exception as e:

@@ -405,18 +405,18 @@ class TestGitIntegrationWorkflow:
 
         committer = GitAutoCommitter(
             mode='debounced',
-            debounce_seconds=0.5,  # Short delay for testing
+            debounce_seconds=0.05,  # 50ms delay (minimum viable for testing)
             repo_path=str(git_repo)
         )
 
-        # Make rapid changes
+        # Make rapid changes (20ms apart, well within 50ms debounce window)
         for i in range(3):
             graph_file.write_text(f'{{"version": {i}}}')
             committer.commit_on_save(str(graph_file))
-            time.sleep(0.1)  # Rapid succession
+            time.sleep(0.02)  # Rapid succession
 
-        # Wait for debounce
-        time.sleep(1.0)
+        # Wait for debounce (100ms > 50ms debounce)
+        time.sleep(0.1)
 
         # Verify only one commit was made (debounced)
         result = subprocess.run(

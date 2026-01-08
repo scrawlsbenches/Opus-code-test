@@ -51,7 +51,7 @@ from pathlib import Path
 from typing import Optional
 
 from cortical.common import Container, FileSystem, RealFileSystem, InMemoryFileSystem
-from cortical.core.modules import CDGModule, GoTModule
+from cortical.core.modules import SchemaModule, CDGModule, GoTModule
 
 
 # Global container instance (lazy-initialized)
@@ -112,7 +112,9 @@ def create_container(
     container.register_instance(FileSystem, filesystem)
 
     # Apply subsystem modules
+    # Order matters: Schema first (foundation), then CDG, then GoT
     if apply_modules:
+        container.apply_module(SchemaModule())  # Schema registry (no config needed)
         container.apply_module(CDGModule(got_dir=effective_got_dir, use_memory=use_memory))
         container.apply_module(GoTModule(got_dir=effective_got_dir, use_memory=use_memory))
 

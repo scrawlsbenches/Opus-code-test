@@ -1,0 +1,2094 @@
+{
+  "files_analyzed": 110,
+  "comments_analyzed": 148,
+  "findings": [
+    {
+      "id": "synthetic/legacy/module_00.py:492",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 291,
+      "author": "charlie",
+      "stale": true
+    },
+    {
+      "id": "synthetic/legacy/module_01.py:265",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 203,
+      "author": "diana",
+      "stale": true
+    },
+    {
+      "id": "synthetic/legacy/module_02.py:81",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 127,
+      "author": "eve"
+    },
+    {
+      "id": "synthetic/legacy/module_02.py:285",
+      "pattern": "FUTURE:",
+      "comment": "FUTURE: Will be replaced with new architecture",
+      "age_days": 135,
+      "author": "eve"
+    },
+    {
+      "id": "synthetic/legacy/module_03.py:195",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 113,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/legacy/module_03.py:270",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This breaks under edge cases",
+      "age_days": 253,
+      "author": "alice",
+      "stale": true
+    },
+    {
+      "id": "synthetic/legacy/module_04.py:88",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 322,
+      "author": "bob",
+      "stale": true
+    },
+    {
+      "id": "synthetic/legacy/module_05.py:226",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 306,
+      "author": "alice",
+      "stale": true
+    },
+    {
+      "id": "synthetic/legacy/module_07.py:293",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 6,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/legacy/module_08.py:284",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 385,
+      "author": "charlie",
+      "stale": true
+    },
+    {
+      "id": "synthetic/legacy/module_09.py:184",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 58,
+      "author": "charlie"
+    },
+    {
+      "id": "synthetic/legacy/module_10.py:232",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 81,
+      "author": "diana"
+    },
+    {
+      "id": "synthetic/legacy/module_10.py:11",
+      "pattern": "XXX:",
+      "comment": "XXX: This is a known limitation",
+      "age_days": 370,
+      "author": "charlie"
+    },
+    {
+      "id": "synthetic/legacy/module_10.py:266",
+      "pattern": "HACK:",
+      "comment": "HACK: Temporary workaround for the race condition",
+      "age_days": 391,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/legacy/module_11.py:330",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 153,
+      "author": "eve"
+    },
+    {
+      "id": "synthetic/legacy/module_11.py:321",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This breaks under edge cases",
+      "age_days": 102,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/legacy/module_11.py:201",
+      "pattern": "FUTURE:",
+      "comment": "FUTURE: Will be replaced with new architecture",
+      "age_days": 391,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/legacy/module_13.py:67",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 186,
+      "author": "charlie",
+      "stale": true
+    },
+    {
+      "id": "synthetic/legacy/module_13.py:132",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This breaks under edge cases",
+      "age_days": 30,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/legacy/module_14.py:494",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 41,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/legacy/module_14.py:384",
+      "pattern": "XXX:",
+      "comment": "XXX: This is a known limitation",
+      "age_days": 249,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/legacy/module_14.py:399",
+      "pattern": "HACK:",
+      "comment": "HACK: Temporary workaround for the race condition",
+      "age_days": 273,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/legacy/module_15.py:253",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 282,
+      "author": "bob",
+      "stale": true
+    },
+    {
+      "id": "synthetic/legacy/module_15.py:145",
+      "pattern": "FUTURE:",
+      "comment": "FUTURE: Will be replaced with new architecture",
+      "age_days": 271,
+      "author": "eve"
+    },
+    {
+      "id": "synthetic/legacy/module_16.py:118",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 277,
+      "author": "bob",
+      "stale": true
+    },
+    {
+      "id": "synthetic/legacy/module_17.py:353",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 333,
+      "author": "charlie",
+      "stale": true
+    },
+    {
+      "id": "synthetic/legacy/module_17.py:234",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This breaks under edge cases",
+      "age_days": 265,
+      "author": "diana",
+      "stale": true
+    },
+    {
+      "id": "synthetic/legacy/module_18.py:125",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 33,
+      "author": "charlie"
+    },
+    {
+      "id": "synthetic/legacy/module_18.py:20",
+      "pattern": "FUTURE:",
+      "comment": "FUTURE: Will be replaced with new architecture",
+      "age_days": 302,
+      "author": "eve"
+    },
+    {
+      "id": "synthetic/legacy/module_19.py:122",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 4,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/legacy/module_20.py:40",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 118,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/legacy/module_21.py:450",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 170,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/legacy/module_23.py:77",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 371,
+      "author": "eve",
+      "stale": true
+    },
+    {
+      "id": "synthetic/legacy/module_24.py:134",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 243,
+      "author": "diana",
+      "stale": true
+    },
+    {
+      "id": "synthetic/api/module_00.py:230",
+      "pattern": "should be",
+      "comment": "This should be refactored to use the new API",
+      "age_days": 182,
+      "author": "diana"
+    },
+    {
+      "id": "synthetic/api/module_00.py:220",
+      "pattern": "FUTURE:",
+      "comment": "FUTURE: Will be replaced with new architecture",
+      "age_days": 240,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/api/module_01.py:216",
+      "pattern": "should be",
+      "comment": "This should be refactored to use the new API",
+      "age_days": 373,
+      "author": "charlie"
+    },
+    {
+      "id": "synthetic/api/module_01.py:419",
+      "pattern": "FUTURE:",
+      "comment": "FUTURE: Will be replaced with new architecture",
+      "age_days": 56,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/api/module_01.py:108",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 98,
+      "author": "charlie"
+    },
+    {
+      "id": "synthetic/api/module_01.py:239",
+      "pattern": "HACK:",
+      "comment": "HACK: Temporary workaround for the race condition",
+      "age_days": 72,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/api/module_02.py:457",
+      "pattern": "should be",
+      "comment": "This should be refactored to use the new API",
+      "age_days": 39,
+      "author": "diana"
+    },
+    {
+      "id": "synthetic/api/module_02.py:423",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This breaks under edge cases",
+      "age_days": 282,
+      "author": "alice",
+      "stale": true
+    },
+    {
+      "id": "synthetic/api/module_02.py:35",
+      "pattern": "XXX:",
+      "comment": "XXX: This is a known limitation",
+      "age_days": 334,
+      "author": "eve"
+    },
+    {
+      "id": "synthetic/api/module_04.py:258",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This breaks under edge cases",
+      "age_days": 247,
+      "author": "bob",
+      "stale": true
+    },
+    {
+      "id": "synthetic/api/module_04.py:452",
+      "pattern": "XXX:",
+      "comment": "XXX: This is a known limitation",
+      "age_days": 206,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/api/module_04.py:94",
+      "pattern": "HACK:",
+      "comment": "HACK: Temporary workaround for the race condition",
+      "age_days": 195,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/api/module_05.py:242",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This breaks under edge cases",
+      "age_days": 147,
+      "author": "diana"
+    },
+    {
+      "id": "synthetic/api/module_05.py:366",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 375,
+      "author": "charlie"
+    },
+    {
+      "id": "synthetic/api/module_05.py:348",
+      "pattern": "HACK:",
+      "comment": "HACK: Temporary workaround for the race condition",
+      "age_days": 368,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/api/module_06.py:306",
+      "pattern": "should be",
+      "comment": "This should be refactored to use the new API",
+      "age_days": 377,
+      "author": "eve"
+    },
+    {
+      "id": "synthetic/api/module_06.py:41",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This breaks under edge cases",
+      "age_days": 383,
+      "author": "charlie",
+      "stale": true
+    },
+    {
+      "id": "synthetic/api/module_07.py:267",
+      "pattern": "should be",
+      "comment": "This should be refactored to use the new API",
+      "age_days": 272,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/api/module_08.py:445",
+      "pattern": "should be",
+      "comment": "This should be refactored to use the new API",
+      "age_days": 96,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/api/module_09.py:355",
+      "pattern": "should be",
+      "comment": "This should be refactored to use the new API",
+      "age_days": 121,
+      "author": "diana"
+    },
+    {
+      "id": "synthetic/api/module_09.py:71",
+      "pattern": "XXX:",
+      "comment": "XXX: This is a known limitation",
+      "age_days": 292,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/api/module_09.py:306",
+      "pattern": "HACK:",
+      "comment": "HACK: Temporary workaround for the race condition",
+      "age_days": 305,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/api/module_10.py:308",
+      "pattern": "should be",
+      "comment": "This should be refactored to use the new API",
+      "age_days": 290,
+      "author": "eve"
+    },
+    {
+      "id": "synthetic/api/module_10.py:171",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This breaks under edge cases",
+      "age_days": 134,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/api/module_10.py:352",
+      "pattern": "XXX:",
+      "comment": "XXX: This is a known limitation",
+      "age_days": 367,
+      "author": "charlie"
+    },
+    {
+      "id": "synthetic/api/module_11.py:353",
+      "pattern": "should be",
+      "comment": "This should be refactored to use the new API",
+      "age_days": 331,
+      "author": "charlie"
+    },
+    {
+      "id": "synthetic/api/module_12.py:489",
+      "pattern": "should be",
+      "comment": "This should be refactored to use the new API",
+      "age_days": 38,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/api/module_13.py:61",
+      "pattern": "should be",
+      "comment": "This should be refactored to use the new API",
+      "age_days": 38,
+      "author": "eve"
+    },
+    {
+      "id": "synthetic/api/module_14.py:487",
+      "pattern": "should be",
+      "comment": "This should be refactored to use the new API",
+      "age_days": 179,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/api/module_16.py:370",
+      "pattern": "should be",
+      "comment": "This should be refactored to use the new API",
+      "age_days": 155,
+      "author": "eve"
+    },
+    {
+      "id": "synthetic/api/module_17.py:351",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 284,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/api/module_17.py:487",
+      "pattern": "HACK:",
+      "comment": "HACK: Temporary workaround for the race condition",
+      "age_days": 340,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/api/module_18.py:69",
+      "pattern": "FUTURE:",
+      "comment": "FUTURE: Will be replaced with new architecture",
+      "age_days": 55,
+      "author": "eve"
+    },
+    {
+      "id": "synthetic/api/module_19.py:117",
+      "pattern": "should be",
+      "comment": "This should be refactored to use the new API",
+      "age_days": 368,
+      "author": "charlie"
+    },
+    {
+      "id": "synthetic/api/module_20.py:260",
+      "pattern": "should be",
+      "comment": "This should be refactored to use the new API",
+      "age_days": 129,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/api/module_20.py:57",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This breaks under edge cases",
+      "age_days": 325,
+      "author": "diana",
+      "stale": true
+    },
+    {
+      "id": "synthetic/api/module_20.py:434",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 142,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/api/module_20.py:11",
+      "pattern": "HACK:",
+      "comment": "HACK: Temporary workaround for the race condition",
+      "age_days": 171,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/api/module_21.py:389",
+      "pattern": "should be",
+      "comment": "This should be refactored to use the new API",
+      "age_days": 227,
+      "author": "eve"
+    },
+    {
+      "id": "synthetic/api/module_22.py:67",
+      "pattern": "should be",
+      "comment": "This should be refactored to use the new API",
+      "age_days": 39,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/api/module_23.py:308",
+      "pattern": "should be",
+      "comment": "This should be refactored to use the new API",
+      "age_days": 283,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/api/module_24.py:196",
+      "pattern": "should be",
+      "comment": "This should be refactored to use the new API",
+      "age_days": 21,
+      "author": "charlie"
+    },
+    {
+      "id": "synthetic/api/module_24.py:117",
+      "pattern": "FUTURE:",
+      "comment": "FUTURE: Will be replaced with new architecture",
+      "age_days": 350,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/api/module_25.py:296",
+      "pattern": "should be",
+      "comment": "This should be refactored to use the new API",
+      "age_days": 209,
+      "author": "eve"
+    },
+    {
+      "id": "synthetic/api/module_26.py:131",
+      "pattern": "should be",
+      "comment": "This should be refactored to use the new API",
+      "age_days": 84,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/api/module_27.py:387",
+      "pattern": "FUTURE:",
+      "comment": "FUTURE: Will be replaced with new architecture",
+      "age_days": 171,
+      "author": "diana"
+    },
+    {
+      "id": "synthetic/api/module_29.py:65",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This breaks under edge cases",
+      "age_days": 196,
+      "author": "alice",
+      "stale": true
+    },
+    {
+      "id": "synthetic/utils/module_02.py:126",
+      "pattern": "see docs",
+      "comment": "See docs/architecture.md for details",
+      "age_days": 115,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/utils/module_03.py:214",
+      "pattern": "see docs",
+      "comment": "See docs/architecture.md for details",
+      "age_days": 169,
+      "author": "charlie"
+    },
+    {
+      "id": "synthetic/utils/module_03.py:452",
+      "pattern": "XXX:",
+      "comment": "XXX: This is a known limitation",
+      "age_days": 36,
+      "author": "charlie"
+    },
+    {
+      "id": "synthetic/utils/module_03.py:189",
+      "pattern": "HACK:",
+      "comment": "HACK: Temporary workaround for the race condition",
+      "age_days": 329,
+      "author": "eve"
+    },
+    {
+      "id": "synthetic/utils/module_04.py:284",
+      "pattern": "see docs",
+      "comment": "See docs/architecture.md for details",
+      "age_days": 170,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/utils/module_05.py:145",
+      "pattern": "see docs",
+      "comment": "See docs/architecture.md for details",
+      "age_days": 20,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/utils/module_05.py:315",
+      "pattern": "FUTURE:",
+      "comment": "FUTURE: Will be replaced with new architecture",
+      "age_days": 223,
+      "author": "charlie"
+    },
+    {
+      "id": "synthetic/utils/module_05.py:383",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 161,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/utils/module_05.py:320",
+      "pattern": "HACK:",
+      "comment": "HACK: Temporary workaround for the race condition",
+      "age_days": 262,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/utils/module_06.py:140",
+      "pattern": "see docs",
+      "comment": "See docs/architecture.md for details",
+      "age_days": 23,
+      "author": "diana"
+    },
+    {
+      "id": "synthetic/utils/module_07.py:285",
+      "pattern": "see docs",
+      "comment": "See docs/architecture.md for details",
+      "age_days": 352,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/utils/module_08.py:350",
+      "pattern": "see docs",
+      "comment": "See docs/architecture.md for details",
+      "age_days": 170,
+      "author": "eve"
+    },
+    {
+      "id": "synthetic/utils/module_08.py:170",
+      "pattern": "FUTURE:",
+      "comment": "FUTURE: Will be replaced with new architecture",
+      "age_days": 340,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/utils/module_09.py:168",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This breaks under edge cases",
+      "age_days": 342,
+      "author": "diana",
+      "stale": true
+    },
+    {
+      "id": "synthetic/utils/module_09.py:177",
+      "pattern": "XXX:",
+      "comment": "XXX: This is a known limitation",
+      "age_days": 207,
+      "author": "charlie"
+    },
+    {
+      "id": "synthetic/utils/module_09.py:293",
+      "pattern": "HACK:",
+      "comment": "HACK: Temporary workaround for the race condition",
+      "age_days": 66,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/utils/module_10.py:356",
+      "pattern": "see docs",
+      "comment": "See docs/architecture.md for details",
+      "age_days": 384,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/utils/module_11.py:290",
+      "pattern": "see docs",
+      "comment": "See docs/architecture.md for details",
+      "age_days": 1,
+      "author": "charlie"
+    },
+    {
+      "id": "synthetic/utils/module_12.py:306",
+      "pattern": "see docs",
+      "comment": "See docs/architecture.md for details",
+      "age_days": 311,
+      "author": "charlie"
+    },
+    {
+      "id": "synthetic/utils/module_13.py:119",
+      "pattern": "see docs",
+      "comment": "See docs/architecture.md for details",
+      "age_days": 262,
+      "author": "diana"
+    },
+    {
+      "id": "synthetic/utils/module_14.py:386",
+      "pattern": "XXX:",
+      "comment": "XXX: This is a known limitation",
+      "age_days": 87,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/utils/module_14.py:155",
+      "pattern": "HACK:",
+      "comment": "HACK: Temporary workaround for the race condition",
+      "age_days": 264,
+      "author": "eve"
+    },
+    {
+      "id": "synthetic/utils/module_14.py:181",
+      "pattern": "eventually",
+      "comment": "This will eventually be moved to the utils module",
+      "age_days": 48,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/utils/module_15.py:111",
+      "pattern": "see docs",
+      "comment": "See docs/architecture.md for details",
+      "age_days": 76,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/utils/module_16.py:322",
+      "pattern": "see docs",
+      "comment": "See docs/architecture.md for details",
+      "age_days": 394,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/utils/module_17.py:304",
+      "pattern": "see docs",
+      "comment": "See docs/architecture.md for details",
+      "age_days": 100,
+      "author": "diana"
+    },
+    {
+      "id": "synthetic/utils/module_18.py:12",
+      "pattern": "see docs",
+      "comment": "See docs/architecture.md for details",
+      "age_days": 385,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/utils/module_18.py:408",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This breaks under edge cases",
+      "age_days": 218,
+      "author": "bob",
+      "stale": true
+    },
+    {
+      "id": "synthetic/utils/module_18.py:100",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 357,
+      "author": "charlie"
+    },
+    {
+      "id": "synthetic/utils/module_18.py:247",
+      "pattern": "HACK:",
+      "comment": "HACK: Temporary workaround for the race condition",
+      "age_days": 26,
+      "author": "charlie"
+    },
+    {
+      "id": "synthetic/utils/module_19.py:243",
+      "pattern": "see docs",
+      "comment": "See docs/architecture.md for details",
+      "age_days": 69,
+      "author": "diana"
+    },
+    {
+      "id": "synthetic/core/module_00.py:296",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This breaks under edge cases",
+      "age_days": 305,
+      "author": "charlie",
+      "stale": true
+    },
+    {
+      "id": "synthetic/core/module_00.py:496",
+      "pattern": "XXX:",
+      "comment": "XXX: This is a known limitation",
+      "age_days": 387,
+      "author": "diana"
+    },
+    {
+      "id": "synthetic/core/module_00.py:323",
+      "pattern": "HACK:",
+      "comment": "HACK: Temporary workaround for the race condition",
+      "age_days": 369,
+      "author": "eve"
+    },
+    {
+      "id": "synthetic/core/module_04.py:451",
+      "pattern": "FUTURE:",
+      "comment": "FUTURE: Will be replaced with new architecture",
+      "age_days": 244,
+      "author": "diana"
+    },
+    {
+      "id": "synthetic/core/module_08.py:330",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 123,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/core/module_08.py:235",
+      "pattern": "HACK:",
+      "comment": "HACK: Temporary workaround for the race condition",
+      "age_days": 40,
+      "author": "charlie"
+    },
+    {
+      "id": "synthetic/core/module_11.py:286",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This breaks under edge cases",
+      "age_days": 42,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/core/module_11.py:87",
+      "pattern": "XXX:",
+      "comment": "XXX: This is a known limitation",
+      "age_days": 119,
+      "author": "diana"
+    },
+    {
+      "id": "synthetic/core/module_11.py:365",
+      "pattern": "HACK:",
+      "comment": "HACK: Temporary workaround for the race condition",
+      "age_days": 79,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/core/module_12.py:218",
+      "pattern": "FUTURE:",
+      "comment": "FUTURE: Will be replaced with new architecture",
+      "age_days": 170,
+      "author": "eve"
+    },
+    {
+      "id": "synthetic/core/module_14.py:436",
+      "pattern": "FUTURE:",
+      "comment": "FUTURE: Will be replaced with new architecture",
+      "age_days": 216,
+      "author": "diana"
+    },
+    {
+      "id": "synthetic/services/module_00.py:473",
+      "pattern": "XXX:",
+      "comment": "XXX: This is a known limitation",
+      "age_days": 395,
+      "author": "eve"
+    },
+    {
+      "id": "synthetic/services/module_00.py:494",
+      "pattern": "HACK:",
+      "comment": "HACK: Temporary workaround for the race condition",
+      "age_days": 357,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/services/module_00.py:448",
+      "pattern": "eventually",
+      "comment": "This will eventually be moved to the utils module",
+      "age_days": 392,
+      "author": "eve"
+    },
+    {
+      "id": "synthetic/services/module_02.py:190",
+      "pattern": "FUTURE:",
+      "comment": "FUTURE: Will be replaced with new architecture",
+      "age_days": 153,
+      "author": "diana"
+    },
+    {
+      "id": "synthetic/services/module_03.py:224",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 276,
+      "author": "charlie"
+    },
+    {
+      "id": "synthetic/services/module_03.py:386",
+      "pattern": "HACK:",
+      "comment": "HACK: Temporary workaround for the race condition",
+      "age_days": 280,
+      "author": "charlie"
+    },
+    {
+      "id": "synthetic/services/module_04.py:259",
+      "pattern": "XXX:",
+      "comment": "XXX: This is a known limitation",
+      "age_days": 113,
+      "author": "charlie"
+    },
+    {
+      "id": "synthetic/services/module_04.py:233",
+      "pattern": "HACK:",
+      "comment": "HACK: Temporary workaround for the race condition",
+      "age_days": 249,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/services/module_04.py:209",
+      "pattern": "eventually",
+      "comment": "This will eventually be moved to the utils module",
+      "age_days": 173,
+      "author": "diana"
+    },
+    {
+      "id": "synthetic/services/module_08.py:283",
+      "pattern": "XXX:",
+      "comment": "XXX: This is a known limitation",
+      "age_days": 14,
+      "author": "diana"
+    },
+    {
+      "id": "synthetic/services/module_08.py:313",
+      "pattern": "HACK:",
+      "comment": "HACK: Temporary workaround for the race condition",
+      "age_days": 289,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/services/module_08.py:52",
+      "pattern": "eventually",
+      "comment": "This will eventually be moved to the utils module",
+      "age_days": 330,
+      "author": "diana"
+    },
+    {
+      "id": "synthetic/services/module_09.py:35",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This breaks under edge cases",
+      "age_days": 134,
+      "author": "diana"
+    },
+    {
+      "id": "synthetic/services/module_09.py:177",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 109,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/services/module_09.py:177",
+      "pattern": "HACK:",
+      "comment": "HACK: Temporary workaround for the race condition",
+      "age_days": 173,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/services/module_15.py:497",
+      "pattern": "FUTURE:",
+      "comment": "FUTURE: Will be replaced with new architecture",
+      "age_days": 180,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/services/module_16.py:342",
+      "pattern": "XXX:",
+      "comment": "XXX: This is a known limitation",
+      "age_days": 36,
+      "author": "alice"
+    },
+    {
+      "id": "synthetic/services/module_16.py:396",
+      "pattern": "HACK:",
+      "comment": "HACK: Temporary workaround for the race condition",
+      "age_days": 16,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/services/module_16.py:112",
+      "pattern": "eventually",
+      "comment": "This will eventually be moved to the utils module",
+      "age_days": 11,
+      "author": "eve"
+    },
+    {
+      "id": "synthetic/services/module_17.py:74",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This breaks under edge cases",
+      "age_days": 243,
+      "author": "alice",
+      "stale": true
+    },
+    {
+      "id": "synthetic/services/module_17.py:298",
+      "pattern": "XXX:",
+      "comment": "XXX: This is a known limitation",
+      "age_days": 112,
+      "author": "diana"
+    },
+    {
+      "id": "synthetic/services/module_17.py:368",
+      "pattern": "HACK:",
+      "comment": "HACK: Temporary workaround for the race condition",
+      "age_days": 132,
+      "author": "charlie"
+    },
+    {
+      "id": "synthetic/services/module_18.py:392",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This breaks under edge cases",
+      "age_days": 368,
+      "author": "alice",
+      "stale": true
+    },
+    {
+      "id": "synthetic/services/module_18.py:408",
+      "pattern": "TODO:",
+      "comment": "TODO: Implement proper validation here",
+      "age_days": 84,
+      "author": "bob"
+    },
+    {
+      "id": "synthetic/services/module_18.py:65",
+      "pattern": "HACK:",
+      "comment": "HACK: Temporary workaround for the race condition",
+      "age_days": 297,
+      "author": "alice"
+    }
+  ],
+  "pattern_counts": {
+    "TODO:": 32,
+    "FUTURE:": 16,
+    "FIXME:": 18,
+    "XXX:": 16,
+    "HACK:": 24,
+    "should be": 21,
+    "see docs": 16,
+    "eventually": 5
+  },
+  "similar_groups": [],
+  "repeated_substrings": [],
+  "git_analysis": {
+    "high_churn_files": [
+      [
+        "synthetic/legacy/module_14.py",
+        50
+      ],
+      [
+        "synthetic/services/module_04.py",
+        49
+      ],
+      [
+        "synthetic/api/module_03.py",
+        43
+      ],
+      [
+        "synthetic/core/module_11.py",
+        42
+      ],
+      [
+        "synthetic/api/module_05.py",
+        42
+      ],
+      [
+        "synthetic/api/module_10.py",
+        41
+      ],
+      [
+        "synthetic/services/module_06.py",
+        39
+      ],
+      [
+        "synthetic/api/module_04.py",
+        37
+      ],
+      [
+        "synthetic/utils/module_09.py",
+        37
+      ],
+      [
+        "synthetic/api/module_01.py",
+        37
+      ],
+      [
+        "synthetic/services/module_11.py",
+        36
+      ],
+      [
+        "synthetic/api/module_29.py",
+        36
+      ],
+      [
+        "synthetic/services/module_03.py",
+        35
+      ],
+      [
+        "synthetic/services/module_18.py",
+        35
+      ],
+      [
+        "synthetic/utils/module_05.py",
+        33
+      ],
+      [
+        "synthetic/legacy/module_17.py",
+        32
+      ],
+      [
+        "synthetic/utils/module_14.py",
+        32
+      ],
+      [
+        "synthetic/utils/module_18.py",
+        32
+      ],
+      [
+        "synthetic/core/module_08.py",
+        32
+      ],
+      [
+        "synthetic/api/module_06.py",
+        29
+      ],
+      [
+        "synthetic/core/module_00.py",
+        28
+      ],
+      [
+        "synthetic/legacy/module_03.py",
+        27
+      ],
+      [
+        "synthetic/api/module_17.py",
+        27
+      ],
+      [
+        "synthetic/services/module_09.py",
+        26
+      ],
+      [
+        "synthetic/api/module_20.py",
+        26
+      ]
+    ],
+    "bug_prone_files": [
+      [
+        "synthetic/api/module_04.py",
+        10
+      ],
+      [
+        "synthetic/utils/module_14.py",
+        9
+      ],
+      [
+        "synthetic/api/module_10.py",
+        8
+      ],
+      [
+        "synthetic/services/module_08.py",
+        8
+      ],
+      [
+        "synthetic/utils/module_03.py",
+        8
+      ],
+      [
+        "synthetic/legacy/module_14.py",
+        7
+      ],
+      [
+        "synthetic/utils/module_09.py",
+        7
+      ],
+      [
+        "synthetic/api/module_09.py",
+        7
+      ],
+      [
+        "synthetic/services/module_16.py",
+        6
+      ],
+      [
+        "synthetic/services/module_17.py",
+        6
+      ],
+      [
+        "synthetic/services/module_00.py",
+        6
+      ],
+      [
+        "synthetic/core/module_11.py",
+        5
+      ],
+      [
+        "synthetic/core/module_00.py",
+        4
+      ],
+      [
+        "synthetic/services/module_04.py",
+        4
+      ],
+      [
+        "synthetic/legacy/module_10.py",
+        4
+      ],
+      [
+        "synthetic/api/module_02.py",
+        3
+      ]
+    ],
+    "suspicious_commits": [
+      {
+        "hash": "a1b2c3d4",
+        "message": "Quick fix for login bug",
+        "date": "2025-12-15",
+        "pattern": "quick fix"
+      },
+      {
+        "hash": "e5f6a7b8",
+        "message": "TODO: Clean this up later",
+        "date": "2025-12-10",
+        "pattern": "todo"
+      },
+      {
+        "hash": "c9d0e1f2",
+        "message": "Temporary workaround for API",
+        "date": "2025-12-01",
+        "pattern": "temporary"
+      }
+    ],
+    "critical_modules": [
+      [
+        "synthetic/core/base.py",
+        15
+      ],
+      [
+        "synthetic/core/config.py",
+        12
+      ],
+      [
+        "synthetic/utils/helpers.py",
+        10
+      ]
+    ]
+  },
+  "file_importance": {
+    "synthetic/legacy/module_00.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/legacy/module_01.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/legacy/module_02.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/legacy/module_03.py": {
+      "sti": 0.5,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.33999999999999997
+    },
+    "synthetic/legacy/module_04.py": {
+      "sti": 0.5,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.33999999999999997
+    },
+    "synthetic/legacy/module_05.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/legacy/module_06.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/legacy/module_07.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/legacy/module_08.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/legacy/module_09.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/legacy/module_10.py": {
+      "sti": 0.5,
+      "lti": 0.2,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.38
+    },
+    "synthetic/legacy/module_11.py": {
+      "sti": 0.6,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.4
+    },
+    "synthetic/legacy/module_12.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/legacy/module_13.py": {
+      "sti": 0.5,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.33999999999999997
+    },
+    "synthetic/legacy/module_14.py": {
+      "sti": 0.7999999999999999,
+      "lti": 0.2,
+      "vlti": false,
+      "priority_tier": "high",
+      "total": 0.5599999999999999
+    },
+    "synthetic/legacy/module_15.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/legacy/module_16.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/legacy/module_17.py": {
+      "sti": 0.5,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.33999999999999997
+    },
+    "synthetic/legacy/module_18.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/legacy/module_19.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/legacy/module_20.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/legacy/module_21.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/legacy/module_22.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/legacy/module_23.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/legacy/module_24.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/api/module_00.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/api/module_01.py": {
+      "sti": 0.7,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.45999999999999996
+    },
+    "synthetic/api/module_02.py": {
+      "sti": 0.7999999999999999,
+      "lti": 0.2,
+      "vlti": false,
+      "priority_tier": "high",
+      "total": 0.5599999999999999
+    },
+    "synthetic/api/module_03.py": {
+      "sti": 0.5,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.33999999999999997
+    },
+    "synthetic/api/module_04.py": {
+      "sti": 0.7999999999999999,
+      "lti": 0.2,
+      "vlti": false,
+      "priority_tier": "high",
+      "total": 0.5599999999999999
+    },
+    "synthetic/api/module_05.py": {
+      "sti": 0.6,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.4
+    },
+    "synthetic/api/module_06.py": {
+      "sti": 0.5,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.33999999999999997
+    },
+    "synthetic/api/module_07.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/api/module_08.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/api/module_09.py": {
+      "sti": 0.5,
+      "lti": 0.2,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.38
+    },
+    "synthetic/api/module_10.py": {
+      "sti": 0.7999999999999999,
+      "lti": 0.2,
+      "vlti": false,
+      "priority_tier": "high",
+      "total": 0.5599999999999999
+    },
+    "synthetic/api/module_11.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/api/module_12.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/api/module_13.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/api/module_14.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/api/module_15.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/api/module_16.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/api/module_17.py": {
+      "sti": 0.5,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.33999999999999997
+    },
+    "synthetic/api/module_18.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/api/module_19.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/api/module_20.py": {
+      "sti": 0.7,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.45999999999999996
+    },
+    "synthetic/api/module_21.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/api/module_22.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/api/module_23.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/api/module_24.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/api/module_25.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/api/module_26.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/api/module_27.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/api/module_28.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/api/module_29.py": {
+      "sti": 0.5,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.33999999999999997
+    },
+    "synthetic/utils/module_00.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/utils/module_01.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/utils/module_02.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/utils/module_03.py": {
+      "sti": 0.5,
+      "lti": 0.2,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.38
+    },
+    "synthetic/utils/module_04.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/utils/module_05.py": {
+      "sti": 0.7,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.45999999999999996
+    },
+    "synthetic/utils/module_06.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/utils/module_07.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/utils/module_08.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/utils/module_09.py": {
+      "sti": 0.7999999999999999,
+      "lti": 0.2,
+      "vlti": false,
+      "priority_tier": "high",
+      "total": 0.5599999999999999
+    },
+    "synthetic/utils/module_10.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/utils/module_11.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/utils/module_12.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/utils/module_13.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/utils/module_14.py": {
+      "sti": 0.7999999999999999,
+      "lti": 0.2,
+      "vlti": false,
+      "priority_tier": "high",
+      "total": 0.5599999999999999
+    },
+    "synthetic/utils/module_15.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/utils/module_16.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/utils/module_17.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/utils/module_18.py": {
+      "sti": 0.7,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.45999999999999996
+    },
+    "synthetic/utils/module_19.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/core/module_00.py": {
+      "sti": 0.7999999999999999,
+      "lti": 0.2,
+      "vlti": false,
+      "priority_tier": "high",
+      "total": 0.5599999999999999
+    },
+    "synthetic/core/module_01.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/core/module_02.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/core/module_03.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/core/module_04.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/core/module_05.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/core/module_06.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/core/module_07.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/core/module_08.py": {
+      "sti": 0.5,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.33999999999999997
+    },
+    "synthetic/core/module_09.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/core/module_10.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/core/module_11.py": {
+      "sti": 0.7999999999999999,
+      "lti": 0.2,
+      "vlti": false,
+      "priority_tier": "high",
+      "total": 0.5599999999999999
+    },
+    "synthetic/core/module_12.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/core/module_13.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/core/module_14.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/services/module_00.py": {
+      "sti": 0.5,
+      "lti": 0.2,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.38
+    },
+    "synthetic/services/module_01.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/services/module_02.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/services/module_03.py": {
+      "sti": 0.5,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.33999999999999997
+    },
+    "synthetic/services/module_04.py": {
+      "sti": 0.7999999999999999,
+      "lti": 0.2,
+      "vlti": false,
+      "priority_tier": "high",
+      "total": 0.5599999999999999
+    },
+    "synthetic/services/module_05.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/services/module_06.py": {
+      "sti": 0.5,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.33999999999999997
+    },
+    "synthetic/services/module_07.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/services/module_08.py": {
+      "sti": 0.5,
+      "lti": 0.2,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.38
+    },
+    "synthetic/services/module_09.py": {
+      "sti": 0.6,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.4
+    },
+    "synthetic/services/module_10.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/services/module_11.py": {
+      "sti": 0.5,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.33999999999999997
+    },
+    "synthetic/services/module_12.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/services/module_13.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/services/module_14.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/services/module_15.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    },
+    "synthetic/services/module_16.py": {
+      "sti": 0.5,
+      "lti": 0.2,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.38
+    },
+    "synthetic/services/module_17.py": {
+      "sti": 0.7999999999999999,
+      "lti": 0.2,
+      "vlti": false,
+      "priority_tier": "high",
+      "total": 0.5599999999999999
+    },
+    "synthetic/services/module_18.py": {
+      "sti": 0.6,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "medium",
+      "total": 0.4
+    },
+    "synthetic/services/module_19.py": {
+      "sti": 0.2,
+      "lti": 0.1,
+      "vlti": false,
+      "priority_tier": "low",
+      "total": 0.16
+    }
+  },
+  "_metadata": {
+    "pattern_sets": {
+      "directory_correlations": {
+        "legacy_todo": 100.0,
+        "api_should_be": 80.0,
+        "utils_see_docs": 70.0
+      },
+      "trait_correlations": {
+        "high_churn_fixme": 75.0,
+        "bug_prone_multi_pattern": 100.0
+      },
+      "cross_cutting": {
+        "todo_hack_high_churn": 100.0,
+        "future_not_bug_prone": 100.0
+      }
+    },
+    "outlier_files": [
+      "synthetic/legacy/module_06.py",
+      "synthetic/legacy/module_12.py",
+      "synthetic/legacy/module_22.py"
+    ],
+    "todo_hack_files": [
+      "synthetic/api/module_01.py",
+      "synthetic/api/module_05.py",
+      "synthetic/api/module_17.py",
+      "synthetic/api/module_20.py",
+      "synthetic/core/module_08.py",
+      "synthetic/services/module_03.py",
+      "synthetic/services/module_09.py",
+      "synthetic/services/module_18.py",
+      "synthetic/utils/module_05.py",
+      "synthetic/utils/module_18.py"
+    ],
+    "importance_tiers": {
+      "critical": 0,
+      "high": 10,
+      "medium": 26,
+      "low": 74
+    },
+    "vlti_files": []
+  }
+}

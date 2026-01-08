@@ -1,0 +1,217 @@
+{
+  "version": 1,
+  "extracted_at": "2026-01-08T21:06:57.350277",
+  "parent_session_id": "",
+  "parent_transcript_path": "",
+  "orchestration_detected": true,
+  "total_sub_agents": 9,
+  "batches": [
+    {
+      "batch_index": 0,
+      "execution_type": "parallel",
+      "agents": [
+        {
+          "agent_id": "7d7abe41",
+          "session_id": "c24c5a5b-d654-44f0-b68f-7ab05c7b7993",
+          "model": "claude-sonnet-4-5-20250929",
+          "started_at": "2026-01-08T20:01:49.943Z",
+          "completed_at": "2026-01-08T20:04:22.960Z",
+          "duration_ms": 153017,
+          "tools_used": [
+            "Write",
+            "Read",
+            "Bash"
+          ],
+          "tool_count": 13,
+          "thinking_blocks": 13,
+          "has_error": true,
+          "error_summary": "Exit code 2\n/bin/bash: eval: line 1: syntax error near unexpected token `git'\n/bin/bash: eval: line 1: `echo '=== FILE CHANGES SUMMARY ===' && echo '' && for branch in origin/claude/code-review-fixes-",
+          "output_preview": "## Analysis Complete: Unmerged Branches Report\n\nI found **14 branches** with significant unmerged work (3+ commits), totaling **579 commits** not yet in main. Here's the breakdown:\n\n---\n\n### Tier 1: Major Work (50+ commits) - 6 branches\n\n| Commits | Branch | Last Updated | Files | Key Work |\n|---------|--------|--------------|-------|----------|\n| **85** | `origin/claude/code-review-fixes-J4A3H` | 2026-01-07 | 111 | Hypothesis testing framework, persona experiments |\n| **79** | `origin/claude/fi",
+          "transcript_path": "/root/.claude/projects/-home-user-Opus-code-test/agent-7d7abe41.jsonl"
+        },
+        {
+          "agent_id": "253ae73f",
+          "session_id": "c24c5a5b-d654-44f0-b68f-7ab05c7b7993",
+          "model": "claude-sonnet-4-5-20250929",
+          "started_at": "2026-01-08T20:01:50.370Z",
+          "completed_at": "2026-01-08T20:05:21.101Z",
+          "duration_ms": 210731,
+          "tools_used": [
+            "Write",
+            "Bash"
+          ],
+          "tool_count": 18,
+          "thinking_blocks": 19,
+          "has_error": true,
+          "error_summary": "Exit code 2\n/bin/bash: eval: line 1: syntax error near unexpected token `git'\n/bin/bash: eval: line 1: `for branch in origin/claude/fix-scratchpad-focus-SUJkx origin/claude/recover-prism-pln-changes-q",
+          "output_preview": "Perfect! I have comprehensive information now. Let me create a detailed summary:\n\n## Code Changes on Branches (Not in Main)\n\nBased on my analysis of the 20 most recently updated branches, here are the **significant code changes** in `cortical/`:\n\n---\n\n### **BRANCH 1: `claude/fix-scratchpad-focus-SUJkx` (Current Branch)**\n**65 code files changed** - Most comprehensive set of changes\n\n#### **NEW: Complete Audit Framework** \u2728\nEntirely new codebase quality analysis system:\n\n**Core Audit Modules:**\n-",
+          "transcript_path": "/root/.claude/projects/-home-user-Opus-code-test/agent-253ae73f.jsonl"
+        },
+        {
+          "agent_id": "873a3730",
+          "session_id": "c24c5a5b-d654-44f0-b68f-7ab05c7b7993",
+          "model": "claude-sonnet-4-5-20250929",
+          "started_at": "2026-01-08T20:01:51.944Z",
+          "completed_at": "2026-01-08T20:06:50.176Z",
+          "duration_ms": 298232,
+          "tools_used": [
+            "Bash"
+          ],
+          "tool_count": 23,
+          "thinking_blocks": 24,
+          "has_error": true,
+          "error_summary": "Exit code 2\n/bin/bash: eval: line 1: syntax error near unexpected token `git'\n/bin/bash: eval: line 1: `echo '=== BRANCH COMMIT DATES WITH TEST CHANGES ===' && echo '' && for branch in origin/claude/f",
+          "output_preview": "## Test-Related Changes Analysis Complete\n\nI've conducted a comprehensive search for test-related changes across the 20 most recently updated branches. Here's what I found:\n\n### Summary Statistics\n\n- **13 branches** with test-related changes (out of 20 analyzed)\n- **Date range**: 2026-01-07 to 2026-01-08 (all very recent)\n- **Test files affected**: 5-37 files per branch\n- **Total new test code**: ~100+ KB across ~25 new test files\n\n### Major Findings\n\n**1. Algorithm Test Suite (8 new files, ~65K",
+          "transcript_path": "/root/.claude/projects/-home-user-Opus-code-test/agent-873a3730.jsonl"
+        },
+        {
+          "agent_id": "aa82f876",
+          "session_id": "c24c5a5b-d654-44f0-b68f-7ab05c7b7993",
+          "model": "claude-sonnet-4-5-20250929",
+          "started_at": "2026-01-08T20:01:54.639Z",
+          "completed_at": "2026-01-08T20:03:12.109Z",
+          "duration_ms": 77470,
+          "tools_used": [
+            "Bash"
+          ],
+          "tool_count": 14,
+          "thinking_blocks": 7,
+          "has_error": true,
+          "error_summary": "Exit code 127\n/bin/bash: line 1: gh: command not found",
+          "output_preview": "## Summary: Merge Activity Investigation\n\n### Last Merge to Main\n\n**Date:** January 6, 2026 at 6:28 AM EST  \n**Commit:** `c3056454082973c78d0ac20312c9486451e2f38e`  \n**PR:** #264 from `scrawlsbenches/claude/setup-pytest-coverage-x89p2`  \n**Message:** Merge pull request #264 from scrawlsbenches/claude/setup-pytest-coverage-x89p2\n\n### Recent Merge Activity\n\nThe last 10 merges to main occurred between **January 5-6, 2026**, with a high velocity of PRs:\n\n1. **#264** - Setup pytest coverage (Jan 6, 6",
+          "transcript_path": "/root/.claude/projects/-home-user-Opus-code-test/agent-aa82f876.jsonl"
+        }
+      ],
+      "started_at": "2026-01-08T20:01:49.943Z",
+      "completed_at": "2026-01-08T20:06:50.176Z",
+      "duration_ms": 300233,
+      "all_succeeded": false
+    },
+    {
+      "batch_index": 1,
+      "execution_type": "parallel",
+      "agents": [
+        {
+          "agent_id": "cd38b105",
+          "session_id": "c5e15e33-a6a5-40b4-b19d-6f5a3d2a29d4",
+          "model": "claude-sonnet-4-5-20250929",
+          "started_at": "2026-01-08T20:53:47.927Z",
+          "completed_at": "2026-01-08T20:58:12.174Z",
+          "duration_ms": 264247,
+          "tools_used": [
+            "Grep",
+            "Write",
+            "Read",
+            "Bash",
+            "Glob"
+          ],
+          "tool_count": 26,
+          "thinking_blocks": 10,
+          "has_error": false,
+          "error_summary": null,
+          "output_preview": "## Performance Audit Complete \u2705\n\nI've completed a comprehensive forensic performance audit of the Cortical codebase. The full report (496 lines, 19KB) has been written to:\n\n**`/home/user/Opus-code-test/docs/audits/experiments/results/code-review-20260108/performance-audit.md`**\n\n---\n\n## Key Findings Summary\n\n### \ud83d\udfe2 **Overall Grade: A+** (Excellent Performance Engineering)\n\n### Major Achievements Found:\n1. **O(n\u00b2) \u2192 O(n) optimizations** with detailed documentation\n   - Bigram connections: ~34x spe",
+          "transcript_path": "/root/.claude/projects/-home-user-Opus-code-test/agent-cd38b105.jsonl"
+        },
+        {
+          "agent_id": "95cb3a38",
+          "session_id": "c5e15e33-a6a5-40b4-b19d-6f5a3d2a29d4",
+          "model": "claude-sonnet-4-5-20250929",
+          "started_at": "2026-01-08T20:53:48.639Z",
+          "completed_at": "2026-01-08T20:59:09.606Z",
+          "duration_ms": 320967,
+          "tools_used": [
+            "Write",
+            "Bash"
+          ],
+          "tool_count": 34,
+          "thinking_blocks": 10,
+          "has_error": false,
+          "error_summary": null,
+          "output_preview": "## Git Forensics Analysis COMPLETE\n\n**Report Location:** `/home/user/Opus-code-test/docs/audits/experiments/results/code-review-20260108/git-forensics.md`\n\n**Report Size:** 579 lines of comprehensive forensic analysis\n\n---\n\n## Key Findings Summary\n\n### Repository Health: **EXCELLENT**\n- **3,887 commits** across **286 branches**\n- **Zero force pushes** detected (clean git history)\n- Strong conventional commit discipline\n- No evidence of destructive operations\n\n### Critical Discoveries\n\n#### 1. **",
+          "transcript_path": "/root/.claude/projects/-home-user-Opus-code-test/agent-95cb3a38.jsonl"
+        },
+        {
+          "agent_id": "c4bbdea0",
+          "session_id": "c5e15e33-a6a5-40b4-b19d-6f5a3d2a29d4",
+          "model": "claude-sonnet-4-5-20250929",
+          "started_at": "2026-01-08T20:53:48.853Z",
+          "completed_at": "2026-01-08T20:58:45.047Z",
+          "duration_ms": 296194,
+          "tools_used": [
+            "Grep",
+            "Edit",
+            "Read",
+            "Bash",
+            "Write"
+          ],
+          "tool_count": 32,
+          "thinking_blocks": 12,
+          "has_error": false,
+          "error_summary": null,
+          "output_preview": "## Security Audit Complete \u2713\n\nI've completed a comprehensive forensic security audit of the Cortical codebase. The full report has been written to:\n\n**`/home/user/Opus-code-test/docs/audits/experiments/results/code-review-20260108/security-audit.md`**\n\n---\n\n## \ud83c\udfaf Key Findings Summary\n\n### Overall Grade: **A-** (Production Ready)\n\n**\u2713 NO CRITICAL VULNERABILITIES FOUND**\n\n### Security Posture: STRONG\n- \u2705 No hardcoded secrets or credentials\n- \u2705 No SQL injection vectors (file-based storage)\n- \u2705 SHA25",
+          "transcript_path": "/root/.claude/projects/-home-user-Opus-code-test/agent-c4bbdea0.jsonl"
+        },
+        {
+          "agent_id": "2d7079b5",
+          "session_id": "c5e15e33-a6a5-40b4-b19d-6f5a3d2a29d4",
+          "model": "claude-sonnet-4-5-20250929",
+          "started_at": "2026-01-08T20:53:49.595Z",
+          "completed_at": "2026-01-08T21:00:22.716Z",
+          "duration_ms": 393121,
+          "tools_used": [
+            "Grep",
+            "Write",
+            "Read",
+            "Bash",
+            "Glob"
+          ],
+          "tool_count": 41,
+          "thinking_blocks": 14,
+          "has_error": false,
+          "error_summary": null,
+          "output_preview": "## Architecture Audit Complete\n\nI've completed a comprehensive forensic architecture audit of the Cortical codebase and written the results to:\n\n**`/home/user/Opus-code-test/docs/audits/experiments/results/code-review-20260108/architecture-audit.md`**\n\n### Executive Summary\n\n**Overall Grade: B-** (Good infrastructure undermined by god class and interface bloat)\n\n### Key Findings\n\n#### CRITICAL ISSUES (Severity: HIGH)\n\n1. **GoTManager is a God Class** \n   - 2,754 lines, 74 methods, 9 distinct res",
+          "transcript_path": "/root/.claude/projects/-home-user-Opus-code-test/agent-2d7079b5.jsonl"
+        },
+        {
+          "agent_id": "da41292a",
+          "session_id": "c5e15e33-a6a5-40b4-b19d-6f5a3d2a29d4",
+          "model": "claude-sonnet-4-5-20250929",
+          "started_at": "2026-01-08T20:53:49.734Z",
+          "completed_at": "2026-01-08T20:58:56.551Z",
+          "duration_ms": 306817,
+          "tools_used": [
+            "Grep",
+            "Write",
+            "Read",
+            "Bash",
+            "Glob"
+          ],
+          "tool_count": 28,
+          "thinking_blocks": 11,
+          "has_error": false,
+          "error_summary": null,
+          "output_preview": "## \u2705 Correctness Audit Complete\n\nI've conducted a comprehensive forensic correctness audit of the Cortical CDG transaction layer and written the complete report to:\n\n**`/home/user/Opus-code-test/docs/audits/experiments/results/code-review-20260108/correctness-audit.md`**\n\n---\n\n## \ud83c\udfaf Key Findings\n\n### **Overall Assessment: HIGH QUALITY** \u2705\n**No critical correctness bugs detected.**\n\nThe codebase demonstrates exceptional correctness engineering with:\n- \u2705 Comprehensive TOCTOU race condition protecti",
+          "transcript_path": "/root/.claude/projects/-home-user-Opus-code-test/agent-da41292a.jsonl"
+        }
+      ],
+      "started_at": "2026-01-08T20:53:47.927Z",
+      "completed_at": "2026-01-08T21:00:22.716Z",
+      "duration_ms": 394789,
+      "all_succeeded": true
+    }
+  ],
+  "models_used": [
+    "claude-sonnet-4-5-20250929"
+  ],
+  "total_tools_used": 229,
+  "unique_tools": [
+    "Bash",
+    "Edit",
+    "Glob",
+    "Grep",
+    "Read",
+    "Write"
+  ],
+  "total_duration_ms": 3512773,
+  "success_rate": 55.55555555555556
+}

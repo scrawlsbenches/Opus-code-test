@@ -504,9 +504,10 @@ def save_orchestration_lite(extraction: ExtractedOrchestration) -> Optional[Path
         ]
     }
 
-    # CALI: O(1) existence check
-    if cali_exists('orchestration', extraction.parent_session_id):
-        logger.debug(f"CALI: orchestration {extraction.parent_session_id} already exists")
+    # CALI: O(1) existence check (only if we have a valid session ID)
+    record_id = extraction.parent_session_id or extraction.extracted_at
+    if cali_exists('orchestration', record_id):
+        logger.debug(f"CALI: orchestration {record_id} already exists")
         return ORCHESTRATION_LITE_FILE
 
     # Append to JSONL file
@@ -514,8 +515,8 @@ def save_orchestration_lite(extraction: ExtractedOrchestration) -> Optional[Path
         f.write(json.dumps(lite_record) + '\n')
 
     # Also write to CALI for O(1) lookups and git-friendly storage
-    if cali_put('orchestration', extraction.parent_session_id, lite_record):
-        logger.debug(f"CALI: stored orchestration {extraction.parent_session_id}")
+    if cali_put('orchestration', record_id, lite_record):
+        logger.debug(f"CALI: stored orchestration {record_id}")
 
     logger.info(f"Appended orchestration to {ORCHESTRATION_LITE_FILE}")
     return ORCHESTRATION_LITE_FILE
