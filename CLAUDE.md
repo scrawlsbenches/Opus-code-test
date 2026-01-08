@@ -1,9 +1,7 @@
 # CLAUDE.md — Graph of Thought Operations Guide
 
 
-*Last updated: 2026-01-07*
-
-*Last updated: 2026-01-05*
+*Last updated: 2026-01-08*
 
 ---
 
@@ -13,7 +11,7 @@
 You are an expert Graph of Thought database designer and computer scientist with a background in computer science, graph of thought theory and practical applications. You understand:
 - Entity storage, relationships, graph traversal and the pitfalls with all of them
 - ACID transactions and WAL-based recovery
-- The GoT CLI (got_utils.py) and its commands
+- The GoT CLI (`python -m cortical.got`) and its commands
 - When to execute vs when to ask for clarification
 - We are in the middle of refactoring a large project and bugs need to be fixed when they are found
 - Scratchpad usage patterns that work
@@ -25,17 +23,17 @@ You are an expert Graph of Thought database designer and computer scientist with
 
 ```bash
 # 1. Health check (required before any work)
-python scripts/got_utils.py validate
+python -m cortical.got validate
 python -m pytest tests/smoke/ -v --tb=short
 
 # 2. Orient yourself
 git branch --show-current
 git log --oneline -5
-python scripts/got_utils.py task list --status in_progress
+python -m cortical.got task list --status in_progress
 
 # 3. Check for handoffs from previous sessions
-python scripts/got_utils.py kt list --status draft | head -5
-python scripts/got_utils.py handoff list --status pending | head -5
+python -m cortical.got kt list --status draft | head -5
+python -m cortical.got handoff list --status pending | head -5
 ```
 
 If any of these fail, **stop and investigate** before proceeding.
@@ -66,11 +64,11 @@ Before ANY work begins:
 │       If this fails, DO NOT PROCEED. Fix it or escalate.                │
 │                                                                          │
 │  □ 2. GOT VALIDATES CLEANLY                                             │
-│       python scripts/got_utils.py validate                              │
+│       python -m cortical.got validate                              │
 │       Corruption detected? Run recovery first.                          │
 │                                                                          │
 │  □ 3. CHECK FOR EXISTING WORK                                           │
-│       python scripts/got_utils.py task list --status in_progress        │
+│       python -m cortical.got task list --status in_progress        │
 │       Is someone already working on this? Coordinate, don't duplicate.  │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -82,12 +80,12 @@ Before ANY work begins:
 
 ```
 1. CREATE A TASK (if one doesn't exist)
-   python scripts/got_utils.py task create "Clear task title" \
+   python -m cortical.got task create "Clear task title" \
        --priority [critical|high|medium|low] \
        --category [feature|bugfix|refactor|docs|test]
 
 2. LOG YOUR REASONING (for non-trivial decisions)
-   python scripts/got_utils.py decision log "Decision: X over Y" \
+   python -m cortical.got decision log "Decision: X over Y" \
        --rationale "Because of A, B, and C"
 
 3. IDENTIFY RISKS
@@ -143,18 +141,18 @@ python -m coverage report --include="cortical/*"
 # Minimum: 86% (check CI for current threshold)
 
 # GoT integrity
-python scripts/got_utils.py validate
+python -m cortical.got validate
 ```
 
 ### Phase 4: Completion (Close the Loop)
 
 ```bash
 # Mark task complete with retrospective
-python scripts/got_utils.py task complete T-XXXX \
+python -m cortical.got task complete T-XXXX \
     --retrospective "What worked: X. What didn't: Y. Learned: Z."
 
 # If significant work, create knowledge transfer
-python scripts/got_utils.py kt create "Session: [topic]" \
+python -m cortical.got kt create "Session: [topic]" \
     --summary "Key outcomes: ..."
 
 # Commit with clear message
@@ -207,10 +205,10 @@ Task: T-XXXX"
 
 ```bash
 # Step 1: Check what's corrupted
-python scripts/got_utils.py validate --check-refs
+python -m cortical.got validate --check-refs
 
 # Step 2: Attempt recovery
-python scripts/got_utils.py recover
+python -m cortical.got recover
 
 # Step 3: If recovery fails, report the issue
 # DO NOT manually edit .got/ files - they have checksum integrity
@@ -225,8 +223,8 @@ If you're confused about what you were doing:
 /context-recovery  # (slash command)
 
 # Or manually:
-python scripts/got_utils.py kt list --status draft
-python scripts/got_utils.py task list --status in_progress
+python -m cortical.got kt list --status draft
+python -m cortical.got task list --status in_progress
 git log --oneline -10
 ```
 
@@ -279,7 +277,7 @@ git diff
 | "Add this external dependency" | Sovereignty principle | "Let me check if we can build this ourselves." |
 | "Copy this code from elsewhere" | Attribution and licensing | "Let me verify the license first." |
 | "Push directly to main" | Bypasses review process | "Let me create a PR for visibility." |
-| "Edit .got/ files directly" | Breaks checksum integrity | "Use got_utils.py commands instead." |
+| "Edit .got/ files directly" | Breaks checksum integrity | "Use `python -m cortical.got` commands instead." |
 | "Commit without running tests" | Breaks CI, blocks others | "Let me run smoke tests first." |
 
 **How I Push Back:**
@@ -430,7 +428,7 @@ grep -r "def.*fixture" tests/
 grep -r "@pytest.fixture" tests/conftest.py
 
 # Check for similar patterns
-python scripts/got_utils.py query "category = 'feature' AND status = 'completed'"
+python -m cortical.got query "category = 'feature' AND status = 'completed'"
 
 # Recent additions
 git log --oneline --all -20
@@ -559,36 +557,36 @@ These bugs have been fixed. **Do not reintroduce them:**
 
 ```bash
 # Task Management
-python scripts/got_utils.py task create "Title" --priority high
-python scripts/got_utils.py task start T-XXX
-python scripts/got_utils.py task complete T-XXX --retrospective "..."
-python scripts/got_utils.py task list --status in_progress
+python -m cortical.got task create "Title" --priority high
+python -m cortical.got task start T-XXX
+python -m cortical.got task complete T-XXX --retrospective "..."
+python -m cortical.got task list --status in_progress
 
 # Decisions
-python scripts/got_utils.py decision log "Decision X" --rationale "Because Y"
+python -m cortical.got decision log "Decision X" --rationale "Because Y"
 
 # Knowledge Transfers
-python scripts/got_utils.py kt create "Session Title" --summary "..."
-python scripts/got_utils.py kt finalize KT-XXX
-python scripts/got_utils.py kt list --status draft
+python -m cortical.got kt create "Session Title" --summary "..."
+python -m cortical.got kt finalize KT-XXX
+python -m cortical.got kt list --status draft
 
 # Edges (Relationships)
-python scripts/got_utils.py edge add FROM_ID TO_ID EDGE_TYPE
+python -m cortical.got edge add FROM_ID TO_ID EDGE_TYPE
 # Edge types: DEPENDS_ON, BLOCKS, SIMILAR, CONTAINS, IMPLEMENTS, TESTS, etc.
 
 # Queries
-python scripts/got_utils.py query "what blocks T-XXX"
-python scripts/got_utils.py query "blocked tasks"
-python scripts/got_utils.py query "path from T-1 to T-2"
+python -m cortical.got query "what blocks T-XXX"
+python -m cortical.got query "blocked tasks"
+python -m cortical.got query "path from T-1 to T-2"
 
 # Health
-python scripts/got_utils.py validate
-python scripts/got_utils.py stats
+python -m cortical.got validate
+python -m cortical.got stats
 
 # Handoffs
-python scripts/got_utils.py handoff initiate T-XXX --target agent --instructions "..."
-python scripts/got_utils.py handoff accept H-XXX
-python scripts/got_utils.py handoff complete H-XXX
+python -m cortical.got handoff initiate T-XXX --target agent --instructions "..."
+python -m cortical.got handoff accept H-XXX
+python -m cortical.got handoff complete H-XXX
 
 # ⚠️ NEVER edit .got/ files directly - use these commands!
 ```
@@ -597,7 +595,7 @@ python scripts/got_utils.py handoff complete H-XXX
 
 ## GoT Deep Dive: Understanding the Data Model
 
-This section teaches agents how got_utils.py works internally, so you can use it effectively.
+This section teaches agents how the GoT CLI works internally, so you can use it effectively.
 
 ### Entity Types and Storage
 
@@ -675,8 +673,8 @@ task.properties = {
 │  - TESTS: T-1 tests feature in T-2                                      │
 │                                                                          │
 │  Usage:                                                                 │
-│  python scripts/got_utils.py edge add T-001 T-002 DEPENDS_ON           │
-│  python scripts/got_utils.py edge add S-001 T-001 CONTAINS             │
+│  python -m cortical.got edge add T-001 T-002 DEPENDS_ON           │
+│  python -m cortical.got edge add S-001 T-001 CONTAINS             │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -687,23 +685,23 @@ The query command parses natural language patterns:
 
 ```bash
 # Blocking relationships
-python scripts/got_utils.py query "what blocks T-001"
-python scripts/got_utils.py query "what does T-001 depend on"
+python -m cortical.got query "what blocks T-001"
+python -m cortical.got query "what does T-001 depend on"
 
 # Status queries
-python scripts/got_utils.py query "blocked tasks"
-python scripts/got_utils.py query "high priority pending"
+python -m cortical.got query "blocked tasks"
+python -m cortical.got query "high priority pending"
 
 # Path queries
-python scripts/got_utils.py query "path from T-001 to T-010"
+python -m cortical.got query "path from T-001 to T-010"
 
 # Free-form search (title/description matching)
-python scripts/got_utils.py query "authentication"
+python -m cortical.got query "authentication"
 ```
 
 ### TransactionalGoTAdapter: The CLI Engine
 
-The `scripts/got_utils.py` file contains `TransactionalGoTAdapter`, which wraps the GoT manager with CLI-friendly methods. Key methods:
+The `cortical/got/adapter.py` module contains `TransactionalGoTAdapter`, which wraps the GoT manager with CLI-friendly methods. Key methods:
 
 | Method | Purpose | Returns |
 |--------|---------|---------|
@@ -720,33 +718,33 @@ The `scripts/got_utils.py` file contains `TransactionalGoTAdapter`, which wraps 
 **Pattern 1: Task Workflow**
 ```bash
 # Create
-T_ID=$(python scripts/got_utils.py task create "Fix login bug" --priority high)
+T_ID=$(python -m cortical.got task create "Fix login bug" --priority high)
 
 # Start work
-python scripts/got_utils.py task start $T_ID
+python -m cortical.got task start $T_ID
 
 # Complete with learnings
-python scripts/got_utils.py task complete $T_ID \
+python -m cortical.got task complete $T_ID \
     --retrospective "Root cause was session timeout. Fixed by extending TTL."
 ```
 
 **Pattern 2: Dependency Chain**
 ```bash
 # T-002 can't start until T-001 is done
-python scripts/got_utils.py edge add T-001 T-002 DEPENDS_ON
+python -m cortical.got edge add T-001 T-002 DEPENDS_ON
 
 # Check what's blocking
-python scripts/got_utils.py blocked
+python -m cortical.got blocked
 ```
 
 **Pattern 3: Session Handoff**
 ```bash
 # Create knowledge transfer
-python scripts/got_utils.py kt create "Session: Auth refactor" \
+python -m cortical.got kt create "Session: Auth refactor" \
     --summary "Completed token validation. Pending: refresh flow."
 
 # Create handoff for specific task
-python scripts/got_utils.py handoff initiate T-001 \
+python -m cortical.got handoff initiate T-001 \
     --target "next-agent" \
     --instructions "Continue from step 3 of the plan"
 ```
@@ -754,7 +752,7 @@ python scripts/got_utils.py handoff initiate T-001 \
 **Pattern 4: Failed Approach Tracking**
 ```bash
 # Record what didn't work (prevents future agents from repeating mistakes)
-python scripts/got_utils.py failure record T-001 \
+python -m cortical.got failure record T-001 \
     "Tried mutex lock on shared state - caused deadlock under high load"
 ```
 
@@ -762,26 +760,26 @@ python scripts/got_utils.py failure record T-001 \
 
 ```bash
 # Basic validation (checks node/edge counts, orphan detection)
-python scripts/got_utils.py validate
+python -m cortical.got validate
 
 # Deep validation (checks edge references point to existing entities)
-python scripts/got_utils.py validate --check-refs
+python -m cortical.got validate --check-refs
 
 # Statistics
-python scripts/got_utils.py stats
+python -m cortical.got stats
 ```
 
 ### Recovery Commands
 
 ```bash
 # If validation fails
-python scripts/got_utils.py recover
+python -m cortical.got recover
 
 # Backup before risky operations
-python scripts/got_utils.py backup create "pre-refactor"
+python -m cortical.got backup create "pre-refactor"
 
 # Restore from backup
-python scripts/got_utils.py backup restore BACKUP_ID
+python -m cortical.got backup restore BACKUP_ID
 ```
 
 ---
@@ -896,14 +894,14 @@ When starting a new session or continuing from a handoff:
 # 1. Orient
 git branch --show-current
 git log --oneline -5
-python scripts/got_utils.py task list --status in_progress
+python -m cortical.got task list --status in_progress
 
 # 2. Recover Context
-python scripts/got_utils.py kt list --status draft | head -5
-python scripts/got_utils.py handoff list --status pending | head -5
+python -m cortical.got kt list --status draft | head -5
+python -m cortical.got handoff list --status pending | head -5
 
 # 3. Verify System State
-python scripts/got_utils.py validate
+python -m cortical.got validate
 python -m pytest tests/smoke/ -v
 
 # 4. If confused, run full recovery
@@ -1456,9 +1454,9 @@ python examples/observability_demo.py
 | Check wiki-links | `python scripts/resolve_wiki_links.py FILE` |
 | Find backlinks | `python scripts/resolve_wiki_links.py --backlinks FILE` |
 | Complete task with memory | `python scripts/task_utils.py complete TASK_ID --create-memory` |
-| View sprint status | `python scripts/got_utils.py sprint status` |
-| List all sprints | `python scripts/got_utils.py sprint list` |
-| Create sprint | `python scripts/got_utils.py sprint create "Title" --number N` |
+| View sprint status | `python -m cortical.got sprint status` |
+| List all sprints | `python -m cortical.got sprint list` |
+| Create sprint | `python -m cortical.got sprint create "Title" --number N` |
 | Create orchestration plan | `python scripts/orchestration_utils.py generate --type plan` |
 | List orchestration plans | `python scripts/orchestration_utils.py list` |
 | Verify batch | `python scripts/verify_batch.py --quick` |
@@ -1478,20 +1476,20 @@ python examples/observability_demo.py
 | Recover graph | `result = GraphRecovery(wal_dir).recover()` |
 | Git auto-commit | `GitAutoCommitter(repo_path).commit_on_save(path, graph)` |
 | **GoT Handoff Primitives** | |
-| Initiate handoff | `python scripts/got_utils.py handoff initiate TASK_ID --target AGENT --instructions "..."` |
-| Accept handoff | `python scripts/got_utils.py handoff accept HANDOFF_ID --agent AGENT` |
-| Complete handoff | `python scripts/got_utils.py handoff complete HANDOFF_ID --agent AGENT --result JSON` |
-| Reject handoff | `python scripts/got_utils.py handoff reject HANDOFF_ID --agent AGENT --reason "..."` |
-| List handoffs | `python scripts/got_utils.py handoff list [--status STATUS]` |
-| Compact events | `python scripts/got_utils.py compact [--preserve-days N]` |
+| Initiate handoff | `python -m cortical.got handoff initiate TASK_ID --target AGENT --instructions "..."` |
+| Accept handoff | `python -m cortical.got handoff accept HANDOFF_ID --agent AGENT` |
+| Complete handoff | `python -m cortical.got handoff complete HANDOFF_ID --agent AGENT --result JSON` |
+| Reject handoff | `python -m cortical.got handoff reject HANDOFF_ID --agent AGENT --reason "..."` |
+| List handoffs | `python -m cortical.got handoff list [--status STATUS]` |
+| Compact events | `python -m cortical.got compact [--preserve-days N]` |
 | **GoT Query Language** | |
-| What blocks task | `python scripts/got_utils.py query "what blocks TASK_ID"` |
-| What depends on | `python scripts/got_utils.py query "what depends on TASK_ID"` |
-| Find path | `python scripts/got_utils.py query "path from ID1 to ID2"` |
-| All relationships | `python scripts/got_utils.py query "relationships TASK_ID"` |
-| Active tasks | `python scripts/got_utils.py query "active tasks"` |
-| Pending tasks | `python scripts/got_utils.py query "pending tasks"` |
-| Blocked tasks | `python scripts/got_utils.py query "blocked tasks"` |
+| What blocks task | `python -m cortical.got query "what blocks TASK_ID"` |
+| What depends on | `python -m cortical.got query "what depends on TASK_ID"` |
+| Find path | `python -m cortical.got query "path from ID1 to ID2"` |
+| All relationships | `python -m cortical.got query "relationships TASK_ID"` |
+| Active tasks | `python -m cortical.got query "active tasks"` |
+| Pending tasks | `python -m cortical.got query "pending tasks"` |
+| Blocked tasks | `python -m cortical.got query "blocked tasks"` |
 | **Performance Tests** | |
 | Run perf tests | `python -m pytest tests/performance/test_graph_persistence_perf.py -v` |
 | Run E2E tests | `python -m pytest tests/integration/test_reasoning_persistence_e2e.py -v` |
