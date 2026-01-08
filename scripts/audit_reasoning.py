@@ -2,6 +2,10 @@
 """
 Audit Reasoning - WovenMind Discovery → PLN Reasoning Pipeline
 
+DEPRECATION NOTE: This script is maintained for backward compatibility.
+Prefer using the CLI: python -m cortical.cli audit reason ...
+Or import directly: from cortical.audits import AuditReasoner, AuditQuery
+
 This tool bridges pattern discovery (WovenMind) with probabilistic reasoning
 (PLN) to create a practical audit analysis pipeline:
 
@@ -103,12 +107,13 @@ class FilePersistenceBackend:
     def __init__(
         self,
         filesystem: FileSystem,
-        persistence_file: Path = PERSISTENCE_FILE,
-        rules_file: Path = RULES_FILE
+        persistence_file: Optional[Path] = None,
+        rules_file: Optional[Path] = None
     ):
         self._fs = filesystem
-        self._persistence_file = persistence_file
-        self._rules_file = rules_file
+        # Resolve paths at runtime to allow monkeypatching in tests
+        self._persistence_file = persistence_file if persistence_file is not None else PERSISTENCE_FILE
+        self._rules_file = rules_file if rules_file is not None else RULES_FILE
 
     def load_state(self) -> 'AuditPersistenceState':
         """Load persistence state from disk."""

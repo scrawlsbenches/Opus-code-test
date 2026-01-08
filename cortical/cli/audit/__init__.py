@@ -8,6 +8,8 @@ This package provides CLI commands for the audit system:
     - patterns: Find repeated patterns in comments
     - similar: Find similar comments using LSH
     - index: Build search indexes
+    - health: Analyze codebase health
+    - reason: PLN-based audit reasoning
 
 Usage:
     from cortical.cli.audit import setup_parser, handle_command
@@ -40,6 +42,8 @@ Commands:
     patterns   Find repeated patterns in comments
     similar    Find similar comments using LSH
     index      Build search indexes
+    health     Analyze codebase health
+    reason     PLN-based audit reasoning
 
 Workflow:
     1. Generate training data:  audit generate cortical/
@@ -54,7 +58,7 @@ Workflow:
     )
 
     # Import command modules and set up parsers
-    from . import generate, train, scan, patterns, similar, index
+    from . import generate, train, scan, patterns, similar, index, health, reason
 
     generate.setup_args(audit_subparsers)
     train.setup_args(audit_subparsers)
@@ -62,6 +66,8 @@ Workflow:
     patterns.setup_args(audit_subparsers)
     similar.setup_args(audit_subparsers)
     index.setup_args(audit_subparsers)
+    health.setup_args(audit_subparsers)
+    reason.setup_args(audit_subparsers)
 
 
 def handle_command(args: Any) -> int:
@@ -80,7 +86,7 @@ def handle_command(args: Any) -> int:
         return 1
 
     # Import command modules
-    from . import generate, train, scan, patterns, similar, index
+    from . import generate, train, scan, patterns, similar, index, health, reason
 
     command_handlers = {
         'generate': generate.run,
@@ -89,6 +95,8 @@ def handle_command(args: Any) -> int:
         'patterns': patterns.run,
         'similar': similar.run,
         'index': index.run,
+        'health': health.run,
+        'reason': reason.run,
     }
 
     handler = command_handlers.get(args.audit_command)

@@ -6,6 +6,8 @@ This package provides tools for analyzing and maintaining codebase quality:
 - Pattern detection (repeated code, copy-paste)
 - Similarity search (LSH-based)
 - Training data generation
+- PLN-based reasoning with WovenMind integration
+- Codebase health analysis
 
 Components:
     algorithms/     - Core algorithm implementations (Bloom filter, Naive Bayes, etc.)
@@ -13,14 +15,19 @@ Components:
     classifier.py   - Comment classification logic
     training.py     - Training data generation
     scanner.py      - Codebase scanning utilities
+    persistence.py  - State persistence for audit reasoning
+    health.py       - Codebase health analysis
+    reasoning.py    - PLN-based audit reasoning
 
 Usage:
     from cortical.audits import CommentClassifier, MISLEADING_PATTERNS
     from cortical.audits.algorithms import SuspiciousCommentFilter
+    from cortical.audits import AuditReasoner, CodebaseAnalyzer
 
 CLI:
     python scripts/audit_tool.py scan cortical/
     python scripts/audit_tool.py generate cortical/
+    python scripts/audit_reasoning.py cortical/
 """
 
 # Re-export key classes from algorithms
@@ -73,6 +80,40 @@ from .training import (
     load_training_files,
     TrainingData,
     TrainingStats,
+)
+
+# Re-export persistence utilities
+from .persistence import (
+    PersistenceBackend,
+    FilePersistenceBackend,
+    NullPersistenceBackend,
+    InMemoryPersistenceBackend,
+    AuditPersistenceState,
+    FileImportanceRecord,
+    create_default_persistence,
+)
+
+# Re-export health analysis
+from .health import (
+    CodebaseAnalyzer,
+    HealthAnalysisResult,
+    analyze_directory,
+    get_file_churn,
+    get_git_blame_for_line,
+    analyze_import_dependencies,
+    DEFAULT_SUSPICIOUS_PATTERNS,
+)
+
+# Re-export reasoning
+from .reasoning import (
+    AuditReasoner,
+    AuditQuery,
+    translate_audit_query,
+    is_natural_language_query,
+    abstraction_to_rule,
+    load_woven_mind_abstractions,
+    DEFAULT_SIMPLE_RULES,
+    DEFAULT_COMPOUND_RULES,
 )
 
 __all__ = [
