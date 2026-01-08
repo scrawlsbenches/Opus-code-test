@@ -149,6 +149,223 @@ class AuditPersistenceState:
         )
 
 
+# =============================================================================
+# NATURAL LANGUAGE QUERY SUPPORT
+# =============================================================================
+
+@dataclass
+class AuditQuery:
+    """Structured representation of an audit query.
+
+    Supports natural language queries like:
+        "risky files in reasoning/ not tests"
+        "why is prism_pln.py flagged"
+        "files with high_churn"
+    """
+    # Scope
+    directory: Optional[str] = None
+    file_patterns: List[str] = None
+
+    # Filters
+    negations: List[str] = None  # Exclude these
+    include_traits: List[str] = None  # Must have these traits
+
+    # Intent
+    intent: str = "list"  # list, explain, trace
+    target_file: Optional[str] = None  # For "why is X flagged"
+
+    # Thresholds
+    min_risk: float = 0.0
+    max_results: Optional[int] = None
+
+    # Output
+    explain: bool = False
+
+    def __post_init__(self):
+        if self.file_patterns is None:
+            self.file_patterns = []
+        if self.negations is None:
+            self.negations = []
+        if self.include_traits is None:
+            self.include_traits = []
+
+
+def translate_audit_query(query: str) -> AuditQuery:
+    """
+    Translate natural language to AuditQuery.
+
+    Pattern matching approach (no ML required).
+
+    Examples:
+        "risky files in reasoning/"
+        → AuditQuery(directory="reasoning/", min_risk=0.5)
+
+        "why is prism_pln.py flagged"
+        → AuditQuery(intent="explain", target_file="prism_pln.py")
+
+        "files not tests with high churn"
+        → AuditQuery(negations=["tests"], include_traits=["high_churn"])
+
+        "cortical/ not tests"
+        → AuditQuery(directory="cortical/", negations=["tests"])
+    """
+    import re
+
+    # Initialize result
+    result = AuditQuery()
+
+    # Normalize input
+    query = query.strip()
+    query_lower = query.lower()
+    original_query = query
+
+    # =========================================================================
+    # Intent Detection (check first - changes how we parse the rest)
+    # =========================================================================
+
+    # "why is <file> flagged" or "explain <file>"
+    why_match = re.search(r'why\s+is\s+(\S+)\s+(?:flagged|risky|marked)', query_lower)
+    if why_match:
+        result.intent = "explain"
+        result.target_file = why_match.group(1)
+        result.explain = True
+        return result
+
+    explain_match = re.search(r'explain\s+(\S+)', query_lower)
+    if explain_match:
+        result.intent = "explain"
+        result.target_file = explain_match.group(1)
+        result.explain = True
+        return result
+
+    # =========================================================================
+    # Scope Extraction
+    # =========================================================================
+
+    # Look for directory patterns: "in <dir>", "<dir>/", or just a path-like string
+    dir_patterns = [
+        r'in\s+(\S+/)',           # "in cortical/"
+        r'in\s+(\S+)',            # "in cortical"
+        r'^(\S+/)\s',             # "cortical/ not tests" (directory at start)
+        r'^(\S+/?)$',             # Just a directory
+    ]
+
+    for pattern in dir_patterns:
+        match = re.search(pattern, query_lower)
+        if match:
+            potential_dir = match.group(1)
+            # Verify it looks like a directory (contains / or exists)
+            if '/' in potential_dir or Path(potential_dir).exists():
+                result.directory = potential_dir.rstrip('/') + '/'
+                break
+
+    # =========================================================================
+    # Negation Extraction ("not X", "without X", "exclude X")
+    # =========================================================================
+
+    negation_patterns = [
+        r'not\s+(\w+)',
+        r'without\s+(\w+)',
+        r'exclude\s+(\w+)',
+        r'excluding\s+(\w+)',
+    ]
+
+    for pattern in negation_patterns:
+        for match in re.finditer(pattern, query_lower):
+            negated = match.group(1)
+            if negated not in result.negations:
+                result.negations.append(negated)
+
+    # =========================================================================
+    # Trait/Filter Extraction ("with X", "has X", "having X")
+    # =========================================================================
+
+    trait_patterns = [
+        r'with\s+(high[_\s]?churn)',
+        r'with\s+(todo|todos)',
+        r'with\s+(fixme)',
+        r'with\s+(hack|hacks)',
+        r'with\s+([\w_]+)',
+        r'has\s+([\w_]+)',
+        r'having\s+([\w_]+)',
+    ]
+
+    for pattern in trait_patterns:
+        for match in re.finditer(pattern, query_lower):
+            trait = match.group(1).replace(' ', '_').lower()
+            # Normalize common variations
+            trait_map = {
+                'high_churn': 'high_churn',
+                'highchurn': 'high_churn',
+                'todos': 'todo',
+                'hacks': 'hack',
+            }
+            trait = trait_map.get(trait, trait)
+            if trait not in result.include_traits:
+                result.include_traits.append(trait)
+
+    # =========================================================================
+    # Risk Level Extraction
+    # =========================================================================
+
+    if 'critical' in query_lower:
+        result.min_risk = 0.9
+    elif 'high risk' in query_lower or 'high-risk' in query_lower:
+        result.min_risk = 0.7
+    elif 'risky' in query_lower:
+        result.min_risk = 0.5
+    elif 'medium risk' in query_lower:
+        result.min_risk = 0.4
+
+    # =========================================================================
+    # Result Limit Extraction ("top N", "first N")
+    # =========================================================================
+
+    limit_match = re.search(r'(?:top|first)\s+(\d+)', query_lower)
+    if limit_match:
+        result.max_results = int(limit_match.group(1))
+
+    # =========================================================================
+    # Fallback: If no directory found and query looks like a path
+    # =========================================================================
+
+    if result.directory is None:
+        # Check if the first word looks like a directory
+        first_word = query.split()[0] if query.split() else ""
+        if '/' in first_word or Path(first_word).is_dir():
+            result.directory = first_word.rstrip('/') + '/'
+
+    return result
+
+
+def is_natural_language_query(arg: str) -> bool:
+    """Determine if input is a natural language query vs a path/flag."""
+    # If it starts with --, it's a flag
+    if arg.startswith('--') or arg.startswith('-'):
+        return False
+
+    # If it's an existing path with no spaces, treat as traditional
+    if Path(arg).exists() and ' ' not in arg:
+        # But only if it doesn't contain NLU keywords
+        nlu_keywords = ['not ', 'with ', 'explain', 'why ', 'risky', 'top ']
+        arg_lower = arg.lower()
+        if not any(kw in arg_lower for kw in nlu_keywords):
+            return False
+
+    # If it contains spaces or NLU keywords, it's natural language
+    if ' ' in arg:
+        return True
+
+    # If it contains NLU keywords, it's natural language
+    nlu_keywords = ['not', 'with', 'explain', 'why', 'risky', 'top', 'critical']
+    arg_lower = arg.lower()
+    for kw in nlu_keywords:
+        if kw in arg_lower and kw != arg_lower:  # keyword is part of query
+            return True
+
+    return False
+
+
 def load_persistence_state() -> AuditPersistenceState:
     """Load persisted audit state from disk."""
     if PERSISTENCE_FILE.exists():
@@ -1122,9 +1339,28 @@ def main():
     parser = argparse.ArgumentParser(
         description="Audit Reasoning - Full PLN-based risk assessment with attention and importance",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Natural Language Queries (Phase 1):
+  You can use natural language instead of flags:
+
+  Examples:
+    %(prog)s "cortical/ not tests"           # Analyze cortical/, exclude test files
+    %(prog)s "risky files in reasoning/"     # Find risky files in reasoning/
+    %(prog)s "files with high_churn"         # Files with high churn trait
+    %(prog)s "why is prism_pln.py flagged"   # Explain why a file is flagged
+    %(prog)s "top 10 risky"                  # Top 10 risky files
+
+  Supported patterns:
+    - "not <term>" / "without <term>"        Exclude files matching term
+    - "with <trait>" / "has <trait>"         Include files with trait
+    - "risky" / "high risk" / "critical"     Set minimum risk threshold
+    - "top N" / "first N"                    Limit results
+    - "why is <file> flagged"                Explain a file's risk
+    - "in <dir>" / "<dir>/"                  Set directory scope
+""",
     )
     parser.add_argument("directory", nargs="?", default="cortical/",
-                        help="Directory to analyze")
+                        help="Directory to analyze (or natural language query in quotes)")
     parser.add_argument("--with-git", action="store_true",
                         help="Include git history analysis")
     parser.add_argument("--show-rules", action="store_true",
@@ -1244,14 +1480,58 @@ def main():
 
         return
 
-    # Normal analysis
-    print("=" * 70)
-    print("  Audit Reasoning - Full PLN Pipeline")
-    print("=" * 70)
-    print()
+    # =========================================================================
+    # Natural Language Query Detection and Translation
+    # =========================================================================
 
+    directory = args.directory
+    nlu_query = None
+    audit_query = None
+
+    # Check if input is a natural language query
+    if is_natural_language_query(args.directory):
+        nlu_query = args.directory
+        audit_query = translate_audit_query(nlu_query)
+
+        print("=" * 70)
+        print("  Audit Reasoning - Natural Language Query")
+        print("=" * 70)
+        print()
+        print(f"  Query: \"{nlu_query}\"")
+        print(f"  Parsed:")
+        if audit_query.directory:
+            print(f"    • Directory: {audit_query.directory}")
+        if audit_query.negations:
+            print(f"    • Exclude: {', '.join(audit_query.negations)}")
+        if audit_query.include_traits:
+            print(f"    • Traits: {', '.join(audit_query.include_traits)}")
+        if audit_query.min_risk > 0:
+            print(f"    • Min risk: {audit_query.min_risk:.0%}")
+        if audit_query.max_results:
+            print(f"    • Limit: {audit_query.max_results}")
+        if audit_query.intent == "explain":
+            print(f"    • Intent: explain file '{audit_query.target_file}'")
+        print()
+
+        # Use the parsed directory or default
+        directory = audit_query.directory or "cortical/"
+
+        # Handle "explain" intent
+        if audit_query.intent == "explain" and audit_query.target_file:
+            print(f"[Explaining: {audit_query.target_file}]")
+            print("(Full explanation support coming in Phase 2)")
+            print()
+            # For now, run analysis and filter to the target file
+            # Phase 2 will add detailed explanations
+    else:
+        print("=" * 70)
+        print("  Audit Reasoning - Full PLN Pipeline")
+        print("=" * 70)
+        print()
+
+    # Run analysis
     results = analyze_with_reasoning(
-        args.directory,
+        directory,
         with_git=args.with_git,
         verbose=args.verbose,
         aggregate_strategy=args.aggregate,
@@ -1260,6 +1540,74 @@ def main():
         use_persistence=not args.no_persist,
         no_save=args.no_save
     )
+
+    # =========================================================================
+    # Apply NLU Filters (if natural language query)
+    # =========================================================================
+
+    if audit_query and results.get("risk_assessments"):
+        assessments = results["risk_assessments"]
+        original_count = len(assessments)
+
+        # Filter by negations (exclude files matching these terms)
+        if audit_query.negations:
+            for negation in audit_query.negations:
+                neg_lower = negation.lower()
+                assessments = [
+                    a for a in assessments
+                    if neg_lower not in a["file"].lower()
+                ]
+
+        # Filter by minimum risk
+        if audit_query.min_risk > 0:
+            assessments = [
+                a for a in assessments
+                if a.get("overall_risk", 0) >= audit_query.min_risk
+            ]
+
+        # Filter by include traits
+        if audit_query.include_traits:
+            filtered_assessments = []
+            for a in assessments:
+                file_traits = set()
+                # Collect traits from file details
+                details = a.get("details", {})
+                for key, val in details.items():
+                    if isinstance(val, dict) and val.get("probability", 0) > 0.5:
+                        # Extract trait name from key (e.g., "risky" from "risky(file)")
+                        trait = key.split("(")[0].lower()
+                        file_traits.add(trait)
+                    if key.lower().startswith("has_trait"):
+                        trait = key.split(",")[-1].rstrip(")").strip().lower()
+                        file_traits.add(trait)
+                # Check file path for traits too
+                if "churn" in a["file"].lower():
+                    file_traits.add("high_churn")
+                # Check if file has any required traits
+                if any(t in str(details).lower() for t in audit_query.include_traits):
+                    filtered_assessments.append(a)
+            assessments = filtered_assessments
+
+        # Filter for explain intent (single file)
+        if audit_query.intent == "explain" and audit_query.target_file:
+            target = audit_query.target_file.lower()
+            assessments = [
+                a for a in assessments
+                if target in a["file"].lower()
+            ]
+
+        # Apply max results limit (already sorted by risk in analyze_with_reasoning)
+        if audit_query.max_results and len(assessments) > audit_query.max_results:
+            assessments = assessments[:audit_query.max_results]
+
+        # Show filter summary
+        filtered_count = len(assessments)
+        if original_count != filtered_count:
+            print(f"[Filtered: {original_count} → {filtered_count} files]")
+            print()
+
+        # Update results with filtered assessments
+        results["risk_assessments"] = assessments
 
     print()
     report = generate_reasoning_report(results, verbose=args.verbose)
