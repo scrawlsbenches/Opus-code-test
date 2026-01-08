@@ -35,6 +35,7 @@ import json
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Set, Tuple
 from collections import defaultdict
+from dataclasses import dataclass
 from datetime import datetime
 
 # Add project root to path
@@ -55,6 +56,169 @@ from scripts.codebase_health import analyze_directory
 
 RULES_FILE = Path(__file__).parent.parent / ".got" / "audit_pln_rules.json"
 WOVEN_MIND_FILE = Path(__file__).parent.parent / ".got" / "woven_audit_mind.json"
+PERSISTENCE_FILE = Path(__file__).parent.parent / ".got" / "audit_pln_state.json"
+
+
+# =============================================================================
+# PERSISTENCE LAYER
+# =============================================================================
+
+@dataclass
+class FileImportanceRecord:
+    """Persistent record of a file's importance over time."""
+    file_id: str
+    sti: float
+    lti: float
+    vlti: bool
+    last_seen: str  # ISO timestamp
+    history: List[Dict[str, Any]]  # Historical snapshots
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "file_id": self.file_id,
+            "sti": self.sti,
+            "lti": self.lti,
+            "vlti": self.vlti,
+            "last_seen": self.last_seen,
+            "history": self.history[-50:],  # Keep last 50 snapshots
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "FileImportanceRecord":
+        return cls(
+            file_id=data["file_id"],
+            sti=data.get("sti", 0.3),
+            lti=data.get("lti", 0.1),
+            vlti=data.get("vlti", False),
+            last_seen=data.get("last_seen", datetime.now().isoformat()),
+            history=data.get("history", []),
+        )
+
+
+@dataclass
+class AuditPersistenceState:
+    """Complete persistent state for audit reasoning."""
+    version: int
+    created: str
+    updated: str
+    session_count: int
+    file_importance: Dict[str, FileImportanceRecord]
+    attention_focus: List[str]  # Files currently in focus
+    global_stats: Dict[str, Any]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "version": self.version,
+            "created": self.created,
+            "updated": self.updated,
+            "session_count": self.session_count,
+            "file_importance": {
+                k: v.to_dict() for k, v in self.file_importance.items()
+            },
+            "attention_focus": self.attention_focus,
+            "global_stats": self.global_stats,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "AuditPersistenceState":
+        file_importance = {}
+        for k, v in data.get("file_importance", {}).items():
+            file_importance[k] = FileImportanceRecord.from_dict(v)
+
+        return cls(
+            version=data.get("version", 1),
+            created=data.get("created", datetime.now().isoformat()),
+            updated=data.get("updated", datetime.now().isoformat()),
+            session_count=data.get("session_count", 0),
+            file_importance=file_importance,
+            attention_focus=data.get("attention_focus", []),
+            global_stats=data.get("global_stats", {}),
+        )
+
+    @classmethod
+    def create_new(cls) -> "AuditPersistenceState":
+        now = datetime.now().isoformat()
+        return cls(
+            version=1,
+            created=now,
+            updated=now,
+            session_count=0,
+            file_importance={},
+            attention_focus=[],
+            global_stats={},
+        )
+
+
+def load_persistence_state() -> AuditPersistenceState:
+    """Load persisted audit state from disk."""
+    if PERSISTENCE_FILE.exists():
+        try:
+            with open(PERSISTENCE_FILE, 'r') as f:
+                data = json.load(f)
+                return AuditPersistenceState.from_dict(data)
+        except (json.JSONDecodeError, IOError, KeyError) as e:
+            print(f"Warning: Could not load persistence state: {e}")
+    return AuditPersistenceState.create_new()
+
+
+def save_persistence_state(state: AuditPersistenceState) -> None:
+    """Save audit state to disk."""
+    PERSISTENCE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    state.updated = datetime.now().isoformat()
+    with open(PERSISTENCE_FILE, 'w') as f:
+        json.dump(state.to_dict(), f, indent=2)
+
+
+def show_persistence_status() -> None:
+    """Display current persistence state."""
+    state = load_persistence_state()
+
+    print("=" * 60)
+    print("  AUDIT PLN PERSISTENCE STATE")
+    print("=" * 60)
+    print(f"\n[State Info]")
+    print(f"  Version: {state.version}")
+    print(f"  Created: {state.created}")
+    print(f"  Last updated: {state.updated}")
+    print(f"  Session count: {state.session_count}")
+    print(f"  Files tracked: {len(state.file_importance)}")
+    print(f"  Files in focus: {len(state.attention_focus)}")
+
+    if state.file_importance:
+        print(f"\n[Top Files by Importance]")
+        sorted_files = sorted(
+            state.file_importance.values(),
+            key=lambda x: x.sti + x.lti,
+            reverse=True
+        )
+        for rec in sorted_files[:10]:
+            total = rec.sti + rec.lti
+            vlti_marker = " [VLTI]" if rec.vlti else ""
+            history_len = len(rec.history)
+            print(f"  {rec.file_id}: {total:.2%} (STI={rec.sti:.2f}, LTI={rec.lti:.2f}){vlti_marker}")
+            print(f"    Last seen: {rec.last_seen}, History: {history_len} snapshots")
+
+    if state.attention_focus:
+        print(f"\n[Current Attention Focus]")
+        for file_id in state.attention_focus[:10]:
+            print(f"  • {file_id}")
+
+    global_stats = state.global_stats
+    if global_stats:
+        print(f"\n[Global Statistics]")
+        for key, value in global_stats.items():
+            print(f"  {key}: {value}")
+
+    print()
+
+
+def clear_persistence_state() -> None:
+    """Clear all persisted state (start fresh)."""
+    if PERSISTENCE_FILE.exists():
+        PERSISTENCE_FILE.unlink()
+        print("Persistence state cleared.")
+    else:
+        print("No persistence state to clear.")
 
 
 def load_rules() -> Dict[str, Any]:
@@ -190,12 +354,19 @@ class AuditReasoner:
     - Attention-based focus for prioritized inference
     - Importance weights (STI/LTI) for atom prioritization
     - Compound terms for complex multi-signal rules
+    - Persistence across sessions for importance tracking
     """
 
-    def __init__(self, aggregate_strategy: AggregateStrategy = "revision"):
+    def __init__(
+        self,
+        aggregate_strategy: AggregateStrategy = "revision",
+        use_persistence: bool = True,
+        apply_decay: bool = True
+    ):
         self.pln = PLNReasoner()
         self.rules_config = load_rules()
         self.aggregate_strategy = aggregate_strategy
+        self.use_persistence = use_persistence
 
         # Attention tracking for files
         self.attention_focus = AttentionalFocus(max_size=50, default_boost=1.5)
@@ -206,6 +377,123 @@ class AuditReasoner:
 
         # Track file importance
         self.file_importance: Dict[str, AttentionValue] = {}
+
+        # Load persisted state if available
+        self._persistence_state: Optional[AuditPersistenceState] = None
+        if use_persistence:
+            self._load_from_persistence(apply_decay=apply_decay)
+
+    def _load_from_persistence(self, apply_decay: bool = True) -> None:
+        """Load importance values from persisted state."""
+        self._persistence_state = load_persistence_state()
+
+        # Restore importance values
+        for file_id, record in self._persistence_state.file_importance.items():
+            sti = record.sti
+            lti = record.lti
+
+            # Apply decay based on time since last seen
+            if apply_decay:
+                try:
+                    last_seen = datetime.fromisoformat(record.last_seen)
+                    hours_elapsed = (datetime.now() - last_seen).total_seconds() / 3600
+                    # Decay STI by ~10% per hour, LTI by ~1% per hour
+                    if hours_elapsed > 0:
+                        sti_decay = 0.9 ** min(hours_elapsed, 24)  # Cap at 24 hours
+                        lti_decay = 0.99 ** min(hours_elapsed, 168)  # Cap at 1 week
+                        sti = sti * sti_decay
+                        lti = lti * lti_decay
+                except (ValueError, TypeError):
+                    pass
+
+            self.file_importance[file_id] = AttentionValue(
+                sti=sti,
+                lti=lti,
+                vlti=record.vlti
+            )
+            # Also set in PLN reasoner
+            self.pln.set_attention(file_id, self.file_importance[file_id])
+
+        # Restore attention focus
+        if self._persistence_state.attention_focus:
+            self.attention_focus.focus_on(
+                self._persistence_state.attention_focus,
+                boost=1.5
+            )
+
+    def save_state(self) -> None:
+        """Save current state to persistence."""
+        if not self.use_persistence:
+            return
+
+        if self._persistence_state is None:
+            self._persistence_state = AuditPersistenceState.create_new()
+
+        now = datetime.now().isoformat()
+        self._persistence_state.session_count += 1
+
+        # Update file importance records
+        for file_id, attention in self.file_importance.items():
+            if file_id in self._persistence_state.file_importance:
+                record = self._persistence_state.file_importance[file_id]
+                # Add to history
+                record.history.append({
+                    "timestamp": now,
+                    "sti": record.sti,
+                    "lti": record.lti,
+                    "vlti": record.vlti,
+                })
+                # Update current values
+                record.sti = attention.sti
+                record.lti = attention.lti
+                record.vlti = attention.vlti
+                record.last_seen = now
+            else:
+                # New file
+                self._persistence_state.file_importance[file_id] = FileImportanceRecord(
+                    file_id=file_id,
+                    sti=attention.sti,
+                    lti=attention.lti,
+                    vlti=attention.vlti,
+                    last_seen=now,
+                    history=[],
+                )
+
+        # Save attention focus
+        self._persistence_state.attention_focus = list(self.attention_focus._focused.keys())
+
+        # Update global stats
+        self._persistence_state.global_stats = {
+            "last_aggregate_strategy": self.aggregate_strategy,
+            "files_in_focus": len(self.attention_focus._focused),
+            "total_files_tracked": len(self.file_importance),
+            "vlti_files": len(self.get_vlti_files()),
+        }
+
+        save_persistence_state(self._persistence_state)
+
+    def get_importance_history(self, file_id: str) -> List[Dict[str, Any]]:
+        """Get the importance history for a specific file."""
+        if self._persistence_state and file_id in self._persistence_state.file_importance:
+            return self._persistence_state.file_importance[file_id].history
+        return []
+
+    def get_importance_trend(self, file_id: str) -> Optional[str]:
+        """Determine if importance is trending up, down, or stable."""
+        history = self.get_importance_history(file_id)
+        if len(history) < 2:
+            return None
+
+        recent = history[-1]["sti"] + history[-1]["lti"]
+        older = history[0]["sti"] + history[0]["lti"]
+
+        diff = recent - older
+        if diff > 0.1:
+            return "increasing"
+        elif diff < -0.1:
+            return "decreasing"
+        else:
+            return "stable"
 
     def _setup_type_registry(self) -> None:
         """Set up type constraints for audit domain."""
@@ -528,7 +816,9 @@ def analyze_with_reasoning(
     verbose: bool = False,
     aggregate_strategy: AggregateStrategy = "revision",
     enable_attention: bool = True,
-    enable_importance: bool = True
+    enable_importance: bool = True,
+    use_persistence: bool = True,
+    no_save: bool = False
 ) -> Dict[str, Any]:
     """
     Full analysis pipeline with Full PLN features: Discover → Assert → Reason.
@@ -538,6 +828,7 @@ def analyze_with_reasoning(
     - Attention-based focus for prioritized inference
     - Importance weights (STI/LTI) for file prioritization
     - Compound terms for complex multi-signal rules
+    - Persistence across sessions for tracking importance over time
     """
     results = {
         "files_analyzed": 0,
@@ -546,10 +837,11 @@ def analyze_with_reasoning(
         "priority_files": [],
         "vlti_files": [],
         "aggregate_strategy": aggregate_strategy,
+        "persistence_enabled": use_persistence,
     }
 
     # Step 1: Run codebase analysis
-    print("[1/5] Running codebase analysis...")
+    print("[1/6] Running codebase analysis...")
     analysis = analyze_directory(directory, with_git=with_git)
 
     if not analysis:
@@ -560,9 +852,24 @@ def analyze_with_reasoning(
     git_analysis = analysis.get("git_analysis", {})
     print(f"      Found {len(findings)} findings")
 
-    # Step 2: Initialize reasoner with Full PLN features
-    print("\n[2/5] Initializing Full PLN reasoner...")
-    reasoner = AuditReasoner(aggregate_strategy=aggregate_strategy)
+    # Step 2: Initialize reasoner with Full PLN features and persistence
+    print("\n[2/6] Initializing Full PLN reasoner...")
+    reasoner = AuditReasoner(
+        aggregate_strategy=aggregate_strategy,
+        use_persistence=use_persistence,
+        apply_decay=True
+    )
+
+    # Show persistence status
+    if use_persistence and reasoner._persistence_state:
+        ps = reasoner._persistence_state
+        if ps.session_count > 0:
+            print(f"      Loaded state from session #{ps.session_count}")
+            print(f"      Restored importance for {len(ps.file_importance)} files")
+            if ps.attention_focus:
+                print(f"      Restored attention focus on {len(ps.attention_focus)} files")
+        else:
+            print("      Starting fresh (no previous state)")
 
     # Load rules from various sources
     woven_rules = reasoner.load_rules_from_woven_mind()
@@ -579,7 +886,7 @@ def analyze_with_reasoning(
     results["rules_loaded"] = stats["rules"]
 
     # Step 3: Assert facts from findings with importance tracking
-    print("\n[3/5] Asserting facts with importance tracking...")
+    print("\n[3/6] Asserting facts with importance tracking...")
 
     # Group findings by file
     findings_by_file = defaultdict(list)
@@ -630,14 +937,14 @@ def analyze_with_reasoning(
 
     # Step 4: Focus attention on high-risk files
     if enable_attention:
-        print("\n[4/5] Focusing attention on high-risk files...")
+        print("\n[4/6] Focusing attention on high-risk files...")
         focused_count = reasoner.focus_on_high_risk_files(threshold=0.5)
         print(f"      Focused on {focused_count} high-importance files")
     else:
-        print("\n[4/5] Attention focusing disabled")
+        print("\n[4/6] Attention focusing disabled")
 
     # Step 5: Query risk for each file with Full PLN inference
-    print("\n[5/5] Running Full PLN inference...")
+    print("\n[5/6] Running Full PLN inference...")
 
     risk_assessments = []
     for file_path in findings_by_file.keys():
@@ -680,8 +987,27 @@ def analyze_with_reasoning(
     print(f"      Priority files (by importance): {len(results['priority_files'])}")
     print(f"      Critical (VLTI) files: {len(results['vlti_files'])}")
 
+    # Step 6: Save state for persistence
+    if use_persistence and not no_save:
+        print("\n[6/6] Saving state for next session...")
+        reasoner.save_state()
+        if reasoner._persistence_state:
+            print(f"      State saved (session #{reasoner._persistence_state.session_count})")
+            print(f"      Tracking {len(reasoner.file_importance)} files with history")
+    else:
+        print("\n[6/6] Persistence disabled or no-save mode")
+
     # Store final stats
     results["stats"] = reasoner.get_stats()
+
+    # Add persistence info to results
+    if use_persistence and reasoner._persistence_state:
+        results["persistence"] = {
+            "session_count": reasoner._persistence_state.session_count,
+            "files_tracked": len(reasoner._persistence_state.file_importance),
+            "created": reasoner._persistence_state.created,
+            "updated": reasoner._persistence_state.updated,
+        }
 
     return results
 
@@ -765,6 +1091,17 @@ def generate_reasoning_report(results: Dict[str, Any], verbose: bool = False) ->
     lines.append(f"  • VLTI pinning: Critical files marked for permanent attention")
     lines.append(f"  • Compound terms: Complex multi-signal rules (e.g., TODO+HACK → urgent)")
 
+    # Persistence info
+    persistence = results.get("persistence", {})
+    if persistence:
+        lines.append(f"\n[Persistence]")
+        lines.append(f"  • Session #{persistence.get('session_count', 0)}")
+        lines.append(f"  • Tracking {persistence.get('files_tracked', 0)} files with history")
+        lines.append(f"  • First tracked: {persistence.get('created', 'N/A')[:19]}")
+        lines.append(f"  • Last updated: {persistence.get('updated', 'N/A')[:19]}")
+        lines.append(f"  • View state: python scripts/audit_reasoning.py --show-state")
+        lines.append(f"  • View file history: --file-history <filename>")
+
     lines.append(f"\n[Interpretation]")
     lines.append(f"  • Risk scores combine multiple signals using '{results.get('aggregate_strategy', 'revision')}' aggregation")
     lines.append(f"  • Higher confidence = more evidence supporting the inference")
@@ -806,7 +1143,48 @@ def main():
     parser.add_argument("--no-importance", action="store_true",
                         help="Disable importance weight tracking")
 
+    # Persistence options
+    parser.add_argument("--show-state", action="store_true",
+                        help="Show persistence state and exit")
+    parser.add_argument("--clear-state", action="store_true",
+                        help="Clear all persistence state and start fresh")
+    parser.add_argument("--no-persist", action="store_true",
+                        help="Disable persistence for this run")
+    parser.add_argument("--no-save", action="store_true",
+                        help="Don't save state after analysis (read-only mode)")
+    parser.add_argument("--file-history", metavar="FILE",
+                        help="Show importance history for a specific file")
+
     args = parser.parse_args()
+
+    # Handle persistence commands first
+    if args.show_state:
+        show_persistence_status()
+        return
+
+    if args.clear_state:
+        clear_persistence_state()
+        return
+
+    if args.file_history:
+        state = load_persistence_state()
+        file_id = Path(args.file_history).name.replace(".", "_")
+        if file_id in state.file_importance:
+            record = state.file_importance[file_id]
+            print(f"\n[Importance History for {file_id}]")
+            print(f"  Current: STI={record.sti:.3f}, LTI={record.lti:.3f}, VLTI={record.vlti}")
+            print(f"  Last seen: {record.last_seen}")
+            print(f"\n  History ({len(record.history)} snapshots):")
+            for entry in record.history[-10:]:
+                ts = entry.get("timestamp", "?")[:19]
+                sti = entry.get("sti", 0)
+                lti = entry.get("lti", 0)
+                total = sti + lti
+                print(f"    {ts}: STI={sti:.3f}, LTI={lti:.3f} (total={total:.3f})")
+        else:
+            print(f"No history found for file: {file_id}")
+            print(f"Available files: {list(state.file_importance.keys())[:10]}...")
+        return
 
     # Handle rule management
     if args.add_rule:
@@ -878,7 +1256,9 @@ def main():
         verbose=args.verbose,
         aggregate_strategy=args.aggregate,
         enable_attention=not args.no_attention,
-        enable_importance=not args.no_importance
+        enable_importance=not args.no_importance,
+        use_persistence=not args.no_persist,
+        no_save=args.no_save
     )
 
     print()
