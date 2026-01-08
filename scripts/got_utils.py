@@ -1,3 +1,4 @@
+# MERGE_CONFLICT_RESOLVED: From branch claude/engineering-session-T73QD on 20260108-215836
 #!/usr/bin/env python3
 """
 Graph of Thought Project Management CLI
@@ -176,9 +177,9 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-# =============================================================================
+# 
 # CONFIGURATION
-# =============================================================================
+# 
 
 # Allow GOT_DIR to be overridden via environment variable (for testing)
 GOT_DIR = Path(os.environ.get("GOT_DIR", PROJECT_ROOT / ".got"))
@@ -494,9 +495,9 @@ def _got_auto_push() -> bool:
         return False
 
 
-# =============================================================================
+# 
 # ID GENERATION
-# =============================================================================
+# 
 
 # ID generation functions now imported from cortical.utils.id_generation
 # (canonical source for all ID generation across the codebase)
@@ -523,9 +524,9 @@ def generate_session_id() -> str:
     return f"{timestamp}-{suffix}"
 
 
-# =============================================================================
+# 
 # AUTO-TASK HOOK UTILITIES
-# =============================================================================
+# 
 
 # Pattern for GoT task IDs: T-YYYYMMDD-HHMMSS-XXXX
 TASK_ID_PATTERN = re.compile(r'T-\d{8}-\d{6}-[a-f0-9]{4}', re.IGNORECASE)
@@ -611,9 +612,9 @@ def generate_task_title_from_commit(commit_message: str) -> str:
     return message
 
 
-# =============================================================================
+# 
 # BACKEND FACTORY
-# =============================================================================
+# 
 
 class GoTBackendFactory:
     """Factory for creating GoT backend instances (transactional only)."""
@@ -648,9 +649,9 @@ class GoTBackendFactory:
         return []
 
 
-# =============================================================================
+# 
 # TRANSACTIONAL ADAPTER (New Backend)
-# =============================================================================
+# 
 
 class TransactionalGoTAdapter:
     """
@@ -2587,9 +2588,9 @@ class TransactionalGoTAdapter:
 
         return all_edges
 
-    # =========================================================================
+    # ===
     # KNOWLEDGE TRANSFER METHODS
-    # =========================================================================
+    # ===
 
     def create_knowledge_transfer(
         self,
@@ -3052,9 +3053,9 @@ class TransactionalGoTAdapter:
             return '?'
 
 
-# =============================================================================
+# 
 # CLI FORMATTING
-# =============================================================================
+# 
 
 def format_task_table(tasks: List[ThoughtNode]) -> str:
     """Format tasks as table."""
@@ -3110,9 +3111,9 @@ def format_sprint_status(sprint: ThoughtNode, progress: Dict[str, Any]) -> str:
         lines.append(f"  {status}: {count}")
 
     return "\n".join(lines)
-# =============================================================================
+# 
 # CLI COMMANDS
-# =============================================================================
+# 
 # NOTE: All cmd_* command handlers are now imported from cortical/got/cli/ modules.
 # See imports at top of file. This eliminates ~1100 lines of duplicate code.
 #
@@ -3124,11 +3125,11 @@ def format_sprint_status(sprint: ThoughtNode, progress: Dict[str, Any]) -> str:
 #   - cortical/got/cli/query.py: cmd_query, cmd_infer, cmd_blocked, cmd_active,
 #                                 cmd_stats, cmd_dashboard, cmd_validate, cmd_export
 #   - cortical/got/cli/backup.py: cmd_backup_*, cmd_sync
-# =============================================================================
+# 
 
 
 # COMMAND SUGGESTION HELPER
-# =============================================================================
+# 
 
 # All valid commands for suggestion
 VALID_COMMANDS = [
@@ -3139,7 +3140,554 @@ VALID_COMMANDS = [
 ]
 
 
+
 def suggest_command(invalid_cmd: str, valid_commands: list = VALID_COMMANDS) -> list:
+
+
+def cmd_backup_list(args, manager: "TransactionalGoTAdapter") -> int:
+    """List available snapshots."""
+    limit = getattr(args, 'limit', 10)
+
+    snapshots_dir = manager.got_dir / "wal" / "snapshots"
+    if not snapshots_dir.exists():
+        print("No snapshots found.")
+        return 0
+
+    # Find all snapshot files
+    import gzip
+    snapshots = []
+    for snap_file in sorted(snapshots_dir.glob("snap_*.json*"), reverse=True):
+        try:
+            size = snap_file.stat().st_size
+            is_compressed = snap_file.suffix == ".gz"
+
+            # Extract timestamp from filename
+            name = snap_file.stem
+            if name.endswith(".json"):
+                name = name[:-5]
+            parts = name.split("_")
+            if len(parts) >= 3:
+                timestamp = f"{parts[1][:4]}-{parts[1][4:6]}-{parts[1][6:8]} "
+                timestamp += f"{parts[2][:2]}:{parts[2][2:4]}:{parts[2][4:6]}"
+            else:
+                timestamp = "unknown"
+
+            # Try to get node count
+            node_count = "?"
+            try:
+                if is_compressed:
+                    with gzip.open(snap_file, 'rt') as f:
+                        data = json.load(f)
+                else:
+                    with open(snap_file) as f:
+                        data = json.load(f)
+                state = data.get("state", data)
+                nodes = state.get("nodes", {})
+                node_count = len(nodes)
+            except Exception:
+                pass
+
+            snapshots.append({
+                "file": snap_file.name,
+                "timestamp": timestamp,
+                "size": size,
+                "compressed": is_compressed,
+                "nodes": node_count
+            })
+        except Exception:
+            continue
+
+    if not snapshots:
+        print("No snapshots found.")
+        return 0
+
+    print(f"Available Snapshots ({len(snapshots)} total):\n")
+    print(f"{'Timestamp':<20} {'Nodes':<8} {'Size':<10} {'File'}")
+    print("-" * 70)
+
+    for snap in snapshots[:limit]:
+        size_str = f"{snap['size'] / 1024:.1f} KB"
+        print(f"{snap['timestamp']:<20} {str(snap['nodes']):<8} {size_str:<10} {snap['file']}")
+
+    if len(snapshots) > limit:
+        print(f"\n... and {len(snapshots) - limit} more")
+
+    return 0
+
+
+def cmd_backup_verify(args, manager: "TransactionalGoTAdapter") -> int:
+    """Verify snapshot integrity."""
+    snapshot_id = getattr(args, 'snapshot_id', None)
+
+    snapshots_dir = manager.got_dir / "wal" / "snapshots"
+    if not snapshots_dir.exists():
+        print("No snapshots found.")
+        return 1
+
+    # Find the snapshot to verify
+    import gzip
+    if snapshot_id:
+        files = list(snapshots_dir.glob(f"*{snapshot_id}*"))
+    else:
+        files = sorted(snapshots_dir.glob("snap_*.json*"), reverse=True)
+
+    if not files:
+        print(f"Snapshot not found: {snapshot_id or '(latest)'}")
+        return 1
+
+    snap_file = files[0]
+    print(f"Verifying: {snap_file.name}")
+
+    try:
+        # Load and parse
+        if snap_file.suffix == ".gz":
+            with gzip.open(snap_file, 'rt') as f:
+                data = json.load(f)
+        else:
+            with open(snap_file) as f:
+                data = json.load(f)
+
+        # Check required fields
+        required = ["snapshot_id", "timestamp", "state"]
+        missing = [r for r in required if r not in data]
+        if missing:
+            print(f"  ✗ Missing fields: {missing}")
+            return 1
+
+        # Check state structure
+        state = data.get("state", {})
+        nodes = state.get("nodes", {})
+        edges = state.get("edges", {})
+
+        print(f"  ✓ Valid JSON structure")
+        print(f"  ✓ Snapshot ID: {data.get('snapshot_id', 'missing')}")
+        print(f"  ✓ Timestamp: {data.get('timestamp', 'missing')}")
+        print(f"  ✓ Nodes: {len(nodes)}")
+        print(f"  ✓ Edges: {len(edges)}")
+
+        # Verify node structure
+        invalid_nodes = 0
+        for node_id, node in nodes.items():
+            if not isinstance(node, dict) or "node_type" not in node:
+                invalid_nodes += 1
+        if invalid_nodes:
+            print(f"  ⚠ Invalid nodes: {invalid_nodes}")
+        else:
+            print(f"  ✓ All nodes valid")
+
+        print("\nSnapshot verification: PASSED")
+        return 0
+
+    except json.JSONDecodeError as e:
+        print(f"  ✗ Invalid JSON: {e}")
+        return 1
+    except Exception as e:
+        print(f"  ✗ Error: {e}")
+        return 1
+
+
+def cmd_backup_restore(args, manager: "TransactionalGoTAdapter") -> int:
+    """Restore from a snapshot."""
+    snapshot_id = args.snapshot_id
+    force = getattr(args, 'force', False)
+
+    snapshots_dir = manager.got_dir / "wal" / "snapshots"
+    if not snapshots_dir.exists():
+        print("No snapshots found.")
+        return 1
+
+    # Find the snapshot
+    files = list(snapshots_dir.glob(f"*{snapshot_id}*"))
+    if not files:
+        print(f"Snapshot not found: {snapshot_id}")
+        return 1
+
+    snap_file = files[0]
+
+    # Confirm unless forced
+    if not force:
+        print(f"About to restore from: {snap_file.name}")
+        print("This will overwrite the current graph state.")
+        response = input("Continue? [y/N]: ").strip().lower()
+        if response != 'y':
+            print("Restore cancelled.")
+            return 0
+
+    try:
+        # Load snapshot
+        import gzip
+        if snap_file.suffix == ".gz":
+            with gzip.open(snap_file, 'rt') as f:
+                data = json.load(f)
+        else:
+            with open(snap_file) as f:
+                data = json.load(f)
+
+        state = data.get("state", {})
+        nodes = state.get("nodes", {})
+
+        # Rebuild graph
+        manager.graph = ThoughtGraph()
+        for node_id, node in nodes.items():
+            manager.graph.add_node(
+                node_id=node_id,
+                node_type=NodeType[node.get("node_type", "TASK").upper()],
+                content=node.get("content", ""),
+                properties=node.get("properties", {}),
+                metadata=node.get("metadata", {})
+            )
+
+        # Restore edges
+        edges = state.get("edges", {})
+        for edge_id, edge in edges.items():
+            try:
+                manager.graph.add_edge(
+                    source_id=edge.get("source_id"),
+                    target_id=edge.get("target_id"),
+                    edge_type=EdgeType[edge.get("edge_type", "RELATES_TO").upper()],
+                    weight=edge.get("weight", 1.0),
+                    metadata=edge.get("metadata", {})
+                )
+            except Exception:
+                pass  # Skip invalid edges
+
+        # Save the restored state
+        manager._save_state()
+
+        print(f"Restored from: {snap_file.name}")
+        print(f"  Nodes: {len(nodes)}")
+        print(f"  Edges: {len(edges)}")
+        return 0
+
+    except Exception as e:
+        print(f"Error restoring: {e}")
+        return 1
+
+
+def cmd_handoff_initiate(args, manager: "TransactionalGoTAdapter") -> int:
+    """Initiate a handoff to another agent."""
+    task = manager.get_task(args.task_id)
+    if not task:
+        print(f"Task not found: {args.task_id}")
+        return 1
+
+    # Use manager's handoff method (works with TX backend)
+    handoff_id = manager.initiate_handoff(
+        source_agent=args.source,
+        target_agent=args.target,
+        task_id=args.task_id,
+        context={
+            "task_title": task.content,
+            "task_status": task.properties.get("status"),
+            "task_priority": task.properties.get("priority"),
+        },
+        instructions=args.instructions,
+    )
+
+    print(f"Handoff initiated: {handoff_id}")
+    print(f"  Task: {task.content}")
+    print(f"  From: {args.source} → To: {args.target}")
+    if args.instructions:
+        print(f"  Instructions: {args.instructions}")
+    return 0
+
+
+def cmd_handoff_accept(args, manager: "TransactionalGoTAdapter") -> int:
+    """Accept a handoff."""
+    # Use manager's handoff method (works with TX backend)
+    success = manager.accept_handoff(
+        handoff_id=args.handoff_id,
+        agent=args.agent,
+        acknowledgment=args.message,
+    )
+
+    if not success:
+        print(f"Failed to accept handoff: {args.handoff_id}")
+        return 1
+
+    print(f"Handoff accepted: {args.handoff_id}")
+    print(f"  Agent: {args.agent}")
+    return 0
+
+
+def cmd_handoff_complete(args, manager: "TransactionalGoTAdapter") -> int:
+    """Complete a handoff."""
+    try:
+        result = json.loads(args.result)
+    except json.JSONDecodeError:
+        result = {"message": args.result}
+
+    # Use manager's handoff method (works with TX backend)
+    success = manager.complete_handoff(
+        handoff_id=args.handoff_id,
+        agent=args.agent,
+        result=result,
+        artifacts=args.artifacts or [],
+    )
+
+    if not success:
+        print(f"Failed to complete handoff: {args.handoff_id}")
+        return 1
+
+    print(f"Handoff completed: {args.handoff_id}")
+    print(f"  Agent: {args.agent}")
+    print(f"  Result: {json.dumps(result, indent=2)}")
+    return 0
+
+
+def cmd_handoff_list(args, manager: "TransactionalGoTAdapter") -> int:
+    """List handoffs."""
+    # Use manager's handoff method (works with TX backend)
+    handoffs = manager.list_handoffs(status=args.status)
+
+    if not handoffs:
+        print("No handoffs found.")
+        return 0
+
+    print(f"Handoffs ({len(handoffs)}):\n")
+    for h in handoffs:
+        status = h.get("status", "?")
+        status_icon = {
+            "initiated": "→",
+            "accepted": "✓",
+            "completed": "✓✓",
+            "rejected": "✗",
+        }.get(status, "?")
+
+        print(f"  {status_icon} {h['id']}")
+        print(f"      {h.get('source_agent', '?')} → {h.get('target_agent', '?')}")
+        print(f"      Task: {h.get('task_id', '?')}")
+        print(f"      Status: {status}")
+        if h.get("instructions"):
+            print(f"      Instructions: {h['instructions'][:50]}...")
+        print()
+
+    return 0
+
+
+def cmd_decision_log(args, manager: "TransactionalGoTAdapter") -> int:
+    """Log a decision with rationale."""
+    context = {}
+    if args.file:
+        context["file"] = args.file
+
+    decision_id = manager.log_decision(
+        decision=args.decision,
+        rationale=args.rationale,
+        affects=args.affects,
+        alternatives=args.alternatives,
+        context=context if context else None,
+    )
+
+    print(f"Decision logged: {decision_id}")
+    print(f"  Decision: {args.decision}")
+    print(f"  Rationale: {args.rationale}")
+    if args.affects:
+        print(f"  Affects: {', '.join(args.affects)}")
+    if args.alternatives:
+        print(f"  Alternatives considered: {', '.join(args.alternatives)}")
+    return 0
+
+
+def cmd_decision_list(args, manager: "TransactionalGoTAdapter") -> int:
+    """List all decisions."""
+    decisions = manager.get_decisions()
+
+    if not decisions:
+        print("No decisions logged yet.")
+        return 0
+
+    print(f"Decisions ({len(decisions)}):\n")
+    for d in decisions:
+        print(f"  {d.id}")
+        print(f"    Decision: {d.content}")
+        print(f"    Rationale: {d.properties.get('rationale', 'N/A')}")
+        if d.properties.get("alternatives"):
+            print(f"    Alternatives: {', '.join(d.properties['alternatives'])}")
+        print()
+
+    return 0
+
+
+def cmd_decision_why(args, manager: "TransactionalGoTAdapter") -> int:
+    """Query why a task was created/modified."""
+    reasons = manager.why(args.task_id)
+
+    if not reasons:
+        print(f"No decisions found affecting {args.task_id}")
+        return 0
+
+    print(f"Why {args.task_id}?\n")
+    for r in reasons:
+        print(f"  {r['decision_id']}")
+        print(f"    Decision: {r['decision']}")
+        print(f"    Rationale: {r['rationale']}")
+        if r["alternatives"]:
+            print(f"    Alternatives: {', '.join(r['alternatives'])}")
+        print()
+
+    return 0
+
+
+def cmd_infer(args, manager: "TransactionalGoTAdapter") -> int:
+    """Infer edges from git commits."""
+    if args.message:
+        # Analyze a specific message
+        edges = manager.infer_edges_from_commit(args.message)
+        print(f"Analyzing message: {args.message[:50]}...")
+    else:
+        # Analyze recent commits
+        edges = manager.infer_edges_from_recent_commits(args.commits)
+        print(f"Analyzed last {args.commits} commits")
+
+    if not edges:
+        print("\nNo task references found in commits.")
+        return 0
+
+    print(f"\nEdges inferred ({len(edges)}):\n")
+    for edge in edges:
+        if "commit_hash" in edge:
+            print(f"  [{edge['commit_hash']}] {edge['type']}: {edge.get('from', edge.get('commit', ''))} → {edge.get('to', edge.get('task', ''))}")
+        else:
+            print(f"  {edge['type']}: {edge.get('from', '')} → {edge.get('to', '')}")
+
+    return 0
+
+
+def cmd_validate(args, manager: "TransactionalGoTAdapter") -> int:
+    """Validate graph health and report issues."""
+    print("=" * 60)
+    print("GoT VALIDATION REPORT")
+    print("=" * 60)
+
+    issues = []
+    warnings = []
+
+    # Count nodes and edges from TX backend entities
+    total_nodes = len(manager.graph.nodes)
+    total_edges = len(manager.graph.edges)
+
+    # Count tasks by status
+    tasks = [n for n in manager.graph.nodes.values() if n.node_type == NodeType.TASK]
+    task_count = len(tasks)
+
+    # Count by status
+    by_status = {}
+    for task in tasks:
+        status = task.properties.get("status", "unknown")
+        by_status[status] = by_status.get(status, 0) + 1
+
+    # Check for orphan nodes (no edges)
+    # Only count edge references that point to existing nodes
+    all_node_ids = set(manager.graph.nodes.keys())
+    nodes_with_edges = set()
+    for edge in manager.graph.edges:
+        if edge.source_id in all_node_ids:
+            nodes_with_edges.add(edge.source_id)
+        if edge.target_id in all_node_ids:
+            nodes_with_edges.add(edge.target_id)
+
+    orphan_count = len(all_node_ids - nodes_with_edges)
+    orphan_rate = orphan_count / max(total_nodes, 1) * 100
+
+    # Check orphan rate (warning if high, but not critical)
+    if orphan_rate > 50:
+        warnings.append(f"High orphan rate: {orphan_rate:.1f}% of nodes have no edges")
+    elif orphan_rate > 25:
+        warnings.append(f"Moderate orphan rate: {orphan_rate:.1f}%")
+
+    # Check edge density
+    edge_density = total_edges / max(total_nodes, 1)
+    if edge_density < 0.1 and total_nodes > 10:
+        warnings.append(f"Low edge density: {edge_density:.2f} edges/node")
+
+    # Count entity files for accurate statistics
+    entities_dir = manager.got_dir / "entities"
+    task_files = len(list(entities_dir.glob("T-*.json"))) if entities_dir.exists() else 0
+    edge_files = len(list(entities_dir.glob("E-*.json"))) if entities_dir.exists() else 0
+    decision_files = len(list(entities_dir.glob("D-*.json"))) if entities_dir.exists() else 0
+    handoff_files = len(list(entities_dir.glob("H-*.json"))) if entities_dir.exists() else 0
+
+    # Print stats
+    print(f"\n📊 STATISTICS")
+    print(f"   Tasks: {task_count}")
+    print(f"   Edges: {total_edges}")
+    print(f"   Edge density: {edge_density:.2f} edges/node")
+    print(f"   Orphan nodes: {orphan_count} ({orphan_rate:.1f}%)")
+
+    print(f"\n📁 ENTITY FILES")
+    print(f"   Task files: {task_files}")
+    print(f"   Edge files: {edge_files}")
+    print(f"   Decision files: {decision_files}")
+    print(f"   Handoff files: {handoff_files}")
+
+    print(f"\n📈 TASKS BY STATUS")
+    for status, count in sorted(by_status.items()):
+        print(f"   {status}: {count}")
+
+    # Print issues
+    if issues:
+        print(f"\n❌ ISSUES ({len(issues)})")
+        for issue in issues:
+            print(f"   • {issue}")
+
+    if warnings:
+        print(f"\n⚠️  WARNINGS ({len(warnings)})")
+        for warning in warnings:
+            print(f"   • {warning}")
+
+    if not issues and not warnings:
+        print(f"\n✅ HEALTHY - No issues detected")
+
+    print()
+
+    # Return non-zero if critical issues
+    return 1 if issues else 0
+
+
+def cmd_query(args, manager: "TransactionalGoTAdapter") -> int:
+    """Run a query against the graph."""
+    query_str = " ".join(args.query_string)
+
+    print(f"Query: {query_str}\n")
+
+    results = manager.query(query_str)
+
+    if not results:
+        print("No results found.")
+        return 0
+
+    print(f"Results ({len(results)}):\n")
+    for r in results:
+        if "step" in r:
+            # Path query
+            print(f"  [{r['step']}] {r['id']}: {r['title']}")
+        elif "relation" in r:
+            # Relationship query
+            print(f"  {r['relation']}: {r['id']}")
+            if r.get('title'):
+                print(f"      {r['title']}")
+        elif "reason" in r:
+            # Blocked tasks
+            print(f"  {r['id']}: {r['title']}")
+            print(f"      Reason: {r['reason']}")
+        else:
+            # Generic result
+            print(f"  {r['id']}: {r.get('title', '')}")
+            if r.get('priority'):
+                print(f"      Priority: {r['priority']}")
+            if r.get('status'):
+                print(f"      Status: {r['status']}")
+        print()
+
+    return 0
+
+
+def cmd_compact(args, manager: "TransactionalGoTAdapter") -> int:
+    """Compact old events.
+
+    DEPRECATED: This command is for the legacy event-sourced backend.
+    The TX backend uses entity files in .got/entities/ which don't need compaction.
     """
     Suggest similar commands when user types an invalid one.
 
@@ -3176,9 +3724,9 @@ def print_command_suggestion(invalid_cmd: str) -> None:
     print(f"\nRun 'python scripts/got_utils.py --help' for available commands.", file=sys.stderr)
 
 
-# =============================================================================
+# 
 # MAIN (Thin Dispatcher)
-# =============================================================================
+# 
 
 def main():
     """

@@ -1,0 +1,23 @@
+{
+  "_checksum": "269e77304ae556e4",
+  "_written_at": "2025-12-24T11:44:09.606898+00:00",
+  "data": {
+    "created_at": "2025-12-24T11:35:05.716147+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251224-113505-c5f5ff90",
+    "metadata": {
+      "completed_at": "2025-12-24T11:44:09.597162+00:00",
+      "updated_at": "2025-12-24T11:44:09.597173+00:00"
+    },
+    "modified_at": "2025-12-24T11:44:09.606831+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature",
+      "retrospective": "Implemented improved session hooks with:\n1. Session type detection (CONTINUATION/RESUMPTION/FRESH)\n2. Pending handoff detection and acceptance prompts\n3. Session end summary with recent commits and modified files\n4. Handoff creation instructions for in-progress tasks"
+    },
+    "status": "completed",
+    "title": "Improve session hooks with interactive questions - session type, handoff acceptance, task awareness, work summary",
+    "version": 4
+  }
+}

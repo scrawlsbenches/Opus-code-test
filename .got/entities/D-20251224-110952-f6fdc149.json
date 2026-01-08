@@ -1,0 +1,15 @@
+{
+  "_checksum": "1c1c2da0009abf73",
+  "_written_at": "2025-12-24T11:09:52.355294+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2025-12-24T11:09:52.349105+00:00",
+    "entity_type": "decision",
+    "id": "D-20251224-110952-f6fdc149",
+    "modified_at": "2025-12-24T11:09:52.355223+00:00",
+    "properties": {},
+    "rationale": "CALI storage (.git-ml/cali/logs/ and .git-ml/cali/objects/) contains irreplaceable chat transcripts and action logs. The gitignore incorrectly marks them as 'regeneratable'. Only .git-ml/cali/local/ should be ignored as it contains indices that CAN be rebuilt.",
+    "title": "Fix ML data loss by unignoring CALI logs and objects directories",
+    "version": 2
+  }
+}
