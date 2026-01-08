@@ -3,7 +3,7 @@ Test suite for FindingCluster Union-Find implementation
 All test cases from exp-20260107-200500-union-find.md
 """
 
-from finding_cluster import FindingCluster
+from cortical.audits.algorithms.union_find import FindingCluster
 
 
 def test_1_basic_clustering():

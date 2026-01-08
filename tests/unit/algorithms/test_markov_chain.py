@@ -2,7 +2,7 @@
 """Test suite for CommentMarkovChain implementation."""
 
 import random
-from markov_chain_implementation import CommentMarkovChain
+from cortical.audits.algorithms.markov_chain import CommentMarkovChain
 
 def test_1_train_on_misleading_patterns():
     """Test 1: Train on misleading comment patterns"""

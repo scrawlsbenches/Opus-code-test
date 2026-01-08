@@ -4,7 +4,7 @@ Test suite for Bloom Filter implementation
 All test cases from exp-20260107-200600-bloom-filter.md
 """
 
-from bloom_filter_impl import SuspiciousCommentFilter
+from cortical.audits.algorithms.bloom_filter import SuspiciousCommentFilter
 
 
 def test_1_add_known_misleading_patterns():

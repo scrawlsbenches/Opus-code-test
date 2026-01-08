@@ -4,7 +4,7 @@ Test suite for PatternFrequencySketch (Count-Min Sketch)
 All 9 test cases from the experiment file.
 """
 
-from pattern_frequency_sketch import PatternFrequencySketch
+from cortical.audits.algorithms.count_min_sketch import PatternFrequencySketch
 
 
 def test_1_basic_add_and_query():
@@ -30,7 +30,7 @@ def test_1_basic_add_and_query():
     print(f"  will be -> {cms.query('will be')} (expected >= 15)")
     print(f"  missing -> {cms.query('missing')} (expected >= 0)")
     print("  ✓ PASS")
-    return True
+    # Test passed
 
 
 def test_2_multiple_adds_accumulate():
@@ -44,7 +44,7 @@ def test_2_multiple_adds_accumulate():
     assert result >= 10, f"Expected >= 10, got {result}"
     print(f"  will be -> {result} (expected >= 10)")
     print("  ✓ PASS")
-    return True
+    # Test passed
 
 
 def test_3_estimates_accurate_with_large_width():
@@ -68,7 +68,7 @@ def test_3_estimates_accurate_with_large_width():
         print(f"  {pattern} -> {estimate} (actual: {actual}, within 1.5x: ✓)")
 
     print("  ✓ PASS")
-    return True
+    # Test passed
 
 
 def test_4_total_count_tracking():
@@ -81,7 +81,7 @@ def test_4_total_count_tracking():
     assert cms.total_count == 60, f"Expected 60, got {cms.total_count}"
     print(f"  total_count -> {cms.total_count} (expected 60)")
     print("  ✓ PASS")
-    return True
+    # Test passed
 
 
 def test_5_merge_sketches():
@@ -113,7 +113,7 @@ def test_5_merge_sketches():
     print(f"  merged.query('See:') -> {see_count} (expected >= 4)")
     print(f"  merged.total_count -> {merged.total_count} (cms1: {cms1.total_count} + cms2: {cms2.total_count})")
     print("  ✓ PASS")
-    return True
+    # Test passed
 
 
 def test_6_merge_dimension_mismatch():
@@ -128,7 +128,7 @@ def test_6_merge_dimension_mismatch():
     except ValueError as e:
         print(f"  ValueError raised as expected: {e}")
         print("  ✓ PASS")
-        return True
+        # Test passed
 
 
 def test_7_high_collision_scenario():
@@ -150,7 +150,7 @@ def test_7_high_collision_scenario():
     print(f"  With width=10 and 100 patterns, avg collision per bucket: ~10")
     print(f"  Depth=3 helps reduce collision impact via minimum")
     print("  ✓ PASS")
-    return True
+    # Test passed
 
 
 def test_8_real_audit_scenario():
@@ -199,7 +199,7 @@ def test_8_real_audit_scenario():
     print(f"  FIXME: -> {fixme_count} (actual: 1)")
     print(f"  Heavy hitter: 'will be' ({speculation_count}) > 'TODO:' ({todo_count})")
     print("  ✓ PASS")
-    return True
+    # Test passed
 
 
 def test_9_deterministic_behavior():
@@ -214,7 +214,7 @@ def test_9_deterministic_behavior():
     print(f"  Second query: {result2}")
     print(f"  Deterministic: {result1 == result2}")
     print("  ✓ PASS")
-    return True
+    # Test passed
 
 
 def run_all_tests():
@@ -261,7 +261,7 @@ def run_all_tests():
 
     if passed == total:
         print("\n🎉 ALL TESTS PASSED!")
-        return True
+        # Test passed
     else:
         print(f"\n⚠️  {total - passed} test(s) failed")
         return False

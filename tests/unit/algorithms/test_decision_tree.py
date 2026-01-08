@@ -4,7 +4,7 @@ Test cases for CommentDecisionTree implementation.
 All tests from exp-20260107-200200-decision-tree.md
 """
 
-from decision_tree_implementation import CommentDecisionTree, entropy
+from cortical.audits.algorithms.decision_tree import CommentDecisionTree, entropy
 
 
 def test_1_learn_from_audit_data():

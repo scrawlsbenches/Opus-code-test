@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Additional edge case tests for CommentMarkovChain."""
 
-from markov_chain_implementation import CommentMarkovChain
+from cortical.audits.algorithms.markov_chain import CommentMarkovChain
 
 def test_edge_empty_sequence():
     """Test pattern_score with empty sequence"""

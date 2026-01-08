@@ -4,7 +4,7 @@ Test suite for AuditInvertedIndex implementation.
 All 7 test cases from the experiment plus real finding validation.
 """
 
-from audit_inverted_index import AuditInvertedIndex
+from cortical.audits.algorithms.inverted_index import AuditInvertedIndex
 
 
 def test_1_basic_indexing():
@@ -263,7 +263,7 @@ def run_all_tests():
         print("  - Term lookup: O(1) ✓ (dict-based)")
         print("  - Phrase search: O(k) for k results ✓")
         print("  - Finding removal: O(t) for t terms ✓")
-        return True
+        # Test passed
 
     except AssertionError as e:
         print(f"\n✗ TEST FAILED: {e}")
