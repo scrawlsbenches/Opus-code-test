@@ -225,19 +225,18 @@ def translate_audit_query(query: str) -> AuditQuery:
     # =========================================================================
 
     # "why is <file> flagged" or "explain <file>"
+    # NOTE: Don't return early - let scope extraction run too
     why_match = re.search(r'why\s+is\s+(\S+)\s+(?:flagged|risky|marked)', query_lower)
     if why_match:
         result.intent = "explain"
         result.target_file = why_match.group(1)
         result.explain = True
-        return result
 
     explain_match = re.search(r'explain\s+(\S+)', query_lower)
-    if explain_match:
+    if explain_match and result.intent != "explain":  # Don't override why_match
         result.intent = "explain"
         result.target_file = explain_match.group(1)
         result.explain = True
-        return result
 
     # =========================================================================
     # Scope Extraction
