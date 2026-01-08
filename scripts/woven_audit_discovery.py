@@ -174,6 +174,88 @@ def tokenize_file_context(file_path: str, git_analysis: Dict[str, Any]) -> List[
 
 
 # =============================================================================
+# NOVELTY DETECTION - Abstraction-based outlier detection
+# =============================================================================
+
+def compute_novelty_score(
+    file_tokens: List[str],
+    abstractions: List[Any],
+    all_file_tokens: Dict[str, List[str]],
+) -> float:
+    """
+    Compute novelty score for a file based on abstraction coverage.
+
+    A file is novel/surprising if:
+    1. Its tokens don't match well with any learned abstraction
+    2. It contains unusual token combinations not seen in other files
+
+    Args:
+        file_tokens: Tokens for this file
+        abstractions: List of formed abstractions from WovenMind
+        all_file_tokens: Dict of file_path -> tokens for computing rarity
+
+    Returns:
+        Novelty score in [0, 1] where 1 = highly novel/surprising
+    """
+    if not file_tokens:
+        return 0.0
+
+    file_token_set = set(file_tokens)
+
+    # Score 1: Abstraction coverage (how well do tokens match abstractions?)
+    # Lower coverage = more novel
+    abstraction_coverage = 0.0
+    if abstractions:
+        best_match = 0.0
+        for abstraction in abstractions:
+            source_nodes = set(abstraction.source_nodes)
+            # Jaccard similarity
+            intersection = len(file_token_set & source_nodes)
+            union = len(file_token_set | source_nodes)
+            if union > 0:
+                similarity = intersection / union
+                best_match = max(best_match, similarity)
+        abstraction_coverage = best_match
+
+    # Score 2: Token combination rarity
+    # If this combination of tokens is rare across files, it's novel
+    combination_rarity = 1.0
+    if all_file_tokens:
+        # Count how many files have similar token sets
+        similar_files = 0
+        for other_path, other_tokens in all_file_tokens.items():
+            other_set = set(other_tokens)
+            # Check if significant overlap
+            if file_token_set and other_set:
+                overlap = len(file_token_set & other_set) / len(file_token_set)
+                if overlap > 0.5:  # >50% overlap = similar
+                    similar_files += 1
+        # Rarity = 1 - (proportion of similar files)
+        combination_rarity = 1.0 - (similar_files / max(len(all_file_tokens), 1))
+
+    # Score 3: Pattern diversity (key indicator of outliers)
+    # Files with many different PATTERN types are unusual - normal files have 1-2 patterns
+    pattern_tokens = [t for t in file_tokens if t.startswith('pattern:')]
+    pattern_count = len(set(pattern_tokens))
+    # 1 pattern = normal (0.0), 2 patterns = slightly unusual (0.33), 3+ patterns = unusual (0.67+)
+    pattern_diversity = min((pattern_count - 1) / 3.0, 1.0) if pattern_count > 0 else 0.0
+
+    # Score 4: Cross-domain signal (has traits like high_churn AND multiple patterns)
+    has_trait = any(t.startswith('trait:') for t in file_tokens)
+    cross_domain = 1.0 if (has_trait and pattern_count >= 2) else 0.0
+
+    # Combine scores: low abstraction coverage + high rarity + pattern diversity = novel
+    novelty = (
+        (1.0 - abstraction_coverage) * 0.25 +  # Low abstraction match = novel
+        combination_rarity * 0.25 +             # Rare combination = novel
+        pattern_diversity * 0.35 +              # Multiple patterns = novel (increased weight)
+        cross_domain * 0.15                     # Cross-domain signal = novel
+    )
+
+    return min(1.0, max(0.0, novelty))
+
+
+# =============================================================================
 # PATTERN FEEDING - Train WovenMind on audit data
 # =============================================================================
 
@@ -198,6 +280,9 @@ def feed_findings_to_mind(
         "surprising_inputs": [],
         "mode_switches": 0,
     }
+
+    # Track all file tokens for novelty detection
+    all_file_tokens: Dict[str, List[str]] = {}
 
     # Group findings by file for richer context
     findings_by_file = defaultdict(list)
@@ -237,22 +322,16 @@ def feed_findings_to_mind(
             specific_tokens.append(pattern_token)
             generic_tokens.append(pattern_token)
 
+        # Store tokens for novelty detection later
+        all_file_tokens[file_path] = generic_tokens.copy()
+
         # Train Hive on the text representation
         text = " ".join(specific_tokens)
         mind.train(text)
 
-        # Process through full system for mode detection
-        result = mind.process(specific_tokens)
+        # Process through full system
+        mind.process(specific_tokens)
         stats["findings_fed"] += len(file_findings)
-
-        # Track surprising inputs
-        if result.surprise and result.surprise.magnitude > 0.5:
-            stats["surprising_inputs"].append({
-                "file": file_path,
-                "tokens": specific_tokens,
-                "surprise_magnitude": result.surprise.magnitude,
-                "mode": result.mode.name,
-            })
 
         # Observe GENERIC pattern for Cortex abstraction (can repeat!)
         # This allows patterns like "dir:got + pattern:should_be" to form abstractions
@@ -276,6 +355,26 @@ def feed_findings_to_mind(
             if file_path in high_churn:
                 combo = [pattern_token, "trait:high_churn"]
                 mind.observe_pattern(combo)
+
+    # Run consolidation to form abstractions
+    mind.consolidate()
+
+    # Now detect surprising files using abstraction-based novelty
+    # (WovenMind's built-in surprise is for sequential prediction, not outliers)
+    abstractions = mind.cortex.get_abstractions()
+
+    novelty_threshold = 0.6  # Files with novelty > 0.6 are "surprising"
+
+    for file_path, tokens in all_file_tokens.items():
+        novelty = compute_novelty_score(tokens, abstractions, all_file_tokens)
+
+        if novelty > novelty_threshold:
+            stats["surprising_inputs"].append({
+                "file": file_path,
+                "tokens": tokens,
+                "surprise_magnitude": novelty,
+                "mode": "NOVELTY",
+            })
 
     return stats
 
