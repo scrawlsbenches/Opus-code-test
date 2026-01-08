@@ -124,9 +124,10 @@ def tokenize_finding(finding: Dict[str, Any], file_info: Dict[str, Any] = None) 
     """
     tokens = []
 
-    # Pattern token
+    # Pattern token - normalize by replacing spaces with underscores and stripping punctuation
     pattern = finding.get('pattern', 'unknown')
-    tokens.append(f"pattern:{pattern.replace(' ', '_').lower()}")
+    normalized_pattern = pattern.replace(' ', '_').lower().rstrip(':')
+    tokens.append(f"pattern:{normalized_pattern}")
 
     # Extract file info from finding ID (format: "path/file.py:line")
     finding_id = finding.get('id', '')
@@ -231,7 +232,8 @@ def feed_findings_to_mind(
         # All pattern types in this file
         for finding in file_findings:
             pattern = finding.get('pattern', 'unknown')
-            pattern_token = f"pattern:{pattern.replace(' ', '_').lower()}"
+            normalized = pattern.replace(' ', '_').lower().rstrip(':')
+            pattern_token = f"pattern:{normalized}"
             specific_tokens.append(pattern_token)
             generic_tokens.append(pattern_token)
 
@@ -262,7 +264,8 @@ def feed_findings_to_mind(
         # These are more likely to repeat across files
         for finding in file_findings:
             pattern = finding.get('pattern', 'unknown')
-            pattern_token = f"pattern:{pattern.replace(' ', '_').lower()}"
+            normalized = pattern.replace(' ', '_').lower().rstrip(':')
+            pattern_token = f"pattern:{normalized}"
 
             # Pattern + top-level directory
             if parts and len(parts) > 1:

@@ -1,0 +1,367 @@
+{
+  "generated_at": "2026-01-08T01:34:29.479768",
+  "description": "Synthetic audit data with embedded patterns for testing",
+  "expected_patterns": {
+    "pattern_a": {
+      "tokens": [
+        "dir:legacy",
+        "pattern:todo"
+      ],
+      "frequency": 10,
+      "description": "Legacy code with TODOs"
+    },
+    "pattern_b": {
+      "tokens": [
+        "dir:api",
+        "pattern:should_be"
+      ],
+      "frequency": 6,
+      "description": "API handlers that need refactoring"
+    },
+    "pattern_c": {
+      "tokens": [
+        "trait:high_churn",
+        "pattern:fixme"
+      ],
+      "frequency": 8,
+      "description": "High churn files with urgent fixes needed"
+    }
+  },
+  "expected_outliers": [
+    "legacy/api_bridge.py",
+    "core/legacy_compat.py",
+    "api/experimental_core.py"
+  ],
+  "total_findings": 38,
+  "findings": [
+    {
+      "id": "legacy/module_0.py:10",
+      "pattern": "TODO:",
+      "comment": "TODO: Refactor this legacy code 0",
+      "age_days": 200,
+      "author": "developer_1",
+      "stale": true
+    },
+    {
+      "id": "legacy/module_1.py:11",
+      "pattern": "TODO:",
+      "comment": "TODO: Refactor this legacy code 1",
+      "age_days": 205,
+      "author": "developer_1",
+      "stale": true
+    },
+    {
+      "id": "legacy/module_2.py:12",
+      "pattern": "TODO:",
+      "comment": "TODO: Refactor this legacy code 2",
+      "age_days": 210,
+      "author": "developer_1",
+      "stale": true
+    },
+    {
+      "id": "legacy/module_3.py:13",
+      "pattern": "TODO:",
+      "comment": "TODO: Refactor this legacy code 3",
+      "age_days": 215,
+      "author": "developer_1",
+      "stale": true
+    },
+    {
+      "id": "legacy/module_4.py:14",
+      "pattern": "TODO:",
+      "comment": "TODO: Refactor this legacy code 4",
+      "age_days": 220,
+      "author": "developer_1",
+      "stale": true
+    },
+    {
+      "id": "legacy/module_5.py:15",
+      "pattern": "TODO:",
+      "comment": "TODO: Refactor this legacy code 5",
+      "age_days": 225,
+      "author": "developer_1",
+      "stale": true
+    },
+    {
+      "id": "legacy/module_6.py:16",
+      "pattern": "TODO:",
+      "comment": "TODO: Refactor this legacy code 6",
+      "age_days": 230,
+      "author": "developer_1",
+      "stale": true
+    },
+    {
+      "id": "legacy/module_7.py:17",
+      "pattern": "TODO:",
+      "comment": "TODO: Refactor this legacy code 7",
+      "age_days": 235,
+      "author": "developer_1",
+      "stale": true
+    },
+    {
+      "id": "legacy/module_8.py:18",
+      "pattern": "TODO:",
+      "comment": "TODO: Refactor this legacy code 8",
+      "age_days": 240,
+      "author": "developer_1",
+      "stale": true
+    },
+    {
+      "id": "legacy/module_9.py:19",
+      "pattern": "TODO:",
+      "comment": "TODO: Refactor this legacy code 9",
+      "age_days": 245,
+      "author": "developer_1",
+      "stale": true
+    },
+    {
+      "id": "api/handler_0.py:20",
+      "pattern": "should be",
+      "comment": "This should be refactored 0",
+      "age_days": 100,
+      "author": "developer_2"
+    },
+    {
+      "id": "api/handler_1.py:21",
+      "pattern": "should be",
+      "comment": "This should be refactored 1",
+      "age_days": 110,
+      "author": "developer_2"
+    },
+    {
+      "id": "api/handler_2.py:22",
+      "pattern": "should be",
+      "comment": "This should be refactored 2",
+      "age_days": 120,
+      "author": "developer_2"
+    },
+    {
+      "id": "api/handler_3.py:23",
+      "pattern": "should be",
+      "comment": "This should be refactored 3",
+      "age_days": 130,
+      "author": "developer_2"
+    },
+    {
+      "id": "api/handler_4.py:24",
+      "pattern": "should be",
+      "comment": "This should be refactored 4",
+      "age_days": 140,
+      "author": "developer_2"
+    },
+    {
+      "id": "api/handler_5.py:25",
+      "pattern": "should be",
+      "comment": "This should be refactored 5",
+      "age_days": 150,
+      "author": "developer_2"
+    },
+    {
+      "id": "core/processor_0.py:30",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This needs immediate attention 0",
+      "age_days": 50,
+      "author": "developer_3"
+    },
+    {
+      "id": "core/processor_1.py:31",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This needs immediate attention 1",
+      "age_days": 55,
+      "author": "developer_3"
+    },
+    {
+      "id": "core/processor_2.py:32",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This needs immediate attention 2",
+      "age_days": 60,
+      "author": "developer_3"
+    },
+    {
+      "id": "core/processor_3.py:33",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This needs immediate attention 3",
+      "age_days": 65,
+      "author": "developer_3"
+    },
+    {
+      "id": "core/processor_4.py:34",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This needs immediate attention 4",
+      "age_days": 70,
+      "author": "developer_3"
+    },
+    {
+      "id": "core/processor_5.py:35",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This needs immediate attention 5",
+      "age_days": 75,
+      "author": "developer_3"
+    },
+    {
+      "id": "core/processor_6.py:36",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This needs immediate attention 6",
+      "age_days": 80,
+      "author": "developer_3"
+    },
+    {
+      "id": "core/processor_7.py:37",
+      "pattern": "FIXME:",
+      "comment": "FIXME: This needs immediate attention 7",
+      "age_days": 85,
+      "author": "developer_3"
+    },
+    {
+      "id": "utils/helper_1.py:40",
+      "pattern": "FUTURE:",
+      "comment": "FUTURE: Add caching",
+      "age_days": 30,
+      "author": "developer_1"
+    },
+    {
+      "id": "tests/test_1.py:41",
+      "pattern": "XXX:",
+      "comment": "XXX: Flaky test",
+      "age_days": 40,
+      "author": "developer_2"
+    },
+    {
+      "id": "docs/guide.py:42",
+      "pattern": "See:",
+      "comment": "See: documentation",
+      "age_days": 50,
+      "author": "developer_3"
+    },
+    {
+      "id": "scripts/tool_1.py:43",
+      "pattern": "HACK:",
+      "comment": "HACK: Quick workaround",
+      "age_days": 60,
+      "author": "developer_1"
+    },
+    {
+      "id": "config/settings.py:44",
+      "pattern": "planned to",
+      "comment": "This is planned to be deprecated",
+      "age_days": 70,
+      "author": "developer_2"
+    },
+    {
+      "id": "legacy/api_bridge.py:50",
+      "pattern": "TODO:",
+      "comment": "TODO: Clean this up",
+      "age_days": 300,
+      "author": "developer_1",
+      "stale": true
+    },
+    {
+      "id": "legacy/api_bridge.py:51",
+      "pattern": "FIXME:",
+      "comment": "FIXME: Handle edge case",
+      "age_days": 60,
+      "author": "developer_2"
+    },
+    {
+      "id": "legacy/api_bridge.py:52",
+      "pattern": "should be",
+      "comment": "This should be redesigned",
+      "age_days": 120,
+      "author": "developer_3"
+    },
+    {
+      "id": "core/legacy_compat.py:51",
+      "pattern": "TODO:",
+      "comment": "TODO: Clean this up",
+      "age_days": 300,
+      "author": "developer_1",
+      "stale": true
+    },
+    {
+      "id": "core/legacy_compat.py:52",
+      "pattern": "FIXME:",
+      "comment": "FIXME: Handle edge case",
+      "age_days": 60,
+      "author": "developer_2"
+    },
+    {
+      "id": "core/legacy_compat.py:53",
+      "pattern": "should be",
+      "comment": "This should be redesigned",
+      "age_days": 120,
+      "author": "developer_3"
+    },
+    {
+      "id": "api/experimental_core.py:52",
+      "pattern": "TODO:",
+      "comment": "TODO: Clean this up",
+      "age_days": 300,
+      "author": "developer_1",
+      "stale": true
+    },
+    {
+      "id": "api/experimental_core.py:53",
+      "pattern": "FIXME:",
+      "comment": "FIXME: Handle edge case",
+      "age_days": 60,
+      "author": "developer_2"
+    },
+    {
+      "id": "api/experimental_core.py:54",
+      "pattern": "should be",
+      "comment": "This should be redesigned",
+      "age_days": 120,
+      "author": "developer_3"
+    }
+  ],
+  "git_analysis": {
+    "high_churn_files": [
+      [
+        "core/processor_0.py",
+        15
+      ],
+      [
+        "core/processor_1.py",
+        16
+      ],
+      [
+        "core/processor_2.py",
+        17
+      ],
+      [
+        "core/processor_3.py",
+        18
+      ],
+      [
+        "core/processor_4.py",
+        19
+      ],
+      [
+        "core/processor_5.py",
+        20
+      ],
+      [
+        "core/processor_6.py",
+        21
+      ],
+      [
+        "core/processor_7.py",
+        22
+      ],
+      [
+        "legacy/api_bridge.py",
+        25
+      ],
+      [
+        "core/legacy_compat.py",
+        25
+      ],
+      [
+        "api/experimental_core.py",
+        25
+      ]
+    ],
+    "stale_todos": [],
+    "critical_modules": []
+  }
+}
