@@ -114,19 +114,22 @@ Tests using `time.sleep()` with unnecessarily long durations:
 |------|--------|-------|---------|
 | `test_scenario_verifier_detects_phase_timeout` | 2.1s sleep, 2.0s threshold | 0.1s sleep, 0.05s threshold | ~2.0s |
 | `test_scenario_stuck_phase_severity_is_warning` | 1.1s sleep, 1.0s threshold | 0.1s sleep, 0.05s threshold | ~1.0s |
+| `test_scenario_diagnostic_report_categorizes_anomalies_by_type` | 1.1s sleep, 1.0s threshold | 0.1s sleep, 0.05s threshold | ~1.0s |
 | `test_scenario_expired_messages_move_to_dead_letter` | 2.0s sleep, 1.0s TTL | 0.1s sleep, 0.05s TTL | ~1.9s |
 | `test_scenario_dead_letter_messages_can_be_retried` | 2.0s sleep, 1.0s TTL | 0.1s sleep, 0.05s TTL | ~1.9s |
 | `test_findings_expire_after_ttl` | 1.5s sleep, 1.0s TTL | 0.1s sleep, 0.05s TTL | ~1.4s |
+| `test_commit_on_save_debounced` | 1.0s sleep, 0.5s debounce | 0.1s sleep, 0.05s debounce | ~0.9s |
 
 **Root cause:** Tests used 1-2 second timeouts when 50-100ms tests the same behavior.
 
 **Fix applied:** Reduced all TTL/threshold values to minimum viable:
 - `stuck_threshold_seconds=2.0` → `0.05` (50ms)
 - `ttl_seconds=1` → `0.05` (50ms)
+- `debounce_seconds=0.5` → `0.05` (50ms)
 - `time.sleep(2.0)` → `0.1` (100ms - exceeds threshold)
 - Changed `pubsub.py` ttl_seconds type from `int` to `float` for sub-second precision
 
-**Actual savings:** ~7.3 seconds total
+**Actual savings:** ~10.1 seconds total
 
 **Status:** DONE
 
@@ -147,7 +150,7 @@ Tests using `time.sleep()` with unnecessarily long durations:
 | Tests > 1s | ~12 | ~10 | ~6 |
 
 **Fix 1 (DONE):** Mark `shared_processor` tests as slow - 3x speedup
-**Fix 2 (DONE):** Reduce TTL/timeout test sleeps - 7.3s savings
+**Fix 2 (DONE):** Reduce TTL/timeout test sleeps - 10.1s savings (7 tests fixed)
 
 ---
 
