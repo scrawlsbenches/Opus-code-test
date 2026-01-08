@@ -1389,6 +1389,140 @@ class PLNReasoner:
         """
         return self.graph.infer(statement, max_depth=max_depth, aggregate=aggregate)
 
+    def query_with_trace(
+        self,
+        statement: str,
+        max_depth: int = 5,
+        aggregate: AggregateStrategy = "revision"
+    ) -> "InferenceTrace":
+        """
+        Query with full inference trace for explainability.
+
+        Returns an InferenceTrace capturing:
+        - Which facts were used
+        - Which rules fired and their truth values
+        - The inference chain from facts → rules → conclusions
+        - How multiple inference paths were aggregated
+
+        This is REAL explainability - not templated responses.
+
+        Args:
+            statement: The statement to query
+            max_depth: Maximum inference chain depth
+            aggregate: Strategy for combining evidence from multiple rules
+
+        Returns:
+            InferenceTrace with complete reasoning chain
+
+        Example:
+            trace = reasoner.query_with_trace("needs_review(file_a)")
+            print(trace.explain())  # Human-readable explanation
+        """
+        trace = InferenceTrace(query=statement, aggregation_strategy=aggregate)
+
+        # Perform inference with tracing
+        result = self._infer_with_trace(
+            statement, max_depth, aggregate, trace, depth=0
+        )
+
+        trace.final_result = result
+        return trace
+
+    def _infer_with_trace(
+        self,
+        query: str,
+        max_depth: int,
+        aggregate: AggregateStrategy,
+        trace: "InferenceTrace",
+        depth: int
+    ) -> Optional[TruthValue]:
+        """
+        Internal inference with tracing.
+
+        Records each inference step in the trace.
+        """
+        # Direct lookup - record as fact used
+        atom = self.graph.get_atom(query)
+        if atom is not None:
+            trace.add_fact(query, atom.truth_value)
+            return atom.truth_value
+
+        # Try pattern matching
+        for name, atom in self.graph._atoms.items():
+            if atom.matches(query):
+                trace.add_fact(name, atom.truth_value)
+                return atom.truth_value
+
+        if max_depth <= 0:
+            return None
+
+        # Collect matching rules with traces
+        matching_results: List[TruthValue] = []
+
+        for (ant, cons), link in self.graph._implications.items():
+            # Pattern matching logic
+            query_matches = False
+            substitutions = {}
+
+            if cons == query:
+                query_matches = True
+            elif "(" in cons and "(" in query:
+                cons_pred = cons[:cons.index("(")]
+                query_pred = query[:query.index("(")]
+
+                if cons_pred == query_pred:
+                    cons_args = cons[cons.index("(") + 1:cons.index(")")].split(",")
+                    query_args = query[query.index("(") + 1:query.index(")")].split(",")
+
+                    if len(cons_args) == len(query_args):
+                        query_matches = True
+                        for c_arg, q_arg in zip(cons_args, query_args):
+                            c_arg = c_arg.strip()
+                            q_arg = q_arg.strip()
+                            if c_arg.isupper() and len(c_arg) == 1:
+                                substitutions[c_arg] = q_arg
+                            elif c_arg != q_arg:
+                                query_matches = False
+                                break
+
+            if query_matches:
+                # Substitute variables in antecedent
+                ant_query = ant
+                for var, val in substitutions.items():
+                    ant_query = ant_query.replace(var, val)
+
+                # Recursive inference (with tracing)
+                ant_tv = self._infer_with_trace(
+                    ant_query, max_depth - 1, aggregate, trace, depth + 1
+                )
+
+                if ant_tv is not None:
+                    # Apply modus ponens
+                    result = pln_implication(ant_tv, link.truth_value)
+
+                    # Record inference step
+                    step = InferenceStep(
+                        rule_antecedent=ant,
+                        rule_consequent=cons,
+                        rule_truth_value=link.truth_value,
+                        antecedent_truth_value=ant_tv,
+                        result_truth_value=result,
+                        substitutions=substitutions,
+                        depth=depth
+                    )
+                    trace.add_step(step)
+
+                    if aggregate == "first":
+                        return result
+
+                    matching_results.append(result)
+
+        # Record aggregation inputs
+        if matching_results:
+            trace.aggregation_inputs = matching_results
+
+        return aggregate_truth_values(matching_results, aggregate)
+
     def query_with_attention(
         self,
         statement: str,
@@ -2143,3 +2277,129 @@ class QueryResult:
     @property
     def confidence(self) -> float:
         return self.truth_value.confidence
+
+
+# =============================================================================
+# INFERENCE TRACING (Phase 2: Real Explainability)
+# =============================================================================
+
+@dataclass
+class InferenceStep:
+    """
+    A single step in an inference chain.
+
+    Captures:
+    - The rule that fired (antecedent → consequent)
+    - Truth values at each stage
+    - Variable substitutions applied
+    """
+    rule_antecedent: str
+    rule_consequent: str
+    rule_truth_value: TruthValue
+    antecedent_truth_value: TruthValue
+    result_truth_value: TruthValue
+    substitutions: Dict[str, str] = field(default_factory=dict)
+    depth: int = 0
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "rule": f"{self.rule_antecedent} → {self.rule_consequent}",
+            "rule_tv": self.rule_truth_value.to_dict(),
+            "antecedent_tv": self.antecedent_truth_value.to_dict(),
+            "result_tv": self.result_truth_value.to_dict(),
+            "substitutions": self.substitutions,
+            "depth": self.depth,
+        }
+
+    def __str__(self) -> str:
+        subs = ", ".join(f"{k}={v}" for k, v in self.substitutions.items())
+        subs_str = f" [{subs}]" if subs else ""
+        return (
+            f"  Rule: {self.rule_antecedent} → {self.rule_consequent}{subs_str}\n"
+            f"    Rule strength: {self.rule_truth_value.strength:.2%} "
+            f"(conf: {self.rule_truth_value.confidence:.2%})\n"
+            f"    Antecedent: {self.antecedent_truth_value.strength:.2%} "
+            f"(conf: {self.antecedent_truth_value.confidence:.2%})\n"
+            f"    → Result: {self.result_truth_value.strength:.2%} "
+            f"(conf: {self.result_truth_value.confidence:.2%})"
+        )
+
+
+@dataclass
+class InferenceTrace:
+    """
+    Complete trace of an inference chain.
+
+    Captures the full reasoning path from facts through rules to conclusions,
+    enabling real explainability (not templated responses).
+    """
+    query: str
+    steps: List[InferenceStep] = field(default_factory=list)
+    facts_used: Dict[str, TruthValue] = field(default_factory=dict)
+    final_result: Optional[TruthValue] = None
+    aggregation_strategy: str = "first"
+    aggregation_inputs: List[TruthValue] = field(default_factory=list)
+
+    def add_step(self, step: InferenceStep) -> None:
+        """Add an inference step to the trace."""
+        self.steps.append(step)
+
+    def add_fact(self, name: str, tv: TruthValue) -> None:
+        """Record a fact that was used in inference."""
+        self.facts_used[name] = tv
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "query": self.query,
+            "steps": [s.to_dict() for s in self.steps],
+            "facts_used": {k: v.to_dict() for k, v in self.facts_used.items()},
+            "final_result": self.final_result.to_dict() if self.final_result else None,
+            "aggregation_strategy": self.aggregation_strategy,
+            "aggregation_inputs": [tv.to_dict() for tv in self.aggregation_inputs],
+        }
+
+    def explain(self, verbose: bool = False) -> str:
+        """
+        Generate human-readable explanation of the inference.
+
+        This is REAL explainability - shows actual rules that fired,
+        not templated responses.
+        """
+        lines = []
+
+        # Query
+        lines.append(f"Query: {self.query}")
+        lines.append("")
+
+        # Facts used
+        if self.facts_used:
+            lines.append("Facts asserted:")
+            for fact, tv in self.facts_used.items():
+                lines.append(f"  • {fact}: {tv.strength:.2%} (conf: {tv.confidence:.2%})")
+            lines.append("")
+
+        # Inference steps
+        if self.steps:
+            lines.append("Inference chain:")
+            for i, step in enumerate(self.steps, 1):
+                lines.append(f"\n  Step {i} (depth {step.depth}):")
+                lines.append(str(step))
+            lines.append("")
+
+        # Aggregation
+        if len(self.aggregation_inputs) > 1:
+            lines.append(f"Aggregation ({self.aggregation_strategy}):")
+            lines.append(f"  Combining {len(self.aggregation_inputs)} inference paths:")
+            for i, tv in enumerate(self.aggregation_inputs, 1):
+                lines.append(f"    Path {i}: {tv.strength:.2%} (conf: {tv.confidence:.2%})")
+            lines.append("")
+
+        # Final result
+        if self.final_result:
+            lines.append(f"Final result: {self.final_result.strength:.2%} "
+                        f"(confidence: {self.final_result.confidence:.2%})")
+            lines.append(f"Probability: {self.final_result.to_probability():.2%}")
+        else:
+            lines.append("Final result: No inference possible")
+
+        return "\n".join(lines)

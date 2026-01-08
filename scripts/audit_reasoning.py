@@ -43,7 +43,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from cortical.reasoning.prism_pln import (
     PLNReasoner, TruthValue, AttentionalFocus, AttentionValue,
-    Term, TypeRegistry, aggregate_truth_values, AggregateStrategy
+    Term, TypeRegistry, aggregate_truth_values, AggregateStrategy,
+    InferenceStep, InferenceTrace
 )
 from cortical.reasoning.woven_mind import WovenMind
 
@@ -1011,6 +1012,153 @@ class AuditReasoner:
         """Get files marked as critically important (VLTI=True)."""
         return [f for f, a in self.file_importance.items() if a.vlti]
 
+    def explain_file_risk(
+        self,
+        file_path: str,
+        verbose: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Explain why a file is flagged with REAL PLN inference chains.
+
+        This is Phase 2 explainability - shows actual rules that fired,
+        not templated responses.
+
+        Args:
+            file_path: Path to the file to explain
+            verbose: Include additional detail
+
+        Returns:
+            Dict with:
+                - file: File path
+                - file_id: Normalized file ID
+                - facts: Facts asserted about this file
+                - traces: Dict of query -> InferenceTrace
+                - summary: Human-readable summary
+                - raw_traces: Raw trace data for programmatic access
+        """
+        file_id = Path(file_path).name.replace(".", "_")
+
+        # Collect facts asserted about this file
+        file_facts = {}
+        for atom_name, atom in self.pln.graph._atoms.items():
+            # Check if this fact is about our file
+            if f"({file_id}" in atom_name or f", {file_id})" in atom_name:
+                file_facts[atom_name] = {
+                    "strength": atom.truth_value.strength,
+                    "confidence": atom.truth_value.confidence,
+                }
+
+        # Run traced inference for key risk queries
+        queries = [
+            ("needs_review", f"needs_review({file_id})"),
+            ("has_known_issue", f"has_known_issue({file_id})"),
+            ("incomplete", f"incomplete({file_id})"),
+            ("flagged", f"flagged({file_id})"),
+            ("risky", f"risky({file_id})"),
+            ("technical_debt", f"technical_debt({file_id})"),
+            ("needs_urgent_review", f"needs_urgent_review({file_id})"),
+            ("critical_review", f"critical_review({file_id})"),
+        ]
+
+        traces = {}
+        raw_traces = {}
+
+        for name, query in queries:
+            trace = self.pln.query_with_trace(
+                query,
+                max_depth=5,
+                aggregate=self.aggregate_strategy
+            )
+            if trace.final_result is not None:
+                traces[name] = trace
+                raw_traces[name] = trace.to_dict()
+
+        # Build human-readable summary
+        summary_lines = []
+        summary_lines.append(f"=== Explanation for: {file_path} ===")
+        summary_lines.append(f"File ID: {file_id}")
+        summary_lines.append("")
+
+        # Facts section
+        summary_lines.append("FACTS ASSERTED:")
+        if file_facts:
+            for fact, tv in file_facts.items():
+                summary_lines.append(
+                    f"  • {fact}: {tv['strength']:.0%} "
+                    f"(confidence: {tv['confidence']:.0%})"
+                )
+        else:
+            summary_lines.append("  (no facts found for this file)")
+        summary_lines.append("")
+
+        # Inference traces section
+        summary_lines.append("INFERENCE CHAINS:")
+        if traces:
+            for name, trace in traces.items():
+                if trace.final_result:
+                    prob = trace.final_result.to_probability()
+                    summary_lines.append(f"\n  [{name}] → {prob:.0%}")
+
+                    # Show the inference chain
+                    if trace.steps:
+                        for step in trace.steps:
+                            rule_str = (
+                                f"{step.rule_antecedent} → {step.rule_consequent}"
+                            )
+                            subs = ", ".join(
+                                f"{k}={v}" for k, v in step.substitutions.items()
+                            )
+                            if subs:
+                                rule_str += f" [{subs}]"
+
+                            summary_lines.append(f"    Rule: {rule_str}")
+                            summary_lines.append(
+                                f"      Rule strength: {step.rule_truth_value.strength:.0%}"
+                            )
+                            summary_lines.append(
+                                f"      Antecedent: {step.antecedent_truth_value.strength:.0%}"
+                            )
+                            summary_lines.append(
+                                f"      → Inferred: {step.result_truth_value.strength:.0%}"
+                            )
+
+                    # Show aggregation if multiple paths
+                    if len(trace.aggregation_inputs) > 1:
+                        summary_lines.append(
+                            f"    Aggregation ({trace.aggregation_strategy}):"
+                        )
+                        for i, tv in enumerate(trace.aggregation_inputs, 1):
+                            summary_lines.append(
+                                f"      Path {i}: {tv.strength:.0%}"
+                            )
+        else:
+            summary_lines.append("  (no inferences triggered for this file)")
+
+        summary_lines.append("")
+        summary_lines.append("=" * 50)
+
+        # Build result
+        result = {
+            "file": file_path,
+            "file_id": file_id,
+            "facts": file_facts,
+            "traces": {name: trace.explain() for name, trace in traces.items()},
+            "summary": "\n".join(summary_lines),
+            "raw_traces": raw_traces,
+        }
+
+        # Add importance info if tracked
+        if file_id in self.file_importance:
+            attention = self.file_importance[file_id]
+            result["importance"] = {
+                "sti": attention.sti,
+                "lti": attention.lti,
+                "vlti": attention.vlti,
+                "total": attention.total_importance(),
+            }
+
+        return result
+
     def get_stats(self) -> Dict[str, Any]:
         """Get reasoner statistics including attention stats."""
         return {
@@ -1225,6 +1373,9 @@ def analyze_with_reasoning(
             "created": reasoner._persistence_state.created,
             "updated": reasoner._persistence_state.updated,
         }
+
+    # Include the reasoner for explain functionality (Phase 2)
+    results["_reasoner"] = reasoner
 
     return results
 
@@ -1516,13 +1667,10 @@ Natural Language Queries (Phase 1):
         # Use the parsed directory or default
         directory = audit_query.directory or "cortical/"
 
-        # Handle "explain" intent
+        # Handle "explain" intent - Phase 2: Real Explainability
         if audit_query.intent == "explain" and audit_query.target_file:
             print(f"[Explaining: {audit_query.target_file}]")
-            print("(Full explanation support coming in Phase 2)")
             print()
-            # For now, run analysis and filter to the target file
-            # Phase 2 will add detailed explanations
     else:
         print("=" * 70)
         print("  Audit Reasoning - Full PLN Pipeline")
@@ -1608,6 +1756,50 @@ Natural Language Queries (Phase 1):
 
         # Update results with filtered assessments
         results["risk_assessments"] = assessments
+
+    # =========================================================================
+    # Handle Explain Intent (Phase 2: Real Explainability)
+    # =========================================================================
+
+    if audit_query and audit_query.intent == "explain" and audit_query.target_file:
+        reasoner = results.get("_reasoner")
+        if reasoner:
+            # Find the matching file path from assessments
+            target = audit_query.target_file.lower()
+            matching_files = [
+                a["file"] for a in results.get("risk_assessments", [])
+                if target in a["file"].lower()
+            ]
+
+            if matching_files:
+                file_path = matching_files[0]
+                print()
+                print("=" * 70)
+                print("  REAL PLN INFERENCE EXPLANATION")
+                print("  (Not templated - actual rules that fired)")
+                print("=" * 70)
+                print()
+
+                explanation = reasoner.explain_file_risk(file_path, verbose=args.verbose)
+                print(explanation["summary"])
+                print()
+
+                # Show detailed traces if verbose
+                if args.verbose:
+                    print("\n[Detailed Inference Traces]")
+                    for name, trace_str in explanation.get("traces", {}).items():
+                        print(f"\n--- {name} ---")
+                        print(trace_str)
+            else:
+                print(f"\nNo matching file found for: {audit_query.target_file}")
+                print("Files analyzed:")
+                for a in results.get("risk_assessments", [])[:10]:
+                    print(f"  • {a['file']}")
+        else:
+            print("\nWarning: Reasoner not available for explanation")
+
+        # Don't show the full report for explain intent
+        return
 
     print()
     report = generate_reasoning_report(results, verbose=args.verbose)
