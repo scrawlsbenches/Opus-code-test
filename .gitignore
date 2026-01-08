@@ -171,3 +171,4 @@ benchmarks/codebase_slm/corpus/
 # These are local recovery copies, not meant for git
 benchmarks/codebase_slm/models/backups/
 docs/audits/audit_index.pkl
+.got/woven_audit_mind.json

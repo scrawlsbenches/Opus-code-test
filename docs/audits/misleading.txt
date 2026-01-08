@@ -3,13 +3,14 @@
 # One comment per line
 
 TRAINING MILESTONES (see docs/ml-milestone-thresholds.md):
-pattern_template uses {name} placeholder for the identifier
-Parent not loaded yet - will be handled by second pass
+See: docs/design/cdg-transactional-indexing-design.md
+Create stub classes for when learning module is unavailable
+Parameterized patterns (with placeholders)
+This workaround will be replaced when that API is added.
+Otherwise return generic placeholder
+See docs/got-namespace-specification.md for full documentation
 Stub classes (for extension)
 Stub classes
-Stub: mark all as passed
-STUB CLASSES FOR COMPLEX IMPLEMENTATIONS
-STUB: Would actually execute the command
 Add initial hypotheses or placeholders
 Add pro placeholder
 Add con placeholder
@@ -20,35 +21,25 @@ Create aspect nodes with finding placeholders
 Add finding placeholders
 This is a simplified version that creates placeholder nodes
 Callbacks for extensibility (see STUB comments below)
+STUB CLASSES FOR COMPLEX IMPLEMENTATIONS
 STUB: Would implement full execution logic here
 STUB: Simple heuristic - too many questions raised
 STUB: Return questions as potential child goals
 STUB: Generate basic handoff
-Adapters will be added as they are implemented
+Stub: mark all as passed
+STUB: Would actually execute the command
 Currently CLI is in core - this is a placeholder for future migration
-See docs/got-namespace-specification.md for full documentation
-Comment 1: "FUTURE: When CDG index is implemented this will be handled"
-Comment 2: "FUTURE: When feature is implemented this will be done"
-See: docs/design/cdg-transactional-indexing-design.md
-Create stub classes for when learning module is unavailable
-Otherwise return generic placeholder
-Parameterized patterns (with placeholders)
-This workaround will be replaced when that API is added.
-Get commits from git (stub for now)
-Stub implementation - returns empty iterator
-Actual git integration will be added in separate task
+Parent not loaded yet - will be handled by second pass
 Handle strings first (replace with placeholder to avoid tokenizing contents)
 Optionally restore string placeholders
 Remove string placeholders
-"When X is implemented" patterns
-Placeholder/stub markers
-Section: Related Documents (placeholder)
-7. PlaceholderGenerator (for "future" chapter)
-- Source: None (placeholder only)
-- Quality: N/A - just a placeholder
-FutureChapterGenerator (placeholder currently exists)
-- FutureChapterGenerator (currently just placeholder)
-Fall back to placeholder if no GoT data
-Placeholder generators (to be implemented in Wave 2)
-Register GoT-based roadmap generator (replaced PlaceholderGenerator)
-Replace with generic placeholder
+Get commits from git (stub for now)
+Stub implementation - returns empty iterator
+Actual git integration will be added in separate task
+Adapters will be added as they are implemented
+pattern_template uses {name} placeholder for the identifier
+"When X is implemented" patterns - conditional promises
+Placeholder/stub markers - incomplete implementations
+Comment 1: "FUTURE: When CDG index is implemented this will be handled"
+Comment 2: "FUTURE: When feature is implemented this will be done"
+Future: got/, cel/, spark/ commands
