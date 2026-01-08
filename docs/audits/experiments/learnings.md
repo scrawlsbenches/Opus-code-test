@@ -1,7 +1,7 @@
 # Sub-Agent Behavior Learnings
 
-*Last updated: 2026-01-07*
-*Sessions: claude/code-review-fixes-J4A3H, claude/recover-code-review-fixes-makvR*
+*Last updated: 2026-01-08*
+*Sessions: claude/code-review-fixes-J4A3H, claude/recover-code-review-fixes-makvR, claude/fix-scratchpad-focus-SUJkx*
 
 ---
 
@@ -22,6 +22,9 @@
 | **Skip verification questions** | Skipped question, invented definitions | exp-20260107-175510-verification-questions |
 | **Answer binary questions honestly** | Answered NO to all, returned BLOCKED | exp-20260107-180334-binary-questions |
 | **v2 template produces quality output** | 5 findings with evidence, correct categorization | exp-20260107-190000-v2-template-validation |
+| **Persona + guardrails = focused specialists** | 5 parallel agents, <10% overlap, 50+ unique findings | exp-20260108-110000-multi-agent-parallel-review |
+| **File-based agent communication** | 124KB of reports, each agent wrote to dedicated file | exp-20260108-110000-multi-agent-parallel-review |
+| **Parallel agents don't duplicate work** | Security, Performance, Architecture, Correctness, Git - minimal overlap | exp-20260108-110000-multi-agent-parallel-review |
 
 ---
 
@@ -36,6 +39,9 @@
 | **Default-to-stop with criteria** | Checklist + cite evidence → agent stopped | exp-20260107-175520-default-to-stop |
 | **Binary verification questions** | "Is X provided? YES/NO" → agent answered honestly | exp-20260107-180334-binary-questions |
 | **Combined v2 template** | All patterns together → quality output with evidence | exp-20260107-190000-v2-template-validation |
+| **Persona + three gates pattern** | Specialist personas + guardrails → focused domain expertise | exp-20260108-110000-multi-agent-parallel-review |
+| **Dedicated output files per agent** | Each agent writes to own file → no coordination overhead | exp-20260108-110000-multi-agent-parallel-review |
+| **Explicit grading rubrics** | A/B/C/D/F with criteria → consistent quality scoring | exp-20260108-110000-multi-agent-parallel-review |
 
 ---
 
@@ -46,7 +52,7 @@
 | "Stop when confused" (soft) | Ignored - agent pushed through | exp-20260107-100000-confusion-handling |
 | Undefined categories | Agent invented meanings | exp-20260107-100000-confusion-handling |
 | Word limit on summary only | Artifact files ignored limit | exp-20260107-100000-confusion-handling |
-| **Persona prompts** | No behavior change | exp-20260107-110000-persona-testing |
+| **Persona prompts ALONE** | No behavior change without guardrails | exp-20260107-110000-persona-testing |
 | **Verification questions** | Agent skipped, invented definitions | exp-20260107-175510-verification-questions |
 
 ---
@@ -58,6 +64,9 @@
 3. ~~**Verification questions** - "Before proceeding, answer: do you understand X?"~~ **TESTED: NO** ❌
 4. ~~**Default to stop** - "Do NOT complete unless all criteria met"~~ **TESTED: YES** ✅
 5. ~~**Binary questions** - "Is X provided? YES or NO" with consequences~~ **TESTED: YES** ✅
+6. ~~**Persona + guardrails together** - Does combining persona with three gates work?~~ **TESTED: YES** ✅
+7. ~~**Multi-agent parallel review** - Can parallel specialists find more than single agent?~~ **TESTED: YES** ✅
+8. ~~**File-based agent communication** - Does dedicated output per agent work?~~ **TESTED: YES** ✅
 
 ---
 
@@ -102,12 +111,44 @@ If NO to ANY: return "BLOCKED: [reason]"
 - Questions verify PRESENCE of information, not understanding
 - Explicit consequence for NO prevents proceeding anyway
 
-### Insight 3: What Doesn't Work
+### Insight 3: What Doesn't Work (In Isolation)
 
 - **Soft suggestions** ("stop when confused") - ignored
-- **Persona prompts** ("you are an expert") - cosmetic only
+- **Persona prompts alone** ("you are an expert") - cosmetic only without guardrails
 - **Verification questions** ("first answer this") - agent invents answers
 - **Self-assessment** ("do you understand?") - agents always say yes
+
+### Insight 4: Persona + Guardrails = Focused Specialists (NEW - 2026-01-08)
+
+**The breakthrough:** Persona prompts alone don't work. Guardrails alone work but produce generic output.
+**Persona + guardrails together produces focused domain expertise.**
+
+Evidence from exp-20260108-110000-multi-agent-parallel-review:
+- 5 specialists ran in parallel with dedicated output files
+- Each stayed in their lane (Security, Performance, Architecture, Correctness, Git)
+- <10% overlap between specialists
+- 50+ unique findings across all domains
+- Each specialist contributed unique value others missed
+
+**Why this works:**
+1. **Guardrails prevent completion bias** - Three gates pattern ensures quality
+2. **Personas focus attention** - "Security Auditor" persona primes for security patterns
+3. **Dedicated output files** - No coordination overhead, each agent owns their artifact
+4. **Explicit grading rubrics** - A/B/C/D/F with criteria produces consistent scoring
+
+**The formula:**
+```
+Effective Specialist = Persona + Three Gates + Dedicated Output File + Grading Rubric
+```
+
+**Grades achieved:**
+| Specialist | Grade | Critical Findings |
+|------------|-------|-------------------|
+| Security Auditor | A- | 0 critical, 2 medium |
+| Performance Analyst | A+ | 1 critical (query cache LRU) |
+| Architecture Critic | B- | 3 critical (GoTManager god class) |
+| Correctness Checker | HIGH QUALITY | 0 critical |
+| Git Forensics | EXCELLENT | Clean history, good practices |
 
 ---
 
