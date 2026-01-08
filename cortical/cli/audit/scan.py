@@ -122,10 +122,10 @@ def run(args: Any) -> None:
                         if marker_base in comment_lower:
                             markers.append(marker)
 
-                # Only report if confidence >= threshold or has markers
+                # Only report if confidence >= min_confidence or has markers
                 # Low confidence without markers is likely a false positive
-                threshold = getattr(args, 'confidence', DEFAULT_CONFIDENCE_THRESHOLD)
-                if confidence < threshold and not markers:
+                min_confidence = getattr(args, 'confidence', DEFAULT_CONFIDENCE_THRESHOLD)
+                if confidence < min_confidence and not markers:
                     continue
 
                 # Record finding
