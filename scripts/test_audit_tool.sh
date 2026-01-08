@@ -1,34 +1,34 @@
 #!/bin/bash
-# Test script for audit_tool.py
+# Test script for cortical.cli.audit
 
 set -e
 
 echo "========================================="
-echo "Testing Audit Tool"
+echo "Testing Audit CLI"
 echo "========================================="
 echo ""
 
 # Test 1: Help
 echo "Test 1: Help message"
-python scripts/audit_tool.py --help > /dev/null
+python -m cortical.cli.audit --help > /dev/null
 echo "✓ Help works"
 echo ""
 
 # Test 2: Patterns command
 echo "Test 2: Patterns command"
-python scripts/audit_tool.py patterns cortical/audits/algorithms/ --min-length 20 > /dev/null
+python -m cortical.cli.audit patterns cortical/audits/algorithms/ --min-length 20 > /dev/null
 echo "✓ Patterns works"
 echo ""
 
 # Test 3: Index command
 echo "Test 3: Index command"
-python scripts/audit_tool.py index cortical/audits/algorithms/ > /dev/null
+python -m cortical.cli.audit index cortical/audits/algorithms/ > /dev/null
 echo "✓ Index works"
 echo ""
 
 # Test 4: Similar command
 echo "Test 4: Similar command"
-python scripts/audit_tool.py similar "Test implementation" --threshold 0.3 > /dev/null
+python -m cortical.cli.audit similar "Test implementation" --threshold 0.3 > /dev/null
 echo "✓ Similar works"
 echo ""
 
@@ -49,14 +49,26 @@ Validate input
 Close the connection
 EOF
 
-python scripts/audit_tool.py train /tmp/audit_test_train/ > /dev/null
+python -m cortical.cli.audit train /tmp/audit_test_train/ > /dev/null
 echo "✓ Train works"
 echo ""
 
 # Test 6: Scan command
 echo "Test 6: Scan command"
-python scripts/audit_tool.py scan cortical/audits/algorithms/ > /dev/null
+python -m cortical.cli.audit scan cortical/audits/algorithms/ > /dev/null
 echo "✓ Scan works"
+echo ""
+
+# Test 7: Health command
+echo "Test 7: Health command"
+python -m cortical.cli.audit health cortical/audits/algorithms/ > /dev/null
+echo "✓ Health works"
+echo ""
+
+# Test 8: Reason command
+echo "Test 8: Reason command"
+python -m cortical.cli.audit reason cortical/audits/algorithms/ > /dev/null
+echo "✓ Reason works"
 echo ""
 
 echo "========================================="
