@@ -142,3 +142,45 @@ class AuditModule(ContainerModule):
         container.register(SimilarCommentFinder, create_lsh_finder)
         container.register(AuditInvertedIndex, create_inverted_index)
         container.register(PatternFrequencySketch, create_frequency_sketch)
+
+        # Register reasoning services
+        from cortical.audits.persistence import (
+            PersistenceBackend,
+            FilePersistenceBackend,
+        )
+        from cortical.audits.reasoning import AuditReasoner
+        from cortical.audits.health import CodebaseAnalyzer
+        from cortical.audits.discovery import (
+            WovenMindDiscovery,
+            DiscoveryConfig,
+            FileDiscoveryPersistence,
+        )
+        from cortical.common.filesystem import RealFileSystem
+
+        # Persistence backend (default to file-based)
+        def create_persistence():
+            return FilePersistenceBackend(RealFileSystem())
+
+        container.register(PersistenceBackend, create_persistence)
+
+        # Audit reasoner
+        def create_reasoner():
+            persistence = container.resolve(PersistenceBackend)
+            return AuditReasoner(persistence=persistence)
+
+        container.register(AuditReasoner, create_reasoner)
+
+        # Health analyzer
+        def create_health_analyzer():
+            return CodebaseAnalyzer(RealFileSystem())
+
+        container.register(CodebaseAnalyzer, create_health_analyzer)
+
+        # Discovery system
+        def create_discovery():
+            return WovenMindDiscovery(
+                config=DiscoveryConfig(),
+                persistence=FileDiscoveryPersistence(),
+            )
+
+        container.register(WovenMindDiscovery, create_discovery)

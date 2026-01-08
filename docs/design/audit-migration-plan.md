@@ -224,21 +224,30 @@ suffix arrays. Keep separate for single responsibility.
 1. `cortical/audits/persistence.py` - State persistence backends (File, InMemory, Null)
 2. `cortical/audits/health.py` - CodebaseAnalyzer and health analysis logic
 3. `cortical/audits/reasoning.py` - AuditReasoner, AuditQuery, NLU parsing
-4. `cortical/cli/audit/health.py` - Health CLI command
-5. `cortical/cli/audit/reason.py` - Reason CLI command
-6. `cortical/cli/audit/discover.py` - WovenMind discovery CLI command (experimental)
+4. `cortical/audits/discovery.py` - WovenMindDiscovery, pattern tokenization, novelty detection
+5. `cortical/cli/audit/health.py` - Health CLI command
+6. `cortical/cli/audit/reason.py` - Reason CLI command
+7. `cortical/cli/audit/discover.py` - WovenMind discovery CLI command (experimental)
 
 ### Updated Files
-1. `cortical/audits/__init__.py` - Export new modules
+1. `cortical/audits/__init__.py` - Export all new modules (persistence, health, reasoning, discovery)
 2. `cortical/cli/audit/__init__.py` - Register all new commands (health, reason, discover)
-3. `scripts/audit_reasoning.py` - Fixed monkeypatch bug for tests, added deprecation note
-4. `scripts/codebase_health.py` - Added deprecation note
-5. `scripts/woven_audit_discovery.py` - Added deprecation note
+3. `cortical/core/modules/audit_module.py` - Register reasoning services in DI container
+4. `scripts/audit_reasoning.py` - Fixed monkeypatch bug for tests, added deprecation note
+5. `scripts/codebase_health.py` - Added deprecation note
+6. `scripts/woven_audit_discovery.py` - Added deprecation note
+
+### DI Container Services Registered
+- `PersistenceBackend` → `FilePersistenceBackend`
+- `AuditReasoner` (with injected persistence)
+- `CodebaseAnalyzer`
+- `WovenMindDiscovery`
 
 ### Test Results
 - 34 smoke tests pass
 - 138 audit reasoning tests pass
 - All CLI commands functional (9 total: generate, train, scan, patterns, similar, index, health, reason, discover)
+- DI container registration verified
 
 ---
 

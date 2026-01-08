@@ -116,6 +116,22 @@ from .reasoning import (
     DEFAULT_COMPOUND_RULES,
 )
 
+# Re-export discovery
+from .discovery import (
+    WovenMindDiscovery,
+    DiscoveryConfig,
+    DiscoveryResult,
+    DiscoveryPersistence,
+    FileDiscoveryPersistence,
+    InMemoryDiscoveryPersistence,
+    tokenize_finding,
+    compute_novelty_score,
+    feed_findings_to_mind,
+    extract_discoveries,
+    interpret_abstraction,
+    generate_discovery_report,
+)
+
 __all__ = [
     # Algorithms
     'AuditInvertedIndex',
