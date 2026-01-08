@@ -2,7 +2,17 @@
 
 ## Date: 2026-01-08
 ## Author: Claude
-## Status: Planning
+## Status: Phase 1-2 Complete, Phase 3 Ready
+
+---
+
+## Progress Summary
+
+| Phase | Status | Description |
+|-------|--------|-------------|
+| Phase 1 | ✅ Complete | CLI infrastructure, base modules |
+| Phase 2 | ✅ Complete | audit_tool.py commands migrated |
+| Phase 3 | 🔜 Ready | PLN/PRISM integration scripts |
 
 ---
 
@@ -15,181 +25,198 @@
    - 15+ command modules (task, edge, sprint, decision, query, etc.)
    - Good separation of concerns
 
-2. **`cortical/cli_wrapper.py`** - Shell command wrapper framework
-   - Not relevant for subcommand pattern
+2. **`cortical/cli/`** - NEW unified CLI layer (Phase 1 complete):
+   - `__init__.py` - Registry with auto-discovery
+   - `_base.py` - Base utilities
+   - `audit/` - 6 command modules (generate, train, scan, patterns, similar, index)
 
 3. **`cortical/core/bootstrap.py`** - DI Container with modules
    - Pattern: `ContainerModule.register(container)`
-   - Existing: SchemaModule, CDGModule, GoTModule
+   - Existing: SchemaModule, CDGModule, GoTModule, AuditModule
 
-4. **`cortical/audits/algorithms/`** - 11 algorithm implementations
-   - Already well-placed, should stay here
+4. **`cortical/audits/`** - Audit business logic (Phase 1 complete):
+   - `algorithms/` - 11 algorithm implementations
+   - `patterns.py` - Pattern definitions
+   - `scanner.py` - File scanning utilities
+   - `classifier.py` - Classification logic
+   - `training.py` - Training data generation
 
-### Scripts to Migrate
+### Scripts Remaining to Migrate (Phase 3)
 
-1. `scripts/audit_tool.py` - 6 commands (generate, train, scan, patterns, similar, index)
-2. `scripts/audit_reasoning.py` - PLN-based reasoning (complex, ~2000 lines)
-3. `scripts/codebase_health.py` - Health analyzer
-4. `scripts/causal_audit_analyzer.py` - Git correlation analysis
-5. `scripts/woven_audit_discovery.py` - WovenMind pattern discovery
+| Script | Lines | Purpose | Complexity |
+|--------|-------|---------|------------|
+| `audit_reasoning.py` | ~1200 | PLN-based reasoning + NLU queries | High |
+| `codebase_health.py` | ~400 | Health analyzer (used by reasoning) | Medium |
+| `woven_audit_discovery.py` | ~300 | WovenMind pattern discovery | Medium |
+| `generate_synthetic_audit.py` | ~200 | Test data generation | Low |
 
 ---
 
-## Proposed Architecture
+## Phase 3: PLN/PRISM Integration Migration
+
+### Target Architecture
 
 ```
 cortical/
-├── cli/                              # NEW: Unified CLI layer
-│   ├── __init__.py                   # CLI registry, auto-discovery
-│   ├── _base.py                      # Base utilities, decorators
-│   └── audit/                        # Audit commands
-│       ├── __init__.py               # Exports setup_audit_parser, handle_audit_command
-│       ├── generate.py               # generate command
-│       ├── train.py                  # train command
-│       ├── scan.py                   # scan command
-│       ├── patterns.py               # patterns command
-│       ├── similar.py                # similar command
-│       ├── index.py                  # index command
-│       └── reason.py                 # reasoning command (from audit_reasoning.py)
+├── cli/
+│   └── audit/
+│       ├── __init__.py               # UPDATE: Add reason, discover, health
+│       ├── generate.py               # ✅ Complete
+│       ├── train.py                  # ✅ Complete
+│       ├── scan.py                   # ✅ Complete
+│       ├── patterns.py               # ✅ Complete
+│       ├── similar.py                # ✅ Complete
+│       ├── index.py                  # ✅ Complete
+│       ├── reason.py                 # NEW: PLN reasoning command
+│       ├── discover.py               # NEW: WovenMind discovery command
+│       └── health.py                 # NEW: Codebase health command
 │
-├── audits/                           # KEEP: Audit business logic
-│   ├── __init__.py                   # Public API
-│   ├── algorithms/                   # 11 algorithm implementations (KEEP)
-│   ├── classifier.py                 # NEW: Comment classification logic
-│   ├── patterns.py                   # NEW: Pattern definitions (MISLEADING, ACCURATE, etc.)
-│   ├── training.py                   # NEW: Training data generation logic
-│   ├── scanner.py                    # NEW: Scanning logic
-│   └── reasoning.py                  # NEW: PLN reasoning integration
+├── audits/
+│   ├── __init__.py                   # UPDATE: Export new modules
+│   ├── algorithms/                   # ✅ Complete (11 algorithms)
+│   ├── patterns.py                   # ✅ Complete
+│   ├── scanner.py                    # ✅ Complete
+│   ├── classifier.py                 # ✅ Complete
+│   ├── training.py                   # ✅ Complete
+│   ├── reasoning.py                  # NEW: PLN reasoning business logic
+│   ├── health.py                     # NEW: Health analysis logic
+│   ├── discovery.py                  # NEW: WovenMind discovery logic
+│   └── persistence.py                # NEW: State persistence backend
 │
-├── core/
-│   ├── bootstrap.py                  # UPDATE: Add AuditModule
-│   └── modules/
-│       └── audit_module.py           # NEW: DI registration for audit services
-│
-└── got/
-    └── cli/                          # KEEP: Existing GoT CLI (unchanged)
+└── core/modules/
+    └── audit_module.py               # UPDATE: Register reasoning services
 ```
 
----
+### Migration Steps
 
-## Container Integration
+#### Step 3.1: Extract Business Logic
 
-### New AuditModule
+Extract from `scripts/audit_reasoning.py` → `cortical/audits/`:
+
+| Source | Target | Content |
+|--------|--------|---------|
+| `PersistenceBackend` protocol | `audits/persistence.py` | State persistence |
+| `FilePersistenceBackend` class | `audits/persistence.py` | File-based persistence |
+| `AuditPersistenceState` | `audits/persistence.py` | State dataclass |
+| `AuditQuery` dataclass | `audits/reasoning.py` | NLU query parsing |
+| `translate_natural_language()` | `audits/reasoning.py` | NLU translation |
+| `run_audit_analysis()` | `audits/reasoning.py` | Main analysis logic |
+| `explain_file_risk()` | `audits/reasoning.py` | Explainability |
+| PLN rule loading/saving | `audits/reasoning.py` | Rule management |
+
+Extract from `scripts/codebase_health.py` → `cortical/audits/health.py`:
+
+| Source | Target | Content |
+|--------|--------|---------|
+| `CodebaseAnalyzer` class | `audits/health.py` | Main analyzer |
+| `analyze_directory()` | `audits/health.py` | Entry point |
+| Pattern detection logic | `audits/health.py` | Reusable analysis |
+
+#### Step 3.2: Create CLI Commands
+
+| Command | File | Usage |
+|---------|------|-------|
+| `reason` | `cli/audit/reason.py` | `audit reason cortical/ --verbose` |
+| `discover` | `cli/audit/discover.py` | `audit discover cortical/ --with-git` |
+| `health` | `cli/audit/health.py` | `audit health cortical/` |
+
+#### Step 3.3: Update Container
+
+Add to `cortical/core/modules/audit_module.py`:
 
 ```python
-# cortical/core/modules/audit_module.py
-class AuditModule(ContainerModule):
-    """Register audit-related services."""
-
-    def register(self, container: Container) -> None:
-        # Register algorithms
-        container.register(SuspiciousCommentFilter)
-        container.register(CommentClassifier)
-        container.register(SimilarCommentFinder)
-        # etc.
-
-        # Register services
-        container.register(AuditScanner)
-        container.register(TrainingDataGenerator)
-        container.register(CommentPatternMatcher)
+# Reasoning services
+container.register(PersistenceBackend, FilePersistenceBackend)
+container.register(AuditReasoner)  # Wraps PLNReasoner
+container.register(NLQueryParser)
+container.register(HealthAnalyzer)
 ```
 
-### Why Container Makes Sense Here
+#### Step 3.4: Update Thin Wrappers
 
-1. **Testability** - Can inject mock classifiers, mock file systems
-2. **Configuration** - Pattern lists, thresholds can be injected
-3. **Reusability** - Algorithms shared across multiple commands
-4. **Consistency** - Same pattern as GoT, CDG modules
+Keep scripts as backwards-compatible wrappers:
+- `scripts/audit_reasoning.py` → delegates to `cortical.cli.audit.reason`
+- `scripts/codebase_health.py` → delegates to `cortical.cli.audit.health`
+- `scripts/woven_audit_discovery.py` → delegates to `cortical.cli.audit.discover`
 
 ---
 
-## Migration Steps
+## Files to Create (Phase 3)
 
-### Phase 1: Infrastructure (This PR)
+### Business Logic
+1. `cortical/audits/reasoning.py` - PLN reasoning logic
+2. `cortical/audits/health.py` - Health analysis logic
+3. `cortical/audits/discovery.py` - WovenMind discovery logic
+4. `cortical/audits/persistence.py` - State persistence
 
-1. Create `cortical/cli/` with base infrastructure
-2. Create `cortical/cli/audit/` with command modules
-3. Create `cortical/core/modules/audit_module.py`
-4. Extract patterns/utilities to `cortical/audits/` modules
-5. Update `cortical/core/bootstrap.py` to include AuditModule
+### CLI Commands
+5. `cortical/cli/audit/reason.py` - Reason command
+6. `cortical/cli/audit/discover.py` - Discover command
+7. `cortical/cli/audit/health.py` - Health command
 
-### Phase 2: Script Migration
+## Files to Update (Phase 3)
 
-1. Migrate `audit_tool.py` commands to `cortical/cli/audit/`
-2. Keep `scripts/audit_tool.py` as thin wrapper (backwards compat)
-3. Run tests to verify functionality
+1. `cortical/cli/audit/__init__.py` - Add new commands
+2. `cortical/audits/__init__.py` - Export new modules
+3. `cortical/core/modules/audit_module.py` - Register new services
+4. `scripts/audit_reasoning.py` - Convert to thin wrapper
+5. `scripts/codebase_health.py` - Convert to thin wrapper
+6. `scripts/woven_audit_discovery.py` - Convert to thin wrapper
 
-### Phase 3: Extended Tools (Future)
+---
 
-1. Migrate `audit_reasoning.py`
-2. Migrate `codebase_health.py`
-3. Migrate `causal_audit_analyzer.py`
-4. Migrate `woven_audit_discovery.py`
+## Issues Found During Phase 1-2
+
+The following issues were identified during testing and should be addressed:
+
+### Audit Tool Issues (from functional testing)
+
+| Issue | Severity | Description |
+|-------|----------|-------------|
+| scan false positives | Medium | Normal comments flagged as misleading (e.g., "Utility classes" at 84% confidence) |
+| patterns finds noise | Medium | Top patterns are separator lines (`====`), not meaningful patterns |
+| Count-Min Sketch overcounts | Low | Estimates show 16-40 for patterns appearing 2 times |
+| similar tokenizer aggressive | Low | "Create task" tokenizes to just `['task']`, dropping verb |
+
+### Deferred Improvements
+
+```
+# TODO(migration): Filter separator lines in patterns command before analysis
+# TODO(migration): Tune Naive Bayes training for better precision
+# TODO(migration): Adjust LSH threshold defaults for better recall
+# TODO(migration): Review tokenizer settings for similar command
+```
 
 ---
 
 ## Design Decisions
 
-### Q: Why `cortical/cli/audit/` not `cortical/audits/cli/`?
+### Q: Why separate `reasoning.py` from `classifier.py`?
 
-A: Grouping by capability (cli/) makes it easier to:
-- Add new CLI domains (cli/spark/, cli/cel/, etc.)
-- Share CLI infrastructure across domains
-- Keep business logic separate from presentation
+A: Different concerns:
+- `classifier.py` - Naive Bayes comment classification (simple ML)
+- `reasoning.py` - PLN probabilistic logic with uncertainty propagation (complex inference)
 
-### Q: Why keep algorithms in `cortical/audits/algorithms/`?
+### Q: Why extract persistence to its own module?
 
-A: They are business logic, not CLI concerns. Commands use them via the container.
+A: The persistence backend is used across multiple commands (reason, discover) and supports
+different implementations (File, InMemory, Null). Separate module enables DI.
 
-### Q: Why use existing bootstrap pattern?
+### Q: Should `codebase_health.py` be merged into `scanner.py`?
 
-A: Consistency with the codebase. All major subsystems (CDG, GoT, CEL) use modules.
-   Adding AuditModule follows established patterns.
-
-### Q: What about the prototype in `scripts/audit_commands/`?
-
-A: Delete it after migration. It was a proof-of-concept.
-
----
-
-## Files to Create
-
-1. `cortical/cli/__init__.py`
-2. `cortical/cli/_base.py`
-3. `cortical/cli/audit/__init__.py`
-4. `cortical/cli/audit/generate.py`
-5. `cortical/cli/audit/train.py`
-6. `cortical/cli/audit/scan.py`
-7. `cortical/cli/audit/patterns.py`
-8. `cortical/cli/audit/similar.py`
-9. `cortical/cli/audit/index.py`
-10. `cortical/audits/classifier.py`
-11. `cortical/audits/patterns.py`
-12. `cortical/audits/training.py`
-13. `cortical/audits/scanner.py`
-14. `cortical/core/modules/audit_module.py`
-
-## Files to Update
-
-1. `cortical/core/bootstrap.py` - Import and apply AuditModule
-2. `cortical/core/modules/__init__.py` - Export AuditModule
-3. `scripts/audit_tool.py` - Thin wrapper calling cortical.cli.audit
-
-## Files to Delete
-
-1. `scripts/audit_commands/__init__.py`
-2. `scripts/audit_commands/_base.py`
-3. `scripts/audit_commands/generate.py`
-4. `scripts/audit_tool_new.py`
+A: No. Health analysis goes beyond scanning - it includes pattern frequency, LSH similarity,
+suffix arrays. Keep separate for single responsibility.
 
 ---
 
 ## Approval Checklist
 
-- [ ] Structure reviewed
-- [ ] Container integration approach confirmed
-- [ ] Migration scope agreed
-- [ ] Backwards compatibility plan acceptable
+- [x] Phase 1 structure reviewed
+- [x] Phase 2 container integration approach confirmed
+- [x] Phase 2 migration scope agreed
+- [x] Phase 2 backwards compatibility plan acceptable
+- [ ] Phase 3 scope reviewed
+- [ ] Phase 3 PLN integration approach confirmed
 
 ---
 
