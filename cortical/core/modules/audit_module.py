@@ -36,8 +36,6 @@ Configuration:
     - bloom_filter_fp_rate: False positive rate
     - lsh_num_hashes: Number of hash functions for LSH
     - lsh_num_bands: Number of bands for LSH
-
-TODO(migration): Add model path configuration for loading trained models
 """
 
 from pathlib import Path
@@ -137,7 +135,6 @@ class AuditModule(ContainerModule):
             )
 
         # Register factories
-        # TODO(migration): Consider using register_factory when available
         container.register(CommentClassifier, create_classifier)
         container.register(SimilarCommentFinder, create_lsh_finder)
         container.register(AuditInvertedIndex, create_inverted_index)

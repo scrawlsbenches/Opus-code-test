@@ -38,7 +38,6 @@ import importlib
 # Each domain module must export: setup_parser(subparsers), handle_command(args)
 COMMAND_DOMAINS: Dict[str, str] = {
     'audit': 'cortical.cli.audit',
-    # TODO(migration): Add more domains as they are migrated
     # 'got': 'cortical.cli.got',
     # 'cel': 'cortical.cli.cel',
 }
