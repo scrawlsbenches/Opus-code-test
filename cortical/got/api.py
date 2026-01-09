@@ -876,13 +876,13 @@ class GoTManager:
 
         return True
 
-    def remove_task_from_sprint(self, task_id: str, sprint_id: str) -> bool:
+    def unlink_task_from_sprint(self, sprint_id: str, task_id: str) -> bool:
         """
-        Remove a task from a sprint by deleting the CONTAINS edge.
+        Unlink a task from a sprint by deleting the CONTAINS edge.
 
         Args:
-            task_id: Task identifier
             sprint_id: Sprint identifier
+            task_id: Task identifier
 
         Returns:
             True if edge was found and deleted, False if not found
