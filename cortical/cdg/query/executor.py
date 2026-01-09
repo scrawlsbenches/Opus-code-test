@@ -72,6 +72,8 @@ class QueryExecutor:
         # Execute entity query based on strategy
         if plan.strategy == PlanStrategy.INDEX_INTERSECT:
             entities = self._execute_index_intersect(plan)
+        elif plan.strategy == PlanStrategy.INDEX_UNION:
+            entities = self._execute_index_union(plan)
         elif plan.strategy == PlanStrategy.INDEX_SCAN:
             entities = self._execute_index_scan(plan)
         else:  # FULL_SCAN
@@ -127,12 +129,8 @@ class QueryExecutor:
     def _execute_index_intersect(self, plan: QueryPlan) -> List[Any]:
         """Execute using multiple index lookups with intersection."""
         if self.index_manager is None or self.store is None:
-            # TODO(cdg-query): Fallback to full scan when no index manager
-            # See: docs/design/cdg-query-language.md#implementation-guidelines
-            raise QueryNotImplementedError(
-                "Index intersect requires CDGIndexManager",
-                doc_reference="docs/design/cdg-query-language.md"
-            )
+            # Fall back to full scan when no index manager
+            return self._execute_full_scan(plan)
 
         # Perform all index lookups
         result_sets: List[Set[str]] = []
@@ -150,6 +148,42 @@ class QueryExecutor:
 
         # Load entities
         return self._load_entities(result_ids)
+
+    def _execute_index_union(self, plan: QueryPlan) -> List[Any]:
+        """Execute using index union (OR optimization).
+
+        Each branch's lookups are intersected, then all branches are unioned.
+        """
+        if self.index_manager is None or self.store is None:
+            # Fall back to full scan when no index manager
+            return self._execute_full_scan(plan)
+
+        if not plan.union_branches:
+            return []
+
+        # Process each branch: intersect lookups within branch, union across branches
+        all_result_ids: Set[str] = set()
+
+        for branch_lookups in plan.union_branches:
+            # Intersect all lookups in this branch
+            branch_sets: List[Set[str]] = []
+            for lookup in branch_lookups:
+                ids = self._perform_index_lookup(plan.entity_type, lookup)
+                branch_sets.append(ids)
+
+            if not branch_sets:
+                continue
+
+            # Intersect within branch
+            branch_ids = branch_sets[0]
+            for ids in branch_sets[1:]:
+                branch_ids = branch_ids & ids
+
+            # Union with overall results
+            all_result_ids = all_result_ids | branch_ids
+
+        # Load entities
+        return self._load_entities(all_result_ids)
 
     def _execute_index_scan(self, plan: QueryPlan) -> List[Any]:
         """Execute using single index lookup."""
@@ -230,23 +264,10 @@ class QueryExecutor:
     def _get_entity_prefix(self, entity_type: str) -> Optional[str]:
         """Get the ID prefix for an entity type."""
         if self.schema_registry is None:
-            # Fallback to hardcoded prefixes
-            # TODO(cdg-query): Remove hardcoded prefixes once schema registry is always available
-            prefix_map = {
-                'task': 'T-',
-                'decision': 'D-',
-                'sprint': 'S-',
-                'epic': 'EPIC-',
-                'edge': 'E-',
-                'handoff': 'H-',
-                'knowledge_transfer': 'KT-',
-                'claudemd_layer': 'CML-',
-                'claudemd_version': 'CMV-',
-                'team': 'TEAM-',
-                'persona_profile': 'PP-',
-                'document': 'DOC-',
-            }
-            return prefix_map.get(entity_type.lower())
+            raise QueryNotImplementedError(
+                "Entity queries require SchemaRegistry to resolve entity type prefixes",
+                doc_reference="docs/design/cdg-query-language.md"
+            )
 
         schema = self.schema_registry.get_schema(entity_type)
         if schema is None:
@@ -256,8 +277,10 @@ class QueryExecutor:
     def _list_entity_types(self) -> List[str]:
         """List all known entity types."""
         if self.schema_registry is None:
-            return ['task', 'decision', 'sprint', 'epic', 'edge', 'handoff',
-                    'knowledge_transfer', 'document']
+            raise QueryNotImplementedError(
+                "Listing entity types requires SchemaRegistry",
+                doc_reference="docs/design/cdg-query-language.md"
+            )
         return list(self.schema_registry.list_schemas().keys())
 
     def _evaluate(self, expr: Expression, entity: Any) -> bool:

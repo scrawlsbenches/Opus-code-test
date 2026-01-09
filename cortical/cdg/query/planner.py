@@ -30,7 +30,8 @@ if TYPE_CHECKING:
 
 class PlanStrategy(Enum):
     """Query execution strategy."""
-    INDEX_INTERSECT = auto()  # Multiple index lookups, intersect results
+    INDEX_INTERSECT = auto()  # Multiple index lookups, intersect results (AND)
+    INDEX_UNION = auto()      # Multiple index lookups, union results (OR)
     INDEX_SCAN = auto()       # Single index lookup, post-filter remaining
     FULL_SCAN = auto()        # No indexes available, scan all entities
     FUNCTION_CALL = auto()    # Standalone function call (no entity scan)
@@ -55,7 +56,8 @@ class QueryPlan:
     Attributes:
         strategy: The execution strategy to use
         entity_type: The entity type being queried (None for function calls)
-        index_lookups: List of index lookup operations
+        index_lookups: List of index lookup operations (for INTERSECT/SCAN)
+        union_branches: List of index lookup lists (for UNION - each branch is intersected, then unioned)
         post_filter: Expression to evaluate after index lookups
         order_by: Optional (field, desc) tuple for sorting
         limit: Optional maximum results
@@ -65,6 +67,7 @@ class QueryPlan:
     strategy: PlanStrategy
     entity_type: Optional[str] = None
     index_lookups: List[IndexLookup] = field(default_factory=list)
+    union_branches: List[List[IndexLookup]] = field(default_factory=list)
     post_filter: Optional[Expression] = None
     order_by: Optional[tuple] = None
     limit: Optional[int] = None
@@ -77,6 +80,8 @@ class QueryPlan:
             parts.append(f", entity_type={self.entity_type!r}")
         if self.index_lookups:
             parts.append(f", index_lookups={self.index_lookups}")
+        if self.union_branches:
+            parts.append(f", union_branches={len(self.union_branches)} branches")
         if self.post_filter:
             parts.append(f", post_filter={type(self.post_filter).__name__}")
         if self.order_by:
@@ -118,13 +123,18 @@ class QueryPlanner:
                 offset=query.offset
             )
 
-        # Handle entity queries
+        # Handle entity queries - FROM clause is required
         if query.entity_type is None:
-            # Legacy query without FROM clause - treat as task query for backwards compat
-            # TODO(cdg-query): Should we require FROM clause?
-            entity_type = 'task'
-        else:
-            entity_type = query.entity_type
+            from .errors import QueryParseError
+            raise QueryParseError(
+                "Missing FROM clause. Entity queries require: FROM <entity_type> WHERE ...",
+                suggestions=[
+                    "FROM task WHERE status = 'pending'",
+                    "FROM decision WHERE status = 'draft'",
+                    "FROM sprint WHERE status = 'active'"
+                ]
+            )
+        entity_type = query.entity_type
 
         # If no expression, it's a simple "select all"
         if query.expression is None:
@@ -135,6 +145,21 @@ class QueryPlanner:
                 limit=query.limit,
                 offset=query.offset
             )
+
+        # Check for OR expression - handle specially for union optimization
+        if isinstance(query.expression, OrExpr):
+            or_plan = self._try_plan_or_expression(query.expression, entity_type)
+            if or_plan is not None:
+                # Successfully planned as index union
+                return QueryPlan(
+                    strategy=PlanStrategy.INDEX_UNION,
+                    entity_type=entity_type,
+                    union_branches=or_plan,
+                    order_by=query.order_by,
+                    limit=query.limit,
+                    offset=query.offset
+                )
+            # Fall through to full scan if OR can't be optimized
 
         # Analyze the expression to find indexable conditions
         index_lookups, post_filter = self._analyze_expression(
@@ -176,11 +201,9 @@ class QueryPlanner:
         if isinstance(expr, AndExpr):
             return self._analyze_and_expr(expr, entity_type)
 
-        # Handle OR expressions - currently requires full scan
-        # TODO(cdg-query): OR optimization requires union of index lookups
-        # See: docs/design/cdg-query-language.md#open-questions
+        # Handle OR expressions - union of index lookups
         if isinstance(expr, OrExpr):
-            return ([], expr)  # Full scan with post-filter
+            return self._analyze_or_expr(expr, entity_type)
 
         # Handle NOT expressions - requires full scan
         if isinstance(expr, NotExpr):
@@ -225,6 +248,62 @@ class QueryPlanner:
             post_filter = AndExpr(children=tuple(post_filter_parts))
 
         return (index_lookups, post_filter)
+
+    def _try_plan_or_expression(
+        self,
+        expr: OrExpr,
+        entity_type: str
+    ) -> Optional[List[List[IndexLookup]]]:
+        """
+        Try to plan an OR expression using index union.
+
+        Returns list of branches (each branch is a list of IndexLookups to intersect)
+        if all branches are fully indexable, otherwise None.
+
+        Example:
+            status = 'a' OR status = 'b'
+            -> [[IndexLookup(status, EQ, 'a')], [IndexLookup(status, EQ, 'b')]]
+
+            (status = 'a' AND priority = 'high') OR status = 'b'
+            -> [[IndexLookup(status, EQ, 'a'), IndexLookup(priority, EQ, 'high')],
+                [IndexLookup(status, EQ, 'b')]]
+        """
+        union_branches = []
+
+        for child in expr.children:
+            # Analyze each OR branch
+            if isinstance(child, Comparison):
+                lookup = self._try_index_lookup(child, entity_type)
+                if lookup is None:
+                    return None  # Branch not indexable, fall back to full scan
+                union_branches.append([lookup])
+
+            elif isinstance(child, AndExpr):
+                # AND within OR - all parts must be indexable
+                branch_lookups, post_filter = self._analyze_and_expr(child, entity_type)
+                if not branch_lookups or post_filter is not None:
+                    return None  # Branch has non-indexable parts
+                union_branches.append(branch_lookups)
+
+            else:
+                # Complex expression (nested OR, NOT, function call) - can't optimize
+                return None
+
+        return union_branches if union_branches else None
+
+    def _analyze_or_expr(
+        self,
+        expr: OrExpr,
+        entity_type: str
+    ) -> tuple:
+        """
+        Analyze OR expression.
+
+        Note: This is called when _try_plan_or_expression fails or wasn't used.
+        Returns ([], expr) to trigger full scan with post-filter.
+        """
+        # OR expressions that reach here couldn't be optimized with indexes
+        return ([], expr)
 
     def _analyze_comparison(
         self,

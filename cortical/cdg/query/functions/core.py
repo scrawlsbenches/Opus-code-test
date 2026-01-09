@@ -45,10 +45,12 @@ class CountFunction(QueryFunction):
         args: List[Any],
         kwargs: Dict[str, Any]
     ) -> int:
-        # TODO(cdg-query): count() needs query context to count results
-        # For now, return 0 as a placeholder
-        # See: docs/design/cdg-query-language.md#core-functions
-        return 0
+        from ..errors import QueryNotImplementedError
+        raise QueryNotImplementedError(
+            "count() as standalone function not yet implemented. "
+            "Use with query context: FROM task WHERE status = 'pending' then count results",
+            doc_reference="docs/design/cdg-query-language.md#core-functions"
+        )
 
 
 @FunctionRegistry.register('exists')
@@ -117,21 +119,24 @@ class TypeOfFunction(QueryFunction):
         args: List[Any],
         kwargs: Dict[str, Any]
     ) -> Optional[str]:
+        from ..errors import QueryNotImplementedError
+
         if not args:
             return None
 
         entity_id = str(args[0])
 
-        # Try schema registry first
-        if context.schema_registry is not None:
-            # Extract prefix from ID
-            prefix = self._extract_prefix(entity_id)
-            if prefix:
-                return context.schema_registry.get_entity_type_by_prefix(prefix)
+        if context.schema_registry is None:
+            raise QueryNotImplementedError(
+                "type_of() requires SchemaRegistry to resolve entity type from ID prefix",
+                doc_reference="docs/design/cdg-query-language.md"
+            )
 
-        # Fallback to hardcoded mapping
-        # TODO(cdg-query): Remove fallback once schema registry is always available
-        return self._fallback_type_lookup(entity_id)
+        # Extract prefix from ID and look up in schema registry
+        prefix = self._extract_prefix(entity_id)
+        if prefix:
+            return context.schema_registry.get_entity_type_by_prefix(prefix)
+        return None
 
     def _extract_prefix(self, entity_id: str) -> Optional[str]:
         """Extract the prefix portion of an entity ID."""
@@ -144,29 +149,6 @@ class TypeOfFunction(QueryFunction):
         if '-' in entity_id:
             parts = entity_id.split('-', 1)
             return parts[0] + '-'
-
-        return None
-
-    def _fallback_type_lookup(self, entity_id: str) -> Optional[str]:
-        """Fallback type lookup using hardcoded prefixes."""
-        prefix_map = {
-            'T-': 'task',
-            'D-': 'decision',
-            'S-': 'sprint',
-            'EPIC-': 'epic',
-            'E-': 'edge',
-            'H-': 'handoff',
-            'KT-': 'knowledge_transfer',
-            'CML-': 'claudemd_layer',
-            'CMV-': 'claudemd_version',
-            'TEAM-': 'team',
-            'PP-': 'persona_profile',
-            'DOC-': 'document',
-        }
-
-        for prefix, entity_type in prefix_map.items():
-            if entity_id.startswith(prefix):
-                return entity_type
 
         return None
 
@@ -197,14 +179,18 @@ class FieldsFunction(QueryFunction):
         args: List[Any],
         kwargs: Dict[str, Any]
     ) -> List[str]:
+        from ..errors import QueryNotImplementedError
+
         if not args:
             return []
 
         entity_type = str(args[0]).lower()
 
         if context.schema_registry is None:
-            # TODO(cdg-query): Return empty list without schema registry
-            return []
+            raise QueryNotImplementedError(
+                "fields() requires SchemaRegistry to list entity type fields",
+                doc_reference="docs/design/cdg-query-language.md"
+            )
 
         schema = context.schema_registry.get_schema(entity_type)
         if schema is None:
@@ -239,11 +225,12 @@ class EntityTypesFunction(QueryFunction):
         args: List[Any],
         kwargs: Dict[str, Any]
     ) -> List[str]:
+        from ..errors import QueryNotImplementedError
+
         if context.schema_registry is None:
-            # Fallback to known types
-            return [
-                'task', 'decision', 'sprint', 'epic', 'edge',
-                'handoff', 'knowledge_transfer', 'document'
-            ]
+            raise QueryNotImplementedError(
+                "entity_types() requires SchemaRegistry to list registered entity types",
+                doc_reference="docs/design/cdg-query-language.md"
+            )
 
         return list(context.schema_registry.list_schemas().keys())

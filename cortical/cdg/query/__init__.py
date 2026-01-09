@@ -39,7 +39,7 @@ See: docs/design/cdg-query-language.md
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from .ast import (
-    CDGQuery, Query,  # Query is alias for backwards compat
+    CDGQuery,
     Expression, Comparison, AndExpr, OrExpr, NotExpr, FunctionCall,
     Field, Literal, Op
 )
@@ -166,7 +166,6 @@ __all__ = [
 
     # AST
     'CDGQuery',
-    'Query',  # Alias for backwards compat
     'Expression',
     'Comparison',
     'AndExpr',

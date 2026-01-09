@@ -116,7 +116,3 @@ class CDGQuery:
     def is_entity_query(self) -> bool:
         """Check if this is an entity query (has FROM clause)."""
         return self.entity_type is not None
-
-
-# Type alias for backwards compatibility with got/expression
-Query = CDGQuery
