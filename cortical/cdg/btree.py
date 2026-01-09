@@ -346,17 +346,16 @@ class BTreeIndex:
             # Must check bool before int (bool is subclass of int)
             return "true" if key else "false"
         if isinstance(key, int):
-            # Zero-pad integers for correct sorting
-            # Negative numbers get special handling
-            if key >= 0:
-                return f"+{key:020d}"  # + prefix for positive
-            else:
-                # For negative: invert to maintain order
-                return f"-{key + 10**20:020d}"
+            # Offset-based encoding for correct lexicographic sorting of signed integers
+            # Add 10^20 offset to make all values positive, ensuring correct sort order
+            # Range: [-10^20, 10^20] maps to [0, 2*10^20]
+            offset_key = key + 10**20
+            return f"{offset_key:021d}"  # 21 digits to handle full range
         if isinstance(key, float):
-            # Convert to string with enough precision
-            # This isn't perfect for all floats but works for typical use
-            return f"{key:+025.10f}"
+            # Offset-based encoding for floats
+            # Add large offset to handle negatives, format with fixed precision
+            offset_key = key + 1e15  # Offset to make typical values positive
+            return f"{offset_key:025.10f}"
         if isinstance(key, str):
             return key
         # Fallback: JSON serialization for complex types

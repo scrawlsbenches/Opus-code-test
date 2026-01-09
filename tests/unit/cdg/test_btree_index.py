@@ -390,6 +390,29 @@ class TestBTreeIndexKeyNormalization:
         result = btree.lookup_gt(2)
         assert result == {"T-002", "T-004"}
 
+    def test_negative_integers_sort_correctly(self):
+        """Negative integers sort before positive integers."""
+        btree = BTreeIndex()
+        btree.insert(-10, "T-NEG10")
+        btree.insert(-1, "T-NEG1")
+        btree.insert(0, "T-ZERO")
+        btree.insert(1, "T-POS1")
+        btree.insert(10, "T-POS10")
+
+        # Negative numbers should sort before positive
+        result = btree.lookup_lt(0)
+        assert result == {"T-NEG10", "T-NEG1"}
+
+        result = btree.lookup_lte(0)
+        assert result == {"T-NEG10", "T-NEG1", "T-ZERO"}
+
+        result = btree.lookup_gt(-1)
+        assert result == {"T-ZERO", "T-POS1", "T-POS10"}
+
+        # Check full ordering
+        result = btree.lookup_range(start_key=-5, end_key=5)
+        assert result == {"T-NEG1", "T-ZERO", "T-POS1"}
+
     def test_none_key(self):
         """None key is handled specially."""
         btree = BTreeIndex()
