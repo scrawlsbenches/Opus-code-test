@@ -1416,7 +1416,7 @@ class GoTManager:
         self,
         source_agent: str,
         target_agent: str,
-        task_id: str,
+        task_id: str = "",
         instructions: str = "",
         context: Optional[Dict[str, Any]] = None,
         handoff_id: Optional[str] = None,
@@ -1427,7 +1427,7 @@ class GoTManager:
         Args:
             source_agent: Agent initiating the handoff
             target_agent: Agent receiving the handoff
-            task_id: Task being handed off
+            task_id: Task being handed off (optional for session handoffs)
             instructions: Instructions for the target agent
             context: Additional context data
             handoff_id: Optional custom handoff ID (auto-generated if not provided)
@@ -2493,7 +2493,7 @@ class TransactionContext:
         self,
         source_agent: str,
         target_agent: str,
-        task_id: str,
+        task_id: str = "",
         instructions: str = "",
         context: Optional[Dict[str, Any]] = None,
         handoff_id: Optional[str] = None,
@@ -2504,7 +2504,7 @@ class TransactionContext:
         Args:
             source_agent: Agent initiating the handoff
             target_agent: Agent receiving the handoff
-            task_id: Task being handed off
+            task_id: Task being handed off (optional for session handoffs)
             instructions: Instructions for the target agent
             context: Additional context data
             handoff_id: Optional custom handoff ID (auto-generated if not provided)
@@ -2513,12 +2513,13 @@ class TransactionContext:
             Created Handoff object
 
         Raises:
-            ValueError: If task_id does not exist
+            ValueError: If task_id is provided but does not exist
         """
-        # Validate task exists
-        task = self.get_task(task_id)
-        if task is None:
-            raise ValueError(f"Task not found: {task_id}")
+        # Validate task exists (only if task_id provided)
+        if task_id:
+            task = self.get_task(task_id)
+            if task is None:
+                raise ValueError(f"Task not found: {task_id}")
 
         if handoff_id is None:
             handoff_id = generate_handoff_id()

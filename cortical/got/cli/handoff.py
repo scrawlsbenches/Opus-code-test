@@ -13,11 +13,53 @@ This module can be integrated into got_utils.py CLI or used standalone.
 """
 
 import json
+import subprocess
 import sys
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 if TYPE_CHECKING:
     from cortical.got.adapter import TransactionalGoTAdapter
+
+
+def _get_git_branch() -> str:
+    """Get current git branch name."""
+    try:
+        result = subprocess.run(
+            ["git", "branch", "--show-current"],
+            capture_output=True, text=True, check=True
+        )
+        return result.stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return ""
+
+
+def _get_git_modified_files() -> List[str]:
+    """Get list of modified files from git status."""
+    try:
+        result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True, text=True, check=True
+        )
+        files = []
+        for line in result.stdout.strip().split("\n"):
+            if line.strip():
+                # Format: XY filename (where XY is status)
+                files.append(line[3:].strip())
+        return files
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return []
+
+
+def _get_recent_commits(count: int = 5) -> List[str]:
+    """Get recent commit messages."""
+    try:
+        result = subprocess.run(
+            ["git", "log", f"-{count}", "--oneline"],
+            capture_output=True, text=True, check=True
+        )
+        return result.stdout.strip().split("\n") if result.stdout.strip() else []
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return []
 
 
 # 
@@ -235,9 +277,76 @@ def cmd_handoff_list(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
+def cmd_handoff_session(args, manager: "TransactionalGoTAdapter") -> int:
+    """
+    Handle 'got handoff session' command.
+
+    Creates a session-level handoff that captures current git state,
+    modified files, and session context for the next agent.
+    """
+    # Read summary from stdin if '-' is specified
+    summary = getattr(args, 'summary', '') or ''
+    if summary == "-":
+        summary = sys.stdin.read().strip()
+
+    # Auto-capture git context
+    branch = getattr(args, 'branch', None) or _get_git_branch()
+    files_modified = getattr(args, 'files', None) or _get_git_modified_files()
+    recent_commits = _get_recent_commits(5)
+
+    # Build context dict following HandoffContext structure
+    context = {
+        "current_branch": branch,
+        "files_modified": files_modified if isinstance(files_modified, list) else [files_modified] if files_modified else [],
+        "recent_commits": recent_commits,
+        "session_id": getattr(args, 'session_id', '') or '',
+        "blockers": getattr(args, 'blockers', []) or [],
+        "notes": getattr(args, 'notes', '') or '',
+    }
+
+    # Add KT reference if provided
+    kt_id = getattr(args, 'kt', None)
+    if kt_id:
+        context["kt_id"] = kt_id
+
+    # Build instructions from summary and notes
+    instructions = summary
+    if context.get("notes"):
+        instructions += f"\n\nNotes: {context['notes']}"
+
+    # Create the handoff (no task_id required)
+    handoff_id = manager.initiate_handoff(
+        source_agent=args.source,
+        target_agent=args.target,
+        task_id="",  # Session handoff has no specific task
+        context=context,
+        instructions=instructions,
+    )
+
+    # Display summary
+    print(f"Session handoff created: {handoff_id}")
+    print(f"  From: {args.source} → To: {args.target}")
+    print(f"  Branch: {branch}")
+    if files_modified:
+        print(f"  Modified files: {len(files_modified)}")
+    if recent_commits:
+        print(f"  Recent commits: {len(recent_commits)}")
+    if kt_id:
+        print(f"  Knowledge Transfer: {kt_id}")
+    if summary:
+        display_summary = summary[:100] + "..." if len(summary) > 100 else summary
+        print(f"  Summary: {display_summary}")
+
+    print(f"\nNext agent should run:")
+    print(f"  python -m cortical.got handoff show {handoff_id}")
+    print(f"  python -m cortical.got handoff accept {handoff_id} --agent <agent-id>")
+
+    return 0
+
+
 #
 # CLI INTEGRATION
-# 
+#
 
 def setup_handoff_parser(subparsers) -> None:
     """
@@ -320,6 +429,56 @@ def setup_handoff_parser(subparsers) -> None:
         help="Limit number of results"
     )
 
+    # handoff session (session-level handoff without specific task)
+    handoff_session = handoff_subparsers.add_parser(
+        "session",
+        help="Create a session handoff (no task required)"
+    )
+    handoff_session.add_argument(
+        "--target", "-t",
+        required=True,
+        help="Target agent (e.g., 'next-agent')"
+    )
+    handoff_session.add_argument(
+        "--source", "-s",
+        default="cli",
+        help="Source agent (default: cli)"
+    )
+    handoff_session.add_argument(
+        "--summary",
+        default="",
+        help="Session summary (use '-' to read from stdin)"
+    )
+    handoff_session.add_argument(
+        "--notes",
+        default="",
+        help="Additional notes for next agent"
+    )
+    handoff_session.add_argument(
+        "--branch",
+        help="Git branch (auto-detected if not specified)"
+    )
+    handoff_session.add_argument(
+        "--files",
+        nargs="*",
+        help="Modified files (auto-detected if not specified)"
+    )
+    handoff_session.add_argument(
+        "--blockers",
+        nargs="*",
+        help="Current blockers"
+    )
+    handoff_session.add_argument(
+        "--kt",
+        help="Knowledge Transfer ID to link"
+    )
+    handoff_session.add_argument(
+        "--session-id",
+        dest="session_id",
+        default="",
+        help="Session identifier"
+    )
+
 
 def handle_handoff_command(args, manager: "TransactionalGoTAdapter") -> int:
     """
@@ -338,12 +497,11 @@ def handle_handoff_command(args, manager: "TransactionalGoTAdapter") -> int:
 
     command_handlers = {
         "initiate": cmd_handoff_initiate,
+        "session": cmd_handoff_session,
         "accept": cmd_handoff_accept,
         "complete": cmd_handoff_complete,
         "reject": cmd_handoff_reject,
-
         "show": cmd_handoff_show,
-
         "list": cmd_handoff_list,
     }
 

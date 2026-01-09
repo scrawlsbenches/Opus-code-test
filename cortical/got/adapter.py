@@ -510,12 +510,32 @@ class TransactionalGoTAdapter:
     # Handoff Operations
     # =========================================================================
 
-    def initiate_handoff(self, source_agent: str, target_agent: str, task_id: str,
-                        context: Optional[Dict] = None, instructions: str = "") -> str:
-        """Initiate a handoff."""
+    def initiate_handoff(
+        self,
+        source_agent: str,
+        target_agent: str,
+        task_id: str = "",
+        context: Optional[Dict] = None,
+        instructions: str = ""
+    ) -> str:
+        """Initiate a handoff.
+
+        Args:
+            source_agent: Agent initiating the handoff
+            target_agent: Agent receiving the handoff
+            task_id: Task being handed off (optional for session handoffs)
+            context: Additional context data (branch, files, blockers, notes)
+            instructions: Instructions for the target agent
+
+        Returns:
+            Handoff ID string
+        """
         handoff = self._manager.initiate_handoff(
-            source_agent=source_agent, target_agent=target_agent, task_id=task_id,
-            context=context or {}, instructions=instructions
+            source_agent=source_agent,
+            target_agent=target_agent,
+            task_id=task_id,
+            context=context or {},
+            instructions=instructions
         )
         return handoff.id
 
@@ -572,6 +592,12 @@ class TransactionalGoTAdapter:
                 "task_id": h.task_id,
                 "status": h.status,
                 "instructions": h.instructions,
+                "context": h.context,
+                "result": h.result,
+                "artifacts": h.artifacts,
+                "created_at": h.created_at,
+                "accepted_at": getattr(h, 'accepted_at', ''),
+                "completed_at": getattr(h, 'completed_at', ''),
             }
             for h in handoffs
         ]

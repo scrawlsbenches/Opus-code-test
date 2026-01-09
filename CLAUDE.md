@@ -1148,122 +1148,111 @@ The Five Tenets:
 
 ## Session Handoff Protocol
 
-Handoffs preserve context across agent sessions. Use them to ensure continuity when context windows fill or sessions end.
+Handoffs preserve context across agent sessions. Use GoT handoffs as the **primary method** - they auto-capture git state and store structured context in the graph database.
 
-### When to Create a Handoff
+### When to Create What
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                     HANDOFF DECISION MATRIX                              │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
-│  CREATE A HANDOFF DOCUMENT (docs/sessions/handoff-YYYY-MM-DD.md) when:  │
+│  SESSION HANDOFF (handoff session) - Use for context continuity:        │
 │  • Session is ending with incomplete work                               │
 │  • Context window is filling up                                         │
 │  • Complex multi-session task needs continuity                          │
-│  • You want to preserve decision rationale for next agent               │
+│  • Auto-captures: git branch, modified files, recent commits            │
 │                                                                          │
-│  CREATE A KNOWLEDGE TRANSFER (kt create) when:                          │
-│  • Significant learning occurred worth preserving long-term             │
+│  KNOWLEDGE TRANSFER (kt create) - Use for long-term learnings:          │
+│  • Significant learning occurred worth preserving                       │
 │  • Pattern or solution should be documented for future reference        │
 │  • Bug fix has lessons that shouldn't be repeated                       │
 │                                                                          │
-│  USE BOTH when:                                                         │
-│  • Ending a major session with both learnings AND pending work          │
+│  BOTH - For major sessions:                                             │
+│  • Create KT first, then link it to session handoff with --kt flag      │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Ending a Session (Creating Handoff)
+### Ending a Session
 
-**Step 1: Create or Update Scratchpad**
+**Step 1: Create Knowledge Transfer (if learnings occurred)**
 ```bash
-# Create session scratchpad if not exists
-# Location: docs/sessions/scratchpad-YYYY-MM-DD-topic.md
+# Create KT for significant learnings
+python -m cortical.got kt create "Session: [topic]" \
+    --summary "Key outcomes and learnings"
+
+# Add detailed sections
+python -m cortical.got kt append KT-XXX "What Worked" "..."
+python -m cortical.got kt append KT-XXX "Blockers" "..."
+
+# Finalize when complete
+python -m cortical.got kt finalize KT-XXX
 ```
 
-Include in scratchpad:
-- SESSION OVERRIDES section (if any checklist items should be skipped)
-- Pending work with specific next steps
-- Bugs fixed with root cause analysis
-- Commits made this session
-- Any blockers or known issues
-
-**Step 2: Create Handoff Document**
+**Step 2: Create Session Handoff**
 ```bash
-# Create handoff document
-# Location: docs/sessions/handoff-YYYY-MM-DD.md
-```
+# Session handoff auto-captures git state
+python -m cortical.got handoff session \
+    --target "next-agent" \
+    --summary "Fixed 7 KT CLI bugs, pending: GOT_DIR migration" \
+    --kt KT-XXX \
+    --blockers "28 corrupted entities"
 
-Handoff document structure:
-```markdown
-# Agent Handoff Document - YYYY-MM-DD
-
-**From:** Claude Code (model)
-**Branch:** `branch-name`
-**Status:** Ready for continuation
-
-## Quick Validation Checklist
-[Commands to verify system state]
-
-## Session Summary
-[What was done, commits made]
-
-## Key Files to Review
-[Important files with purposes]
-
-## Known Issues
-[Pre-existing problems, blockers]
-
-## Next Steps
-[Prioritized options for next agent]
-
-## How to Continue
-[Step-by-step instructions]
+# The command automatically captures:
+# - Current git branch
+# - Modified files (from git status)
+# - Recent commits (last 5)
 ```
 
 **Step 3: Commit and Push**
 ```bash
-git add docs/sessions/
-git commit -m "docs: Create agent handoff document for session continuation"
+git add -A
+git commit -m "chore: Session checkpoint"
 git push
 ```
 
-### Starting a Session (Receiving Handoff)
+### Starting a Session
 
 **Step 1: Check for Handoffs**
 ```bash
-# Look for handoff documents
-ls docs/sessions/handoff-*.md | tail -3
+# Check GoT handoffs first (primary source)
+python -m cortical.got handoff list --status initiated
 
-# Check for pending GoT handoffs
-python -m cortical.got handoff list --status pending
-
-# Check for draft knowledge transfers
+# Also check draft knowledge transfers
 python -m cortical.got kt list --status draft
 ```
 
-**Step 2: Read Handoff Document**
-- Read the most recent handoff document
-- Check for SESSION OVERRIDES in any scratchpad
-- Note the validation checklist
-
-**Step 3: Run Validation**
+**Step 2: Review Handoff Details**
 ```bash
-# Typical validation
-python -m cortical.got stats
-pip install pytest -q && python -m pytest tests/smoke/ -v --tb=short
-git log --oneline -5
+# Show full handoff with context
+python -m cortical.got handoff show H-XXX
+
+# This displays:
+# - Branch, modified files, recent commits
+# - Instructions and notes
+# - Linked KT documents
+# - Blockers
 ```
 
-**Step 4: Choose Next Step**
-- Review the "Next Steps" options in handoff
-- Pick based on priority and current goals
-- Update scratchpad as you work
+**Step 3: Accept and Validate**
+```bash
+# Accept the handoff
+python -m cortical.got handoff accept H-XXX --agent "me"
 
-### GoT Handoff Primitives (Task-Level)
+# Run validation
+python -m cortical.got validate
+pip install pytest -q && python -m pytest tests/smoke/ -v --tb=short
+```
 
-For task-specific handoffs between agents:
+**Step 4: Continue Work**
+- Review the instructions from handoff
+- Check linked KT documents for context
+- Use `handoff complete` when done with handed-off work
+
+### Task-Level Handoffs
+
+For specific task handoffs (when a task needs to transfer):
 
 ```bash
 # Initiate handoff for a specific task
@@ -1271,42 +1260,31 @@ python -m cortical.got handoff initiate T-XXX \
     --target "next-agent" \
     --instructions "Continue from step 3..."
 
-# Accept a handoff (as receiving agent)
-python -m cortical.got handoff accept H-XXX --agent "my-agent-id"
+# Accept the handoff
+python -m cortical.got handoff accept H-XXX --agent "me"
 
-# Complete a handoff with results
+# Complete with results
 python -m cortical.got handoff complete H-XXX \
-    --agent "my-agent-id" \
-    --result '{"status": "done", "notes": "..."}'
-
-# List pending handoffs
-python -m cortical.got handoff list --status pending
+    --agent "me" \
+    --result '{"status": "done", "commits": ["abc123"]}'
 ```
 
-### Knowledge Transfer for Learnings
+### Handoff Lifecycle
 
-When significant learning occurs:
-
-```bash
-# Create KT document
-python -m cortical.got kt create "Session: Bug Fix Analysis" \
-    --summary "Fixed 7 bugs in KT CLI, root causes documented"
-
-# Add sections with details
-python -m cortical.got kt append KT-XXX "Root Causes" "The bugs were..."
-python -m cortical.got kt append KT-XXX "Prevention" "To prevent similar..."
-
-# Finalize when complete
-python -m cortical.got kt finalize KT-XXX
+```
+Session Handoff:  session → initiated → accepted → completed
+Task Handoff:     initiate → initiated → accepted → completed
+                                      ↘ rejected
 ```
 
 ### Best Practices
 
-1. **Always update scratchpad** - Your future self can't read your mind
-2. **Be specific about next steps** - "Fix the bug" is useless; "Fix TypeError in cmd_kt_show line 436" is actionable
-3. **Include validation commands** - Let next agent verify system state quickly
-4. **Document blockers clearly** - What's stopping progress and why
-5. **Commit handoff docs** - They're useless if not pushed to the branch
+1. **Use GoT handoffs, not markdown docs** - Structured data > prose
+2. **Link KTs to handoffs** - `--kt KT-XXX` connects learnings to context
+3. **Be specific in summary** - "Fixed TypeError in cmd_kt_show:436" not "Fixed bug"
+4. **Include blockers** - `--blockers "item1" "item2"` surfaces issues
+5. **Accept handoffs explicitly** - Shows acknowledgment in graph
+6. **Complete handoffs** - Close the loop with results
 
 ---
 
