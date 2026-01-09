@@ -8,7 +8,7 @@ import tempfile
 import pytest
 from pathlib import Path
 
-from cortical.got.api import GoTManager, TransactionContext, generate_task_id, generate_decision_id
+from cortical.got.api import GoTManager, generate_task_id, generate_decision_id
 from cortical.got.types import Task, Decision, Edge
 from cortical.got.errors import TransactionError
 from cortical.core.bootstrap import create_container

@@ -12,7 +12,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-from cortical.got.api import GoTManager, TransactionContext
+from cortical.got.api import GoTManager
 from cortical.core.bootstrap import create_container
 from cortical.got.types import Task, Decision, Edge, Document, ClaudeMdLayer
 from cortical.got.errors import TransactionError
