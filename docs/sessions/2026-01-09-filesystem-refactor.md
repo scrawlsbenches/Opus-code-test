@@ -82,6 +82,36 @@ The "Search Before Creating" section mentions conftest.py but doesn't explicitly
 
 **Action needed**: Update CLAUDE.md to document GoT/CDG fixtures explicitly.
 
+### CLAUDE.md Restructuring Analysis
+
+**User Question**: Is CLAUDE.md overwhelming with too much detail?
+
+**Answer**: Yes. The paradox is more detail ≠ better guidance. Information overload causes skimming, which is why the GoT/CDG fixture documentation was missed even though conftest.py itself has excellent comments.
+
+**Can it be split into multiple documents?**
+
+Yes. Proposed structure:
+
+| Document | Content | When Loaded |
+|----------|---------|-------------|
+| `CLAUDE.md` | Core principles, workflow, red flags | Always (session start) |
+| `docs/fixtures.md` | Test fixtures by component | Read when writing tests |
+| `docs/cli-reference.md` | GoT CLI commands | Read when using CLI |
+| `docs/architecture.md` | Seven pillars, module details | Read when exploring |
+
+**The critical missing principle** (add to CLAUDE.md):
+> "When writing tests for any component, FIRST check `tests/conftest.py` for existing fixtures. DO NOT directly instantiate managers, stores, or transaction managers."
+
+**Note**: conftest.py (lines 166-181) already has excellent documentation:
+```
+# BREAKING CHANGE (2026-01-04): TransactionManager and GoTManager now require
+# dependency injection. Direct instantiation is prohibited.
+#
+# USE THESE FIXTURES - DO NOT CREATE MANAGERS DIRECTLY IN TESTS
+```
+
+The issue isn't missing documentation—it's that CLAUDE.md doesn't point to where the documentation lives.
+
 ### Script to Fix Tests
 
 **TODO**: Write a script using git history to:
