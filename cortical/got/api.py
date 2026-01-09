@@ -841,6 +841,50 @@ class GoTManager:
         """
         return self.add_edge(sprint_id, task_id, EdgeTypes.CONTAINS)
 
+    def delete_edge(self, edge_id: str) -> bool:
+        """
+        Delete an edge by ID.
+
+        Args:
+            edge_id: Edge identifier to delete
+
+        Returns:
+            True if edge was found and deleted, False if not found
+        """
+        # Check if edge exists first
+        edge = None
+        for e in self.list_edges():
+            if e.id == edge_id:
+                edge = e
+                break
+
+        if edge is None:
+            return False
+
+        with self.transaction() as tx:
+            tx.tx_manager.delete(tx.tx, edge_id)
+
+        return True
+
+    def remove_task_from_sprint(self, task_id: str, sprint_id: str) -> bool:
+        """
+        Remove a task from a sprint by deleting the CONTAINS edge.
+
+        Args:
+            task_id: Task identifier
+            sprint_id: Sprint identifier
+
+        Returns:
+            True if edge was found and deleted, False if not found
+        """
+        # Find the CONTAINS edge from sprint to task
+        for edge in self.list_edges():
+            if (edge.source_id == sprint_id and
+                edge.target_id == task_id and
+                edge.edge_type == EdgeTypes.CONTAINS):
+                return self.delete_edge(edge.id)
+        return False
+
     def get_sprint_tasks(self, sprint_id: str) -> List[Task]:
         """
         Get all tasks in a sprint.

@@ -420,18 +420,6 @@ class TransactionalGoTAdapter:
         except Exception:
             return False
 
-    def unlink_task_from_sprint(self, sprint_id: str, task_id: str) -> bool:
-        """Unlink a task from a sprint."""
-        # Find and remove the edge
-        edges = self._manager.list_edges()
-        for edge in edges:
-            if (edge.source_id == sprint_id and
-                edge.target_id == task_id and
-                edge.edge_type == "CONTAINS"):
-                # TODO: Implement edge deletion in GoTManager
-                return True
-        return False
-
     # =========================================================================
     # Epic Operations
     # TODO(adapter-retirement): PURE DELEGATION - remove all, use GoTManager directly
