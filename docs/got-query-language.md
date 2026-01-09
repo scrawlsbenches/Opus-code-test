@@ -120,7 +120,7 @@ NOT status = 'completed'
 | `blockers(id)` | What blocks task | `blockers(T-001)` |
 | `dependents(id)` | What depends on task | `dependents(T-001)` |
 | `all_dependencies(id)` | Full dependency tree | `all_dependencies(T-001)` |
-| `cycle_detect()` | Find cycles | `cycle_detect()` |
+| `cycle_detect(id)` | Find cycles from node | `cycle_detect(T-001)` |
 
 ---
 
@@ -198,8 +198,8 @@ ancestors(T-100) AND status != 'completed' ORDER BY created_at ASC
 # Ripple effect: everything that depends on T-050 (directly or indirectly)
 descendants(T-050) ORDER BY priority DESC
 
-# Circular dependency detection
-cycle_detect()
+# Circular dependency detection (from specific task)
+cycle_detect(T-001)
 
 # Tasks with many blockers (complexity indicator)
 blocked() AND has_edge('DEPENDS_ON') ORDER BY updated_at DESC LIMIT 10
