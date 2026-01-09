@@ -17,7 +17,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from cortical.core.bootstrap import create_container
 from cortical.got.api import GoTManager
-from cortical.got.types import Task, Decision, Sprint, Epic
+from cortical.got.types import Task, Decision, Sprint, Epic, KnowledgeTransfer
+from cortical.utils.id_generation import generate_kt_id
 
 logger = logging.getLogger(__name__)
 
@@ -752,19 +753,110 @@ class TransactionalGoTAdapter:
 
     def create_knowledge_transfer(self, title: str, summary: str = "",
                                   status: str = "draft", **kwargs) -> str:
-        """Create a knowledge transfer document."""
+        """Create a knowledge transfer document.
+
+        Args:
+            title: KT title (required)
+            summary: Executive summary
+            status: Initial status (default: draft)
+            **kwargs: Additional fields (session_id, tags, sections, etc.)
+
+        Returns:
+            The KT ID string
+        """
         # Delegate to manager if available
         if hasattr(self._manager, 'create_knowledge_transfer'):
             kt = self._manager.create_knowledge_transfer(title, summary, status, **kwargs)
             return kt.id if hasattr(kt, 'id') else str(kt)
-        # Stub implementation
-        return f"KT-stub-{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
-    def list_knowledge_transfers(self, status: Optional[str] = None) -> List[Dict]:
-        """List knowledge transfers."""
+        # Create KT entity directly via CDG store
+        kt_id = generate_kt_id()
+        kt = KnowledgeTransfer(
+            id=kt_id,
+            title=title,
+            summary=summary,
+            status=status,
+            session_id=kwargs.get('session_id', ''),
+            session_date=kwargs.get('session_date', ''),
+            sections=kwargs.get('sections', {}),
+            tags=kwargs.get('tags', []),
+            related_tasks=kwargs.get('related_tasks', []),
+            related_decisions=kwargs.get('related_decisions', []),
+            related_handoffs=kwargs.get('related_handoffs', []),
+        )
+
+        # Write to CDG store
+        self._manager.tx_manager.store.write(kt)
+
+        return kt_id
+
+    def list_knowledge_transfers(
+        self, status: Optional[str] = None, tags: Optional[List[str]] = None
+    ) -> List[Dict]:
+        """List knowledge transfers with optional filtering."""
         if hasattr(self._manager, 'list_knowledge_transfers'):
-            return self._manager.list_knowledge_transfers(status=status)
+            return self._manager.list_knowledge_transfers(status=status, tags=tags)
         return []
+
+    def get_knowledge_transfer(self, kt_id: str) -> Optional[Any]:
+        """Get a knowledge transfer by ID."""
+        # Try direct read from transaction manager store
+        entity = self._manager.tx_manager.store.read(kt_id)
+        if entity is not None:
+            return entity
+        return None
+
+    def append_kt_section(
+        self, kt_id: str, section_title: str, content: str
+    ) -> bool:
+        """Append a section to an existing knowledge transfer."""
+        kt = self.get_knowledge_transfer(kt_id)
+        if kt is None:
+            return False
+
+        # Get existing sections
+        sections = getattr(kt, 'sections', []) or []
+        sections.append({"title": section_title, "content": content})
+
+        # Update the entity
+        kt.sections = sections
+        self._manager.tx_manager.store.write(kt)
+        return True
+
+    def finalize_knowledge_transfer(
+        self,
+        kt_id: str,
+        handoff_to: Optional[str] = None,
+        instructions: str = ""
+    ) -> bool:
+        """Finalize a knowledge transfer (change status to published).
+
+        Args:
+            kt_id: Knowledge transfer ID to finalize
+            handoff_to: Optional agent to create a handoff to
+            instructions: Optional instructions for the handoff
+        """
+        kt = self.get_knowledge_transfer(kt_id)
+        if kt is None:
+            return False
+
+        kt.status = "published"
+        self._manager.tx_manager.store.write(kt)
+
+        # Optionally create a handoff
+        if handoff_to:
+            # Get a related task if available, otherwise use kt_id as context
+            related_tasks = getattr(kt, 'related_tasks', []) or []
+            task_id = related_tasks[0] if related_tasks else kt_id
+            self.initiate_handoff(
+                source_agent="cli",
+                target_agent=handoff_to,
+                task_id=task_id,
+                context={"kt_id": kt_id},
+                instructions=instructions
+            )
+
+        return True
 
     # =========================================================================
     # Utility Methods
