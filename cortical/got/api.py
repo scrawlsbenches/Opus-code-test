@@ -1067,17 +1067,12 @@ class GoTManager:
         """
         return self.add_edge(sprint_id, task_id, EdgeTypes.CONTAINS)
 
-    def delete_edge(
-        self,
-        edge_id: str,
-        tx: Optional['TransactionContext'] = None
-    ) -> bool:
+    def delete_edge(self, edge_id: str) -> bool:
         """
         Delete an edge by ID.
 
         Args:
             edge_id: Edge identifier to delete
-            tx: Optional transaction context (creates one if not provided)
 
         Returns:
             True if edge was found and deleted, False if not found
