@@ -1106,7 +1106,17 @@ class TestYourFeature(unittest.TestCase):
         self.assertIsNotNone(result)
 ```
 
-### Available Fixtures (pytest)
+### Test Fixtures
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  GATE: Writing tests for GoT/CDG/Storage components?                    │
+│        → Read tests/conftest.py first (lines 166-227)                   │
+│        → DO NOT directly instantiate managers, stores, or tx managers   │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**CorticalTextProcessor fixtures:**
 
 | Fixture | Scope | Description |
 |---------|-------|-------------|
@@ -1114,6 +1124,11 @@ class TestYourFeature(unittest.TestCase):
 | `shared_processor` | session | Full samples/ corpus (~125 docs) |
 | `fresh_processor` | function | Empty processor for isolated tests |
 | `small_corpus_docs` | function | Raw document dict |
+
+**GoT/CDG fixtures** (in conftest.py):
+- `fresh_tx_manager` / `memory_tx_manager` — TransactionManager via DI
+- `fresh_got_manager` / `memory_got_manager` — GoTManager via DI
+- `memory_container` — Full container for custom resolution
 
 ### Test Markers for Optional Dependencies
 
