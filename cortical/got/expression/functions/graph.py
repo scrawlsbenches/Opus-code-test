@@ -912,18 +912,15 @@ class TypeOf(QueryFunction):
         if not entity_id:
             raise ValueError("entity_id is required")
 
-        # First, try ID prefix convention for efficiency
-        # T- = Task, S- = Sprint, D- = Decision, E- = Edge/Epic
-        # KT- = KnowledgeTransfer, H- = Handoff
-        prefix_map = {
-            'T-': 'task',
-            'S-': 'sprint',
-            'D-': 'decision',
-            'KT-': 'knowledge_transfer',
-            'H-': 'handoff',
-        }
+        # Use SchemaRegistry for prefix -> entity_type mapping (single source of truth)
+        from cortical.core.bootstrap import get_container
+        from cortical.cdg.schema import SchemaRegistry
 
-        for prefix, entity_type in prefix_map.items():
+        container = get_container()
+        registry = container.resolve(SchemaRegistry)
+
+        # Find matching prefix and get entity type
+        for prefix, entity_type in registry.list_prefixes().items():
             if entity_id.startswith(prefix):
                 # Verify the entity actually exists with this type
                 getter_name = f'get_{entity_type}'
@@ -931,6 +928,7 @@ class TypeOf(QueryFunction):
                     entity = getattr(manager, getter_name)(entity_id)
                     if entity is not None:
                         return entity_type
+                break  # Prefix matched but entity doesn't exist
 
         # Fallback: Check each store explicitly
         if hasattr(manager, 'get_task'):
