@@ -1326,17 +1326,54 @@ class GoTManager:
         """
         return self.query_api.list_all_tasks()
 
-    def list_tasks(self, status: Optional[str] = None) -> List[Task]:
+    def list_tasks(
+        self,
+        status: Optional[str] = None,
+        priority: Optional[str] = None,
+        category: Optional[str] = None,
+        sprint_id: Optional[str] = None,
+        blocked_only: bool = False,
+    ) -> List[Task]:
         """
-        List tasks with optional status filter.
+        List tasks with optional filters.
 
         Args:
             status: Optional status filter
+            priority: Optional priority filter
+            category: Optional category filter
+            sprint_id: Optional sprint ID to filter by
+            blocked_only: If True, only return blocked tasks
 
         Returns:
-            List of Task objects
+            List of Task objects matching filters
         """
-        return self.query_api.list_tasks(status=status)
+        # Get tasks from sprint if specified
+        if sprint_id:
+            sprint_task_ids = set()
+            all_edges = self.list_edges()
+            for edge in all_edges:
+                if (edge.source_id == sprint_id and
+                    edge.edge_type == "CONTAINS" and
+                    edge.target_id.startswith("T-")):
+                    sprint_task_ids.add(edge.target_id)
+
+            if not sprint_task_ids:
+                return []
+
+            tasks = [t for t in self.find_tasks(status=status, priority=priority)
+                     if t.id in sprint_task_ids]
+        else:
+            tasks = self.find_tasks(status=status, priority=priority)
+
+        # Filter by category
+        if category:
+            tasks = [t for t in tasks if t.properties.get("category") == category]
+
+        # Filter blocked only
+        if blocked_only:
+            tasks = [t for t in tasks if t.status == "blocked"]
+
+        return tasks
 
     def list_edges(self) -> List[Edge]:
         """
@@ -2089,40 +2126,6 @@ class GoTManager:
     # Methods migrated from TransactionalGoTAdapter
     # TODO: Review and consolidate with existing methods
     # =========================================================================
-
-    def list_tasks(
-        self,
-        status: Optional[str] = None,
-        priority: Optional[str] = None,
-        category: Optional[str] = None,
-        sprint_id: Optional[str] = None,
-        blocked_only: bool = False,
-    ) -> List[Task]:
-        """List tasks with optional filters."""
-        # Get tasks from manager
-        if sprint_id:
-            # Get tasks from sprint via edges
-            sprint_task_ids = set()
-            all_edges = self.list_edges()
-            for edge in all_edges:
-                if (edge.source_id == sprint_id and
-                    edge.edge_type == "CONTAINS" and
-                    edge.target_id.startswith("T-")):
-                    sprint_task_ids.add(edge.target_id)
-
-            if not sprint_task_ids:
-                return []
-
-            all_tasks = self.find_tasks(status=status, priority=priority)
-            tasks = [t for t in all_tasks if t.id in sprint_task_ids]
-        else:
-            tasks = self.find_tasks(status=status, priority=priority)
-
-        # Filter by category
-        if category:
-            tasks = [t for t in tasks if t.properties.get("category") == category]
-
-        return tasks
 
     def start_task(self, task_id: str) -> bool:
         """Start a task (set status to in_progress)."""
