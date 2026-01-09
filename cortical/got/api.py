@@ -530,6 +530,8 @@ class GoTManager:
         Returns:
             Created Decision object
         """
+        # TODO: Add JUSTIFIES edge creation for each affected entity
+        # This was in TransactionalGoTAdapter.log_decision but is part of a separate system
         return self.create_decision(title, rationale, affects, **properties)
 
     def get_decision(self, decision_id: str) -> Optional[Decision]:

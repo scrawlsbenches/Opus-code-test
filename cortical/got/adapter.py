@@ -502,32 +502,6 @@ class TransactionalGoTAdapter:
         """Delete a decision."""
         self._manager.delete_decision(decision_id, force=force)
 
-    def log_decision(self, decision: str, rationale: str,
-                    affects: Optional[List[str]] = None,
-                    alternatives: Optional[List[str]] = None,
-                    context: Optional[Dict[str, Any]] = None) -> str:
-        """Log a decision with edges to affected entities."""
-        props = {}
-        if alternatives:
-            props["alternatives"] = alternatives
-        if context:
-            props["context"] = context
-
-        decision_entity = self._manager.create_decision(
-            title=decision, rationale=rationale, affects=affects or [],
-            properties=props
-        )
-
-        # Create JUSTIFIES edges
-        if affects:
-            for affected_id in affects:
-                try:
-                    self._manager.add_edge(decision_entity.id, affected_id, "JUSTIFIES")
-                except Exception:
-                    pass
-
-        return decision_entity.id
-
     def why(self, task_id: str) -> List[Dict[str, Any]]:
         """Get decisions affecting a task."""
         decisions = self._manager.list_decisions()
