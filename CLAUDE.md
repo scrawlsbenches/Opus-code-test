@@ -577,6 +577,21 @@ python -m cortical.got kt list --status draft
 
 ---
 
+## GoT Query Language
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  GATE: Writing complex GoT queries?                                     │
+│        → Read docs/got-query-language.md first                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Two interfaces:**
+- Simple: `python -m cortical.got query "what blocks T-001"`
+- Full SQL-like: `python -m cortical.got expr "status = 'pending' AND priority = 'high'"`
+
+---
+
 ## Test Commands Reference
 
 ```bash
