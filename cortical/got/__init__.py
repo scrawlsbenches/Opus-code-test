@@ -100,7 +100,6 @@ from .config import (
 
 from .api import (
     GoTManager,
-    TransactionContext,
     generate_task_id,
     generate_decision_id,
 )
@@ -232,7 +231,6 @@ __all__ = [
     'GoTConfig',
     # High-level API
     'GoTManager',
-    'TransactionContext',
     'generate_task_id',
     'generate_decision_id',
     # Query API
