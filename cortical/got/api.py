@@ -1,22 +1,17 @@
 """
 High-level API for Graph of Thought operations.
 
-Provides convenient context managers and methods for working with the GoT
-transactional system. This is the primary user-facing interface.
+Provides convenient methods for working with the GoT transactional system.
+This is the primary user-facing interface.
 
 Example:
     >>> from cortical.core.bootstrap import create_container
     >>> container = create_container(got_dir=Path(".got"))
     >>> manager = container.resolve(GoTManager)
     >>>
-    >>> # Single-operation methods
+    >>> # Single-operation methods (each is its own transaction)
     >>> task = manager.create_task("Implement feature", priority="high")
-    >>>
-    >>> # Transactional context
-    >>> with manager.transaction() as tx:
-    ...     task = tx.create_task("Another task", priority="medium")
-    ...     tx.update_task(task.id, status="in_progress")
-    ...     # Auto-commits on success, rolls back on exception
+    >>> manager.update_task(task.id, status="in_progress")
 """
 
 from __future__ import annotations
@@ -28,9 +23,10 @@ import re
 import subprocess
 import threading
 import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple, Any, Generator
 
 from cortical.utils.id_generation import (
     generate_task_id,
@@ -129,18 +125,16 @@ class GoTManager:
     """
     High-level API for Graph of Thought operations.
 
-    Provides context managers for transactional operations
-    and convenient methods for common tasks.
+    Provides convenient methods for common tasks. Each method is
+    automatically wrapped in a transaction.
 
     Example:
         from cortical.core.bootstrap import create_container
         container = create_container(got_dir=Path(".got"))
         manager = container.resolve(GoTManager)
 
-        with manager.transaction() as tx:
-            task = tx.create_task("Implement feature", priority="high")
-            tx.update_task(task.id, status="in_progress")
-        # Auto-commits on success, rolls back on exception
+        task = manager.create_task("Implement feature", priority="high")
+        manager.update_task(task.id, status="in_progress")
 
     Caching:
         Entity caching is handled at the CDGStore layer for 10-50x faster
@@ -404,17 +398,36 @@ class GoTManager:
 
     # ==================== Transaction Methods ====================
 
-    def transaction(self, read_only: bool = False) -> TransactionContext:
+    @contextmanager
+    def transaction(self, read_only: bool = False) -> Generator[Transaction, None, None]:
         """
         Start a transaction context.
 
         Args:
             read_only: If True, rollback instead of commit on exit
 
-        Returns:
-            TransactionContext for use with 'with' statement
+        Yields:
+            Transaction object for use with tx_manager methods
+
+        Example:
+            with manager.transaction() as tx:
+                manager.tx_manager.write(tx, entity)
         """
-        return TransactionContext(self.tx_manager, read_only=read_only, got_manager=self)
+        tx = self.tx_manager.begin()
+        try:
+            yield tx
+            if read_only:
+                self.tx_manager.rollback(tx, reason="read_only")
+            else:
+                result = self.tx_manager.commit(tx)
+                if not result.success:
+                    raise TransactionError(
+                        f"Transaction commit failed: {result.reason}",
+                        conflicts=result.conflicts
+                    )
+        except Exception:
+            self.tx_manager.rollback(tx, reason="exception")
+            raise
 
     def create_task(
         self,
@@ -460,13 +473,16 @@ class GoTManager:
             }
 
         with self.transaction() as tx:
-            task = tx.create_task(
+            task_id = generate_task_id()
+            task = Task(
+                id=task_id,
                 title=title,
                 priority=priority,
                 status=status,
                 description=description,
-                **properties
+                properties=properties,
             )
+            self.tx_manager.write(tx, task)
 
         # Add dependencies
         if depends_on:
@@ -506,7 +522,10 @@ class GoTManager:
             Task object or None if not found
         """
         with self.transaction(read_only=True) as tx:
-            return tx.get_task(task_id)
+            entity = self.tx_manager.read(tx, task_id)
+            if entity is None or not isinstance(entity, Task):
+                return None
+            return entity
 
     def update_task(self, task_id: str, **updates) -> Task:
         """
@@ -523,8 +542,79 @@ class GoTManager:
             TransactionError: If commit fails or task not found
         """
         with self.transaction() as tx:
-            task = tx.update_task(task_id, **updates)
+            entity = self.tx_manager.read(tx, task_id)
+            if entity is None or not isinstance(entity, Task):
+                raise TransactionError(f"Task not found: {task_id}")
+            task = entity
+
+            # Check if task is being completed
+            completing_task = updates.get("status") == "completed" and task.status != "completed"
+
+            # Apply updates
+            for key, value in updates.items():
+                if hasattr(task, key):
+                    setattr(task, key, value)
+
+            self.tx_manager.write(tx, task)
+
+            # Auto-close handoffs when task completes
+            if completing_task:
+                self._auto_close_handoffs_for_task(tx, task_id)
+
         return task
+
+    def _auto_close_handoffs_for_task(self, tx: Transaction, task_id: str) -> None:
+        """
+        Auto-close handoffs when a task completes.
+
+        Finds all handoffs referencing the task and marks them as completed.
+
+        Args:
+            tx: Transaction object
+            task_id: The task that was completed
+        """
+        entities_dir = self.entities_dir
+        if not entities_dir.exists():
+            return
+
+        # Find all handoffs for this task
+        for handoff_file in entities_dir.glob("H-*.json"):
+            try:
+                with open(handoff_file, 'r') as f:
+                    wrapper = json.load(f)
+
+                data = wrapper.get("data", {})
+                if data.get("entity_type") != "handoff":
+                    continue
+
+                # Check if this handoff references the completed task
+                if data.get("task_id") != task_id:
+                    continue
+
+                # Check if handoff is already completed or rejected
+                status = data.get("status", "")
+                if status in ("completed", "rejected"):
+                    continue
+
+                # Load handoff and auto-complete it
+                handoff = Handoff.from_dict(data)
+                handoff.status = "completed"
+                handoff.completed_at = datetime.now(timezone.utc).isoformat()
+                handoff.result = {
+                    "auto_closed": True,
+                    "reason": f"Task {task_id} was marked as completed",
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                }
+                handoff.artifacts = []
+                handoff.bump_version()
+
+                # Write back
+                self.tx_manager.write(tx, handoff)
+                logger.info(f"Auto-closed handoff {handoff.id} for completed task {task_id}")
+
+            except (json.JSONDecodeError, KeyError) as e:
+                logger.warning(f"Skipping corrupted handoff file {handoff_file}: {e}")
+                continue
 
     def complete_task(self, task_id: str, retrospective: str = "") -> bool:
         """
@@ -577,12 +667,15 @@ class GoTManager:
             TransactionError: If commit fails
         """
         with self.transaction() as tx:
-            decision = tx.create_decision(
+            decision_id = generate_decision_id()
+            decision = Decision(
+                id=decision_id,
                 title=title,
                 rationale=rationale,
                 affects=affects or [],
-                **properties
+                properties=properties,
             )
+            self.tx_manager.write(tx, decision)
         return decision
 
     def log_decision(
@@ -619,7 +712,10 @@ class GoTManager:
             Decision object or None if not found
         """
         with self.transaction(read_only=True) as tx:
-            return tx.get_decision(decision_id)
+            entity = self.tx_manager.read(tx, decision_id)
+            if entity is None or not isinstance(entity, Decision):
+                return None
+            return entity
 
     def delete_decision(self, decision_id: str, force: bool = False) -> None:
         """
@@ -635,10 +731,27 @@ class GoTManager:
         Raises:
             TransactionError: If decision not found or has edges (and force=False)
         """
-        # Delete atomically within a transaction
-        # Cache invalidation is handled automatically by CDGStore
         with self.transaction() as tx:
-            tx.delete_decision(decision_id, force=force)
+            entity = self.tx_manager.read(tx, decision_id)
+            if entity is None or not isinstance(entity, Decision):
+                raise TransactionError(f"Decision not found: {decision_id}")
+
+            # Get all edges connected to this decision
+            connected_edges = [e for e in self.list_edges()
+                               if e.source_id == decision_id or e.target_id == decision_id]
+
+            if not force and connected_edges:
+                raise TransactionError(
+                    f"Cannot delete decision {decision_id}: has {len(connected_edges)} "
+                    "connected edges. Use force=True to override."
+                )
+
+            # Delete decision
+            self.tx_manager.delete(tx, decision_id)
+
+            # Delete all connected edges
+            for edge in connected_edges:
+                self.tx_manager.delete(tx, edge.id)
 
     def add_edge(
         self,
@@ -703,7 +816,16 @@ class GoTManager:
                 )
 
         with self.transaction() as tx:
-            edge = tx.add_edge(source_id, target_id, edge_type, weight=weight, reason=reason)
+            edge = Edge(
+                id="",  # Auto-generated in __post_init__
+                source_id=source_id,
+                target_id=target_id,
+                edge_type=edge_type,
+                weight=weight,
+                confidence=1.0,
+                reason=reason,
+            )
+            self.tx_manager.write(tx, edge)
         return edge
 
     def add_dependency(self, task_id: str, depends_on_id: str) -> Edge:
@@ -752,17 +874,31 @@ class GoTManager:
         Raises:
             TransactionError: If task has dependents (and force=False) or task not found
         """
-        # Get all edges connected to this task for cache invalidation
-        outgoing, incoming = self.get_edges_for_task(task_id)
-        all_edges = outgoing + incoming
-        ids_to_invalidate = [task_id] + [edge.id for edge in all_edges]
-
-        # Delete atomically within a transaction
-        # Cache invalidation is handled automatically by CDGStore
-        # Index updates happen inside TransactionContext.__exit__
         with self.transaction() as tx:
-            tx.delete_task(task_id, force=force)
-        # See: docs/design/cdg-transactional-indexing-design.md
+            entity = self.tx_manager.read(tx, task_id)
+            if entity is None or not isinstance(entity, Task):
+                raise TransactionError(f"Task not found: {task_id}")
+
+            # Check for dependents unless force is True
+            if not force:
+                dependents = self.get_dependents(task_id)
+                if dependents:
+                    dependent_ids = [dep.id for dep in dependents]
+                    raise TransactionError(
+                        f"Cannot delete task {task_id}: has dependents {dependent_ids}. "
+                        "Use force=True to override."
+                    )
+
+            # Get all edges connected to this task
+            outgoing, incoming = self.get_edges_for_task(task_id)
+            all_edges = outgoing + incoming
+
+            # Delete task
+            self.tx_manager.delete(tx, task_id)
+
+            # Delete all connected edges
+            for edge in all_edges:
+                self.tx_manager.delete(tx, edge.id)
 
     # Sprint management methods
     def create_sprint(
@@ -788,12 +924,21 @@ class GoTManager:
             TransactionError: If commit fails
         """
         with self.transaction() as tx:
-            sprint = tx.create_sprint(
+            sprint_id = generate_sprint_id()
+            sprint = Sprint(
+                id=sprint_id,
                 title=title,
-                number=number,
+                number=number or 0,
+                status=properties.get("status", "available"),
                 epic_id=epic_id,
-                **properties
+                session_id=properties.get("session_id", ""),
+                isolation=properties.get("isolation", []),
+                goals=properties.get("goals", []),
+                notes=properties.get("notes", []),
+                properties=properties,
+                metadata=properties.get("metadata", {}),
             )
+            self.tx_manager.write(tx, sprint)
         return sprint
 
     def get_sprint(self, sprint_id: str) -> Optional[Sprint]:
@@ -806,9 +951,12 @@ class GoTManager:
         Returns:
             Sprint object or None if not found
         """
+        _validate_sprint_id_format(sprint_id)
         with self.transaction(read_only=True) as tx:
-            sprint = tx.get_sprint(sprint_id)
-        return sprint
+            entity = self.tx_manager.read(tx, sprint_id)
+            if entity is None or not isinstance(entity, Sprint):
+                return None
+            return entity
 
     def update_sprint(self, sprint_id: str, **updates) -> Sprint:
         """
@@ -824,8 +972,19 @@ class GoTManager:
         Raises:
             TransactionError: If commit fails or sprint not found
         """
+        _validate_sprint_id_format(sprint_id)
         with self.transaction() as tx:
-            sprint = tx.update_sprint(sprint_id, **updates)
+            entity = self.tx_manager.read(tx, sprint_id)
+            if entity is None or not isinstance(entity, Sprint):
+                raise TransactionError(f"Sprint not found: {sprint_id}")
+            sprint = entity
+
+            # Apply updates
+            for key, value in updates.items():
+                if hasattr(sprint, key):
+                    setattr(sprint, key, value)
+
+            self.tx_manager.write(tx, sprint)
         return sprint
 
     def list_sprints(
@@ -866,10 +1025,31 @@ class GoTManager:
         Raises:
             TransactionError: If sprint has tasks (and force=False) or sprint not found
         """
-        # Delete atomically within a transaction
-        # Cache invalidation is handled automatically by CDGStore
         with self.transaction() as tx:
-            tx.delete_sprint(sprint_id, force=force)
+            entity = self.tx_manager.read(tx, sprint_id)
+            if entity is None or not isinstance(entity, Sprint):
+                raise TransactionError(f"Sprint not found: {sprint_id}")
+
+            # Check for contained tasks unless force is True
+            if not force:
+                tasks = self.get_sprint_tasks(sprint_id)
+                if tasks:
+                    task_ids = [task.id for task in tasks]
+                    raise TransactionError(
+                        f"Cannot delete sprint {sprint_id}: has tasks {task_ids}. "
+                        "Use force=True to override."
+                    )
+
+            # Get all edges connected to this sprint
+            connected_edges = [e for e in self.list_edges()
+                               if e.source_id == sprint_id or e.target_id == sprint_id]
+
+            # Delete sprint
+            self.tx_manager.delete(tx, sprint_id)
+
+            # Delete all connected edges
+            for edge in connected_edges:
+                self.tx_manager.delete(tx, edge.id)
 
     def add_task_to_sprint(self, task_id: str, sprint_id: str) -> Edge:
         """
@@ -988,11 +1168,17 @@ class GoTManager:
             TransactionError: If commit fails
         """
         with self.transaction() as tx:
-            epic = tx.create_epic(
+            eid = epic_id or generate_epic_id()
+            epic = Epic(
+                id=eid,
                 title=title,
-                epic_id=epic_id,
-                **properties
+                status=properties.get("status", "active"),
+                phase=properties.get("phase", 1),
+                phases=properties.get("phases", []),
+                properties=properties,
+                metadata=properties.get("metadata", {}),
             )
+            self.tx_manager.write(tx, epic)
         return epic
 
     def get_epic(self, epic_id: str) -> Optional[Epic]:
@@ -1006,8 +1192,10 @@ class GoTManager:
             Epic object or None if not found
         """
         with self.transaction(read_only=True) as tx:
-            epic = tx.get_epic(epic_id)
-        return epic
+            entity = self.tx_manager.read(tx, epic_id)
+            if entity is None or not isinstance(entity, Epic):
+                return None
+            return entity
 
     def update_epic(self, epic_id: str, **updates) -> Epic:
         """
@@ -1024,7 +1212,17 @@ class GoTManager:
             TransactionError: If commit fails or epic not found
         """
         with self.transaction() as tx:
-            epic = tx.update_epic(epic_id, **updates)
+            entity = self.tx_manager.read(tx, epic_id)
+            if entity is None or not isinstance(entity, Epic):
+                raise TransactionError(f"Epic not found: {epic_id}")
+            epic = entity
+
+            # Apply updates
+            for key, value in updates.items():
+                if hasattr(epic, key):
+                    setattr(epic, key, value)
+
+            self.tx_manager.write(tx, epic)
         return epic
 
     def list_epics(self, status: Optional[str] = None) -> List[Epic]:
@@ -1092,13 +1290,18 @@ class GoTManager:
             TransactionError: If commit fails
         """
         with self.transaction() as tx:
-            doc = tx.create_document(
+            doc_id = generate_document_id(path)
+            doc = Document(
+                id=doc_id,
                 path=path,
                 title=title,
                 doc_type=doc_type,
                 tags=tags or [],
-                **properties
+                category=properties.get("category", ""),
+                properties=properties,
+                metadata=properties.get("metadata", {}),
             )
+            self.tx_manager.write(tx, doc)
         return doc
 
     def get_document(self, doc_id: str) -> Optional[Document]:
@@ -1112,8 +1315,10 @@ class GoTManager:
             Document object or None if not found
         """
         with self.transaction(read_only=True) as tx:
-            doc = tx.get_document(doc_id)
-        return doc
+            entity = self.tx_manager.read(tx, doc_id)
+            if entity is None or not isinstance(entity, Document):
+                return None
+            return entity
 
     def get_document_by_path(self, path: str) -> Optional[Document]:
         """
@@ -1143,7 +1348,17 @@ class GoTManager:
             TransactionError: If commit fails or document not found
         """
         with self.transaction() as tx:
-            doc = tx.update_document(doc_id, **updates)
+            entity = self.tx_manager.read(tx, doc_id)
+            if entity is None or not isinstance(entity, Document):
+                raise TransactionError(f"Document not found: {doc_id}")
+            doc = entity
+
+            # Apply updates
+            for key, value in updates.items():
+                if hasattr(doc, key):
+                    setattr(doc, key, value)
+
+            self.tx_manager.write(tx, doc)
         return doc
 
     def list_documents(
@@ -1637,14 +1852,23 @@ class GoTManager:
             TransactionError: If commit fails
         """
         with self.transaction() as tx:
-            handoff = tx.initiate_handoff(
+            # Validate task exists (only if task_id provided)
+            if task_id:
+                task_entity = self.tx_manager.read(tx, task_id)
+                if task_entity is None or not isinstance(task_entity, Task):
+                    raise ValueError(f"Task not found: {task_id}")
+
+            hid = handoff_id or generate_handoff_id()
+            handoff = Handoff(
+                id=hid,
                 source_agent=source_agent,
                 target_agent=target_agent,
                 task_id=task_id,
+                status="initiated",
                 instructions=instructions,
                 context=context or {},
-                handoff_id=handoff_id,
             )
+            self.tx_manager.write(tx, handoff)
         return handoff
 
     def accept_handoff(
@@ -1669,7 +1893,17 @@ class GoTManager:
             NotFoundError: If handoff doesn't exist
         """
         with self.transaction() as tx:
-            handoff = tx.accept_handoff(handoff_id, agent, acknowledgment)
+            entity = self.tx_manager.read(tx, handoff_id)
+            if entity is None or not isinstance(entity, Handoff):
+                raise TransactionError(f"Handoff not found: {handoff_id}")
+            handoff = entity
+
+            handoff.status = "accepted"
+            handoff.accepted_at = datetime.now(timezone.utc).isoformat()
+            if acknowledgment:
+                handoff.properties["acknowledgment"] = acknowledgment
+
+            self.tx_manager.write(tx, handoff)
         return handoff
 
     def complete_handoff(
@@ -1696,9 +1930,17 @@ class GoTManager:
             NotFoundError: If handoff doesn't exist
         """
         with self.transaction() as tx:
-            handoff = tx.complete_handoff(
-                handoff_id, agent, result or {}, artifacts or []
-            )
+            entity = self.tx_manager.read(tx, handoff_id)
+            if entity is None or not isinstance(entity, Handoff):
+                raise TransactionError(f"Handoff not found: {handoff_id}")
+            handoff = entity
+
+            handoff.status = "completed"
+            handoff.completed_at = datetime.now(timezone.utc).isoformat()
+            handoff.result = result or {}
+            handoff.artifacts = artifacts or []
+
+            self.tx_manager.write(tx, handoff)
         return handoff
 
     def reject_handoff(
@@ -1723,7 +1965,16 @@ class GoTManager:
             NotFoundError: If handoff doesn't exist
         """
         with self.transaction() as tx:
-            handoff = tx.reject_handoff(handoff_id, agent, reason)
+            entity = self.tx_manager.read(tx, handoff_id)
+            if entity is None or not isinstance(entity, Handoff):
+                raise TransactionError(f"Handoff not found: {handoff_id}")
+            handoff = entity
+
+            handoff.status = "rejected"
+            handoff.rejected_at = datetime.now(timezone.utc).isoformat()
+            handoff.reject_reason = reason
+
+            self.tx_manager.write(tx, handoff)
         return handoff
 
     def get_handoff(self, handoff_id: str) -> Optional[Handoff]:
@@ -1818,12 +2069,23 @@ class GoTManager:
         from cortical.utils.id_generation import generate_kt_id
 
         with self.transaction() as tx:
-            kt = tx.create_knowledge_transfer(
+            kt_id = generate_kt_id()
+            kt = KnowledgeTransfer(
+                id=kt_id,
                 title=title,
                 summary=summary,
                 status=status,
-                **kwargs
+                session_id=kwargs.get('session_id', ''),
+                session_date=kwargs.get('session_date', ''),
+                sections=kwargs.get('sections', {}),
+                tags=kwargs.get('tags', []),
+                code_refs=kwargs.get('code_refs', []),
+                source_file=kwargs.get('source_file'),
+                related_tasks=kwargs.get('related_tasks', []),
+                related_decisions=kwargs.get('related_decisions', []),
+                related_handoffs=kwargs.get('related_handoffs', []),
             )
+            self.tx_manager.write(tx, kt)
         return kt
 
     def get_knowledge_transfer(self, kt_id: str) -> Optional[KnowledgeTransfer]:
@@ -2008,16 +2270,26 @@ class GoTManager:
             TransactionError: If commit fails
         """
         with self.transaction() as tx:
-            layer = tx.create_claudemd_layer(
+            lid = generate_claudemd_layer_id(layer_number, section_id)
+            layer = ClaudeMdLayer(
+                id=lid,
                 layer_type=layer_type,
+                layer_number=layer_number,
                 section_id=section_id,
                 title=title,
                 content=content,
-                layer_number=layer_number,
-                inclusion_rule=inclusion_rule,
+                freshness_status=properties.get("freshness_status", "fresh"),
                 freshness_decay_days=freshness_decay_days,
-                **properties
+                inclusion_rule=inclusion_rule,
+                context_modules=properties.get("context_modules", []),
+                context_branches=properties.get("context_branches", []),
+                properties=properties,
+                metadata=properties.get("metadata", {}),
             )
+            # Compute content hash
+            layer.content_hash = layer.compute_content_hash()
+            layer.last_regenerated = datetime.now(timezone.utc).isoformat()
+            self.tx_manager.write(tx, layer)
         return layer
 
     def get_claudemd_layer(self, layer_id: str) -> Optional[ClaudeMdLayer]:
@@ -2031,8 +2303,10 @@ class GoTManager:
             ClaudeMdLayer object or None if not found
         """
         with self.transaction(read_only=True) as tx:
-            layer = tx.get_claudemd_layer(layer_id)
-        return layer
+            entity = self.tx_manager.read(tx, layer_id)
+            if entity is None or not isinstance(entity, ClaudeMdLayer):
+                return None
+            return entity
 
     def update_claudemd_layer(self, layer_id: str, **updates) -> ClaudeMdLayer:
         """
@@ -2049,7 +2323,21 @@ class GoTManager:
             TransactionError: If commit fails or layer not found
         """
         with self.transaction() as tx:
-            layer = tx.update_claudemd_layer(layer_id, **updates)
+            entity = self.tx_manager.read(tx, layer_id)
+            if entity is None or not isinstance(entity, ClaudeMdLayer):
+                raise TransactionError(f"ClaudeMdLayer not found: {layer_id}")
+            layer = entity
+
+            # Apply updates
+            for key, value in updates.items():
+                if hasattr(layer, key):
+                    setattr(layer, key, value)
+
+            # Recompute content hash if content changed
+            if "content" in updates:
+                layer.content_hash = layer.compute_content_hash()
+
+            self.tx_manager.write(tx, layer)
         return layer
 
     def list_claudemd_layers(
@@ -2069,12 +2357,18 @@ class GoTManager:
         Returns:
             List of matching ClaudeMdLayer objects
         """
-        with self.transaction(read_only=True) as tx:
-            layers = tx.list_claudemd_layers(
-                layer_type=layer_type,
-                freshness_status=freshness_status,
-                inclusion_rule=inclusion_rule
-            )
+        layers = []
+        for entity in self.tx_manager.store.iter_entities(prefix="CML"):
+            if not isinstance(entity, ClaudeMdLayer):
+                continue
+            # Apply filters
+            if layer_type and entity.layer_type != layer_type:
+                continue
+            if freshness_status and entity.freshness_status != freshness_status:
+                continue
+            if inclusion_rule and entity.inclusion_rule != inclusion_rule:
+                continue
+            layers.append(entity)
         return layers
 
     def delete_claudemd_layer(self, layer_id: str) -> bool:
@@ -2088,8 +2382,11 @@ class GoTManager:
             True if deleted, False if not found
         """
         with self.transaction() as tx:
-            result = tx.delete_claudemd_layer(layer_id)
-        return result
+            entity = self.tx_manager.read(tx, layer_id)
+            if entity is None or not isinstance(entity, ClaudeMdLayer):
+                return False
+            self.tx_manager.delete(tx, layer_id)
+        return True
 
     def _read_claudemd_layer_file(self, path: Path) -> Optional[ClaudeMdLayer]:
         """
@@ -2504,1114 +2801,3 @@ class GoTManager:
     def edges_property(self):
         """Compatibility property for graph.edges access."""
         return self.list_edges()
-
-
-class TransactionContext:
-    """
-    Context manager for transactional operations.
-
-    Commits on successful exit, rolls back on exception.
-    Invalidates cache for written entities after successful commit.
-    """
-
-    def __init__(
-        self,
-        tx_manager: CDGTransactionManager,
-        read_only: bool = False,
-        got_manager: Optional['GoTManager'] = None
-    ):
-        """
-        Initialize context.
-
-        Args:
-            tx_manager: CDG transaction manager
-            read_only: If True, rollback instead of commit on exit
-            got_manager: Optional GoTManager for cache invalidation
-        """
-        self.tx_manager = tx_manager
-        self.read_only = read_only
-        self.tx: Optional[Transaction] = None
-        self._got_manager = got_manager
-
-    def __enter__(self) -> TransactionContext:
-        """Begin transaction."""
-        self.tx = self.tx_manager.begin()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
-        """
-        Commit or rollback based on exception.
-
-        Returns:
-            False to propagate exceptions (never swallow them)
-
-        Note:
-            Index updates are handled automatically by CDGStore via CDGIndexManager.
-            Cache invalidation is also handled at the storage layer.
-        """
-        if self.tx is None:
-            return False
-
-        if exc_type is not None:
-            # Exception occurred - rollback
-            self.tx_manager.rollback(self.tx, reason="exception")
-            return False  # Propagate exception
-
-        if self.read_only:
-            # Read-only mode - rollback
-            self.tx_manager.rollback(self.tx, reason="read_only")
-        else:
-            # Normal exit - commit
-            result = self.tx_manager.commit(self.tx)
-            if not result.success:
-                raise TransactionError(
-                    f"Transaction commit failed: {result.reason}",
-                    conflicts=result.conflicts
-                )
-
-        return False  # Propagate exceptions
-
-    def create_task(self, title: str, **kwargs) -> Task:
-        """
-        Create task within transaction.
-
-        Args:
-            title: Task title
-            **kwargs: Additional task fields (priority, status, description, etc.)
-
-        Returns:
-            Created Task object
-        """
-        task_id = generate_task_id()
-        task = Task(
-            id=task_id,
-            title=title,
-            priority=kwargs.get("priority", "medium"),
-            status=kwargs.get("status", "pending"),
-            description=kwargs.get("description", ""),
-            properties=kwargs.get("properties", {}),
-        )
-        self.tx_manager.write(self.tx, task)
-        return task
-
-    def update_task(self, task_id: str, **updates) -> Task:
-        """
-        Update task within transaction.
-
-        Args:
-            task_id: Task identifier
-            **updates: Fields to update
-
-        Returns:
-            Updated Task object
-
-        Raises:
-            TransactionError: If task not found
-        """
-        task = self.get_task(task_id)
-        if task is None:
-            raise TransactionError(f"Task not found: {task_id}")
-
-        # Check if task is being marked as completed
-        completing_task = updates.get("status") == "completed" and task.status != "completed"
-
-        # Apply updates
-        for key, value in updates.items():
-            if hasattr(task, key):
-                setattr(task, key, value)
-
-        # Note: Version is bumped automatically by storage layer during commit
-
-        # Write back
-        self.tx_manager.write(self.tx, task)
-
-        # Auto-close handoffs when task completes
-        if completing_task:
-            self._auto_close_handoffs(task_id)
-
-        return task
-
-    def _auto_close_handoffs(self, task_id: str) -> None:
-        """
-        Auto-close handoffs when a task completes.
-
-        Finds all handoffs referencing the task and marks them as completed
-        with a system note indicating auto-closure.
-
-        Args:
-            task_id: The task that was completed
-        """
-        if self._got_manager is None:
-            return
-        entities_dir = self._got_manager.entities_dir
-        if not entities_dir.exists():
-            return
-
-        # Find all handoffs for this task
-        for handoff_file in entities_dir.glob("H-*.json"):
-            try:
-                with open(handoff_file, 'r') as f:
-                    wrapper = json.load(f)
-
-                data = wrapper.get("data", {})
-                if data.get("entity_type") != "handoff":
-                    continue
-
-                # Check if this handoff references the completed task
-                if data.get("task_id") != task_id:
-                    continue
-
-                # Check if handoff is already completed or rejected
-                status = data.get("status", "")
-                if status in ("completed", "rejected"):
-                    continue
-
-                # Load handoff and auto-complete it
-                handoff = Handoff.from_dict(data)
-                handoff.status = "completed"
-                handoff.completed_at = datetime.now(timezone.utc).isoformat()
-                handoff.result = {
-                    "auto_closed": True,
-                    "reason": f"Task {task_id} was marked as completed",
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                }
-                handoff.artifacts = []
-                handoff.bump_version()
-
-                # Write back
-                self.tx_manager.write(self.tx, handoff)
-
-                logger.info(f"Auto-closed handoff {handoff.id} for completed task {task_id}")
-
-            except (json.JSONDecodeError, KeyError) as e:
-                logger.warning(f"Skipping corrupted handoff file {handoff_file}: {e}")
-                continue
-
-    def get_task(self, task_id: str) -> Optional[Task]:
-        """
-        Get task within transaction (sees own writes and deletes).
-
-        Args:
-            task_id: Task identifier
-
-        Returns:
-            Task object or None if not found or marked for deletion
-        """
-        # Check if marked for deletion
-        if self.tx.has_delete(task_id):
-            return None
-        entity = self.tx_manager.read(self.tx, task_id)
-        if entity is None:
-            return None
-        if not isinstance(entity, Task):
-            return None
-        return entity
-
-    def delete_task(self, task_id: str, force: bool = False) -> None:
-        """
-        Delete task and all connected edges within transaction.
-
-        Args:
-            task_id: Task identifier to delete
-            force: If False, raise error if task has dependents
-
-        Raises:
-            TransactionError: If task has dependents (and force=False) or task not found
-        """
-        task = self.get_task(task_id)
-        if task is None:
-            raise TransactionError(f"Task not found: {task_id}")
-
-        # Check for dependents unless force is True
-        if not force:
-            dependents = self._get_dependents(task_id)
-            if dependents:
-                dependent_ids = [dep.id for dep in dependents]
-                raise TransactionError(
-                    f"Cannot delete task {task_id}: has dependents {dependent_ids}. "
-                    "Use force=True to override."
-                )
-
-        # Get all edges connected to this task
-        outgoing, incoming = self._get_edges_for_task(task_id)
-        all_edges = outgoing + incoming
-
-        # Mark task for deletion
-        self.tx_manager.delete(self.tx, task_id)
-
-        # Mark all connected edges for deletion
-        for edge in all_edges:
-            self.tx_manager.delete(self.tx, edge.id)
-
-    def delete_decision(self, decision_id: str, force: bool = False) -> None:
-        """
-        Delete decision and all connected edges within transaction.
-
-        Args:
-            decision_id: Decision identifier to delete
-            force: If False, raise error if decision has connected edges
-
-        Raises:
-            TransactionError: If decision has edges (and force=False) or not found
-        """
-        decision = self.get_decision(decision_id)
-        if decision is None:
-            raise TransactionError(f"Decision not found: {decision_id}")
-
-        # Get all edges connected to this decision
-        connected_edges = self._get_edges_for_entity(decision_id)
-
-        if not force and connected_edges:
-            raise TransactionError(
-                f"Cannot delete decision {decision_id}: has {len(connected_edges)} "
-                "connected edges. Use force=True to override."
-            )
-
-        # Mark decision for deletion
-        self.tx_manager.delete(self.tx, decision_id)
-
-        # Mark all connected edges for deletion
-        for edge in connected_edges:
-            self.tx_manager.delete(self.tx, edge.id)
-
-    def _get_dependents(self, task_id: str) -> list:
-        """Get tasks that depend on this task."""
-        dependents = []
-        # Read all edges to find DEPENDS_ON edges targeting this task
-        for entity_id, entity in self.tx.write_set.items():
-            if isinstance(entity, Edge):
-                if entity.edge_type == EdgeTypes.DEPENDS_ON and entity.target_id == task_id:
-                    source = self.get_task(entity.source_id)
-                    if source:
-                        dependents.append(source)
-        # Also check store for edges not in write_set
-        if self._got_manager:
-            for edge in self._got_manager.list_edges():
-                if edge.id not in self.tx.write_set and not self.tx.has_delete(edge.id):
-                    if edge.edge_type == EdgeTypes.DEPENDS_ON and edge.target_id == task_id:
-                        source = self.get_task(edge.source_id)
-                        if source and source.id not in [d.id for d in dependents]:
-                            dependents.append(source)
-        return dependents
-
-    def _get_edges_for_task(self, task_id: str) -> tuple:
-        """Get outgoing and incoming edges for a task."""
-        outgoing = []
-        incoming = []
-        # Check write_set first
-        for entity_id, entity in self.tx.write_set.items():
-            if isinstance(entity, Edge) and not self.tx.has_delete(entity.id):
-                if entity.source_id == task_id:
-                    outgoing.append(entity)
-                elif entity.target_id == task_id:
-                    incoming.append(entity)
-        # Also check store
-        if self._got_manager:
-            for edge in self._got_manager.list_edges():
-                if edge.id not in self.tx.write_set and not self.tx.has_delete(edge.id):
-                    if edge.source_id == task_id:
-                        outgoing.append(edge)
-                    elif edge.target_id == task_id:
-                        incoming.append(edge)
-        return outgoing, incoming
-
-    def _get_edges_for_entity(self, entity_id: str) -> list:
-        """Get all edges connected to an entity."""
-        edges = []
-        # Check write_set first
-        for eid, entity in self.tx.write_set.items():
-            if isinstance(entity, Edge) and not self.tx.has_delete(entity.id):
-                if entity.source_id == entity_id or entity.target_id == entity_id:
-                    edges.append(entity)
-        # Also check store
-        if self._got_manager:
-            for edge in self._got_manager.list_edges():
-                if edge.id not in self.tx.write_set and not self.tx.has_delete(edge.id):
-                    if edge.source_id == entity_id or edge.target_id == entity_id:
-                        edges.append(edge)
-        return edges
-
-    def get_decision(self, decision_id: str) -> Optional[Decision]:
-        """
-        Get decision within transaction (sees own writes).
-
-        Args:
-            decision_id: Decision identifier
-
-        Returns:
-            Decision object or None if not found
-        """
-        # Check if marked for deletion
-        if self.tx.has_delete(decision_id):
-            return None
-        entity = self.tx_manager.read(self.tx, decision_id)
-        if entity is None:
-            return None
-        if not isinstance(entity, Decision):
-            return None
-        return entity
-
-    def create_decision(self, title: str, rationale: str, **kwargs) -> Decision:
-        """
-        Create decision within transaction.
-
-        Args:
-            title: Decision title
-            rationale: Decision rationale
-            **kwargs: Additional decision fields (affects, properties, etc.)
-
-        Returns:
-            Created Decision object
-        """
-        decision_id = generate_decision_id()
-        decision = Decision(
-            id=decision_id,
-            title=title,
-            rationale=rationale,
-            affects=kwargs.get("affects", []),
-            properties=kwargs.get("properties", {}),
-        )
-        self.tx_manager.write(self.tx, decision)
-        return decision
-
-    def log_decision(self, title: str, rationale: str, **kwargs) -> Decision:
-        """
-        Alias for create_decision() - matches CLI 'decision log' command.
-
-        Args:
-            title: Decision title
-            rationale: Decision rationale
-            **kwargs: Additional decision fields
-
-        Returns:
-            Created Decision object
-        """
-        return self.create_decision(title, rationale, **kwargs)
-
-    def add_edge(
-        self,
-        source_id: str,
-        target_id: str,
-        edge_type: str,
-        validate_relationship: bool = True,
-        **kwargs
-    ) -> Edge:
-        """
-        Add edge within transaction.
-
-        Args:
-            source_id: Source entity ID
-            target_id: Target entity ID
-            edge_type: Edge type
-            validate_relationship: If True, validate entity types can be connected
-                                  by this edge type (default: True)
-            **kwargs: Additional edge fields (weight, confidence, etc.)
-
-        Returns:
-            Created Edge object
-
-        Raises:
-            ValueError: If entity IDs have invalid format (including legacy sprint IDs)
-            ValueError: If validate_relationship=True and relationship is not allowed
-            ValueError: If self-reference detected (source_id == target_id)
-
-        Note:
-            Entity validation includes:
-            - ID format validation for all entity types
-            - Legacy sprint ID rejection (S-NNN, S-sprint-NNN-*)
-            - Relationship rules (which entity types can connect)
-            - Self-reference prevention
-        """
-        # Full entity and relationship validation
-        if validate_relationship:
-            validate_edge_relationship(source_id, target_id, edge_type)
-        else:
-            # Still validate sprint IDs use current format
-            _require_current_sprint_id_format(source_id)
-            _require_current_sprint_id_format(target_id)
-
-        edge = Edge(
-            id="",  # Auto-generated in __post_init__
-            source_id=source_id,
-            target_id=target_id,
-            edge_type=edge_type,
-            weight=kwargs.get("weight", 1.0),
-            confidence=kwargs.get("confidence", 1.0),
-            reason=kwargs.get("reason", ""),
-        )
-        self.tx_manager.write(self.tx, edge)
-        return edge
-
-    def create_sprint(self, title: str, **kwargs) -> Sprint:
-        """
-        Create sprint within transaction.
-
-        Args:
-            title: Sprint title
-            **kwargs: Additional sprint fields (number, epic_id, status, etc.)
-
-        Returns:
-            Created Sprint object
-        """
-        # Use merge-free timestamp-based ID; number is stored as metadata only
-        sprint_id = generate_sprint_id()
-        sprint = Sprint(
-            id=sprint_id,
-            title=title,
-            number=kwargs.get("number", 0),
-            status=kwargs.get("status", "available"),
-            epic_id=kwargs.get("epic_id", ""),
-            session_id=kwargs.get("session_id", ""),
-            isolation=kwargs.get("isolation", []),
-            goals=kwargs.get("goals", []),
-            notes=kwargs.get("notes", []),
-            properties=kwargs.get("properties", {}),
-            metadata=kwargs.get("metadata", {}),
-        )
-        self.tx_manager.write(self.tx, sprint)
-        return sprint
-
-    def update_sprint(self, sprint_id: str, **updates) -> Sprint:
-        """
-        Update sprint within transaction.
-
-        Args:
-            sprint_id: Sprint identifier
-            **updates: Fields to update
-
-        Returns:
-            Updated Sprint object
-
-        Raises:
-            TransactionError: If sprint not found
-        """
-        # Validate sprint ID format (non-breaking)
-        _validate_sprint_id_format(sprint_id)
-
-        sprint = self.get_sprint(sprint_id)
-        if sprint is None:
-            raise TransactionError(f"Sprint not found: {sprint_id}")
-
-        # Apply updates
-        for key, value in updates.items():
-            if hasattr(sprint, key):
-                setattr(sprint, key, value)
-
-        # Note: Version is bumped automatically by storage layer during commit
-
-        # Write back
-        self.tx_manager.write(self.tx, sprint)
-        return sprint
-
-    def get_sprint(self, sprint_id: str) -> Optional[Sprint]:
-        """
-        Get sprint within transaction (sees own writes).
-
-        Args:
-            sprint_id: Sprint identifier
-
-        Returns:
-            Sprint object or None if not found
-        """
-        # Validate sprint ID format (non-breaking)
-        _validate_sprint_id_format(sprint_id)
-
-        entity = self.tx_manager.read(self.tx, sprint_id)
-        if entity is None:
-            return None
-        if not isinstance(entity, Sprint):
-            return None
-        return entity
-
-    def get_sprint_tasks(self, sprint_id: str) -> List[Task]:
-        """
-        Get all tasks in a sprint by finding CONTAINS edges.
-
-        Args:
-            sprint_id: Sprint identifier
-
-        Returns:
-            List of Task objects in the sprint
-        """
-        tasks = []
-        # Find edges where sprint contains tasks
-        edges = self._get_edges_for_entity(sprint_id)
-        for edge in edges:
-            if edge.edge_type == EdgeTypes.CONTAINS and edge.source_id == sprint_id:
-                # Sprint contains this task
-                task = self.get_task(edge.target_id)
-                if task is not None:
-                    tasks.append(task)
-        return tasks
-
-    def delete_sprint(self, sprint_id: str, force: bool = False) -> None:
-        """
-        Delete sprint and all connected edges within transaction.
-
-        Args:
-            sprint_id: Sprint identifier to delete
-            force: If False, raise error if sprint has tasks
-
-        Raises:
-            TransactionError: If sprint has tasks (and force=False) or sprint not found
-        """
-        sprint = self.get_sprint(sprint_id)
-        if sprint is None:
-            raise TransactionError(f"Sprint not found: {sprint_id}")
-
-        # Check for contained tasks unless force is True
-        if not force:
-            tasks = self.get_sprint_tasks(sprint_id)
-            if tasks:
-                task_ids = [task.id for task in tasks]
-                raise TransactionError(
-                    f"Cannot delete sprint {sprint_id}: has tasks {task_ids}. "
-                    "Use force=True to override."
-                )
-
-        # Get all edges connected to this sprint
-        connected_edges = self._get_edges_for_entity(sprint_id)
-
-        # Mark sprint for deletion
-        self.tx_manager.delete(self.tx, sprint_id)
-
-        # Mark all connected edges for deletion
-        for edge in connected_edges:
-            self.tx_manager.delete(self.tx, edge.id)
-
-    def create_epic(self, title: str, **kwargs) -> Epic:
-        """
-        Create epic within transaction.
-
-        Args:
-            title: Epic title
-            **kwargs: Additional epic fields (epic_id, status, phase, etc.)
-
-        Returns:
-            Created Epic object
-        """
-        epic_id = kwargs.get("epic_id") or generate_epic_id()
-        epic = Epic(
-            id=epic_id,
-            title=title,
-            status=kwargs.get("status", "active"),
-            phase=kwargs.get("phase", 1),
-            phases=kwargs.get("phases", []),
-            properties=kwargs.get("properties", {}),
-            metadata=kwargs.get("metadata", {}),
-        )
-        self.tx_manager.write(self.tx, epic)
-        return epic
-
-    def update_epic(self, epic_id: str, **updates) -> Epic:
-        """
-        Update epic within transaction.
-
-        Args:
-            epic_id: Epic identifier
-            **updates: Fields to update
-
-        Returns:
-            Updated Epic object
-
-        Raises:
-            TransactionError: If epic not found
-        """
-        epic = self.get_epic(epic_id)
-        if epic is None:
-            raise TransactionError(f"Epic not found: {epic_id}")
-
-        # Apply updates
-        for key, value in updates.items():
-            if hasattr(epic, key):
-                setattr(epic, key, value)
-
-        # Note: Version is bumped automatically by storage layer during commit
-
-        # Write back
-        self.tx_manager.write(self.tx, epic)
-        return epic
-
-    def get_epic(self, epic_id: str) -> Optional[Epic]:
-        """
-        Get epic within transaction (sees own writes).
-
-        Args:
-            epic_id: Epic identifier
-
-        Returns:
-            Epic object or None if not found
-        """
-        entity = self.tx_manager.read(self.tx, epic_id)
-        if entity is None:
-            return None
-        if not isinstance(entity, Epic):
-            return None
-        return entity
-
-    # Document operations
-    def create_document(self, path: str, **kwargs) -> Document:
-        """
-        Create document within transaction.
-
-        Args:
-            path: File path (e.g., "docs/architecture.md")
-            **kwargs: Additional document fields (title, doc_type, tags, etc.)
-
-        Returns:
-            Created Document object
-        """
-        doc_id = generate_document_id(path)
-        doc = Document(
-            id=doc_id,
-            path=path,
-            title=kwargs.get("title", ""),
-            doc_type=kwargs.get("doc_type", "general"),
-            tags=kwargs.get("tags", []),
-            category=kwargs.get("category", ""),
-            properties=kwargs.get("properties", {}),
-            metadata=kwargs.get("metadata", {}),
-        )
-        self.tx_manager.write(self.tx, doc)
-        return doc
-
-    def update_document(self, doc_id: str, **updates) -> Document:
-        """
-        Update document within transaction.
-
-        Args:
-            doc_id: Document identifier
-            **updates: Fields to update
-
-        Returns:
-            Updated Document object
-
-        Raises:
-            TransactionError: If document not found
-        """
-        doc = self.get_document(doc_id)
-        if doc is None:
-            raise TransactionError(f"Document not found: {doc_id}")
-
-        # Apply updates
-        for key, value in updates.items():
-            if hasattr(doc, key):
-                setattr(doc, key, value)
-
-        # Note: Version is bumped automatically by storage layer during commit
-
-        # Write back
-        self.tx_manager.write(self.tx, doc)
-        return doc
-
-    def get_document(self, doc_id: str) -> Optional[Document]:
-        """
-        Get document within transaction (sees own writes).
-
-        Args:
-            doc_id: Document identifier
-
-        Returns:
-            Document object or None if not found
-        """
-        entity = self.tx_manager.read(self.tx, doc_id)
-        if entity is None:
-            return None
-        if not isinstance(entity, Document):
-            return None
-        return entity
-
-    # Handoff operations
-    def initiate_handoff(
-        self,
-        source_agent: str,
-        target_agent: str,
-        task_id: str = "",
-        instructions: str = "",
-        context: Optional[Dict[str, Any]] = None,
-        handoff_id: Optional[str] = None,
-    ) -> Handoff:
-        """
-        Initiate a handoff within transaction.
-
-        Args:
-            source_agent: Agent initiating the handoff
-            target_agent: Agent receiving the handoff
-            task_id: Task being handed off (optional for session handoffs)
-            instructions: Instructions for the target agent
-            context: Additional context data
-            handoff_id: Optional custom handoff ID (auto-generated if not provided)
-
-        Returns:
-            Created Handoff object
-
-        Raises:
-            ValueError: If task_id is provided but does not exist
-        """
-        # Validate task exists (only if task_id provided)
-        if task_id:
-            task = self.get_task(task_id)
-            if task is None:
-                raise ValueError(f"Task not found: {task_id}")
-
-        if handoff_id is None:
-            handoff_id = generate_handoff_id()
-
-        handoff = Handoff(
-            id=handoff_id,
-            source_agent=source_agent,
-            target_agent=target_agent,
-            task_id=task_id,
-            status="initiated",
-            instructions=instructions,
-            context=context or {},
-        )
-        self.tx_manager.write(self.tx, handoff)
-        return handoff
-
-    def accept_handoff(
-        self,
-        handoff_id: str,
-        agent: str,
-        acknowledgment: str = ""
-    ) -> Handoff:
-        """
-        Accept a handoff within transaction.
-
-        Args:
-            handoff_id: Handoff identifier
-            agent: Agent accepting the handoff
-            acknowledgment: Optional acknowledgment message
-
-        Returns:
-            Updated Handoff object
-
-        Raises:
-            TransactionError: If handoff not found
-        """
-        handoff = self.get_handoff(handoff_id)
-        if handoff is None:
-            raise TransactionError(f"Handoff not found: {handoff_id}")
-
-        handoff.status = "accepted"
-        handoff.accepted_at = datetime.now(timezone.utc).isoformat()
-        if acknowledgment:
-            handoff.properties["acknowledgment"] = acknowledgment
-        # Note: Version is bumped automatically by storage layer during commit
-
-        self.tx_manager.write(self.tx, handoff)
-        return handoff
-
-    def complete_handoff(
-        self,
-        handoff_id: str,
-        agent: str,
-        result: Dict[str, Any],
-        artifacts: List[str],
-    ) -> Handoff:
-        """
-        Complete a handoff within transaction.
-
-        Args:
-            handoff_id: Handoff identifier
-            agent: Agent completing the handoff
-            result: Result data
-            artifacts: List of artifact paths/identifiers
-
-        Returns:
-            Updated Handoff object
-
-        Raises:
-            TransactionError: If handoff not found
-        """
-        handoff = self.get_handoff(handoff_id)
-        if handoff is None:
-            raise TransactionError(f"Handoff not found: {handoff_id}")
-
-        handoff.status = "completed"
-        handoff.completed_at = datetime.now(timezone.utc).isoformat()
-        handoff.result = result
-        handoff.artifacts = artifacts
-        # Note: Version is bumped automatically by storage layer during commit
-
-        self.tx_manager.write(self.tx, handoff)
-        return handoff
-
-    def reject_handoff(
-        self,
-        handoff_id: str,
-        agent: str,
-        reason: str = ""
-    ) -> Handoff:
-        """
-        Reject a handoff within transaction.
-
-        Args:
-            handoff_id: Handoff identifier
-            agent: Agent rejecting the handoff
-            reason: Rejection reason
-
-        Returns:
-            Updated Handoff object
-
-        Raises:
-            TransactionError: If handoff not found
-        """
-        handoff = self.get_handoff(handoff_id)
-        if handoff is None:
-            raise TransactionError(f"Handoff not found: {handoff_id}")
-
-        handoff.status = "rejected"
-        handoff.rejected_at = datetime.now(timezone.utc).isoformat()
-        handoff.reject_reason = reason
-        # Note: Version is bumped automatically by storage layer during commit
-
-        self.tx_manager.write(self.tx, handoff)
-        return handoff
-
-    def get_handoff(self, handoff_id: str) -> Optional[Handoff]:
-        """
-        Get handoff within transaction (sees own writes).
-
-        Args:
-            handoff_id: Handoff identifier
-
-        Returns:
-            Handoff object or None if not found
-        """
-        entity = self.tx_manager.read(self.tx, handoff_id)
-        if entity is None:
-            return None
-        if not isinstance(entity, Handoff):
-            return None
-        return entity
-
-    # ==================== KnowledgeTransfer Methods ====================
-
-    def create_knowledge_transfer(
-        self,
-        title: str,
-        summary: str = "",
-        status: str = "draft",
-        **kwargs
-    ) -> KnowledgeTransfer:
-        """
-        Create knowledge transfer within transaction.
-
-        Args:
-            title: KT title (required)
-            summary: Executive summary
-            status: Initial status (default: draft)
-            **kwargs: Additional fields (session_id, sections, tags, code_refs, etc.)
-
-        Returns:
-            Created KnowledgeTransfer object
-        """
-        from cortical.utils.id_generation import generate_kt_id
-
-        kt_id = generate_kt_id()
-        kt = KnowledgeTransfer(
-            id=kt_id,
-            title=title,
-            summary=summary,
-            status=status,
-            session_id=kwargs.get('session_id', ''),
-            session_date=kwargs.get('session_date', ''),
-            sections=kwargs.get('sections', {}),
-            tags=kwargs.get('tags', []),
-            code_refs=kwargs.get('code_refs', []),
-            source_file=kwargs.get('source_file'),
-            related_tasks=kwargs.get('related_tasks', []),
-            related_decisions=kwargs.get('related_decisions', []),
-            related_handoffs=kwargs.get('related_handoffs', []),
-        )
-        self.tx_manager.write(self.tx, kt)
-        return kt
-
-    def get_knowledge_transfer(self, kt_id: str) -> Optional[KnowledgeTransfer]:
-        """
-        Get knowledge transfer within transaction (sees own writes).
-
-        Args:
-            kt_id: Knowledge transfer identifier
-
-        Returns:
-            KnowledgeTransfer object or None if not found
-        """
-        entity = self.tx_manager.read(self.tx, kt_id)
-        if entity is None:
-            return None
-        if not isinstance(entity, KnowledgeTransfer):
-            return None
-        return entity
-
-    # ==================== ClaudeMdLayer Methods ====================
-
-    def create_claudemd_layer(
-        self,
-        layer_type: str,
-        section_id: str,
-        title: str,
-        content: str,
-        **kwargs
-    ) -> ClaudeMdLayer:
-        """
-        Create CLAUDE.md layer within transaction.
-
-        Args:
-            layer_type: Type of layer
-            section_id: Section identifier
-            title: Human-readable title
-            content: Markdown content
-            **kwargs: Additional fields
-
-        Returns:
-            Created ClaudeMdLayer object
-        """
-        layer_number = kwargs.get("layer_number", 0)
-        layer_id = generate_claudemd_layer_id(layer_number, section_id)
-
-        layer = ClaudeMdLayer(
-            id=layer_id,
-            layer_type=layer_type,
-            layer_number=layer_number,
-            section_id=section_id,
-            title=title,
-            content=content,
-            freshness_status=kwargs.get("freshness_status", "fresh"),
-            freshness_decay_days=kwargs.get("freshness_decay_days", 0),
-            inclusion_rule=kwargs.get("inclusion_rule", "always"),
-            context_modules=kwargs.get("context_modules", []),
-            context_branches=kwargs.get("context_branches", []),
-            properties=kwargs.get("properties", {}),
-            metadata=kwargs.get("metadata", {}),
-        )
-
-        # Compute content hash
-        layer.content_hash = layer.compute_content_hash()
-        layer.last_regenerated = datetime.now(timezone.utc).isoformat()
-
-        self.tx_manager.write(self.tx, layer)
-        return layer
-
-    def get_claudemd_layer(self, layer_id: str) -> Optional[ClaudeMdLayer]:
-        """
-        Get CLAUDE.md layer within transaction.
-
-        Args:
-            layer_id: Layer identifier
-
-        Returns:
-            ClaudeMdLayer object or None if not found
-        """
-        entity = self.tx_manager.read(self.tx, layer_id)
-        if entity is None:
-            return None
-        if not isinstance(entity, ClaudeMdLayer):
-            return None
-        return entity
-
-    def update_claudemd_layer(self, layer_id: str, **updates) -> ClaudeMdLayer:
-        """
-        Update CLAUDE.md layer within transaction.
-
-        Args:
-            layer_id: Layer identifier
-            **updates: Fields to update
-
-        Returns:
-            Updated ClaudeMdLayer object
-
-        Raises:
-            TransactionError: If layer not found
-        """
-        layer = self.get_claudemd_layer(layer_id)
-        if layer is None:
-            raise TransactionError(f"ClaudeMdLayer not found: {layer_id}")
-
-        # Apply updates
-        for key, value in updates.items():
-            if hasattr(layer, key):
-                setattr(layer, key, value)
-
-        # Recompute content hash if content changed
-        if "content" in updates:
-            layer.content_hash = layer.compute_content_hash()
-
-        # Note: Version is bumped automatically by storage layer during commit
-        self.tx_manager.write(self.tx, layer)
-        return layer
-
-    def list_claudemd_layers(
-        self,
-        layer_type: Optional[str] = None,
-        freshness_status: Optional[str] = None,
-        inclusion_rule: Optional[str] = None
-    ) -> List[ClaudeMdLayer]:
-        """
-        List CLAUDE.md layers within transaction.
-
-        Args:
-            layer_type: Filter by layer type
-            freshness_status: Filter by freshness status
-            inclusion_rule: Filter by inclusion rule
-
-        Returns:
-            List of matching ClaudeMdLayer objects
-        """
-        layers = []
-
-        for entity in self.tx_manager.store.iter_entities(prefix="CML"):
-            if not isinstance(entity, ClaudeMdLayer):
-                continue
-
-            # Apply filters
-            if layer_type and entity.layer_type != layer_type:
-                continue
-            if freshness_status and entity.freshness_status != freshness_status:
-                continue
-            if inclusion_rule and entity.inclusion_rule != inclusion_rule:
-                continue
-
-            layers.append(entity)
-
-        return layers
-
-    def delete_claudemd_layer(self, layer_id: str) -> bool:
-        """
-        Delete CLAUDE.md layer within transaction.
-
-        Args:
-            layer_id: Layer identifier
-
-        Returns:
-            True if deleted, False if not found
-        """
-        layer = self.get_claudemd_layer(layer_id)
-        if layer is None:
-            return False
-
-        # Delete through transaction manager (handles cache invalidation)
-        self.tx_manager.delete(self.tx, layer_id)
-        return True
-
-    def read(self, entity_id: str) -> Optional[Entity]:
-        """
-        Read any entity by ID.
-
-        Args:
-            entity_id: Entity identifier
-
-        Returns:
-            Entity object or None if not found
-        """
-        return self.tx_manager.read(self.tx, entity_id)
-
-    def write(self, entity: Entity) -> None:
-        """
-        Write any entity.
-
-        Args:
-            entity: Entity to write
-        """
-        self.tx_manager.write(self.tx, entity)
