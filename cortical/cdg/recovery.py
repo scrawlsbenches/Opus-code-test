@@ -356,7 +356,9 @@ class CDGRecoveryManager:
                 # JSONDecodeError: truncated or malformed JSON file
                 # KeyError: missing required fields (_checksum, data, etc.)
                 corrupted.append(entity_id)
-                logger.warning(
+                # Use debug level since this runs on every startup during auto-recovery
+                # The CLI validate command prints results from the returned list
+                logger.debug(
                     "Corrupted entity detected: %s - %s: %s",
                     entity_id, type(e).__name__, e
                 )
