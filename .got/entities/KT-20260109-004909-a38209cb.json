@@ -1,0 +1,24 @@
+{
+  "_checksum": "1be71c02bf84627c",
+  "_written_at": "2026-01-09T00:49:28.993103+00:00",
+  "data": {
+    "code_refs": [],
+    "created_at": "2026-01-09T00:49:09.515102+00:00",
+    "entity_type": "knowledge_transfer",
+    "id": "KT-20260109-004909-a38209cb",
+    "modified_at": "2026-01-09T00:49:28.993049+00:00",
+    "properties": {},
+    "related_decisions": [],
+    "related_handoffs": [],
+    "related_tasks": [],
+    "sections": {},
+    "session_date": "",
+    "session_id": "",
+    "source_file": null,
+    "status": "published",
+    "summary": "Testing the fixed create command",
+    "tags": [],
+    "title": "Test Finalize Fix",
+    "version": 3
+  }
+}
