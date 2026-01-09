@@ -1,0 +1,34 @@
+{
+  "_checksum": "041259956dd47ec5",
+  "_written_at": "2026-01-09T00:29:13.206208+00:00",
+  "data": {
+    "accepted_at": "2026-01-09T00:28:55.028918+00:00",
+    "artifacts": [],
+    "completed_at": "2026-01-09T00:29:13.193811+00:00",
+    "context": {
+      "task_priority": null,
+      "task_status": null,
+      "task_title": "Test handoff workflow"
+    },
+    "created_at": "2026-01-09T00:28:43.869148+00:00",
+    "entity_type": "handoff",
+    "id": "H-20260109-002843-5e348d09",
+    "initiated_at": "2026-01-09T00:28:43.869169+00:00",
+    "instructions": "Test handoff instructions",
+    "modified_at": "2026-01-09T00:29:13.206144+00:00",
+    "properties": {
+      "acknowledgment": "Accepting test handoff"
+    },
+    "reject_reason": "",
+    "rejected_at": "",
+    "result": {
+      "message": "Test completed",
+      "success": true
+    },
+    "source_agent": "main",
+    "status": "completed",
+    "target_agent": "test-agent",
+    "task_id": "T-20260109-002833-1b5124aa",
+    "version": 4
+  }
+}
