@@ -181,24 +181,6 @@ class TransactionalGoTAdapter:
             logger.error(f"Failed to start task {task_id}: {e}")
             return False
 
-    def complete_task(self, task_id: str, retrospective: str = "") -> bool:
-        """Complete a task."""
-        try:
-            task = self._manager.get_task(task_id)
-            if not task:
-                return False
-            task.metadata["completed_at"] = datetime.now(timezone.utc).isoformat()
-            updates = {"status": "completed", "metadata": task.metadata}
-            if retrospective:
-                props = dict(task.properties)
-                props["retrospective"] = retrospective
-                updates["properties"] = props
-            self._manager.update_task(task_id, **updates)
-            return True
-        except Exception as e:
-            logger.error(f"Failed to complete task {task_id}: {e}")
-            return False
-
     def block_task(self, task_id: str, reason: str = "", blocked_by: Optional[str] = None) -> bool:
         """Block a task."""
         try:

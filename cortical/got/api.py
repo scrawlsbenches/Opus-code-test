@@ -480,6 +480,34 @@ class GoTManager:
             task = tx.update_task(task_id, **updates)
         return task
 
+    def complete_task(self, task_id: str, retrospective: str = "") -> bool:
+        """
+        Complete a task (set status to completed with timestamp).
+
+        Args:
+            task_id: Task identifier
+            retrospective: Optional retrospective notes
+
+        Returns:
+            True if completed successfully, False if task not found
+        """
+        task = self.get_task(task_id)
+        if not task:
+            return False
+
+        # Build update dict
+        metadata = dict(task.metadata) if task.metadata else {}
+        metadata["completed_at"] = datetime.now(timezone.utc).isoformat()
+        updates = {"status": "completed", "metadata": metadata}
+
+        if retrospective:
+            props = dict(task.properties) if task.properties else {}
+            props["retrospective"] = retrospective
+            updates["properties"] = props
+
+        self.update_task(task_id, **updates)
+        return True
+
     def create_decision(
         self,
         title: str,
