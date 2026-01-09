@@ -71,7 +71,7 @@ python -m cortical.got sprint claim S-XXX --agent "agent-1"
 python -m cortical.got sprint release S-XXX --agent "agent-1"
 
 # Task assignment
-python -m cortical.got sprint link S-XXX --task T-YYY
+python -m cortical.got sprint link S-XXX T-YYY
 python -m cortical.got sprint tasks S-XXX
 python -m cortical.got sprint suggest              # AI-suggested tasks
 ```
@@ -129,13 +129,13 @@ python -m cortical.got analyze orphans             # Disconnected clusters
 python -m cortical.got handoff initiate T-XXX --target agent-2 --instructions "..."
 python -m cortical.got handoff accept H-XXX --agent agent-2
 python -m cortical.got handoff complete H-XXX --agent agent-2
-python -m cortical.got handoff list --status pending
+python -m cortical.got handoff list --status initiated
 ```
 
 ### Failed Approach Tracking
 
 ```bash
-python -m cortical.got failure record T-XXX "Tried mutex lock - caused deadlock"
+python -m cortical.got failure log T-XXX --attempt "Tried mutex lock" --error "Caused deadlock"
 python -m cortical.got failure list T-XXX
 ```
 
@@ -146,7 +146,7 @@ python -m cortical.got validate                    # Check integrity
 python -m cortical.got validate --check-refs       # Deep validation
 python -m cortical.got stats                       # Statistics
 python -m cortical.got dashboard                   # Full metrics
-python -m cortical.got backup create "pre-refactor"
+python -m cortical.got backup create              # Creates timestamped snapshot
 python -m cortical.got infer --commits 10          # Infer edges from git
 ```
 
@@ -436,7 +436,7 @@ python -m cortical.got handoff initiate T-001 --target "next-agent" --instructio
 
 **Pattern 4: Failed Approach Tracking**
 ```bash
-python -m cortical.got failure record T-001 "Tried mutex lock - caused deadlock"
+python -m cortical.got failure log T-001 --attempt "Tried mutex lock" --error "Caused deadlock"
 ```
 
 ### Validation and Recovery
@@ -446,6 +446,6 @@ python -m cortical.got validate              # Basic validation
 python -m cortical.got validate --check-refs # Deep validation
 python -m cortical.got stats                 # Statistics
 python -m cortical.got recover               # If validation fails
-python -m cortical.got backup create "pre-refactor"
+python -m cortical.got backup create         # Creates timestamped snapshot
 python -m cortical.got backup restore BACKUP_ID
 ```
