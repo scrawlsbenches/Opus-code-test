@@ -1950,3 +1950,5 @@
 {"seq":1950,"ts":"2026-01-09T14:18:08.100721+00:00","tx":"TX-20260109-141808-9b4e3871","op":"TX_ROLLBACK","data":{"reason":"read_only"},"checksum":"7a4adf966eeb5db8"}
 {"seq":1951,"ts":"2026-01-09T14:18:53.555631+00:00","tx":"TX-20260109-141853-286b851c","op":"TX_BEGIN","data":{"snapshot":2102},"checksum":"501534a24f2d998d"}
 {"seq":1952,"ts":"2026-01-09T14:18:53.557532+00:00","tx":"TX-20260109-141853-286b851c","op":"TX_ROLLBACK","data":{"reason":"read_only"},"checksum":"4214caab925d4831"}
+{"seq":1953,"ts":"2026-01-09T15:11:50.675196+00:00","tx":"TX-20260109-151150-cc57d2b7","op":"TX_BEGIN","data":{"snapshot":2102},"checksum":"a3fa8ea54abe45eb"}
+{"seq":1954,"ts":"2026-01-09T15:11:50.676852+00:00","tx":"TX-20260109-151150-cc57d2b7","op":"TX_ROLLBACK","data":{"reason":"read_only"},"checksum":"7243515ce85689e5"}
