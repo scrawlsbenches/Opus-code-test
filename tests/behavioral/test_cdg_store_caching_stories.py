@@ -92,15 +92,29 @@ class TestCDGStoreCacheReads:
         assert stats['hits'] == 1
         assert stats['misses'] == 1
 
-    def test_cached_entity_is_same_object(self, store):
-        """Cached reads should return the same object."""
+    def test_cached_reads_return_equal_isolated_copies(self, store):
+        """Cached reads return equal data but isolated copies for transaction safety.
+
+        This ensures proper isolation - modifications to one copy
+        should not affect other reads or the cached original.
+        """
         store.write(SampleEntity(id="TE-001", name="Test"))
         store.cache_clear()
 
         first = store.read("TE-001")
         second = store.read("TE-001")
 
-        assert first is second
+        # Data should be equal
+        assert first.id == second.id
+        assert first.name == second.name
+        assert first.version == second.version
+
+        # But objects should be isolated copies (not same reference)
+        assert first is not second
+
+        # Modifying one should not affect the other (isolation)
+        first.name = "Modified"
+        assert second.name == "Test"
 
 
 class TestCDGStoreCacheIterEntities:
