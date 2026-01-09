@@ -101,7 +101,36 @@ Tested the full workflow - works correctly:
 | e10e64b0 | docs: Create session scratchpad for handoff fixes |
 | 3c8a7c12 | fix: Silence corruption warnings during normal CLI operations |
 | 4a90b14a | chore: Add test handoff entity from CLI testing |
+| 1bb7f432 | fix: Repair KT CLI commands (create, show, list, append, finalize) |
+
+---
+
+## Summary
+
+Successfully fixed 7 bugs in the handoff/KT CLI system:
+1. Corruption warning spam (logging level fix)
+2. kt list tags parameter missing
+3. .get() on entity objects in cmd_kt_list
+4. Missing adapter methods (get_knowledge_transfer, etc.)
+5. .get() on entity objects in cmd_kt_show
+6. finalize_knowledge_transfer missing parameters
+7. kt create not persisting to disk
+
+All KT CLI commands now work:
+- `kt create` ✅
+- `kt list` ✅
+- `kt show` ✅
+- `kt append` ✅
+- `kt finalize` ✅
+
+All handoff CLI commands work:
+- `handoff initiate` ✅
+- `handoff accept` ✅
+- `handoff complete` ✅
+- `handoff list` ✅
+- `handoff show` ✅
 
 ---
 
 *Created: 2026-01-09*
+*Last Updated: 2026-01-09*
