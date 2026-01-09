@@ -57,12 +57,16 @@ class TransactionalGoTAdapter:
     # =========================================================================
     # Task Operations
     # TODO(adapter-retirement): PHASE 1-2
-    # - create_task: KEEP IN ADAPTER - adds session_id/branch metadata, wraps manager
-    # - get_task, list_tasks, list_all_tasks, update_task, delete_task: PURE DELEGATION - remove, use manager directly
+    # REVIEWED 2026-01-09: Sub-agent analysis complete
+    #
+    # - create_task: KEEP - adds session_id/branch metadata
+    # - get_task, list_all_tasks, update_task, delete_task: PURE DELEGATION - remove
+    # - list_tasks: HAS LOGIC (sprint/category filtering) - evaluate where filtering goes
     # - start_task, complete_task, block_task: MOVE TO GoTManager (Phase 1)
+    #   **CRITICAL: complete_task MUST move first - git inference depends on it**
     # - add_dependency, add_blocks, add_edge, list_edges, get_edges_for_task: PURE DELEGATION - remove
     # - get_task_sprint, get_task_dependencies: MOVE TO GoTManager (Phase 2)
-    # - what_blocks, what_depends_on, get_blockers, get_dependents: ALREADY IN GoTManager - remove wrappers
+    # - what_blocks, what_depends_on, get_blockers, get_dependents: ALREADY IN GoTManager - remove
     # - get_active_tasks, get_blocked_tasks, get_next_task: MOVE TO GoTManager (Phase 2)
     # =========================================================================
 
@@ -327,12 +331,15 @@ class TransactionalGoTAdapter:
     # =========================================================================
     # Sprint Operations
     # TODO(adapter-retirement): PHASE 3
+    # REVIEWED 2026-01-09: Sub-agent analysis complete
+    #
     # - create_sprint, get_sprint, list_sprints, update_sprint, delete_sprint: PURE DELEGATION - remove
     # - get_current_sprint, get_sprint_tasks, get_sprint_progress: PURE DELEGATION - remove
     # - claim_sprint, release_sprint: MOVE TO GoTManager (Phase 3) - adds claimed_by/claimed_at
     # - add_sprint_goal, list_sprint_goals, complete_sprint_goal: MOVE TO GoTManager (Phase 3)
     # - link_task_to_sprint: REDUNDANT with add_task_to_sprint - remove
-    # - unlink_task_from_sprint: MOVE TO GoTManager (Phase 3) - needs edge deletion
+    # - unlink_task_from_sprint: **BROKEN** - finds edge but doesn't delete (returns True without action)
+    #   **BLOCKER: GoTManager needs delete_edge() method first**
     # =========================================================================
 
     def create_sprint(self, name: str, number: Optional[int] = None,
@@ -463,10 +470,13 @@ class TransactionalGoTAdapter:
 
     # =========================================================================
     # Decision Operations
-    # TODO(adapter-retirement): MOSTLY PURE DELEGATION - remove most, use GoTManager
+    # TODO(adapter-retirement): PHASE 4
+    # REVIEWED 2026-01-09: Sub-agent analysis complete
+    #
     # - create_decision, list_decisions, get_decision, delete_decision: PURE DELEGATION - remove
-    # - log_decision: MOVE TO GoTManager (Phase 4) - creates JUSTIFIES edges
-    # - why: MOVE TO GoTManager (Phase 4) - queries decisions affecting task
+    # - log_decision: MOVE TO GoTManager - **NOTE: GoTManager.log_decision does NOT create JUSTIFIES edges**
+    #   The adapter version creates edges, manager version doesn't - must add edge creation to manager
+    # - why: MOVE TO GoTManager - queries decisions affecting task (missing from manager)
     # =========================================================================
 
     def create_decision(self, content: str, rationale: str = "",
@@ -681,10 +691,14 @@ class TransactionalGoTAdapter:
     # =========================================================================
     # Edge Inference Operations
     # TODO(adapter-retirement): PHASE 6 - MOVE TO NEW MODULE
+    # REVIEWED 2026-01-09: Sub-agent analysis complete - **BLOCKERS FOUND**
+    #
     # Create: cortical/got/git_inference.py
-    # - infer_edges_from_commit: Move to git_inference.py (takes manager as param)
-    # - infer_edges_from_recent_commits: Move to git_inference.py
-    # These don't need self, just the manager - can be standalone functions
+    # - infer_edges_from_commit: **BLOCKER** - calls self.complete_task() which doesn't exist in GoTManager
+    #   Must move complete_task to GoTManager FIRST (Phase 1), then this can be extracted
+    # - infer_edges_from_recent_commits: Needs TWO params (manager + project_root), not just manager
+    #   Uses self.got_dir.parent for cwd - must add project_root parameter
+    # - _get_current_branch: Can be extracted as pure function (no self dependencies)
     # =========================================================================
 
     def infer_edges_from_commit(self, commit_message: str, files_changed: Optional[List[str]] = None) -> List[Dict[str, Any]]:
@@ -805,12 +819,15 @@ class TransactionalGoTAdapter:
     # =========================================================================
     # Knowledge Transfer Operations
     # TODO(adapter-retirement): PHASE 4
+    # REVIEWED 2026-01-09: Sub-agent analysis complete - **CRITICAL ISSUES FOUND**
+    #
     # - create_knowledge_transfer, get_knowledge_transfer, list_knowledge_transfers: PURE DELEGATION - remove
-    # - update_knowledge_transfer: PURE DELEGATION - remove
-    # - append_kt_section: MOVE TO GoTManager (Phase 4) - convenience wrapper
+    # - update_knowledge_transfer: PURE DELEGATION - **WARNING: GoTManager has race condition (read outside tx)**
+    # - append_kt_section: MOVE - **WARNING: GoTManager has cascading race (double read outside tx)**
     # - append_to_knowledge_transfer: Remove - just calls append_kt_section + get
     # - link_knowledge_transfer: PURE DELEGATION (uses add_edge) - remove
-    # - finalize_knowledge_transfer: MOVE TO GoTManager (Phase 4) - sets status + optional handoff
+    # - finalize_knowledge_transfer: **CRITICAL BUG** - bypasses transaction system entirely (direct store.write)
+    #   Must fix to use proper transaction before moving
     # =========================================================================
 
     def create_knowledge_transfer(self, title: str, summary: str = "",
