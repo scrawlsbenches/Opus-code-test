@@ -24,25 +24,24 @@ Refactoring CDG to make FileSystem a required first-class dependency that encaps
 8. Updated `got_module.py` and `cdg_module.py` to use new API
 9. Fixed smoke tests (34/34 pass)
 
-## Remaining Work
+## COMPLETED - All Files Updated
 
-Update test files using old API:
+### Session 1 - Updated:
+- [x] tests/fixtures/test_bootstrap.py
+- [x] tests/behavioral/test_cdg_schema_stories.py
+- [x] tests/behavioral/test_audit_reasoning_stories.py
+- [x] tests/behavioral/test_cdg_store_caching_stories.py
+- [x] tests/unit/cdg/test_cdg_durability.py
+- [x] tests/behavioral/cdg_recovery_stories.py
+- [x] tests/behavioral/test_got_transactional_behavioral.py
 
-### Files needing `InMemoryFileSystem(base_dir)`:
-- [ ] tests/fixtures/test_bootstrap.py
-- [ ] tests/behavioral/test_cdg_schema_stories.py
-- [ ] tests/behavioral/test_audit_reasoning_stories.py
-- [ ] tests/behavioral/test_cdg_store_caching_stories.py
-
-### Files needing `CDGStore(filesystem=...)`:
-- [ ] tests/unit/cdg/test_cdg_durability.py
-- [ ] tests/behavioral/cdg_recovery_stories.py (~15 usages)
-- [ ] tests/behavioral/test_got_transactional_behavioral.py
-- [ ] tests/behavioral/test_cdg_schema_stories.py
-
-### Other potential usages:
-- [ ] CDGTransactionManager old API usages
-- [ ] CDGRecoveryManager old API usages
+### Session 2 - Updated:
+- [x] tests/behavioral/cdg_transaction_stories.py (2 usages)
+- [x] tests/behavioral/test_cdg_crash_recovery.py (all CDGTransactionManager, CDGStore, CDGRecoveryManager usages)
+- [x] tests/performance/contracts/test_cdg_contract.py (all CDGTransactionManager, CDGRecoveryManager usages)
+- [x] tests/behavioral/test_container_di_stories.py (updated test expectation for new API)
+- [x] tests/behavioral/test_cdg_history_integrity.py (all CDGStore usages)
+- [x] cortical/core/modules/cdg_module.py (fixed duplicate filesystem argument)
 
 ## Design Decisions
 

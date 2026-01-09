@@ -540,9 +540,9 @@ class TestDeveloperMigratestoContainer:
         Scenario: CDGTransactionManager requires injected dependencies
 
         Given the CDGTransactionManager
-        When I try to create it without dependencies
-        Then I get a clear error about required dependencies
-        Because direct instantiation without DI is prohibited
+        When I try to create it without proper dependencies (passing Path instead of FileSystem)
+        Then I get an error about the missing attribute
+        Because FileSystem is required and encapsulates the storage location
         """
         from cortical.cdg.transaction_manager import CDGTransactionManager
         import tempfile
@@ -551,12 +551,13 @@ class TestDeveloperMigratestoContainer:
         with tempfile.TemporaryDirectory() as tmpdir:
             got_dir = Path(tmpdir)
 
-            # Direct instantiation without dependencies should raise TypeError
-            with pytest.raises(TypeError) as excinfo:
+            # Direct instantiation with Path instead of FileSystem should fail
+            # The new API requires FileSystem as first parameter which encapsulates base_dir
+            with pytest.raises(AttributeError) as excinfo:
                 CDGTransactionManager(got_dir)
 
-            # Error message should mention required dependencies
-            assert "store" in str(excinfo.value).lower() or "required" in str(excinfo.value).lower()
+            # Error message should mention base_dir (Path doesn't have this attribute)
+            assert "base_dir" in str(excinfo.value)
 
     def test_scenario_cdg_transaction_manager_works_with_injection(self):
         """

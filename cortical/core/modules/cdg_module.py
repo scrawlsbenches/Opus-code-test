@@ -90,9 +90,8 @@ class CDGModule(ContainerModule):
             if not self.use_memory:
                 entities_dir.mkdir(parents=True, exist_ok=True)
             return CDGStore(
-                entities_dir,
-                config=config,
                 filesystem=filesystem,
+                config=config,
                 schema_registry=schema_registry,
                 index_manager=index_manager,
             )
