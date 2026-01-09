@@ -31,15 +31,29 @@ If you lose context or get stuck:
 
 1. **Read this file first:** `docs/design/transactional-adapter-retirement-plan.md`
 2. **Check current phase:** Look for `# PHASE X COMPLETE` comments in adapter.py
-3. **Run validation:** `python -m pytest tests/smoke/ -v --tb=short`
-4. **If tests fail after your changes:** `git stash` and reassess
-5. **If totally lost:** Create a handoff with what you learned:
+3. **Check progress file:** `cat docs/sessions/adapter-retirement-progress.md`
+4. **Run validation:** `python -m pytest tests/smoke/ -v --tb=short`
+5. **If tests fail after your changes:** `git stash` and reassess
+6. **If totally lost:** Update the progress file (NOT GoT handoff - it's broken during this work):
    ```bash
-   python -m cortical.got handoff session \
-       --target "next-agent" \
-       --summary "Adapter retirement phase X - stuck on Y" \
-       --blockers "describe the blocker"
+   # Write to progress file - this works even if GoT is broken
+   cat >> docs/sessions/adapter-retirement-progress.md << 'EOF'
+
+   ## Session Update: [DATE]
+   **Phase:** X
+   **Status:** stuck/blocked/confused
+   **Last completed:** [what you finished]
+   **Blocker:** [what's stopping you]
+   **Files modified:** [list them]
+   **Next step:** [what should happen next]
+   EOF
+   git add docs/sessions/adapter-retirement-progress.md
+   git commit -m "chore: Update adapter retirement progress"
+   git push
    ```
+
+**CRITICAL:** The GoT CLI (`python -m cortical.got`) may be broken during this refactor.
+Use git and markdown files for state tracking, not GoT commands.
 
 **TODO Comment Template** (use when skipping something):
 ```python
@@ -56,9 +70,11 @@ If you lose context or get stuck:
 Before starting ANY phase:
 ```bash
 python -m pytest tests/smoke/ -v --tb=short  # Must pass
-python -m cortical.got validate              # Must be healthy
 git status                                    # Must be clean
+cat docs/sessions/adapter-retirement-progress.md  # Check current phase
 ```
+
+**Note:** Don't use `python -m cortical.got validate` during this refactor - it may be broken.
 
 ---
 
