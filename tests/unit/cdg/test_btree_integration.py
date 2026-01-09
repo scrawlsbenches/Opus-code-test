@@ -1,5 +1,5 @@
 """
-Integration tests for BTree index support in CDGIndexManager.
+Integration tests for BTree index support and Runtime Index API in CDGIndexManager.
 
 Tests the complete flow:
 - Schema-based btree index creation
@@ -7,6 +7,7 @@ Tests the complete flow:
 - Range queries via CDGIndexManager
 - Query planner btree support
 - Query executor btree range lookups
+- Runtime index API (create_index, drop_index, list_indexes)
 
 See: docs/design/cdg-query-language.md
 """
@@ -15,7 +16,9 @@ import pytest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from cortical.cdg.index_manager import CDGIndexManager
+from cortical.cdg.index_manager import (
+    CDGIndexManager, IndexConfig, IndexDefinition, IndexType
+)
 from cortical.cdg.schema import SchemaRegistry, BaseSchema, Field, FieldType
 from cortical.cdg.query.ast import CDGQuery, Comparison, Field as ASTField, Literal, Op
 from cortical.cdg.query.planner import QueryPlanner
@@ -311,3 +314,258 @@ class TestBTreeIndexPersistence:
 
             result = manager2.lookup_lte('test_entity', 'priority', 10)
             assert result == {'TE-001'}
+
+
+class TestRuntimeIndexAPI:
+    """Test runtime index creation and management."""
+
+    @pytest.fixture
+    def index_manager(self, schema_registry):
+        """Create an index manager for runtime API testing."""
+        with TemporaryDirectory() as tmpdir:
+            manager = CDGIndexManager(
+                store_dir=Path(tmpdir),
+                schema_registry=schema_registry,
+                filesystem=RealFileSystem()
+            )
+            yield manager
+
+    def test_create_index_hash(self, index_manager):
+        """Create a runtime hash index."""
+        idx_def = index_manager.create_index(
+            name="task_assignee_idx",
+            entity_type="test_entity",
+            fields=["assignee"],
+            index_type="hash"
+        )
+
+        assert idx_def.name == "task_assignee_idx"
+        assert idx_def.entity_type == "test_entity"
+        assert idx_def.fields == ["assignee"]
+        assert idx_def.index_type == "hash"
+        assert idx_def.source == "runtime"
+        assert idx_def.config.created_at is not None
+
+    def test_create_index_btree(self, index_manager):
+        """Create a runtime btree index."""
+        idx_def = index_manager.create_index(
+            name="test_date_idx",
+            entity_type="test_entity",
+            fields=["date_field"],
+            index_type="btree"
+        )
+
+        assert idx_def.index_type == "btree"
+
+    def test_create_index_composite(self, index_manager):
+        """Create a composite index on multiple fields."""
+        idx_def = index_manager.create_index(
+            name="test_composite_idx",
+            entity_type="test_entity",
+            fields=["field1", "field2"],
+            index_type="btree"
+        )
+
+        assert idx_def.fields == ["field1", "field2"]
+
+    def test_create_index_with_config(self, index_manager):
+        """Create index with custom configuration."""
+        config = IndexConfig(
+            async_build=True,
+            description="Index for fast assignee lookups"
+        )
+        idx_def = index_manager.create_index(
+            name="configured_idx",
+            entity_type="test_entity",
+            fields=["field"],
+            options=config
+        )
+
+        assert idx_def.config.description == "Index for fast assignee lookups"
+
+    def test_create_index_duplicate_name_raises(self, index_manager):
+        """Creating index with duplicate name raises error."""
+        index_manager.create_index(
+            name="dup_idx",
+            entity_type="test_entity",
+            fields=["field1"]
+        )
+
+        with pytest.raises(ValueError, match="already exists"):
+            index_manager.create_index(
+                name="dup_idx",
+                entity_type="test_entity",
+                fields=["field2"]
+            )
+
+    def test_create_index_invalid_type_raises(self, index_manager):
+        """Creating index with invalid type raises error."""
+        with pytest.raises(ValueError, match="Invalid index_type"):
+            index_manager.create_index(
+                name="bad_idx",
+                entity_type="test_entity",
+                fields=["field"],
+                index_type="invalid"
+            )
+
+    def test_create_index_no_fields_raises(self, index_manager):
+        """Creating index with no fields raises error."""
+        with pytest.raises(ValueError, match="At least one field"):
+            index_manager.create_index(
+                name="empty_idx",
+                entity_type="test_entity",
+                fields=[]
+            )
+
+    def test_drop_index(self, index_manager):
+        """Drop a runtime index."""
+        index_manager.create_index(
+            name="to_drop_idx",
+            entity_type="test_entity",
+            fields=["field"]
+        )
+
+        result = index_manager.drop_index("to_drop_idx")
+        assert result is True
+
+        # Verify it's gone
+        indexes = index_manager.list_indexes("test_entity")
+        index_names = [idx.name for idx in indexes]
+        assert "to_drop_idx" not in index_names
+
+    def test_drop_index_not_found(self, index_manager):
+        """Dropping non-existent index returns False."""
+        result = index_manager.drop_index("nonexistent_idx")
+        assert result is False
+
+    def test_drop_schema_index_raises(self, index_manager):
+        """Dropping schema-defined index raises error."""
+        # 'status_idx' is defined via Field.indexed=True in TestEntitySchema
+        with pytest.raises(ValueError, match="schema-defined"):
+            index_manager.drop_index("status_idx")
+
+    def test_list_indexes_by_entity_type(self, index_manager):
+        """List indexes for specific entity type."""
+        # Create a runtime index
+        index_manager.create_index(
+            name="runtime_idx",
+            entity_type="test_entity",
+            fields=["runtime_field"]
+        )
+
+        indexes = index_manager.list_indexes("test_entity")
+
+        # Should include schema-defined and runtime indexes
+        index_names = [idx.name for idx in indexes]
+        assert "status_idx" in index_names  # From schema Field.indexed
+        assert "runtime_idx" in index_names  # Runtime
+
+    def test_list_indexes_all(self, index_manager):
+        """List all indexes across all entity types."""
+        indexes = index_manager.list_indexes()
+
+        # Should have at least the schema-defined indexes
+        assert len(indexes) >= 1
+
+    def test_get_all_index_definitions(self, index_manager):
+        """Get comprehensive index definitions."""
+        # Create runtime index
+        index_manager.create_index(
+            name="runtime_idx",
+            entity_type="test_entity",
+            fields=["field"]
+        )
+
+        definitions = index_manager.get_all_index_definitions("test_entity")
+
+        # Check we have both schema and runtime indexes
+        sources = {idx.source for idx in definitions}
+        assert "schema" in sources or "schema_list" in sources
+        assert "runtime" in sources
+
+
+class TestRuntimeIndexPersistence:
+    """Test runtime index persistence across restarts."""
+
+    def test_runtime_index_persisted(self, schema_registry):
+        """Runtime indexes are saved and loaded correctly."""
+        with TemporaryDirectory() as tmpdir:
+            store_dir = Path(tmpdir)
+
+            # Create manager and add runtime index
+            manager1 = CDGIndexManager(
+                store_dir=store_dir,
+                schema_registry=schema_registry,
+                filesystem=RealFileSystem()
+            )
+
+            manager1.create_index(
+                name="persisted_idx",
+                entity_type="test_entity",
+                fields=["field"],
+                index_type="btree",
+                options=IndexConfig(description="Test persistence")
+            )
+
+            manager1.persist()
+
+            # Create new manager (simulates restart)
+            manager2 = CDGIndexManager(
+                store_dir=store_dir,
+                schema_registry=schema_registry,
+                filesystem=RealFileSystem()
+            )
+
+            # Verify runtime index was loaded
+            indexes = manager2.list_indexes("test_entity")
+            idx_names = [idx.name for idx in indexes]
+            assert "persisted_idx" in idx_names
+
+            # Verify definition details
+            idx = next(i for i in indexes if i.name == "persisted_idx")
+            assert idx.index_type == "btree"
+            assert idx.source == "runtime"
+            assert idx.config.description == "Test persistence"
+
+
+class TestSchemaLevelIndexes:
+    """Test schema-level indexes list (composite indexes)."""
+
+    def test_schema_with_composite_index(self):
+        """Schema with composite index in indexes list."""
+        class CompositeSchema(BaseSchema):
+            schema_version = 1
+            entity_type = 'composite_test'
+            id_prefix = 'CT-'
+
+            fields = {
+                'id': Field('id', FieldType.STRING, required=True),
+                'entity_type': Field('entity_type', FieldType.STRING, required=True),
+                'priority': Field('priority', FieldType.INTEGER),
+                'created_at': Field('created_at', FieldType.STRING),
+            }
+            # Composite index via indexes list
+            indexes = [('priority', 'created_at')]
+
+        registry = SchemaRegistry()
+        registry.register('composite_test', CompositeSchema)
+
+        with TemporaryDirectory() as tmpdir:
+            manager = CDGIndexManager(
+                store_dir=Path(tmpdir),
+                schema_registry=registry,
+                filesystem=RealFileSystem()
+            )
+
+            definitions = manager.get_all_index_definitions('composite_test')
+
+            # Should have the composite index
+            composite_idx = next(
+                (idx for idx in definitions if len(idx.fields) > 1),
+                None
+            )
+            assert composite_idx is not None
+            assert composite_idx.fields == ['priority', 'created_at']
+            assert composite_idx.source == 'schema_list'
+            # Composite indexes default to btree
+            assert composite_idx.index_type == 'btree'
