@@ -29,7 +29,19 @@
 - `docs/design/transactional-adapter-retirement-plan.md`
 - `docs/sessions/adapter-retirement-progress.md` (this file)
 
-**Next step:** Begin Phase 1 - move status transition methods to GoTManager
+### 2026-01-09 - TODO Comments Added
+**Agent:** claude/handoff-commands-pV8E0
+**Status:** Added evaluation TODO comments to adapter.py
+**Files modified:**
+- `cortical/got/adapter.py` - Added TODO comments to all sections
+
+**Summary of method disposition:**
+- **PURE DELEGATION (remove):** ~25 methods that just call manager
+- **MOVE TO GoTManager:** ~15 methods with actual logic
+- **MOVE TO git_inference.py:** 3 git-related functions
+- **DELETE (incomplete):** query() method
+
+**Next step:** Review annotations with user, then begin Phase 1
 
 ---
 

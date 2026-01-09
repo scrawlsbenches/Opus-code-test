@@ -4,6 +4,13 @@ CLI Adapter for GoT system.
 Provides a thin wrapper around GoTManager with convenience methods
 for CLI operations. This eliminates the need for the large
 TransactionalGoTAdapter in scripts/got_utils.py.
+
+# TODO(adapter-retirement): THIS FILE IS BEING RETIRED
+# Plan: docs/design/transactional-adapter-retirement-plan.md
+# Progress: docs/sessions/adapter-retirement-progress.md
+#
+# Methods will be moved to GoTManager or new modules.
+# See TODO comments on each section for disposition.
 """
 
 import json
@@ -49,6 +56,14 @@ class TransactionalGoTAdapter:
 
     # =========================================================================
     # Task Operations
+    # TODO(adapter-retirement): PHASE 1-2
+    # - create_task: KEEP IN ADAPTER - adds session_id/branch metadata, wraps manager
+    # - get_task, list_tasks, list_all_tasks, update_task, delete_task: PURE DELEGATION - remove, use manager directly
+    # - start_task, complete_task, block_task: MOVE TO GoTManager (Phase 1)
+    # - add_dependency, add_blocks, add_edge, list_edges, get_edges_for_task: PURE DELEGATION - remove
+    # - get_task_sprint, get_task_dependencies: MOVE TO GoTManager (Phase 2)
+    # - what_blocks, what_depends_on, get_blockers, get_dependents: ALREADY IN GoTManager - remove wrappers
+    # - get_active_tasks, get_blocked_tasks, get_next_task: MOVE TO GoTManager (Phase 2)
     # =========================================================================
 
     def create_task(
@@ -311,6 +326,13 @@ class TransactionalGoTAdapter:
 
     # =========================================================================
     # Sprint Operations
+    # TODO(adapter-retirement): PHASE 3
+    # - create_sprint, get_sprint, list_sprints, update_sprint, delete_sprint: PURE DELEGATION - remove
+    # - get_current_sprint, get_sprint_tasks, get_sprint_progress: PURE DELEGATION - remove
+    # - claim_sprint, release_sprint: MOVE TO GoTManager (Phase 3) - adds claimed_by/claimed_at
+    # - add_sprint_goal, list_sprint_goals, complete_sprint_goal: MOVE TO GoTManager (Phase 3)
+    # - link_task_to_sprint: REDUNDANT with add_task_to_sprint - remove
+    # - unlink_task_from_sprint: MOVE TO GoTManager (Phase 3) - needs edge deletion
     # =========================================================================
 
     def create_sprint(self, name: str, number: Optional[int] = None,
@@ -423,6 +445,7 @@ class TransactionalGoTAdapter:
 
     # =========================================================================
     # Epic Operations
+    # TODO(adapter-retirement): PURE DELEGATION - remove all, use GoTManager directly
     # =========================================================================
 
     def create_epic(self, name: str, phase: int = 1) -> str:
@@ -440,6 +463,10 @@ class TransactionalGoTAdapter:
 
     # =========================================================================
     # Decision Operations
+    # TODO(adapter-retirement): MOSTLY PURE DELEGATION - remove most, use GoTManager
+    # - create_decision, list_decisions, get_decision, delete_decision: PURE DELEGATION - remove
+    # - log_decision: MOVE TO GoTManager (Phase 4) - creates JUSTIFIES edges
+    # - why: MOVE TO GoTManager (Phase 4) - queries decisions affecting task
     # =========================================================================
 
     def create_decision(self, content: str, rationale: str = "",
@@ -508,6 +535,10 @@ class TransactionalGoTAdapter:
 
     # =========================================================================
     # Handoff Operations
+    # TODO(adapter-retirement): MOSTLY PURE DELEGATION - remove most
+    # - initiate_handoff, accept_handoff, complete_handoff, reject_handoff: PURE DELEGATION - remove
+    # - get_handoff: PURE DELEGATION - remove
+    # - list_handoffs: TRANSFORMS OUTPUT - evaluate if transform needed in GoTManager or CLI
     # =========================================================================
 
     def initiate_handoff(
@@ -591,6 +622,12 @@ class TransactionalGoTAdapter:
 
     # =========================================================================
     # Query Operations
+    # TODO(adapter-retirement): PHASE 5 & 7
+    # - get_stats: MOVE TO GoTManager (Phase 5) - useful introspection
+    # - validate: MOVE TO GoTManager (Phase 5) - useful for health checks
+    # - query: INCOMPLETE IMPLEMENTATION (Phase 7) - only handles 3 query types
+    #   Options: (a) delete, let tests fail (b) redirect to expression system
+    #   Recommendation: Delete - expression system (`got expr`) is the future
     # =========================================================================
 
     def get_stats(self) -> Dict[str, Any]:
@@ -643,6 +680,11 @@ class TransactionalGoTAdapter:
 
     # =========================================================================
     # Edge Inference Operations
+    # TODO(adapter-retirement): PHASE 6 - MOVE TO NEW MODULE
+    # Create: cortical/got/git_inference.py
+    # - infer_edges_from_commit: Move to git_inference.py (takes manager as param)
+    # - infer_edges_from_recent_commits: Move to git_inference.py
+    # These don't need self, just the manager - can be standalone functions
     # =========================================================================
 
     def infer_edges_from_commit(self, commit_message: str, files_changed: Optional[List[str]] = None) -> List[Dict[str, Any]]:
@@ -761,7 +803,14 @@ class TransactionalGoTAdapter:
         return all_edges
 
     # =========================================================================
-    # Knowledge Transfer Operations (stub)
+    # Knowledge Transfer Operations
+    # TODO(adapter-retirement): PHASE 4
+    # - create_knowledge_transfer, get_knowledge_transfer, list_knowledge_transfers: PURE DELEGATION - remove
+    # - update_knowledge_transfer: PURE DELEGATION - remove
+    # - append_kt_section: MOVE TO GoTManager (Phase 4) - convenience wrapper
+    # - append_to_knowledge_transfer: Remove - just calls append_kt_section + get
+    # - link_knowledge_transfer: PURE DELEGATION (uses add_edge) - remove
+    # - finalize_knowledge_transfer: MOVE TO GoTManager (Phase 4) - sets status + optional handoff
     # =========================================================================
 
     def create_knowledge_transfer(self, title: str, summary: str = "",
@@ -884,6 +933,10 @@ class TransactionalGoTAdapter:
 
     # =========================================================================
     # Utility Methods
+    # TODO(adapter-retirement): PHASE 5-6
+    # - _get_current_branch: MOVE TO git_inference.py (Phase 6) - git helper
+    # - graph, nodes, edges properties: EVALUATE - may not be needed after retirement
+    #   If still needed, add to GoTManager (Phase 5)
     # =========================================================================
 
     def _get_current_branch(self) -> str:
