@@ -434,14 +434,24 @@ def _display_results(results: Any, query_str: str, args) -> None:
 
 def _print_result_item(item: Any) -> None:
     """Print a single result item."""
+    # Check if item lacks __dict__ (not a user-defined object with attributes)
+    # This handles primitives, builtins, and containers without hard-coding types
+    if not hasattr(item, '__dict__'):
+        print(f"  {item}")
+        return
+
     # Get entity ID
     entity_id = getattr(item, 'id', None) or getattr(item, 'entity_id', None)
 
-    # Get title/content
-    title = (getattr(item, 'title', None) or
-             getattr(item, 'content', None) or
-             getattr(item, 'name', None) or
-             str(item))
+    # Get title/content - only use non-callable attributes (skip methods)
+    title = None
+    for attr in ('title', 'content', 'name'):
+        val = getattr(item, attr, None)
+        if val is not None and not callable(val):
+            title = val
+            break
+    if title is None:
+        title = str(item)
 
     if entity_id:
         print(f"  {entity_id}")

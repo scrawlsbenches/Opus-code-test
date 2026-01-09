@@ -1934,3 +1934,13 @@
 {"seq":1934,"ts":"2026-01-09T13:53:13.936301+00:00","tx":"TX-20260109-135313-13c54967","op":"WRITE","data":{"entity_id":"E-KT-20260109-135010-4f56b737-T-20260109-135154-a8dc3aa2-DOCUMENTS","old_version":0,"new_version":1,"entity_data":{"id":"E-KT-20260109-135010-4f56b737-T-20260109-135154-a8dc3aa2-DOCUMENTS","entity_type":"edge","version":1,"created_at":"2026-01-09T13:53:13.935425+00:00","modified_at":"2026-01-09T13:53:13.935434+00:00","source_id":"KT-20260109-135010-4f56b737","target_id":"T-20260109-135154-a8dc3aa2","edge_type":"DOCUMENTS","weight":1.0,"confidence":1.0,"reason":""}},"checksum":"1707005be7809afb"}
 {"seq":1935,"ts":"2026-01-09T13:53:13.938000+00:00","tx":"TX-20260109-135313-13c54967","op":"TX_PREPARE","data":{},"checksum":"63106f96ef893332"}
 {"seq":1936,"ts":"2026-01-09T13:53:13.939035+00:00","tx":"TX-20260109-135313-13c54967","op":"TX_COMMIT","data":{"version":2102},"checksum":"fd63cf672f773b3b"}
+{"seq":1937,"ts":"2026-01-09T14:14:17.262988+00:00","tx":"TX-20260109-141417-7d939c38","op":"TX_BEGIN","data":{"snapshot":2102},"checksum":"dc0499ce6d62fe54"}
+{"seq":1938,"ts":"2026-01-09T14:14:17.264919+00:00","tx":"TX-20260109-141417-7d939c38","op":"TX_ROLLBACK","data":{"reason":"read_only"},"checksum":"53d6b3dc44f8df73"}
+{"seq":1939,"ts":"2026-01-09T14:14:22.814639+00:00","tx":"TX-20260109-141422-bd747003","op":"TX_BEGIN","data":{"snapshot":2102},"checksum":"7493261bc85ecd21"}
+{"seq":1940,"ts":"2026-01-09T14:14:22.816224+00:00","tx":"TX-20260109-141422-bd747003","op":"TX_ROLLBACK","data":{"reason":"read_only"},"checksum":"6877dd0c4cb4a223"}
+{"seq":1941,"ts":"2026-01-09T14:15:17.398707+00:00","tx":"TX-20260109-141517-10df62c6","op":"TX_BEGIN","data":{"snapshot":2102},"checksum":"d1cfcad7ad216143"}
+{"seq":1942,"ts":"2026-01-09T14:15:17.400534+00:00","tx":"TX-20260109-141517-10df62c6","op":"TX_ROLLBACK","data":{"reason":"read_only"},"checksum":"3b721a1ddf136252"}
+{"seq":1943,"ts":"2026-01-09T14:16:17.055809+00:00","tx":"TX-20260109-141617-5fdaccd8","op":"TX_BEGIN","data":{"snapshot":2102},"checksum":"3bb1883f563f0652"}
+{"seq":1944,"ts":"2026-01-09T14:16:17.057800+00:00","tx":"TX-20260109-141617-5fdaccd8","op":"TX_ROLLBACK","data":{"reason":"read_only"},"checksum":"2f045fd99d0cff6b"}
+{"seq":1945,"ts":"2026-01-09T14:16:21.536994+00:00","tx":"TX-20260109-141621-7abfeb99","op":"TX_BEGIN","data":{"snapshot":2102},"checksum":"6be2e8c125529ea1"}
+{"seq":1946,"ts":"2026-01-09T14:16:21.538730+00:00","tx":"TX-20260109-141621-7abfeb99","op":"TX_ROLLBACK","data":{"reason":"read_only"},"checksum":"e0ebca062365676c"}
