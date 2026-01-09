@@ -495,6 +495,102 @@ got active
 
 ---
 
+## Implementation Guidelines (Escape Clause)
+
+**Principle: Partial implementation is better than bad implementation.**
+
+When implementing this design, agents should follow these rules:
+
+### 1. When Uncertain, Add TODOs
+
+If any aspect of the implementation is unclear, blocked, or would require deviation from this design:
+
+```python
+# TODO(cdg-query): Planner doesn't handle OR expressions yet - needs review
+# See: docs/design/cdg-query-language.md#open-questions
+raise NotImplementedError("OR expressions not yet supported in query planner")
+```
+
+### 2. Fail Fast, Fail Loud
+
+Never silently work around a limitation. If something doesn't work as the design dictates:
+
+```python
+# GOOD: Explicit failure
+def plan(self, query: CDGQuery) -> QueryPlan:
+    if isinstance(query.expression, OrExpr):
+        # TODO(cdg-query): OR optimization requires union of index lookups
+        raise NotImplementedError(
+            "OR expressions require full scan. "
+            "See docs/design/cdg-query-language.md for planned optimization."
+        )
+
+# BAD: Silent workaround that drifts from design
+def plan(self, query: CDGQuery) -> QueryPlan:
+    if isinstance(query.expression, OrExpr):
+        # Just do a full scan, it's fine...
+        return QueryPlan(strategy='full_scan')  # NO! This hides the gap
+```
+
+### 3. TODO Comment Format
+
+Use consistent format for tracking:
+
+```python
+# TODO(cdg-query): <brief description>
+# Reason: <why this couldn't be implemented as designed>
+# See: <reference to design doc section>
+# Priority: <high|medium|low>
+```
+
+### 4. Exception Hierarchy
+
+```python
+class CDGQueryError(Exception):
+    """Base class for query errors."""
+    pass
+
+class QueryParseError(CDGQueryError):
+    """Query syntax is invalid."""
+    pass
+
+class QueryValidationError(CDGQueryError):
+    """Query references unknown entity type or field."""
+    pass
+
+class QueryPlanError(CDGQueryError):
+    """Query cannot be planned (e.g., unsupported operator)."""
+    pass
+
+class QueryNotImplementedError(CDGQueryError, NotImplementedError):
+    """Feature is designed but not yet implemented."""
+    pass
+```
+
+### 5. Acceptable Partial States
+
+| State | Acceptable? | Requirement |
+|-------|-------------|-------------|
+| Feature not implemented | Yes | Raise `QueryNotImplementedError` with doc reference |
+| Feature partially implemented | Yes | TODO comment + exception for unhandled cases |
+| Feature implemented differently than design | **No** | Update design doc first, or raise exception |
+| Silent fallback to slower path | **No** | Log warning at minimum, prefer exception |
+| Swallowed exception | **No** | Always propagate or explicitly handle |
+
+### 6. Review Markers
+
+When leaving code for later review, use searchable markers:
+
+```python
+# REVIEW(cdg-query): Is this the right place for function registration?
+# REVIEW(cdg-query): Should we cache the schema lookup?
+# REVIEW(cdg-query): Performance implications of full scan here
+```
+
+These can be found with: `grep -r "TODO(cdg-query)\|REVIEW(cdg-query)" cortical/`
+
+---
+
 ## Success Criteria
 
 1. **Generic:** Query any entity type without code changes
@@ -503,6 +599,7 @@ got active
 4. **Extensible:** GoT can register domain-specific functions
 5. **Unified:** One `query` command replaces `query`, `expr`, `infer`
 6. **Backwards Compatible:** Old API works during migration period
+7. **Fail-Fast:** Unimplemented features raise clear exceptions with doc references
 
 ---
 
