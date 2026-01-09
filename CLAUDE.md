@@ -1089,102 +1089,26 @@ processor.save("corpus_state")          # Persist (JSON)
 
 ## Quick Reference
 
-| Task | Command/Method |
-|------|----------------|
-| Process document | `processor.process_document(id, text)` |
-| Build network | `processor.compute_all()` |
-| Search | `processor.find_documents_for_query(query)` |
-| Fast search | `processor.fast_find_documents(query)` |
-| Hybrid search | `processor.graph_boosted_search(query)` |
-| Code search | `processor.expand_query_for_code(query)` |
-| Intent search | `processor.search_by_intent("where do we...")` |
-| RAG passages | `processor.find_passages_for_query(query)` |
-| Fingerprint | `processor.get_fingerprint(text)` |
-| Compare | `processor.compare_fingerprints(fp1, fp2)` |
-| Save state (JSON) | `processor.save("corpus_state")` (recommended) |
-| Save state (pkl) | `processor.save("corpus.pkl", format='pickle')` (deprecated) |
-| Load state | `processor = CorticalTextProcessor.load("corpus_state")` (auto-detects format) |
-| Enable metrics | `processor = CorticalTextProcessor(enable_metrics=True)` |
-| Get metrics | `processor.get_metrics()` |
-| Metrics summary | `processor.get_metrics_summary()` |
-| Reset metrics | `processor.reset_metrics()` |
-| Record metric | `processor.record_metric("name", count)` |
-| Run smoke tests | `make test-smoke` or `python scripts/run_tests.py smoke` |
-| Run fast tests | `make test-fast` (~5s, no slow tests) |
-| Run quick tests | `make test-quick` or `python scripts/run_tests.py quick` |
-| Run parallel | `make test-parallel` or `python scripts/run_tests.py unit -j 4` |
-| Run pre-commit | `python scripts/run_tests.py precommit` (smoke + unit + integration) |
-| Run all tests | `python scripts/run_tests.py all` |
-| Run performance | `python scripts/run_tests.py performance` (no coverage) |
-| Check coverage | `python -m coverage run --source=cortical -m pytest tests/ && python -m coverage report --include="cortical/*"` |
-| Run showcase | `python showcase.py` |
-| Profile analysis | `python scripts/profile_full_analysis.py` |
-| Create memory | `python scripts/new_memory.py "topic"` |
-| Create decision | `python scripts/new_memory.py "topic" --decision` |
+**For detailed CLI commands:** `docs/cli-reference.md`
+**For processor API:** `docs/processor-reference.md`
+
+### Test Commands
+| Task | Command |
+|------|---------|
+| Smoke tests | `make test-smoke` |
+| Fast tests | `make test-fast` (~5s) |
+| Quick tests | `make test-quick` |
+| Pre-commit | `python scripts/run_tests.py precommit` |
+| All tests | `python scripts/run_tests.py all` |
+| Coverage | `python -m coverage run -m pytest tests/ && python -m coverage report` |
+
+### Utility Scripts
+| Task | Command |
+|------|---------|
 | Session handoff | `python scripts/session_handoff.py` |
-| Generate session memory | `python scripts/session_memory_generator.py --session-id ID` |
-| Check wiki-links | `python scripts/resolve_wiki_links.py FILE` |
-| Find backlinks | `python scripts/resolve_wiki_links.py --backlinks FILE` |
-| Complete task with memory | `python scripts/task_utils.py complete TASK_ID --create-memory` |
-| View sprint status | `python -m cortical.got sprint status` |
-| List all sprints | `python -m cortical.got sprint list` |
-| Create sprint | `python -m cortical.got sprint create "Title" --number N` |
-| Create orchestration plan | `python scripts/orchestration_utils.py generate --type plan` |
-| List orchestration plans | `python scripts/orchestration_utils.py list` |
-| Verify batch | `python scripts/verify_batch.py --quick` |
-| View orchestration metrics | From Python: `OrchestrationMetrics().get_summary()` |
-| **Reasoning Framework** | |
-| Reasoning demo | `python scripts/reasoning_demo.py --quick` |
-| Reasoning with persistence | `python scripts/reasoning_demo.py --quick --persist` |
-| Graph persistence demo | `python examples/graph_persistence_demo.py` |
-| Validate persistence | `python scripts/validate_reasoning_persistence.py` |
-| **Graph Persistence API** | |
-| Create GraphWAL | `GraphWAL(wal_dir="/path/to/wal")` |
-| Log node | `wal.log_add_node(node_id, node_type, content)` |
-| Log edge | `wal.log_add_edge(source_id, target_id, edge_type)` |
-| Create snapshot | `wal.create_snapshot(graph, compress=True)` |
-| Load snapshot | `graph = wal.load_snapshot(snapshot_id)` |
-| Check recovery needed | `GraphRecovery(wal_dir).needs_recovery()` |
-| Recover graph | `result = GraphRecovery(wal_dir).recover()` |
-| Git auto-commit | `GitAutoCommitter(repo_path).commit_on_save(path, graph)` |
-| **GoT Handoff Primitives** | |
-| Initiate handoff | `python -m cortical.got handoff initiate TASK_ID --target AGENT --instructions "..."` |
-| Accept handoff | `python -m cortical.got handoff accept HANDOFF_ID --agent AGENT` |
-| Complete handoff | `python -m cortical.got handoff complete HANDOFF_ID --agent AGENT --result JSON` |
-| Reject handoff | `python -m cortical.got handoff reject HANDOFF_ID --agent AGENT --reason "..."` |
-| List handoffs | `python -m cortical.got handoff list [--status STATUS]` |
-| Compact events | `python -m cortical.got compact [--preserve-days N]` |
-| **GoT Query Language** | |
-| What blocks task | `python -m cortical.got query "what blocks TASK_ID"` |
-| What depends on | `python -m cortical.got query "what depends on TASK_ID"` |
-| Find path | `python -m cortical.got query "path from ID1 to ID2"` |
-| All relationships | `python -m cortical.got query "relationships TASK_ID"` |
-| Active tasks | `python -m cortical.got query "active tasks"` |
-| Pending tasks | `python -m cortical.got query "pending tasks"` |
-| Blocked tasks | `python -m cortical.got query "blocked tasks"` |
-| **Performance Tests** | |
-| Run perf tests | `python -m pytest tests/performance/test_graph_persistence_perf.py -v` |
-| Run E2E tests | `python -m pytest tests/integration/test_reasoning_persistence_e2e.py -v` |
-| **Audit CLI** | |
-| Health check | `python -m cortical.cli.audit health cortical/` |
-| Health with git | `python -m cortical.cli.audit health cortical/ --git -v` |
-| Scan for issues | `python -m cortical.cli.audit scan cortical/` |
-| Find patterns | `python -m cortical.cli.audit patterns cortical/` |
-| Find similar | `python -m cortical.cli.audit similar cortical/` |
-| PLN reasoning | `python -m cortical.cli.audit reason --directory cortical/` |
-| Explain file risk | `python -m cortical.cli.audit reason --explain FILE` |
-| WovenMind discovery | `python -m cortical.cli.audit discover cortical/` |
-| Generate training data | `python -m cortical.cli.audit generate cortical/ -o docs/audits/` |
-| Train classifiers | `python -m cortical.cli.audit train docs/audits/` |
-
-### Orchestration Utilities
-
-For Director orchestration and parallel agent workflows:
-
-- `scripts/orchestration_utils.py` - Director orchestration tracking (plans, batches, metrics)
-- `scripts/verify_batch.py` - Automated batch verification
-
-See `.claude/commands/director.md` for comprehensive orchestration documentation.
+| Create memory | `python scripts/new_memory.py "topic"` |
+| Profile analysis | `python scripts/profile_full_analysis.py` |
+| Orchestration | `python scripts/orchestration_utils.py list` |
 
 ---
 
