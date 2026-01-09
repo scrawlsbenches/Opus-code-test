@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, List
 from cortical.got.types import VALID_EDGE_TYPES
 
 if TYPE_CHECKING:
-    from scripts.got_utils import TransactionalGoTAdapter
+    from cortical.got.adapter import TransactionalGoTAdapter
 
 
 # =============================================================================

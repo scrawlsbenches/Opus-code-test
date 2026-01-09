@@ -233,13 +233,13 @@ After migration, validate with:
 
 ```bash
 # Check GoT health
-python scripts/got_utils.py validate
+python -m cortical.got validate
 
 # List all sprints
-python scripts/got_utils.py list --type sprint
+python -m cortical.got list --type sprint
 
 # View specific sprint
-python scripts/got_utils.py show S-sprint-015-search-quality
+python -m cortical.got show S-sprint-015-search-quality
 ```
 
 ## Rollback

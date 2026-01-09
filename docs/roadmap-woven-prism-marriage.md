@@ -468,19 +468,19 @@ This roadmap charts the course from two separate cognitive architectures—**PRI
 
 1. **Create the Epic in GoT:**
    ```bash
-   python scripts/got_utils.py epic create "EPIC-WOVEN: Woven Mind + PRISM Marriage" \
+   python -m cortical.got epic create "EPIC-WOVEN: Woven Mind + PRISM Marriage" \
      --description "Unify PRISM and Woven Mind into dual-process architecture"
    ```
 
 2. **Create Sprint 1:**
    ```bash
-   python scripts/got_utils.py sprint create "The Loom Foundation" --number 18 \
+   python -m cortical.got sprint create "The Loom Foundation" --number 18 \
      --epic EPIC-WOVEN
    ```
 
 3. **Create initial tasks:**
    ```bash
-   python scripts/got_utils.py task create "Design Loom interface contract" \
+   python -m cortical.got task create "Design Loom interface contract" \
      --priority high --sprint S-sprint-018-loom-foundation
    ```
 

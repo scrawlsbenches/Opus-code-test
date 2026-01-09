@@ -117,7 +117,7 @@ Session started: 435a3f57
      git checkout -b claude/sprint-020-forensic-remediation-$(date +%s)
 
   2. Start first task:
-     python scripts/got_utils.py task start T-20251222-025531-e6e222a1
+     python -m cortical.got task start T-20251222-025531-e6e222a1
 
 --- VERIFY PHASE ---
   Verification checklist:
@@ -125,7 +125,7 @@ Session started: 435a3f57
     □ All GoT tasks marked complete
     □ Tests pass: python -m pytest tests/ -q
     □ Coverage maintained: 88%+
-    □ GoT validation healthy: python scripts/got_utils.py validate
+    □ GoT validation healthy: python -m cortical.got validate
 
 ============================================================
 SESSION COMPLETE
@@ -167,7 +167,7 @@ Edges: 18
 
 1. Create tasks in GoT:
    ```bash
-   python scripts/got_utils.py task create "Your task title" --priority high
+   python -m cortical.got task create "Your task title" --priority high
    ```
 
 2. Add the task ID to your sprint in `tasks/CURRENT_SPRINT.md`:
@@ -210,8 +210,8 @@ Edges: 18
 
 2. Create corresponding GoT tasks:
    ```bash
-   python scripts/got_utils.py task create "First goal" --priority high
-   python scripts/got_utils.py task create "Second goal" --priority medium
+   python -m cortical.got task create "First goal" --priority high
+   python -m cortical.got task create "Second goal" --priority medium
    ```
 
 3. Run the reasoning session:

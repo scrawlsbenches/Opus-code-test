@@ -43,7 +43,7 @@ python -m unittest discover -s tests -v
 
 **Files to check:**
 - Source code docstrings
-- GoT state: `python scripts/got_utils.py task list`
+- GoT state: `python -m cortical.got task list`
 - `/home/user/Opus-code-test/CLAUDE.md`
 - `/home/user/Opus-code-test/docs/PATTERNS.md`
 
@@ -83,9 +83,9 @@ This is the step that is most often skipped but is critical for maintaining proj
   - Effort estimated (small/medium/large)
   - Dependencies noted via edges
 - [ ] Task list kept current:
-  - View all tasks: `python scripts/got_utils.py task list`
-  - Create new task: `python scripts/got_utils.py task create "description"`
-  - View summary: `python scripts/got_utils.py dashboard`
+  - View all tasks: `python -m cortical.got task list`
+  - Create new task: `python -m cortical.got task create "description"`
+  - View summary: `python -m cortical.got dashboard`
 - [ ] Related tasks cross-referenced:
   - Task IDs linked where relevant
   - Dependencies noted in task descriptions
@@ -146,7 +146,7 @@ Before marking a task as DONE, answer these questions:
 - [ ] Did I create tasks for any issues found during implementation?
 - [ ] Did I create tasks for any limitations discovered?
 - [ ] Did I create tasks for related work that would improve this feature?
-- [ ] Is the task list current: `python scripts/got_utils.py task list`?
+- [ ] Is the task list current: `python -m cortical.got task list`?
 
 ### Completeness
 - [ ] Is the code committed with a descriptive message?

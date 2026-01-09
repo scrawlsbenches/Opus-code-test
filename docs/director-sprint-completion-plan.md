@@ -146,7 +146,7 @@ Sprint IDs have mixed formats:
 - `cortical/got/api.py` - Add format validation to create_sprint()
 
 ### Verification
-python scripts/got_utils.py sprint list  # Verify both formats work
+python -m cortical.got sprint list  # Verify both formats work
 pytest tests/unit/test_got_api.py -v -k sprint
 
 ### DO NOT
@@ -170,7 +170,7 @@ pytest tests/unit/test_got_api.py -v -k sprint
 ## Task: Improve decision logging UX with task linkage prompt
 
 ### Current behavior
-`python scripts/got_utils.py decision log "Decision"` creates orphan decision
+`python -m cortical.got decision log "Decision"` creates orphan decision
 
 ### Desired behavior
 After logging decision, prompt:
@@ -186,7 +186,7 @@ If task ID provided, create JUSTIFIES edge automatically
 3. If provided, call manager.add_edge(decision_id, task_id, EdgeType.JUSTIFIES)
 
 ### Verification
-python scripts/got_utils.py decision log "Test decision" --rationale "Testing"
+python -m cortical.got decision log "Test decision" --rationale "Testing"
 # Should prompt for task linkage
 
 ### DO NOT
@@ -317,24 +317,24 @@ After all batches complete:
 python -m pytest tests/ -v --tb=short
 
 # 2. Verify S-025 completion
-python scripts/got_utils.py sprint status S-025
+python -m cortical.got sprint status S-025
 
 # 3. Verify S-026 completion
-python scripts/got_utils.py sprint status S-026
+python -m cortical.got sprint status S-026
 
 # 4. Verify S-022 completion
-python scripts/got_utils.py sprint status S-022
+python -m cortical.got sprint status S-022
 
 # 5. Verify S-021 completion
-python scripts/got_utils.py sprint status S-021
+python -m cortical.got sprint status S-021
 
 # 6. Mark tasks complete
-python scripts/got_utils.py task complete T-20251226-112830-8c315485 --notes "Added schema validation tests"
-python scripts/got_utils.py task complete T-20251226-112824-d50defff --notes "Added performance tests"
-python scripts/got_utils.py task complete T-20251226-112837-e0b24627 --notes "Added observability tests"
-python scripts/got_utils.py task complete T-20251226-141441-08b2860f --notes "Documented Sprint ID format"
-python scripts/got_utils.py task complete T-20251224-184728-21e04fff --notes "Added task linkage prompt"
-python scripts/got_utils.py task complete T-20251224-212849-9d283fe8 --notes "Added limit/offset pagination"
+python -m cortical.got task complete T-20251226-112830-8c315485 --notes "Added schema validation tests"
+python -m cortical.got task complete T-20251226-112824-d50defff --notes "Added performance tests"
+python -m cortical.got task complete T-20251226-112837-e0b24627 --notes "Added observability tests"
+python -m cortical.got task complete T-20251226-141441-08b2860f --notes "Documented Sprint ID format"
+python -m cortical.got task complete T-20251224-184728-21e04fff --notes "Added task linkage prompt"
+python -m cortical.got task complete T-20251224-212849-9d283fe8 --notes "Added limit/offset pagination"
 ```
 
 ---

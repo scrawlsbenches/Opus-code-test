@@ -95,8 +95,9 @@ def format_task_table(tasks: List["ThoughtNode"]) -> str:
     for task in tasks:
         task_id = task.id.replace("task:", "")[:26]
         title = task.content[:33]
-        status = task.properties.get("status", "?")[:10]
-        priority = task.properties.get("priority", "?")[:8]
+        # Support both Task objects (.status) and ThoughtNode (.properties["status"])
+        status = (getattr(task, 'status', None) or task.properties.get("status", "?"))[:10]
+        priority = (getattr(task, 'priority', None) or task.properties.get("priority", "?"))[:8]
 
         lines.append("│ {:26} │ {:33} │ {:10} │ {:8} │".format(
             task_id, title, status, priority
@@ -121,11 +122,11 @@ def format_sprint_status(sprint: "ThoughtNode", progress: Dict[str, Any]) -> str
     lines = [
         f"Sprint: {sprint.content}",
         f"ID: {sprint.id}",
-        f"Status: {sprint.properties.get('status', 'unknown')}",
+        f"Status: {getattr(sprint, 'status', None) or sprint.properties.get('status', 'unknown')}",
     ]
 
-    # Show notes/description if present
-    notes = sprint.properties.get('notes', [])
+    # Show notes/description if present - support both Sprint.notes and ThoughtNode.properties['notes']
+    notes = getattr(sprint, 'notes', None) or sprint.properties.get('notes', [])
     if notes:
         lines.append(f"Notes: {notes[0]}")
         for note in notes[1:]:

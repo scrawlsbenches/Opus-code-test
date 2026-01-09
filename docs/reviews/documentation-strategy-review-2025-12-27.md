@@ -234,7 +234,7 @@ allowed-tools: Read, Bash, Glob
 
 ### 4.4 Graph of Thought Integration (Innovative)
 
-The GoT system (`python scripts/got_utils.py`) maintains:
+The GoT system (`python -m cortical.got`) maintains:
 
 - Tasks with unique IDs
 - Decisions with rationale

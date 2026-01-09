@@ -12,7 +12,7 @@ This module can be integrated into got_utils.py CLI or used standalone.
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from scripts.got_utils import TransactionalGoTAdapter
+    from cortical.got.adapter import TransactionalGoTAdapter
 
 from ..types import EdgeTypes
 

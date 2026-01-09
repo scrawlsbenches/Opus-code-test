@@ -483,7 +483,7 @@ ls .got/learning/experiences/
 cat .got/learning/experiences/exp_*.json | python3 -m json.tool
 
 # Validate GoT integrity
-python scripts/got_utils.py validate
+python -m cortical.got validate
 ```
 
 ---
@@ -532,7 +532,7 @@ efb4a9ff - feat(learning): Add file outcome tracking for risk assessment
 3. **Start with:**
    ```bash
    # Verify system state
-   python scripts/got_utils.py validate
+   python -m cortical.got validate
    python -m pytest tests/smoke/ -v
 
    # Run the demos to understand current state

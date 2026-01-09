@@ -241,8 +241,8 @@ However, the existing documentation (CLAUDE.md at 2509 lines, 146 docs files) pr
 
 3. **Create governance CLI commands**
    ```bash
-   python scripts/got_utils.py governance status
-   python scripts/got_utils.py governance check
+   python -m cortical.got governance status
+   python -m cortical.got governance check
    ```
 
 ### Future Enhancements

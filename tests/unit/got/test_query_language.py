@@ -23,7 +23,7 @@ import pytest
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from scripts.got_utils import TransactionalGoTAdapter, STATUS_PENDING, STATUS_COMPLETED, STATUS_IN_PROGRESS
+from cortical.got.adapter import TransactionalGoTAdapter, STATUS_PENDING, STATUS_COMPLETED, STATUS_IN_PROGRESS
 from cortical.got import GoTManager
 from cortical.core.bootstrap import create_container
 

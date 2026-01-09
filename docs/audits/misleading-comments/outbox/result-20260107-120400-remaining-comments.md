@@ -58,7 +58,7 @@ return iter([])
 **Evidence of Misleading:**
 1. ✗ No task exists in GoT system for git integration work
    ```bash
-   $ python scripts/got_utils.py query "git integration"
+   $ python -m cortical.got query "git integration"
    No results found.
    ```
 2. ✗ No GitHub issue or tracking mechanism referenced

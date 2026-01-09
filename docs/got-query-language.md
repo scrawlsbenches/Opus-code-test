@@ -6,17 +6,17 @@ The GoT query language provides a simple way to traverse and query the project m
 
 ```bash
 # Relationship queries
-python scripts/got_utils.py query "what blocks task:T-..."
-python scripts/got_utils.py query "what depends on task:T-..."
-python scripts/got_utils.py query "relationships task:T-..."
+python -m cortical.got query "what blocks task:T-..."
+python -m cortical.got query "what depends on task:T-..."
+python -m cortical.got query "relationships task:T-..."
 
 # Path finding
-python scripts/got_utils.py query "path from task:T-1 to task:T-2"
+python -m cortical.got query "path from task:T-1 to task:T-2"
 
 # Status queries
-python scripts/got_utils.py query "active tasks"
-python scripts/got_utils.py query "pending tasks"
-python scripts/got_utils.py query "blocked tasks"
+python -m cortical.got query "active tasks"
+python -m cortical.got query "pending tasks"
+python -m cortical.got query "blocked tasks"
 ```
 
 ## Query Types
@@ -26,7 +26,7 @@ python scripts/got_utils.py query "blocked tasks"
 Find all tasks that are blocking a given task.
 
 ```bash
-python scripts/got_utils.py query "what blocks task:T-20251220-123456-abcd"
+python -m cortical.got query "what blocks task:T-20251220-123456-abcd"
 ```
 
 **Returns:** List of tasks with BLOCKS edges pointing to the target task.
@@ -49,7 +49,7 @@ Results (2):
 Find all tasks that depend on a given task (i.e., tasks that have this task as a dependency).
 
 ```bash
-python scripts/got_utils.py query "what depends on task:T-20251220-123456-abcd"
+python -m cortical.got query "what depends on task:T-20251220-123456-abcd"
 ```
 
 **Returns:** List of tasks with DEPENDS_ON edges pointing to the target task.
@@ -59,7 +59,7 @@ python scripts/got_utils.py query "what depends on task:T-20251220-123456-abcd"
 Get all relationships for a task in one query.
 
 ```bash
-python scripts/got_utils.py query "relationships task:T-20251220-123456-abcd"
+python -m cortical.got query "relationships task:T-20251220-123456-abcd"
 ```
 
 **Returns:** All edges connected to the task, categorized by type:
@@ -74,7 +74,7 @@ python scripts/got_utils.py query "relationships task:T-20251220-123456-abcd"
 Find a path between two nodes using BFS (shortest path).
 
 ```bash
-python scripts/got_utils.py query "path from task:T-1 to task:T-2"
+python -m cortical.got query "path from task:T-1 to task:T-2"
 ```
 
 **Returns:** Ordered list of nodes forming the path, or empty if no path exists.
@@ -96,21 +96,21 @@ Results (3):
 Tasks currently in progress.
 
 ```bash
-python scripts/got_utils.py query "active tasks"
+python -m cortical.got query "active tasks"
 ```
 
 #### Pending Tasks
 Tasks waiting to be started.
 
 ```bash
-python scripts/got_utils.py query "pending tasks"
+python -m cortical.got query "pending tasks"
 ```
 
 #### Blocked Tasks
 Tasks that are blocked, with their blocking reasons.
 
 ```bash
-python scripts/got_utils.py query "blocked tasks"
+python -m cortical.got query "blocked tasks"
 ```
 
 ## Programmatic API
@@ -159,10 +159,10 @@ To create edges that can be queried:
 
 ```bash
 # Add dependency (Task A depends on Task B)
-python scripts/got_utils.py task create "New feature" --depends task:T-existing
+python -m cortical.got task create "New feature" --depends task:T-existing
 
 # Block a task (creates BLOCKS edge)
-python scripts/got_utils.py task block task:T-123 --reason "Waiting for API" --blocker task:T-456
+python -m cortical.got task block task:T-123 --reason "Waiting for API" --blocker task:T-456
 ```
 
 ## Tips

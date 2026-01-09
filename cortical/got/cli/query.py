@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any, List
 from .shared import format_task_table
 
 if TYPE_CHECKING:
-    from scripts.got_utils import TransactionalGoTAdapter
+    from cortical.got.adapter import TransactionalGoTAdapter
 
 
 # 
@@ -140,14 +140,14 @@ def cmd_validate(args, manager: "TransactionalGoTAdapter") -> int:
     total_nodes = len(manager.graph.nodes)
     total_edges = len(manager.graph.edges)
 
-    # Count tasks by status
-    tasks = [n for n in manager.graph.nodes.values() if n.node_type == NodeType.TASK]
+    # Count tasks by status - use list_all_tasks for compatibility with both adapters
+    tasks = manager.list_all_tasks()
     task_count = len(tasks)
 
-    # Count by status
+    # Count by status - support both Task objects (.status) and ThoughtNode (.properties["status"])
     by_status = {}
     for task in tasks:
-        status = str(task.properties.get("status", "unknown"))
+        status = getattr(task, 'status', None) or task.properties.get("status", "unknown")
         by_status[status] = by_status.get(status, 0) + 1
 
     # Check for orphan nodes (no edges)
@@ -207,21 +207,8 @@ def cmd_validate(args, manager: "TransactionalGoTAdapter") -> int:
 
     orphan_count = len(all_node_ids - nodes_with_edges)
     # Bug fix: Use all_node_ids count as denominator, not just graph.nodes (which only has Tasks+Decisions)
-    # Previously: orphan_rate = orphan_count / max(total_nodes, 1) * 100  # Wrong: 452 denominator
     total_all_entities = len(all_node_ids)
     orphan_rate = orphan_count / max(total_all_entities, 1) * 100
-
-    # Only count edge references that point to existing nodes
-    all_node_ids = set(manager.graph.nodes.keys())
-    nodes_with_edges = set()
-    for edge in manager.graph.edges:
-        if edge.source_id in all_node_ids:
-            nodes_with_edges.add(edge.source_id)
-        if edge.target_id in all_node_ids:
-            nodes_with_edges.add(edge.target_id)
-
-    orphan_count = len(all_node_ids - nodes_with_edges)
-    orphan_rate = orphan_count / max(total_nodes, 1) * 100
 
     # Check orphan rate (warning if high, but not critical)
     if orphan_rate > 50:

@@ -17,7 +17,7 @@ import sys
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from scripts.got_utils import TransactionalGoTAdapter
+    from cortical.got.adapter import TransactionalGoTAdapter
 
 
 # 
@@ -235,25 +235,7 @@ def cmd_handoff_list(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_handoff_reject(args, manager: "TransactionalGoTAdapter") -> int:
-    """Handle 'got handoff reject' command."""
-    success = manager.reject_handoff(
-        handoff_id=args.handoff_id,
-        agent=args.agent,
-        reason=args.reason,
-    )
-
-    if not success:
-        print(f"Failed to reject handoff: {args.handoff_id}")
-        return 1
-
-    print(f"Handoff rejected: {args.handoff_id}")
-    print(f"  Agent: {args.agent}")
-    print(f"  Reason: {args.reason}")
-    return 0
-
-
-# 
+#
 # CLI INTEGRATION
 # 
 
@@ -324,8 +306,6 @@ def setup_handoff_parser(subparsers) -> None:
     # handoff show
     handoff_show = handoff_subparsers.add_parser("show", help="Show handoff details")
     handoff_show.add_argument("handoff_id", help="Handoff ID to display")
-
-    handoff_reject.add_argument("--reason", "-r", default="", help="Reason for rejection")
 
     # handoff list
     handoff_list = handoff_subparsers.add_parser("list", help="List handoffs")

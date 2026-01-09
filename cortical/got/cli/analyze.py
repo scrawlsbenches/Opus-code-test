@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Dict, Any, List
 from ..types import EdgeTypes
 
 if TYPE_CHECKING:
-    from scripts.got_utils import TransactionalGoTAdapter
+    from cortical.got.adapter import TransactionalGoTAdapter
 
 
 # =============================================================================

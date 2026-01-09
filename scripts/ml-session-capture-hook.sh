@@ -116,7 +116,7 @@ if [[ -n "$in_progress_tasks" ]]; then
     done
     echo ""
     echo "   💡 Consider creating a handoff if work is incomplete:"
-    echo "      python scripts/got_utils.py handoff initiate <TASK_ID> --target next-session --instructions \"...\""
+    echo "      python -m cortical.got handoff initiate <TASK_ID> --target next-session --instructions \"...\""
 else
     echo "   (none - all tasks completed or pending)"
 fi

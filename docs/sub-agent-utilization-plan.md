@@ -217,20 +217,20 @@ GoT has **native handoff support**. Use it to coordinate agent work:
 
 ```bash
 # 1. I initiate handoff to sub-agent
-python scripts/got_utils.py handoff initiate TASK_ID \
+python -m cortical.got handoff initiate TASK_ID \
   --target "sub-agent-1" \
   --instructions "Write tests for the query module"
 
 # 2. Sub-agent accepts (in their prompt, include this)
-python scripts/got_utils.py handoff accept HANDOFF_ID --agent "sub-agent-1"
+python -m cortical.got handoff accept HANDOFF_ID --agent "sub-agent-1"
 
 # 3. Sub-agent completes with results
-python scripts/got_utils.py handoff complete HANDOFF_ID \
+python -m cortical.got handoff complete HANDOFF_ID \
   --agent "sub-agent-1" \
   --result '{"tests_written": 15, "coverage": "92%"}'
 
 # 4. I can query handoff status anytime
-python scripts/got_utils.py handoff list --status accepted
+python -m cortical.got handoff list --status accepted
 ```
 
 **Agent Prompt Template with Handoff:**
@@ -241,7 +241,7 @@ You are sub-agent-1. A handoff has been initiated for you.
 
 ### First: Accept the handoff
 ```bash
-python scripts/got_utils.py handoff accept H-20251221-120530-a1b2 --agent sub-agent-1
+python -m cortical.got handoff accept H-20251221-120530-a1b2 --agent sub-agent-1
 ```
 
 ### Then: Do the work
@@ -249,7 +249,7 @@ python scripts/got_utils.py handoff accept H-20251221-120530-a1b2 --agent sub-ag
 
 ### Finally: Complete the handoff
 ```bash
-python scripts/got_utils.py handoff complete H-20251221-120530-a1b2 \
+python -m cortical.got handoff complete H-20251221-120530-a1b2 \
   --agent sub-agent-1 \
   --result '{"tests": 15, "file": "tests/test_query.py"}'
 ```
@@ -269,13 +269,13 @@ Create tasks for Sprint 12 in GoT. Use these commands:
 
 ```bash
 # Create the sprint first
-python scripts/got_utils.py sprint create "Sprint 12 - Search Improvements" --number 12
+python -m cortical.got sprint create "Sprint 12 - Search Improvements" --number 12
 
 # Create each task with dependencies
-python scripts/got_utils.py task create "Implement BM25 scoring" \
+python -m cortical.got task create "Implement BM25 scoring" \
   --priority high --category feature --sprint S-012
 
-python scripts/got_utils.py task create "Add query expansion tests" \
+python -m cortical.got task create "Add query expansion tests" \
   --priority medium --category test --sprint S-012 \
   --depends-on T-XXX  # Use ID from previous task
 ```
@@ -290,8 +290,8 @@ Delegate finding critical paths:
 ## Agent Task: Analyze Blocking Relationships
 
 Query the GoT graph to find:
-1. All blocked tasks: `python scripts/got_utils.py query "blocked tasks"`
-2. For each blocked task, what blocks it: `python scripts/got_utils.py query "what blocks TASK_ID"`
+1. All blocked tasks: `python -m cortical.got query "blocked tasks"`
+2. For each blocked task, what blocks it: `python -m cortical.got query "what blocks TASK_ID"`
 3. Find the root blockers (tasks that block others but aren't blocked)
 
 Report: A dependency tree showing the critical path.
@@ -312,7 +312,7 @@ Affects: [T-persistence-001, T-persistence-002]
 
 Command:
 ```bash
-python scripts/got_utils.py decision log "Use event sourcing for GoT persistence" \
+python -m cortical.got decision log "Use event sourcing for GoT persistence" \
   --rationale "Merge-friendly, provides audit trail, recoverable from any state" \
   --alternatives "Direct file writes" "SQLite database" "Redis" \
   --affects T-persistence-001 T-persistence-002
@@ -329,12 +329,12 @@ Delegate validation and fixes:
 
 1. Run validation:
 ```bash
-python scripts/got_utils.py validate
+python -m cortical.got validate
 ```
 
 2. If orphan rate > 30%, investigate:
 ```bash
-python scripts/got_utils.py query "relationships ORPHAN_TASK_ID"
+python -m cortical.got query "relationships ORPHAN_TASK_ID"
 ```
 
 3. If edge loss detected, check event log vs graph state
@@ -350,10 +350,10 @@ Delegate gathering metrics:
 
 Gather sprint metrics:
 ```bash
-python scripts/got_utils.py sprint status
-python scripts/got_utils.py dashboard
-python scripts/got_utils.py task list --status in_progress
-python scripts/got_utils.py task list --status blocked
+python -m cortical.got sprint status
+python -m cortical.got dashboard
+python -m cortical.got task list --status in_progress
+python -m cortical.got task list --status blocked
 ```
 
 Calculate:
@@ -394,7 +394,7 @@ STEP 1 - PARALLEL RESEARCH:
 └── Explore: "How do other systems solve this?"
     ↓
 STEP 2 - ME: Synthesize findings, make decision, log in GoT:
-    python scripts/got_utils.py decision log "..." --rationale "..."
+    python -m cortical.got decision log "..." --rationale "..."
     ↓
 STEP 3 - PARALLEL IMPLEMENTATION:
 ├── general-purpose: "Implement the fix in got_utils.py"
@@ -439,21 +439,21 @@ Include these in agent prompts as needed:
 
 ```bash
 # What blocks this task?
-python scripts/got_utils.py query "what blocks TASK_ID"
+python -m cortical.got query "what blocks TASK_ID"
 
 # What depends on this task?
-python scripts/got_utils.py query "what depends on TASK_ID"
+python -m cortical.got query "what depends on TASK_ID"
 
 # Find path between tasks
-python scripts/got_utils.py query "path from TASK_A to TASK_B"
+python -m cortical.got query "path from TASK_A to TASK_B"
 
 # All relationships for a task
-python scripts/got_utils.py query "relationships TASK_ID"
+python -m cortical.got query "relationships TASK_ID"
 
 # Status-based queries
-python scripts/got_utils.py query "active tasks"    # in_progress
-python scripts/got_utils.py query "pending tasks"   # pending
-python scripts/got_utils.py query "blocked tasks"   # blocked
+python -m cortical.got query "active tasks"    # in_progress
+python -m cortical.got query "pending tasks"   # pending
+python -m cortical.got query "blocked tasks"   # blocked
 ```
 
 ---
@@ -515,23 +515,23 @@ Include this in agent prompts when they modify GoT code:
 ### Before Spawning Agents
 ```bash
 # Check current state
-python scripts/got_utils.py validate
-python scripts/got_utils.py task list --status in_progress
+python -m cortical.got validate
+python -m cortical.got task list --status in_progress
 ```
 
 ### Create Task for Complex Work
 ```bash
 # Track in GoT before delegating
-python scripts/got_utils.py task create "Implement X feature" --priority high
+python -m cortical.got task create "Implement X feature" --priority high
 ```
 
 ### After Agents Complete
 ```bash
 # Update task status
-python scripts/got_utils.py task complete T-XXX
+python -m cortical.got task complete T-XXX
 
 # Log decision if architectural
-python scripts/got_utils.py decision log "Chose approach A" --rationale "Because..."
+python -m cortical.got decision log "Chose approach A" --rationale "Because..."
 ```
 
 ---

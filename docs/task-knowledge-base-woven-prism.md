@@ -35,7 +35,7 @@ Every sub-agent working on this project MUST follow these rules:
 │                                                                         │
 │  4. DOCUMENT YOUR DECISIONS                                             │
 │     Log significant decisions to GoT.                                  │
-│     Use: python scripts/got_utils.py decision log "..." --rationale    │
+│     Use: python -m cortical.got decision log "..." --rationale    │
 │                                                                         │
 │  5. VERIFY BEFORE REPORTING SUCCESS                                     │
 │     Run the verification command specified in your task.               │
@@ -73,10 +73,10 @@ Every sub-agent working on this project MUST follow these rules:
 **When starting a task:**
 ```bash
 # 1. Mark task as in_progress
-python scripts/got_utils.py task start T-XXXXX
+python -m cortical.got task start T-XXXXX
 
 # 2. Read the task details
-python scripts/got_utils.py task show T-XXXXX
+python -m cortical.got task show T-XXXXX
 
 # 3. Read all referenced files before starting
 ```
@@ -84,11 +84,11 @@ python scripts/got_utils.py task show T-XXXXX
 **During work:**
 ```bash
 # Log significant decisions
-python scripts/got_utils.py decision log "Chose X over Y" \
+python -m cortical.got decision log "Chose X over Y" \
   --rationale "Because Z provides better performance"
 
 # If blocked, create a blocker
-python scripts/got_utils.py task update T-XXXXX --blocked-by T-YYYYY
+python -m cortical.got task update T-XXXXX --blocked-by T-YYYYY
 ```
 
 **When completing:**
@@ -100,7 +100,7 @@ python -m pytest tests/unit/test_your_feature.py -v
 python -m coverage run -m pytest tests/ && python -m coverage report
 
 # 3. Mark complete
-python scripts/got_utils.py task complete T-XXXXX
+python -m cortical.got task complete T-XXXXX
 
 # 4. Verify git status
 git status
@@ -812,9 +812,9 @@ python -m pytest tests/unit/test_new_file.py -v
 
 ```bash
 # Task management
-python scripts/got_utils.py task list --status pending
-python scripts/got_utils.py task start T-XXXXX
-python scripts/got_utils.py task complete T-XXXXX
+python -m cortical.got task list --status pending
+python -m cortical.got task start T-XXXXX
+python -m cortical.got task complete T-XXXXX
 
 # Testing
 python -m pytest tests/unit/test_loom.py -v
@@ -846,7 +846,7 @@ python -m pytest tests/ -q
 git stash pop
 
 # 4. Report the issue with details
-python scripts/got_utils.py decision log "Blocked: tests fail with message X" \
+python -m cortical.got decision log "Blocked: tests fail with message X" \
   --rationale "Attempted fixes Y and Z, need help"
 ```
 

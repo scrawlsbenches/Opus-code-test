@@ -20,7 +20,7 @@ The CLI doc module refactoring is **production-ready** with excellent code quali
 
 ### CLI Verification
 - **Status:** ✅ Live CLI working correctly
-- **Test:** `python scripts/got_utils.py doc list` returned 144 documents
+- **Test:** `python -m cortical.got doc list` returned 144 documents
 
 ---
 

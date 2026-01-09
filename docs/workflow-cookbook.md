@@ -111,7 +111,7 @@ EOF
 python scripts/new_memory.py "what I learned today"
 
 # Create task (GoT)
-python scripts/got_utils.py task create "Fix the bug" --priority high
+python -m cortical.got task create "Fix the bug" --priority high
 
 # Check templates before creating new files
 ls -la samples/memories/*.md | head -3
@@ -228,7 +228,7 @@ echo "=== Recent Activity ==="
 git log --oneline -5
 echo ""
 echo "=== Current Tasks ==="
-python scripts/got_utils.py task list --status in_progress 2>/dev/null || echo "No active tasks"
+python -m cortical.got task list --status in_progress 2>/dev/null || echo "No active tasks"
 ```
 
 ---
@@ -290,10 +290,10 @@ fi
 ./scripts/clean_workspace.sh 2>/dev/null || git status --short
 
 # 2. Check sprint context
-python scripts/got_utils.py sprint status 2>/dev/null
+python -m cortical.got sprint status 2>/dev/null
 
 # 3. Review active tasks
-python scripts/got_utils.py task list --status pending | head -10
+python -m cortical.got task list --status pending | head -10
 ```
 
 ### Before Each Task

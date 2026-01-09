@@ -31,8 +31,8 @@ from cortical.reasoning.graph_of_thought import NodeType, EdgeType, ThoughtNode
 from cortical.reasoning.thought_graph import ThoughtGraph
 
 # Import after path setup
-import got_utils
-from got_utils import (
+from cortical.got import adapter as got_utils
+from cortical.got.adapter import (
     GoTBackendFactory,
     cmd_task_create,
     cmd_task_list,
@@ -1540,7 +1540,7 @@ class TestAutoTaskHook:
 
     def test_detect_task_reference_in_commit_message(self):
         """Commit message with task ID should be detected."""
-        from got_utils import has_task_reference
+        from cortical.got.adapter import has_task_reference
 
         # Standard format with task prefix
         assert has_task_reference("fix: T-20251221-123456-abcd Fixed bug") is True
@@ -1549,13 +1549,13 @@ class TestAutoTaskHook:
 
     def test_detect_task_reference_case_insensitive(self):
         """Task reference detection should be case insensitive."""
-        from got_utils import has_task_reference
+        from cortical.got.adapter import has_task_reference
 
         assert has_task_reference("fix: t-20251221-123456-abcd lowercase") is True
 
     def test_no_task_reference_detected(self):
         """Commit message without task ID should return False."""
-        from got_utils import has_task_reference
+        from cortical.got.adapter import has_task_reference
 
         assert has_task_reference("fix: Fixed a bug") is False
         assert has_task_reference("chore: Update dependencies") is False
@@ -1563,7 +1563,7 @@ class TestAutoTaskHook:
 
     def test_malformed_task_reference_not_detected(self):
         """Malformed task IDs should not be detected."""
-        from got_utils import has_task_reference
+        from cortical.got.adapter import has_task_reference
 
         # Too short
         assert has_task_reference("fix: T-2025-123") is False
@@ -1574,7 +1574,7 @@ class TestAutoTaskHook:
 
     def test_extract_commit_type_for_task_category(self):
         """Extract commit type prefix to suggest task category."""
-        from got_utils import extract_commit_type
+        from cortical.got.adapter import extract_commit_type
 
         assert extract_commit_type("fix: Fixed something") == "fix"
         assert extract_commit_type("feat: Added feature") == "feat"
@@ -1585,14 +1585,14 @@ class TestAutoTaskHook:
 
     def test_extract_commit_type_no_prefix(self):
         """Commit without conventional prefix should return None."""
-        from got_utils import extract_commit_type
+        from cortical.got.adapter import extract_commit_type
 
         assert extract_commit_type("Just a plain message") is None
         assert extract_commit_type("Updated something") is None
 
     def test_suggest_task_category_from_commit_type(self):
         """Map commit type to GoT task category."""
-        from got_utils import suggest_task_category
+        from cortical.got.adapter import suggest_task_category
 
         assert suggest_task_category("fix") == "bugfix"
         assert suggest_task_category("feat") == "feature"
@@ -1604,7 +1604,7 @@ class TestAutoTaskHook:
 
     def test_generate_task_title_from_commit(self):
         """Generate a task title from commit message."""
-        from got_utils import generate_task_title_from_commit
+        from cortical.got.adapter import generate_task_title_from_commit
 
         assert generate_task_title_from_commit("fix: Fixed login bug") == "Fixed login bug"
         assert generate_task_title_from_commit("feat: Add user auth") == "Add user auth"

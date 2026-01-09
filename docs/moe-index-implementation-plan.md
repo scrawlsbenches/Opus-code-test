@@ -811,9 +811,9 @@ For tracking during implementation, use the GoT task system:
 
 ```bash
 # Create implementation tasks
-python scripts/got_utils.py task create "MoE Phase 1: Implement core types" --priority high
-python scripts/got_utils.py task create "MoE Phase 1: Create test infrastructure" --priority high
-python scripts/got_utils.py task create "MoE Phase 2: Implement LexicalExpert" --priority high
+python -m cortical.got task create "MoE Phase 1: Implement core types" --priority high
+python -m cortical.got task create "MoE Phase 1: Create test infrastructure" --priority high
+python -m cortical.got task create "MoE Phase 2: Implement LexicalExpert" --priority high
 # ... etc
 ```
 

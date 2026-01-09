@@ -93,19 +93,19 @@ Updated the GoT task management CLI to automatically capture learning.
 **Usage:**
 ```bash
 # Complete task (auto-captures learning)
-python scripts/got_utils.py task complete T-123 \
+python -m cortical.got task complete T-123 \
     --retrospective "TDD worked great, tests passed first try"
 
 # Complete task without learning capture (not recommended)
-python scripts/got_utils.py task complete T-123 --skip-learning
+python -m cortical.got task complete T-123 --skip-learning
 
 # Block task (auto-captures failure learning)
-python scripts/got_utils.py task block T-123 \
+python -m cortical.got task block T-123 \
     --reason "Missing dependencies" \
     --blocker T-456
 
 # Block task without learning capture (not recommended)
-python scripts/got_utils.py task block T-123 \
+python -m cortical.got task block T-123 \
     --reason "Missing dependencies" \
     --skip-learning
 ```
@@ -120,19 +120,19 @@ python scripts/got_utils.py task block T-123 \
 ### Manual Testing
 ```bash
 # Test 1: Task completion with learning capture
-$ python scripts/got_utils.py task create "Test learning capture" --priority medium --category test
+$ python -m cortical.got task create "Test learning capture" --priority medium --category test
 Created: T-20260103-164105-4c1ddd7c
 
-$ python scripts/got_utils.py task complete T-20260103-164105-4c1ddd7c \
+$ python -m cortical.got task complete T-20260103-164105-4c1ddd7c \
     --retrospective "Used TDD approach, tests passed on first try"
 Completed: T-20260103-164105-4c1ddd7c
 📚 Learning experience captured: exp_20260103_164117_7264
 
 # Test 2: Task blocking with failure capture
-$ python scripts/got_utils.py task create "Test blocked task" --priority high --category bugfix
+$ python -m cortical.got task create "Test blocked task" --priority high --category bugfix
 Created: T-20260103-164130-bcab1ae7
 
-$ python scripts/got_utils.py task block T-20260103-164130-bcab1ae7 \
+$ python -m cortical.got task block T-20260103-164130-bcab1ae7 \
     --reason "Missing dependencies"
 Blocked: T-20260103-164130-bcab1ae7
 📚 Learning experience (failure) captured: exp_20260103_164145_7776
@@ -255,7 +255,7 @@ As of implementation completion:
 
 2. **Pre-Task Guidance:** Before starting a task, automatically retrieve relevant lessons:
    ```bash
-   python scripts/got_utils.py task start T-123  # Shows relevant lessons
+   python -m cortical.got task start T-123  # Shows relevant lessons
    ```
 
 3. **Session Integration:** Automatically call learning hooks from Claude Code session lifecycle
