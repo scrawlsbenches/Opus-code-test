@@ -56,7 +56,8 @@ from .types import (
     VALID_EDGE_TYPES,
 )
 
-from .transaction import (
+# Transaction types from CDG (no GoT wrapper needed)
+from cortical.cdg.transaction import (
     Transaction,
     TransactionState,
     generate_transaction_id,

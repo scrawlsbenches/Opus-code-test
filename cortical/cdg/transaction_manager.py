@@ -15,6 +15,7 @@ Lifted from GoT's TransactionManager with CDG extensions for:
 
 from __future__ import annotations
 
+import copy
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -244,8 +245,8 @@ class CDGTransactionManager:
                 entity_data=entity.to_dict()
             )
 
-        # Add to write set
-        tx.add_write(entity)
+        # Add to write set - copy to ensure isolation (snapshot at write time)
+        tx.add_write(copy.deepcopy(entity))
 
     def delete(self, tx: Transaction, entity_id: str) -> None:
         """

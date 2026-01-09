@@ -22,6 +22,7 @@ Storage layout:
 
 from __future__ import annotations
 
+import copy
 import logging
 import os
 import json
@@ -344,10 +345,10 @@ class CDGStore:
             this race condition will be eliminated at the storage layer since
             index lookups won't return IDs for deleted entities.
         """
-        # Check cache first
+        # Check cache first - return copy to ensure isolation
         cached = self._cache_get(entity_id)
         if cached is not None:
-            return cached
+            return copy.deepcopy(cached)
 
         path = self._entity_path(entity_id)
         if not self._fs.exists(path):
@@ -356,9 +357,9 @@ class CDGStore:
         try:
             wrapper = self._read_and_verify(path)
             entity = self.entity_factory(wrapper["data"])
-            # Populate cache on miss
+            # Populate cache on miss, return copy to ensure isolation
             self._cache_set(entity_id, entity)
-            return entity
+            return copy.deepcopy(entity)
         except FileNotFoundError:
             # File was deleted between exists() check and read - treat as not found.
             # This is expected during concurrent delete + read operations.

@@ -1,9 +1,9 @@
-"""Tests for Transaction module."""
+"""Tests for CDG Transaction module."""
 
 import pytest
 from datetime import datetime, timezone
 
-from cortical.got.transaction import (
+from cortical.cdg.transaction import (
     Transaction,
     TransactionState,
     generate_transaction_id

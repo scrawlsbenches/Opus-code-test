@@ -46,7 +46,7 @@ from cortical.common.recovery_types import RecoveryResult
 from .sync import SyncManager, SyncResult
 from .entity_schemas import get_valid_statuses
 from .types import Task, Decision, Edge, Entity, Sprint, Epic, Handoff, ClaudeMdLayer, ClaudeMdVersion, Document, EdgeTypes, KnowledgeTransfer
-from .transaction import Transaction
+from cortical.cdg.transaction import Transaction
 from .errors import TransactionError, CorruptionError
 from .config import DurabilityMode
 from .query_api import QueryAPI

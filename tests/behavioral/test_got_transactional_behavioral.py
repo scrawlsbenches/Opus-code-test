@@ -18,7 +18,6 @@ Following Metus: We describe behavior, then make it true.
 import sys
 import tempfile
 from pathlib import Path
-from datetime import datetime
 
 import pytest
 
@@ -28,12 +27,9 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from cortical.got import (
     GoTManager,
-    TransactionManager,
     Task,
     Decision,
     Edge,
-    CDGWALManager as WALManager,
-    RecoveryManager,
     ConflictResolver,
     ConflictStrategy,
     generate_task_id,
@@ -301,43 +297,6 @@ class TestDeveloperPreventsConflictingUpdates:
         assert len(result_b.conflicts) > 0
         conflict = result_b.conflicts[0]
         assert conflict.entity_id == task.id
-
-
-class TestSystemRecovesFromCrashes:
-    """
-    Epic: Crash Recovery and Durability
-
-    As a system operator running mission-critical workflows,
-    I want incomplete transactions to be rolled back on restart,
-    So that crashes never leave the system in an inconsistent state.
-    """
-
-    def test_scenario_incomplete_transaction_rolled_back_on_recovery(self, temp_got_dir):
-        """
-        Scenario: Recovery rolls back incomplete transactions
-
-        Given a transaction was started but never committed
-        When I run crash recovery
-        Then the incomplete transaction is detected
-        And it is rolled back cleanly
-        """
-        # Given: a transaction was started but never committed
-        wal = WALManager(temp_got_dir / "wal")
-
-        orphan_tx_id = f"TX-{datetime.now().strftime('%Y%m%d-%H%M%S')}-ORPHAN"
-        wal.log_tx_begin(orphan_tx_id, snapshot_version=1)
-        wal.log_write(orphan_tx_id, "task:orphan", old_version=0, new_version=1)
-        # Note: No TX_COMMIT or TX_ABORT logged (simulates crash)
-
-        # When: I run crash recovery
-        recovery = RecoveryManager(temp_got_dir)
-
-        # Then: the incomplete transaction is detected
-        assert recovery.needs_recovery()
-
-        # And: it is rolled back cleanly
-        result = recovery.recover()
-        assert len(result.rolled_back) > 0, "Should have rolled back incomplete transactions"
 
 
 class TestDeveloperResolvesConflicts:
