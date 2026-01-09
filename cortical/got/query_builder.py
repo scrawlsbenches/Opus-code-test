@@ -1443,8 +1443,8 @@ class Query(Generic[T]):
                 entities.append(entity)
 
             except Exception as e:
-                # Skip corrupted files
-                logger.warning(f"Skipping corrupted entity file {entity_file}: {e}")
+                # Skip corrupted files (use debug to avoid spam on list operations)
+                logger.debug(f"Skipping corrupted entity file {entity_file}: {e}")
                 continue
 
         return entities

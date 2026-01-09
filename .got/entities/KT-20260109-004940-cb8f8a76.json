@@ -1,0 +1,29 @@
+{
+  "_checksum": "ad958814e928959e",
+  "_written_at": "2026-01-09T00:49:50.549010+00:00",
+  "data": {
+    "code_refs": [],
+    "created_at": "2026-01-09T00:49:40.166047+00:00",
+    "entity_type": "knowledge_transfer",
+    "id": "KT-20260109-004940-cb8f8a76",
+    "modified_at": "2026-01-09T00:49:50.548943+00:00",
+    "properties": {},
+    "related_decisions": [],
+    "related_handoffs": [],
+    "related_tasks": [],
+    "sections": [
+      {
+        "content": "This is test content",
+        "title": "Test Section"
+      }
+    ],
+    "session_date": "",
+    "session_id": "",
+    "source_file": null,
+    "status": "draft",
+    "summary": "Testing the append command",
+    "tags": [],
+    "title": "Test Append",
+    "version": 3
+  }
+}

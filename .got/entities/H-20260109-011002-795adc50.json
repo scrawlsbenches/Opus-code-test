@@ -1,0 +1,42 @@
+{
+  "_checksum": "9dff2ffb14db6305",
+  "_written_at": "2026-01-09T01:10:02.534437+00:00",
+  "data": {
+    "accepted_at": "",
+    "artifacts": [],
+    "completed_at": "",
+    "context": {
+      "blockers": [],
+      "current_branch": "claude/create-handoff-docs-KnFlS",
+      "files_modified": [
+        "ortical/got/adapter.py",
+        "cortical/got/api.py",
+        "cortical/got/cli/handoff.py"
+      ],
+      "notes": "",
+      "recent_commits": [
+        "220e5a6b docs: Add Session Handoff Protocol to CLAUDE.md",
+        "1137839b chore: Add test KT entities from CLI testing",
+        "b4eccb94 docs: Update scratchpad with completed KT CLI fixes",
+        "1bb7f432 fix: Repair KT CLI commands (create, show, list, append, finalize)",
+        "4a90b14a chore: Add test handoff entity from CLI testing"
+      ],
+      "session_id": ""
+    },
+    "created_at": "2026-01-09T01:10:02.522083+00:00",
+    "entity_type": "handoff",
+    "id": "H-20260109-011002-795adc50",
+    "initiated_at": "2026-01-09T01:10:02.522102+00:00",
+    "instructions": "Fixed 7 KT CLI bugs, added session handoff feature",
+    "modified_at": "2026-01-09T01:10:02.534348+00:00",
+    "properties": {},
+    "reject_reason": "",
+    "rejected_at": "",
+    "result": {},
+    "source_agent": "cli",
+    "status": "initiated",
+    "target_agent": "next-agent",
+    "task_id": "",
+    "version": 2
+  }
+}

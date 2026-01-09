@@ -1224,7 +1224,8 @@ class CDGStore:
                     entities.append(entity)
             except (CorruptionError, json.JSONDecodeError) as e:
                 # Skip corrupted entities during iteration (graceful degradation)
-                logger.warning(f"Skipping corrupted entity {entity_file.stem}: {e}")
+                # Use debug level to avoid spamming output on every list operation
+                logger.debug(f"Skipping corrupted entity {entity_file.stem}: {e}")
                 continue
         return entities
 

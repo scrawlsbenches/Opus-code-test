@@ -16,6 +16,7 @@ from .id_generation import (
     generate_edge_id,
     generate_sprint_id,
     generate_goal_id,
+    generate_kt_id,
     normalize_id,
 )
 from .text import slugify
@@ -36,6 +37,7 @@ __all__ = [
     'generate_edge_id',
     'generate_sprint_id',
     'generate_goal_id',
+    'generate_kt_id',
     'normalize_id',
     'slugify',
     'atomic_write',

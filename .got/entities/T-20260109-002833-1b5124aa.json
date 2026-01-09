@@ -1,0 +1,19 @@
+{
+  "_checksum": "7b3a176532d379d8",
+  "_written_at": "2026-01-09T00:28:33.042384+00:00",
+  "data": {
+    "created_at": "2026-01-09T00:28:33.028468+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260109-002833-1b5124aa",
+    "metadata": {},
+    "modified_at": "2026-01-09T00:28:33.042293+00:00",
+    "priority": "low",
+    "properties": {
+      "category": "test"
+    },
+    "status": "pending",
+    "title": "Test handoff workflow",
+    "version": 2
+  }
+}

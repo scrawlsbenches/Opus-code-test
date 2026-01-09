@@ -21,6 +21,13 @@ if TYPE_CHECKING:
     from cortical.got.adapter import TransactionalGoTAdapter
 
 
+def _get_attr(obj: Any, key: str, default: Any = None) -> Any:
+    """Get attribute from object or dict, with default fallback."""
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
+
+
 # =============================================================================
 # MARKDOWN PARSING
 # =============================================================================
@@ -304,12 +311,12 @@ def cmd_kt_list(args, manager: "TransactionalGoTAdapter") -> int:
     print(f"Knowledge Transfer Documents ({len(kts)}):\n")
 
     for kt in kts:
-        # Format output
-        kt_id = kt.get("id", "?")
-        title = kt.get("title", "Untitled")
-        status = kt.get("status", "published")
-        session_date = kt.get("session_date", "")
-        tags = kt.get("tags", [])
+        # Format output - handle both dict and object types
+        kt_id = kt.get("id", "?") if isinstance(kt, dict) else getattr(kt, "id", "?")
+        title = kt.get("title", "Untitled") if isinstance(kt, dict) else getattr(kt, "title", "Untitled")
+        status = kt.get("status", "published") if isinstance(kt, dict) else getattr(kt, "status", "published")
+        session_date = kt.get("session_date", "") if isinstance(kt, dict) else getattr(kt, "session_date", "")
+        tags = kt.get("tags", []) if isinstance(kt, dict) else getattr(kt, "tags", [])
 
         # Status icon
         status_icon = {
@@ -348,67 +355,87 @@ def cmd_kt_show(args, manager: "TransactionalGoTAdapter") -> int:
     print("=" * 70)
     print(f"KNOWLEDGE TRANSFER: {kt_id}")
     print("=" * 70)
-    print(f"Title:        {kt.get('title', 'Untitled')}")
-    print(f"Status:       {kt.get('status', 'unknown')}")
+    print(f"Title:        {_get_attr(kt, 'title', 'Untitled')}")
+    print(f"Status:       {_get_attr(kt, 'status', 'unknown')}")
 
-    if kt.get('session_id'):
-        print(f"Session ID:   {kt['session_id']}")
-    if kt.get('session_date'):
-        print(f"Session Date: {kt['session_date']}")
+    if _get_attr(kt, 'session_id'):
+        print(f"Session ID:   {_get_attr(kt, 'session_id')}")
+    if _get_attr(kt, 'session_date'):
+        print(f"Session Date: {_get_attr(kt, 'session_date')}")
 
     # Tags
-    if kt.get('tags'):
-        print(f"Tags:         {', '.join(kt['tags'])}")
+    tags = _get_attr(kt, 'tags')
+    if tags:
+        print(f"Tags:         {', '.join(tags)}")
 
     # Summary
-    if kt.get('summary'):
+    summary = _get_attr(kt, 'summary')
+    if summary:
         print(f"\nSummary:")
         print("-" * 70)
-        print(kt['summary'])
+        print(summary)
         print("-" * 70)
 
     # Sections
-    sections = kt.get('sections', {})
+    sections = _get_attr(kt, 'sections', {})
     if sections:
         print(f"\nSections ({len(sections)}):")
-        for heading, content in sections.items():
-            print(f"\n## {heading}")
-            print("-" * 70)
-            # Truncate long sections in display
-            if len(content) > 500:
-                print(content[:500] + "\n... (truncated)")
-            else:
-                print(content)
-            print("-" * 70)
+        # Handle both dict (key-value) and list (title+content) formats
+        if isinstance(sections, dict):
+            for heading, content in sections.items():
+                print(f"\n## {heading}")
+                print("-" * 70)
+                if len(str(content)) > 500:
+                    print(str(content)[:500] + "\n... (truncated)")
+                else:
+                    print(content)
+                print("-" * 70)
+        elif isinstance(sections, list):
+            for section in sections:
+                heading = _get_attr(section, 'title', 'Untitled')
+                content = _get_attr(section, 'content', '')
+                print(f"\n## {heading}")
+                print("-" * 70)
+                if len(str(content)) > 500:
+                    print(str(content)[:500] + "\n... (truncated)")
+                else:
+                    print(content)
+                print("-" * 70)
 
     # Code references
-    if kt.get('code_refs'):
-        print(f"\nCode References ({len(kt['code_refs'])}):")
-        for ref in kt['code_refs']:
+    code_refs = _get_attr(kt, 'code_refs')
+    if code_refs:
+        print(f"\nCode References ({len(code_refs)}):")
+        for ref in code_refs:
             print(f"  - {ref}")
 
     # Related entities
-    if kt.get('related_handoffs'):
+    related_handoffs = _get_attr(kt, 'related_handoffs')
+    if related_handoffs:
         print(f"\nRelated Handoffs:")
-        for h_id in kt['related_handoffs']:
+        for h_id in related_handoffs:
             print(f"  - {h_id}")
 
-    if kt.get('related_tasks'):
+    related_tasks = _get_attr(kt, 'related_tasks')
+    if related_tasks:
         print(f"\nRelated Tasks:")
-        for t_id in kt['related_tasks']:
+        for t_id in related_tasks:
             print(f"  - {t_id}")
 
-    if kt.get('related_decisions'):
+    related_decisions = _get_attr(kt, 'related_decisions')
+    if related_decisions:
         print(f"\nRelated Decisions:")
-        for d_id in kt['related_decisions']:
+        for d_id in related_decisions:
             print(f"  - {d_id}")
 
     # Timestamps
     print(f"\nTimestamps:")
-    if kt.get('created_at'):
-        print(f"  Created:  {kt['created_at']}")
-    if kt.get('modified_at'):
-        print(f"  Modified: {kt['modified_at']}")
+    created_at = _get_attr(kt, 'created_at')
+    if created_at:
+        print(f"  Created:  {created_at}")
+    modified_at = _get_attr(kt, 'modified_at')
+    if modified_at:
+        print(f"  Modified: {modified_at}")
 
     print("=" * 70)
 
@@ -505,7 +532,7 @@ def cmd_kt_finalize(args, manager: "TransactionalGoTAdapter") -> int:
 
     # Check current status before finalize (for accurate messaging)
     kt_before = manager.get_knowledge_transfer(kt_id)
-    was_already_published = kt_before and kt_before.get('status') == 'published'
+    was_already_published = kt_before and _get_attr(kt_before, 'status') == 'published'
 
     # Finalize the KT
     success = manager.finalize_knowledge_transfer(

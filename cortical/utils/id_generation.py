@@ -166,6 +166,25 @@ def generate_handoff_id() -> str:
     return f"H-{timestamp}-{suffix}"
 
 
+def generate_kt_id() -> str:
+    """
+    Generate unique knowledge transfer ID.
+
+    Format: KT-YYYYMMDD-HHMMSS-XXXXXXXX where XXXXXXXX is random hex.
+
+    Returns:
+        Knowledge transfer ID string (e.g., 'KT-20251222-143052-a1b2c3d4')
+
+    Note:
+        - Uses UTC timezone for consistency
+        - Random suffix provides ~4 billion unique values
+    """
+    now = datetime.now(timezone.utc)
+    timestamp = now.strftime("%Y%m%d-%H%M%S")
+    suffix = secrets.token_hex(4)  # 8 hex chars
+    return f"KT-{timestamp}-{suffix}"
+
+
 def generate_goal_id() -> str:
     """
     Generate goal ID.

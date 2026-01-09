@@ -24,7 +24,7 @@ You are an expert Graph of Thought database designer and computer scientist with
 ```bash
 # 1. Health check (required before any work)
 python -m cortical.got validate
-python -m pytest tests/smoke/ -v --tb=short
+pip install pytest -q && python -m pytest tests/smoke/ -v --tb=short
 
 # 2. Orient yourself
 git branch --show-current
@@ -60,7 +60,7 @@ Before ANY work begins:
 │       If scratchpad says "DO NOT RUN TESTS", skip step 1.               │
 │                                                                          │
 │  □ 1. SMOKE TESTS PASS                                                  │
-│       python -m pytest tests/smoke/ -v --tb=short                       │
+│       pip install pytest -q && python -m pytest tests/smoke/ -v --tb=short │
 │       If this fails, DO NOT PROCEED. Fix it or escalate.                │
 │                                                                          │
 │  □ 2. GOT VALIDATES CLEANLY                                             │
@@ -1143,6 +1143,148 @@ The Five Tenets:
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Session Handoff Protocol
+
+Handoffs preserve context across agent sessions. Use GoT handoffs as the **primary method** - they auto-capture git state and store structured context in the graph database.
+
+### When to Create What
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     HANDOFF DECISION MATRIX                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  SESSION HANDOFF (handoff session) - Use for context continuity:        │
+│  • Session is ending with incomplete work                               │
+│  • Context window is filling up                                         │
+│  • Complex multi-session task needs continuity                          │
+│  • Auto-captures: git branch, modified files, recent commits            │
+│                                                                          │
+│  KNOWLEDGE TRANSFER (kt create) - Use for long-term learnings:          │
+│  • Significant learning occurred worth preserving                       │
+│  • Pattern or solution should be documented for future reference        │
+│  • Bug fix has lessons that shouldn't be repeated                       │
+│                                                                          │
+│  BOTH - For major sessions:                                             │
+│  • Create KT first, then link it to session handoff with --kt flag      │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Ending a Session
+
+**Step 1: Create Knowledge Transfer (if learnings occurred)**
+```bash
+# Create KT for significant learnings
+python -m cortical.got kt create "Session: [topic]" \
+    --summary "Key outcomes and learnings"
+
+# Add detailed sections
+python -m cortical.got kt append KT-XXX "What Worked" "..."
+python -m cortical.got kt append KT-XXX "Blockers" "..."
+
+# Finalize when complete
+python -m cortical.got kt finalize KT-XXX
+```
+
+**Step 2: Create Session Handoff**
+```bash
+# Session handoff auto-captures git state
+python -m cortical.got handoff session \
+    --target "next-agent" \
+    --summary "Fixed 7 KT CLI bugs, pending: GOT_DIR migration" \
+    --kt KT-XXX \
+    --blockers "28 corrupted entities"
+
+# The command automatically captures:
+# - Current git branch
+# - Modified files (from git status)
+# - Recent commits (last 5)
+```
+
+**Step 3: Commit and Push**
+```bash
+git add -A
+git commit -m "chore: Session checkpoint"
+git push
+```
+
+### Starting a Session
+
+**Step 1: Check for Handoffs**
+```bash
+# Check GoT handoffs first (primary source)
+python -m cortical.got handoff list --status initiated
+
+# Also check draft knowledge transfers
+python -m cortical.got kt list --status draft
+```
+
+**Step 2: Review Handoff Details**
+```bash
+# Show full handoff with context
+python -m cortical.got handoff show H-XXX
+
+# This displays:
+# - Branch, modified files, recent commits
+# - Instructions and notes
+# - Linked KT documents
+# - Blockers
+```
+
+**Step 3: Accept and Validate**
+```bash
+# Accept the handoff
+python -m cortical.got handoff accept H-XXX --agent "me"
+
+# Run validation
+python -m cortical.got validate
+pip install pytest -q && python -m pytest tests/smoke/ -v --tb=short
+```
+
+**Step 4: Continue Work**
+- Review the instructions from handoff
+- Check linked KT documents for context
+- Use `handoff complete` when done with handed-off work
+
+### Task-Level Handoffs
+
+For specific task handoffs (when a task needs to transfer):
+
+```bash
+# Initiate handoff for a specific task
+python -m cortical.got handoff initiate T-XXX \
+    --target "next-agent" \
+    --instructions "Continue from step 3..."
+
+# Accept the handoff
+python -m cortical.got handoff accept H-XXX --agent "me"
+
+# Complete with results
+python -m cortical.got handoff complete H-XXX \
+    --agent "me" \
+    --result '{"status": "done", "commits": ["abc123"]}'
+```
+
+### Handoff Lifecycle
+
+```
+Session Handoff:  session → initiated → accepted → completed
+Task Handoff:     initiate → initiated → accepted → completed
+                                      ↘ rejected
+```
+
+### Best Practices
+
+1. **Use GoT handoffs, not markdown docs** - Structured data > prose
+2. **Link KTs to handoffs** - `--kt KT-XXX` connects learnings to context
+3. **Be specific in summary** - "Fixed TypeError in cmd_kt_show:436" not "Fixed bug"
+4. **Include blockers** - `--blockers "item1" "item2"` surfaces issues
+5. **Accept handoffs explicitly** - Shows acknowledgment in graph
+6. **Complete handoffs** - Close the loop with results
 
 ---
 
