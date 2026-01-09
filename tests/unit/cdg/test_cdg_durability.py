@@ -16,6 +16,7 @@ from unittest.mock import patch
 
 from cortical.cdg import CDGWALManager, CDGStore
 from cortical.cdg.config import CDGConfig, DurabilityMode
+from cortical.common.filesystem import RealFileSystem
 
 
 class TestParanoidMode(unittest.TestCase):
@@ -137,7 +138,8 @@ class TestRelaxedMode(unittest.TestCase):
         """Test that RELAXED mode never calls fsync on entity store."""
         from cortical.got import Task
 
-        store = CDGStore(self.store_dir, CDGConfig(durability=DurabilityMode.RELAXED))
+        fs = RealFileSystem(self.store_dir)
+        store = CDGStore(fs, config=CDGConfig(durability=DurabilityMode.RELAXED))
 
         # Clear any fsync calls from __init__
         mock_fsync.reset_mock()

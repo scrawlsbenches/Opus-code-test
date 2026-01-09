@@ -37,6 +37,7 @@ from cortical.got import (
     TransactionError,
     CorruptionError,
 )
+from cortical.common.filesystem import RealFileSystem
 from tests.conftest import _create_tx_manager, _create_got_manager
 
 
@@ -464,8 +465,9 @@ class TestSystemHandlesEdgeCases:
         from cortical.got.types import create_entity_from_dict
         import json
 
+        fs = RealFileSystem(temp_got_dir / "entities")
         store = CDGStore(
-            temp_got_dir / "entities",
+            filesystem=fs,
             entity_factory=create_entity_from_dict,
         )
         task = Task(

@@ -61,11 +61,10 @@ class TestCDGStoreCacheReads:
     @pytest.fixture
     def store(self):
         """Create CDGStore with in-memory filesystem and caching enabled."""
-        fs = InMemoryFileSystem()
+        fs = InMemoryFileSystem(Path("/store"))
         return CDGStore(
-            store_dir=Path("/store"),
-            entity_factory=sample_entity_factory,
             filesystem=fs,
+            entity_factory=sample_entity_factory,
             cache_enabled=True,
         )
 
@@ -122,11 +121,10 @@ class TestCDGStoreCacheIterEntities:
 
     @pytest.fixture
     def store(self):
-        fs = InMemoryFileSystem()
+        fs = InMemoryFileSystem(Path("/store"))
         return CDGStore(
-            store_dir=Path("/store"),
-            entity_factory=sample_entity_factory,
             filesystem=fs,
+            entity_factory=sample_entity_factory,
             cache_enabled=True,
         )
 
@@ -159,11 +157,10 @@ class TestCDGStoreCacheInvalidation:
 
     @pytest.fixture
     def store(self):
-        fs = InMemoryFileSystem()
+        fs = InMemoryFileSystem(Path("/store"))
         return CDGStore(
-            store_dir=Path("/store"),
-            entity_factory=sample_entity_factory,
             filesystem=fs,
+            entity_factory=sample_entity_factory,
             cache_enabled=True,
         )
 
@@ -194,11 +191,10 @@ class TestCDGStoreCacheStatistics:
 
     @pytest.fixture
     def store(self):
-        fs = InMemoryFileSystem()
+        fs = InMemoryFileSystem(Path("/store"))
         return CDGStore(
-            store_dir=Path("/store"),
-            entity_factory=sample_entity_factory,
             filesystem=fs,
+            entity_factory=sample_entity_factory,
             cache_enabled=True,
         )
 
@@ -242,11 +238,10 @@ class TestCDGStoreCacheDisabled:
 
     def test_cache_disabled_no_caching(self):
         """With cache disabled, reads should not be cached."""
-        fs = InMemoryFileSystem()
+        fs = InMemoryFileSystem(Path("/store"))
         store = CDGStore(
-            store_dir=Path("/store"),
-            entity_factory=sample_entity_factory,
             filesystem=fs,
+            entity_factory=sample_entity_factory,
             cache_enabled=False,
         )
         store.write(SampleEntity(id="TE-001", name="Test"))
@@ -260,11 +255,10 @@ class TestCDGStoreCacheDisabled:
 
     def test_cache_disabled_reads_still_work(self):
         """With cache disabled, reads should still return correct data."""
-        fs = InMemoryFileSystem()
+        fs = InMemoryFileSystem(Path("/store"))
         store = CDGStore(
-            store_dir=Path("/store"),
-            entity_factory=sample_entity_factory,
             filesystem=fs,
+            entity_factory=sample_entity_factory,
             cache_enabled=False,
         )
         store.write(SampleEntity(id="TE-001", name="Test"))

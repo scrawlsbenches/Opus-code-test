@@ -104,11 +104,10 @@ def store_with_schema(tmp_path):
     registry = SchemaRegistry()
     registry.register("sample_entity", SampleEntitySchema)
 
-    fs = InMemoryFileSystem()
+    fs = InMemoryFileSystem(tmp_path / "entities")
     store = CDGStore(
-        tmp_path / "entities",
-        entity_factory=sample_entity_factory,
         filesystem=fs,
+        entity_factory=sample_entity_factory,
         schema_registry=registry,
     )
     return store, registry
@@ -117,11 +116,10 @@ def store_with_schema(tmp_path):
 @pytest.fixture
 def store_without_schema(tmp_path):
     """Create CDGStore without schema registry (validation disabled)."""
-    fs = InMemoryFileSystem()
+    fs = InMemoryFileSystem(tmp_path / "entities")
     return CDGStore(
-        tmp_path / "entities",
-        entity_factory=sample_entity_factory,
         filesystem=fs,
+        entity_factory=sample_entity_factory,
         schema_registry=None,  # No schema validation
     )
 
