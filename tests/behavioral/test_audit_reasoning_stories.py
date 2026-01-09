@@ -219,7 +219,7 @@ def test_authenticate_invalid_user():
 @pytest.fixture
 def memory_fs():
     """Create an in-memory filesystem with test codebase."""
-    fs = InMemoryFileSystem()
+    fs = InMemoryFileSystem(Path("/codebase"))
 
     # Create directory structure and files
     for file_path, content in TEST_CODEBASE.items():

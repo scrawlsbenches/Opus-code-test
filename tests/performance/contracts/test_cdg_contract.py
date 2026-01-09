@@ -61,6 +61,8 @@ from typing import List
 
 import pytest
 
+from cortical.common.filesystem import RealFileSystem
+
 
 def percentile(data: List[float], p: int) -> float:
     """Calculate the p-th percentile of a list."""
@@ -700,7 +702,8 @@ class TestCDGTransactionContract:
         from cortical.cdg.config import CDGConfig
 
         config = CDGConfig.for_got()
-        manager = CDGTransactionManager(temp_cdg_dir, config)
+        fs = RealFileSystem(temp_cdg_dir)
+        manager = CDGTransactionManager(fs, config)
 
         latencies = []
         for _ in range(self.SAMPLE_SIZE):
@@ -726,7 +729,8 @@ class TestCDGTransactionContract:
         from cortical.cdg.config import CDGConfig
 
         config = CDGConfig.for_got()
-        manager = CDGTransactionManager(temp_cdg_dir, config)
+        fs = RealFileSystem(temp_cdg_dir)
+        manager = CDGTransactionManager(fs, config)
 
         latencies = []
         for _ in range(self.SAMPLE_SIZE):
@@ -757,7 +761,8 @@ class TestCDGTransactionContract:
         from cortical.cdg.types import Entity
 
         config = CDGConfig.for_got()
-        manager = CDGTransactionManager(temp_cdg_dir, config)
+        fs = RealFileSystem(temp_cdg_dir)
+        manager = CDGTransactionManager(fs, config)
 
         # Create some entities outside transaction
         for i in range(100):
@@ -798,7 +803,8 @@ class TestCDGTransactionContract:
         from cortical.cdg.types import Entity
 
         config = CDGConfig.for_got()
-        manager = CDGTransactionManager(temp_cdg_dir, config)
+        fs = RealFileSystem(temp_cdg_dir)
+        manager = CDGTransactionManager(fs, config)
 
         # Create some entities outside transaction
         for i in range(100):
@@ -845,7 +851,8 @@ class TestCDGTransactionContract:
         # Use FAST mode to isolate commit logic from fsync overhead
         config = CDGConfig.for_got()
         config.durability = DurabilityMode.RELAXED
-        manager = CDGTransactionManager(temp_cdg_dir, config)
+        fs = RealFileSystem(temp_cdg_dir)
+        manager = CDGTransactionManager(fs, config)
 
         latencies = []
         for i in range(100):
@@ -896,7 +903,8 @@ class TestCDGTransactionContract:
         # Use FAST mode to isolate commit logic from fsync overhead
         config = CDGConfig.for_got()
         config.durability = DurabilityMode.RELAXED
-        manager = CDGTransactionManager(temp_cdg_dir, config)
+        fs = RealFileSystem(temp_cdg_dir)
+        manager = CDGTransactionManager(fs, config)
 
         latencies = []
         for i in range(20):  # Fewer iterations due to larger write sets
@@ -993,7 +1001,8 @@ class TestCDGRecoveryContract:
         wal.log_tx_commit(tx_id, version=1000)
 
         # Measure recovery time
-        recovery_manager = CDGRecoveryManager(temp_cdg_dir, config)
+        fs = RealFileSystem(temp_cdg_dir)
+        recovery_manager = CDGRecoveryManager(fs, config)
 
         start = time.perf_counter()
         result = recovery_manager.recover()
@@ -1025,7 +1034,8 @@ class TestCDGRecoveryContract:
             enable_wal=True
         )
 
-        recovery_manager = CDGRecoveryManager(temp_cdg_dir, config)
+        fs = RealFileSystem(temp_cdg_dir)
+        recovery_manager = CDGRecoveryManager(fs, config)
 
         # Create 1000 entities on disk (without WAL entries = orphans)
         for i in range(1000):
@@ -1071,7 +1081,8 @@ class TestCDGRecoveryContract:
             enable_wal=True
         )
 
-        recovery_manager = CDGRecoveryManager(temp_cdg_dir, config)
+        fs = RealFileSystem(temp_cdg_dir)
+        recovery_manager = CDGRecoveryManager(fs, config)
 
         # Create 10,000 entities on disk (without WAL entries = orphans)
         for i in range(10_000):

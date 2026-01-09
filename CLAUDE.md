@@ -553,494 +553,42 @@ These bugs have been fixed. **Do not reintroduce them:**
 
 ---
 
-## GoT CLI Reference
+## CLI Reference
 
-The GoT CLI is the primary interface for Graph of Thought operations:
-
-```bash
-python -m cortical.got [command] [subcommand] [options]
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  GATE: Need a GoT or Audit CLI command?                                 │
+│        → Read docs/cli-reference.md first                               │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Available Commands
+**Entry points:**
+- GoT: `python -m cortical.got [command]`
+- Audit: `python -m cortical.cli.audit [command]`
 
-| Command | Description |
-|---------|-------------|
-| `task` | Task CRUD, lifecycle (create/start/complete/block) |
-| `sprint` | Sprint management, claiming, goals |
-| `epic` | Epic-level organization |
-| `handoff` | Agent-to-agent handoffs |
-| `decision` | Log decisions with rationale |
-| `edge` | Create/manage relationships |
-| `query` | Natural language queries |
-| `expr` | Expression-based queries (e.g., `status = 'pending'`) |
-| `analyze` | Graph analysis (dependencies, patterns, orphans) |
-| `kt` / `knowledge` | Knowledge transfer documents |
-| `failure` | Track failed approaches |
-| `backup` | Backup and recovery |
-| `validate` | Health checks |
-| `stats` | Statistics overview |
-| `dashboard` | Comprehensive metrics |
-| `blocked` | List blocked tasks |
-| `active` | List in-progress tasks |
-| `infer` | Infer edges from git commits |
-| `orphan` | Detect disconnected entities |
-| `backlog` | Manage unassigned tasks |
-| `batch` | Execute batch operations |
-
-### Task Commands
-
+**Essential commands (memorize these):**
 ```bash
-# Create
-python -m cortical.got task create "Title" --priority high --category feature
-
-# Lifecycle
-python -m cortical.got task start T-XXX
-python -m cortical.got task complete T-XXX --retrospective "What worked..."
-python -m cortical.got task block T-XXX --reason "Waiting for API"
-
-# Query
+python -m cortical.got validate              # Health check
 python -m cortical.got task list --status in_progress
-python -m cortical.got task show T-XXX
-python -m cortical.got task next                    # Get recommended next task
-
-# Dependencies
-python -m cortical.got task depends T-XXX --on T-YYY
-```
-
-### Sprint Commands
-
-```bash
-# Create and manage
-python -m cortical.got sprint create "Sprint 20" --number 20
-python -m cortical.got sprint list
-python -m cortical.got sprint status               # Current sprint
-
-# Claiming (for parallel agents)
-python -m cortical.got sprint claim S-XXX --agent "agent-1"
-python -m cortical.got sprint release S-XXX --agent "agent-1"
-
-# Task assignment
-python -m cortical.got sprint link S-XXX --task T-YYY
-python -m cortical.got sprint tasks S-XXX
-python -m cortical.got sprint suggest              # AI-suggested tasks
-```
-
-### Decision Logging
-
-```bash
-python -m cortical.got decision log "Use PostgreSQL over SQLite" \
-    --rationale "Need concurrent writes" \
-    --affects T-XXX T-YYY
-```
-
-### Knowledge Transfers
-
-```bash
-python -m cortical.got kt create "Session: Auth refactor" --summary "..."
 python -m cortical.got kt list --status draft
-python -m cortical.got kt finalize KT-XXX
 ```
 
-### Edge (Relationship) Management
-
-```bash
-python -m cortical.got edge add T-001 T-002 DEPENDS_ON
-python -m cortical.got edge add S-001 T-001 CONTAINS
-python -m cortical.got edge list --from T-XXX
-```
-
-Edge types: `DEPENDS_ON`, `BLOCKS`, `SIMILAR`, `CONTAINS`, `IMPLEMENTS`, `TESTS`, `JUSTIFIES`, `RELATED`
-
-### Queries
-
-```bash
-# Natural language
-python -m cortical.got query "what blocks T-XXX"
-python -m cortical.got query "blocked tasks"
-python -m cortical.got query "path from T-1 to T-2"
-
-# Expression syntax
-python -m cortical.got expr "status = 'pending' AND priority = 'high'"
-```
-
-### Analysis Commands
-
-```bash
-python -m cortical.got analyze summary             # Quick overview
-python -m cortical.got analyze dependencies T-XXX  # Dependency chain
-python -m cortical.got analyze patterns            # Find graph patterns
-python -m cortical.got analyze orphans             # Disconnected clusters
-```
-
-### Handoffs
-
-```bash
-python -m cortical.got handoff initiate T-XXX --target agent-2 --instructions "..."
-python -m cortical.got handoff accept H-XXX --agent agent-2
-python -m cortical.got handoff complete H-XXX --agent agent-2
-python -m cortical.got handoff list --status pending
-```
-
-### Failed Approach Tracking
-
-```bash
-python -m cortical.got failure record T-XXX "Tried mutex lock - caused deadlock"
-python -m cortical.got failure list T-XXX
-```
-
-### Health & Maintenance
-
-```bash
-python -m cortical.got validate                    # Check integrity
-python -m cortical.got validate --check-refs       # Deep validation
-python -m cortical.got stats                       # Statistics
-python -m cortical.got dashboard                   # Full metrics
-python -m cortical.got backup create "pre-refactor"
-python -m cortical.got infer --commits 10          # Infer edges from git
-```
-
-### Batch Operations
-
-```bash
-# From file
-python -m cortical.got batch --file commands.yaml
-
-# From stdin
-cat <<EOF | python -m cortical.got batch
-task create "Task 1" --priority high
-task create "Task 2" --priority medium
-edge add T-001 T-002 DEPENDS_ON
-EOF
-```
-
-⚠️ **NEVER edit `.got/` files directly** - use these commands!
+⚠️ **NEVER edit `.got/` files directly** - use CLI commands!
 
 ---
 
-## Audit CLI Reference
-
-The Audit CLI provides codebase quality analysis tools using algorithms like Bloom Filters, LSH, Suffix Arrays, and PLN reasoning:
-
-```bash
-# Entry point
-python -m cortical.cli.audit [command]
-```
-
-### Available Commands
-
-| Command | Purpose |
-|---------|---------|
-| `generate` | Generate training data from codebase comments |
-| `train` | Train classifiers from labeled findings |
-| `scan` | Scan for suspicious comments |
-| `patterns` | Find repeated patterns in comments |
-| `similar` | Find similar comments using LSH |
-| `index` | Build search indexes |
-| `health` | Analyze codebase health |
-| `reason` | PLN-based audit reasoning |
-| `discover` | WovenMind pattern discovery (experimental) |
-
-### Typical Workflow
-
-```bash
-# 1. Generate training data from codebase
-python -m cortical.cli.audit generate cortical/ -o docs/audits/
-
-# 2. Train classifiers from labeled findings
-python -m cortical.cli.audit train docs/audits/
-
-# 3. Scan for suspicious comments
-python -m cortical.cli.audit scan cortical/
-```
-
-### Health Analysis
-
-Comprehensive codebase health check using pattern detection, duplicate detection, and git history:
-
-```bash
-# Basic health check
-python -m cortical.cli.audit health cortical/
-
-# Include git history analysis (stale TODOs, high churn files)
-python -m cortical.cli.audit health cortical/ --git
-
-# Verbose output with findings
-python -m cortical.cli.audit health cortical/ --git -v
-
-# JSON output for automation
-python -m cortical.cli.audit health cortical/ --json
-```
-
-### Scanning for Issues
-
-Uses Bloom Filter for pre-screening and Naive Bayes for classification:
-
-```bash
-# Scan directory for suspicious comments
-python -m cortical.cli.audit scan cortical/
-
-# Verbose with confidence threshold
-python -m cortical.cli.audit scan cortical/ -v --confidence 0.5
-```
-
-### Pattern Discovery
-
-Find repeated patterns and similar comments:
-
-```bash
-# Find repeated patterns in comments
-python -m cortical.cli.audit patterns cortical/
-
-# Find similar comments using LSH clustering
-python -m cortical.cli.audit similar cortical/
-```
-
-### PLN Reasoning
-
-Probabilistic Logic Networks for risk assessment:
-
-```bash
-# Analyze with natural language query
-python -m cortical.cli.audit reason "risky files in reasoning/"
-
-# Analyze specific directory
-python -m cortical.cli.audit reason --directory cortical/
-
-# Explain risk for a specific file
-python -m cortical.cli.audit reason --explain cortical/reasoning/loop_validator.py
-
-# Load WovenMind rules for advanced reasoning
-python -m cortical.cli.audit reason cortical/ --load-rules
-
-# Mark a file as Very Long Term Important (pinned)
-python -m cortical.cli.audit reason --vlti cortical/cdg/transaction_manager.py
-```
-
-### WovenMind Discovery (Experimental)
-
-Uses dual-process cognitive architecture for emergent pattern discovery:
-
-```bash
-# Run discovery analysis
-python -m cortical.cli.audit discover cortical/
-
-# Include git history
-python -m cortical.cli.audit discover cortical/ --with-git
-
-# Show learned mind state
-python -m cortical.cli.audit discover --show-mind
-
-# Run learning consolidation cycle
-python -m cortical.cli.audit discover --consolidate
-
-# Reset mind state for fresh start
-python -m cortical.cli.audit discover --reset-mind
-```
-
-### Algorithms Used
-
-| Algorithm | Used In | Purpose |
-|-----------|---------|---------|
-| Bloom Filter | scan | Fast pre-screening for suspicious patterns |
-| Naive Bayes | scan, train | Classification of comment types |
-| Trie | scan | Comment marker detection (TODO, FIXME, etc.) |
-| Inverted Index | health, index | Pattern lookup |
-| Suffix Array | health | Duplicate detection |
-| LSH (Locality-Sensitive Hashing) | similar | Near-duplicate clustering |
-| Union-Find | health | Grouping similar items |
-| DAG | health | Import dependency analysis |
-| PLN (Probabilistic Logic Networks) | reason | Multi-rule risk aggregation |
-
----
-
-## GoT Deep Dive: Understanding the Data Model
-
-This section teaches agents how the GoT CLI works internally, so you can use it effectively.
-
-### Entity Types and Storage
-
-GoT stores entities as JSON files in `.got/entities/`:
-
-| Entity | ID Prefix | File Pattern | Key Fields |
-|--------|-----------|--------------|------------|
-| Task | T- | `T-*.json` | title, status, priority, description, properties |
-| Edge | E- | `E-*.json` | from_id, to_id, edge_type, weight |
-| Decision | D- | `D-*.json` | content, rationale, status |
-| Sprint | S- | `S-*.json` | name, goal, status, task_ids |
-| Handoff | H- | `H-*.json` | task_id, target, instructions, status |
-| KnowledgeTransfer | KT- | `KT-*.json` | title, summary, sections, status |
-
-### The Task Lifecycle
+## GoT Query Language
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                        TASK STATE MACHINE                                │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│    [pending] ──start──► [in_progress] ──complete──► [completed]         │
-│        │                     │                                          │
-│        └───────block────────►│◄────unblock────────                      │
-│                              │                                          │
-│                         [blocked]                                       │
-│                                                                          │
-│    Commands:                                                            │
-│    - task create → pending                                              │
-│    - task start T-XXX → in_progress                                     │
-│    - task complete T-XXX → completed (requires retrospective!)          │
-│    - task block T-XXX --reason "..." → blocked                          │
-│    - task unblock T-XXX → in_progress                                   │
-│                                                                          │
+│  GATE: Writing complex GoT queries?                                     │
+│        → Read docs/got-query-language.md first                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Task Properties: The Extensibility Point
-
-Every task has a `properties: Dict[str, Any]` field for storing arbitrary metadata. This is how we extend tasks without changing the schema:
-
-```python
-# What gets stored when you complete a task with retrospective:
-task.properties = {
-    "retrospective": "What worked: X. What didn't: Y. Learned: Z.",
-    # Future: files_touched, learning_context, etc.
-}
-```
-
-**Currently used properties:**
-- `retrospective` - Lessons learned on completion
-- `category` - feature/bugfix/refactor/docs/test
-- `estimated_effort` - Optional time estimate
-- `actual_effort` - Tracked time spent
-
-### Edge Types and When to Use Them
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           EDGE TYPE GUIDE                                │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│  DEPENDENCY EDGES:                                                      │
-│  - DEPENDS_ON: T-2 depends on T-1 (T-1 must complete first)            │
-│  - BLOCKS: T-1 blocks T-2 (inverse of DEPENDS_ON)                       │
-│                                                                          │
-│  STRUCTURAL EDGES:                                                      │
-│  - CONTAINS: Sprint S-1 contains Task T-1                               │
-│  - BELONGS_TO: T-1 belongs to Epic E-1                                  │
-│                                                                          │
-│  RELATIONSHIP EDGES:                                                    │
-│  - SIMILAR: T-1 is similar to T-2 (for guidance/learning)              │
-│  - RELATED: Generic relationship                                        │
-│  - IMPLEMENTS: T-1 implements Decision D-1                              │
-│  - TESTS: T-1 tests feature in T-2                                      │
-│                                                                          │
-│  Usage:                                                                 │
-│  python -m cortical.got edge add T-001 T-002 DEPENDS_ON           │
-│  python -m cortical.got edge add S-001 T-001 CONTAINS             │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
-### Query Language (Natural Language)
-
-The query command parses natural language patterns:
-
-```bash
-# Blocking relationships
-python -m cortical.got query "what blocks T-001"
-python -m cortical.got query "what does T-001 depend on"
-
-# Status queries
-python -m cortical.got query "blocked tasks"
-python -m cortical.got query "high priority pending"
-
-# Path queries
-python -m cortical.got query "path from T-001 to T-010"
-
-# Free-form search (title/description matching)
-python -m cortical.got query "authentication"
-```
-
-### TransactionalGoTAdapter: The CLI Engine
-
-The `cortical/got/adapter.py` module contains `TransactionalGoTAdapter`, which wraps the GoT manager with CLI-friendly methods. Key methods:
-
-| Method | Purpose | Returns |
-|--------|---------|---------|
-| `create_task(title, **kwargs)` | Create new task | Task ID (T-XXX) |
-| `get_task(task_id)` | Fetch task by ID | Task object or None |
-| `update_task(task_id, **updates)` | Update task fields | Success boolean |
-| `complete_task(task_id, retrospective)` | Mark complete | Success boolean |
-| `query(query_str)` | Natural language query | List of results |
-| `get_blocked_tasks()` | Find blocked tasks | List[(Task, reason)] |
-| `get_active_tasks()` | Find in_progress | List[Task] |
-
-### Common Patterns
-
-**Pattern 1: Task Workflow**
-```bash
-# Create
-T_ID=$(python -m cortical.got task create "Fix login bug" --priority high)
-
-# Start work
-python -m cortical.got task start $T_ID
-
-# Complete with learnings
-python -m cortical.got task complete $T_ID \
-    --retrospective "Root cause was session timeout. Fixed by extending TTL."
-```
-
-**Pattern 2: Dependency Chain**
-```bash
-# T-002 can't start until T-001 is done
-python -m cortical.got edge add T-001 T-002 DEPENDS_ON
-
-# Check what's blocking
-python -m cortical.got blocked
-```
-
-**Pattern 3: Session Handoff**
-```bash
-# Create knowledge transfer
-python -m cortical.got kt create "Session: Auth refactor" \
-    --summary "Completed token validation. Pending: refresh flow."
-
-# Create handoff for specific task
-python -m cortical.got handoff initiate T-001 \
-    --target "next-agent" \
-    --instructions "Continue from step 3 of the plan"
-```
-
-**Pattern 4: Failed Approach Tracking**
-```bash
-# Record what didn't work (prevents future agents from repeating mistakes)
-python -m cortical.got failure record T-001 \
-    "Tried mutex lock on shared state - caused deadlock under high load"
-```
-
-### Validation and Health Checks
-
-```bash
-# Basic validation (checks node/edge counts, orphan detection)
-python -m cortical.got validate
-
-# Deep validation (checks edge references point to existing entities)
-python -m cortical.got validate --check-refs
-
-# Statistics
-python -m cortical.got stats
-```
-
-### Recovery Commands
-
-```bash
-# If validation fails
-python -m cortical.got recover
-
-# Backup before risky operations
-python -m cortical.got backup create "pre-refactor"
-
-# Restore from backup
-python -m cortical.got backup restore BACKUP_ID
-```
+**Two interfaces:**
+- Simple: `python -m cortical.got query "what blocks T-001"`
+- Full SQL-like: `python -m cortical.got expr "status = 'pending' AND priority = 'high'"`
 
 ---
 
@@ -1382,7 +930,17 @@ class TestYourFeature(unittest.TestCase):
         self.assertIsNotNone(result)
 ```
 
-### Available Fixtures (pytest)
+### Test Fixtures
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  GATE: Writing tests for GoT/CDG/Storage components?                    │
+│        → Read tests/conftest.py first (lines 166-227)                   │
+│        → DO NOT directly instantiate managers, stores, or tx managers   │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**CorticalTextProcessor fixtures:**
 
 | Fixture | Scope | Description |
 |---------|-------|-------------|
@@ -1390,6 +948,11 @@ class TestYourFeature(unittest.TestCase):
 | `shared_processor` | session | Full samples/ corpus (~125 docs) |
 | `fresh_processor` | function | Empty processor for isolated tests |
 | `small_corpus_docs` | function | Raw document dict |
+
+**GoT/CDG fixtures** (in conftest.py):
+- `fresh_tx_manager` / `memory_tx_manager` — TransactionManager via DI
+- `fresh_got_manager` / `memory_got_manager` — GoTManager via DI
+- `memory_container` — Full container for custom resolution
 
 ### Test Markers for Optional Dependencies
 
@@ -1509,412 +1072,58 @@ from cortical.utils.id_generation import generate_task_id
 
 ---
 
-## Common Tasks
+## Development Guide
 
-### Adding a New Analysis Function
-
-1. Add function to `analysis.py` with proper signature:
-   ```python
-   def compute_your_analysis(
-       layers: Dict[CorticalLayer, HierarchicalLayer],
-       **kwargs
-   ) -> Dict[str, Any]:
-       """Your analysis description."""
-       layer0 = layers[CorticalLayer.TOKENS]
-       # Implementation
-       return {'result': ..., 'stats': ...}
-   ```
-
-2. Add wrapper method to `CorticalTextProcessor` in the `processor/` package (appropriate mixin):
-   ```python
-   def compute_your_analysis(self, **kwargs) -> Dict[str, Any]:
-       """Wrapper with docstring."""
-       return compute_your_analysis(self.layers, **kwargs)
-   ```
-
-3. Add tests in `tests/test_analysis.py`
-
-### Adding a New Query Function
-
-1. Add to the `query/` package following existing patterns (e.g., `query/search.py`)
-2. Use `get_expanded_query_terms()` helper for query expansion
-3. Use `layer.get_by_id()` for O(1) lookups, not iteration
-4. Add wrapper to the `processor/` package (likely `processor/query_api.py`)
-5. Add tests in `tests/test_processor.py`
-
-### Modifying Minicolumn Structure
-
-1. Update `Minicolumn` class in `minicolumn.py`
-2. Update `to_dict()` and `from_dict()` for persistence
-3. Update `__slots__` if adding new fields
-4. Increment state version in `persistence.py` if breaking change
-5. Add migration logic for backward compatibility
-
----
-
-## Code Style Guidelines
-
-```python
-# Imports: stdlib, then local
-from typing import Dict, List, Optional, Tuple
-from collections import defaultdict
-
-from .layers import CorticalLayer, HierarchicalLayer
-from .minicolumn import Minicolumn
-
-# Type hints on all public functions
-def find_documents(
-    query: str,
-    layers: Dict[CorticalLayer, HierarchicalLayer],
-    top_n: int = 5
-) -> List[Tuple[str, float]]:
-    """
-    Find documents matching query.
-
-    Args:
-        query: Search query string
-        layers: Dictionary of hierarchical layers
-        top_n: Number of results to return
-
-    Returns:
-        List of (doc_id, score) tuples sorted by relevance
-    """
-    # Implementation
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  GATE: Adding features or modifying core structures?                    │
+│        → Read docs/development-guide.md first                           │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Scoring Algorithms
+## Processor Reference
 
-The processor supports multiple scoring algorithms for term weighting:
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  GATE: Working with CorticalTextProcessor API?                          │
+│        → Read docs/processor-reference.md first                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
-### BM25 (Default)
-
-BM25 (Best Match 25) is the default scoring algorithm, optimized for code search:
-
+**Essential methods:**
 ```python
-from cortical import CorticalTextProcessor
-from cortical.config import CorticalConfig
-
-# BM25 with default parameters (recommended)
-config = CorticalConfig(scoring_algorithm='bm25')
-
-# Tune BM25 parameters if needed
-config = CorticalConfig(
-    scoring_algorithm='bm25',
-    bm25_k1=1.2,  # Term frequency saturation (0.0-3.0, default 1.2)
-    bm25_b=0.75   # Length normalization (0.0-1.0, default 0.75)
-)
-processor = CorticalTextProcessor(config=config)
-```
-
-**Parameters:**
-- `bm25_k1`: Controls term frequency saturation. Higher values give more weight to term frequency.
-- `bm25_b`: Controls document length normalization. Set to 0.0 to disable length normalization.
-
-### TF-IDF (Legacy)
-
-Traditional TF-IDF scoring is still available:
-
-```python
-config = CorticalConfig(scoring_algorithm='tfidf')
-```
-
-### Graph-Boosted Search (GB-BM25)
-
-A hybrid search combining BM25 with graph signals:
-
-```python
-# Standard search (uses BM25 under the hood)
-results = processor.find_documents_for_query("query")
-
-# Graph-boosted search (adds PageRank + proximity signals)
-results = processor.graph_boosted_search(
-    "query",
-    pagerank_weight=0.3,   # Weight for term importance (0-1)
-    proximity_weight=0.2   # Weight for connected terms (0-1)
-)
-```
-
-**GB-BM25 combines:**
-1. BM25 base score (term relevance)
-2. PageRank boost (important terms rank higher)
-3. Proximity boost (connected query terms boost documents)
-4. Coverage boost (documents matching more terms rank higher)
-
----
-
-## Performance Considerations
-
-1. **Use `get_by_id()` for ID lookups** - O(1) vs O(n) iteration
-2. **Batch document additions** with `add_documents_batch()` for bulk imports
-3. **Use incremental updates** with `add_document_incremental()` for live systems
-4. **Cache query expansions** when processing multiple similar queries
-5. **Pre-compute chunks** in `find_passages_batch()` to avoid redundant work
-6. **Use `fast_find_documents()`** for ~2-3x faster search on large corpora
-7. **Pre-build index** with `build_search_index()` for fastest repeated queries
-8. **Watch for O(n²) patterns** in loops over connections—use limits like `max_bigrams_per_term`
-9. **Use `graph_boosted_search()`** for hybrid scoring with PageRank signals
-
----
-
-## Code Search Capabilities
-
-### Code-Aware Tokenization
-```python
-# Enable identifier splitting for code search
-tokenizer = Tokenizer(split_identifiers=True)
-tokens = tokenizer.tokenize("getUserCredentials")
-# ['getusercredentials', 'get', 'user', 'credentials']
-```
-
-### Programming Concept Expansion
-```python
-# Expand queries with programming synonyms (get/fetch/load)
-results = processor.expand_query("fetch data", use_code_concepts=True)
-# Or use the convenience method
-results = processor.expand_query_for_code("fetch data")
-```
-
-### Intent-Based Search
-```python
-# Parse natural language queries
-parsed = processor.parse_intent_query("where do we handle authentication?")
-# {'intent': 'location', 'action': 'handle', 'subject': 'authentication', ...}
-
-# Search with intent understanding
-results = processor.search_by_intent("how do we validate input?")
-```
-
-### Semantic Fingerprinting
-```python
-# Compare code similarity
-fp1 = processor.get_fingerprint(code_block_1)
-fp2 = processor.get_fingerprint(code_block_2)
-comparison = processor.compare_fingerprints(fp1, fp2)
-explanation = processor.explain_similarity(fp1, fp2)
-```
-
-### Fast Search
-```python
-# Fast document search (~2-3x faster)
-results = processor.fast_find_documents("authentication")
-
-# Pre-built index for fastest search
-index = processor.build_search_index()
-results = processor.search_with_index("query", index)
-```
-
----
-
-## Debugging Tips
-
-### Inspecting Layer State
-```python
-processor = CorticalTextProcessor()
-processor.process_document("test", "Neural networks process data.")
-processor.compute_all()
-
-# Check layer sizes
-for layer_enum, layer in processor.layers.items():
-    print(f"{layer_enum.name}: {layer.column_count()} minicolumns")
-
-# Inspect a specific minicolumn
-col = processor.layers[CorticalLayer.TOKENS].get_minicolumn("neural")
-print(f"PageRank: {col.pagerank}")
-print(f"TF-IDF: {col.tfidf}")
-print(f"Connections: {len(col.lateral_connections)}")
-print(f"Documents: {col.document_ids}")
-```
-
-### Tracing Query Expansion
-```python
-expanded = processor.expand_query("neural networks", max_expansions=10)
-for term, weight in sorted(expanded.items(), key=lambda x: -x[1]):
-    print(f"  {term}: {weight:.3f}")
-```
-
-### Checking Semantic Relations
-```python
-processor.extract_corpus_semantics()
-for t1, rel, t2, weight in processor.semantic_relations[:10]:
-    print(f"{t1} --{rel}--> {t2} ({weight:.2f})")
-```
-
-### Profiling Performance
-```bash
-# Profile full analysis phases with timeout detection
-python scripts/profile_full_analysis.py
-
-# This reveals which phases are slow and helps identify O(n²) bottlenecks
-```
-
-### Observability and Metrics
-
-The processor includes built-in observability features for tracking performance and operational metrics.
-
-**Enable metrics collection:**
-```python
-# Create processor with metrics enabled
-processor = CorticalTextProcessor(enable_metrics=True)
-
-# Process documents and run queries (all operations are timed)
-processor.process_document("doc1", "Neural networks process data.")
-processor.compute_all()
-processor.find_documents_for_query("neural networks")
-
-# Get metrics summary
-print(processor.get_metrics_summary())
-```
-
-**Access metrics programmatically:**
-```python
-metrics = processor.get_metrics()
-
-# Check specific operation stats
-if "compute_all" in metrics:
-    stats = metrics["compute_all"]
-    print(f"Average: {stats['avg_ms']:.2f}ms")
-    print(f"Count: {stats['count']}")
-    print(f"Min: {stats['min_ms']:.2f}ms")
-    print(f"Max: {stats['max_ms']:.2f}ms")
-
-# Check cache performance
-if "query_cache_hits" in metrics:
-    hits = metrics["query_cache_hits"]["count"]
-    misses = metrics["query_cache_misses"]["count"]
-    hit_rate = hits / (hits + misses) * 100
-    print(f"Cache hit rate: {hit_rate:.1f}%")
-```
-
-**Automatically timed operations:**
-- `compute_all()` and all compute phases (PageRank, TF-IDF, clustering, etc.)
-- `process_document()` with doc_id context
-- `find_documents_for_query()` with query context
-- `save()` operations
-- Query cache hits/misses via `expand_query_cached()`
-
-**Control metrics collection:**
-```python
-# Disable metrics temporarily
-processor.disable_metrics()
-# ... operations not timed ...
-processor.enable_metrics()
-
-# Reset all metrics
-processor.reset_metrics()
-
-# Record custom metrics
-processor.record_metric("api_calls", 10)
-processor.record_metric("documents_processed", 100)
-```
-
-**Demo:**
-```bash
-# Run the observability demo
-python examples/observability_demo.py
+processor.process_document(id, text)    # Add document
+processor.compute_all()                 # Build network
+processor.find_documents_for_query(q)   # Search
+processor.save("corpus_state")          # Persist (JSON)
 ```
 
 ---
 
 ## Quick Reference
 
-| Task | Command/Method |
-|------|----------------|
-| Process document | `processor.process_document(id, text)` |
-| Build network | `processor.compute_all()` |
-| Search | `processor.find_documents_for_query(query)` |
-| Fast search | `processor.fast_find_documents(query)` |
-| Hybrid search | `processor.graph_boosted_search(query)` |
-| Code search | `processor.expand_query_for_code(query)` |
-| Intent search | `processor.search_by_intent("where do we...")` |
-| RAG passages | `processor.find_passages_for_query(query)` |
-| Fingerprint | `processor.get_fingerprint(text)` |
-| Compare | `processor.compare_fingerprints(fp1, fp2)` |
-| Save state (JSON) | `processor.save("corpus_state")` (recommended) |
-| Save state (pkl) | `processor.save("corpus.pkl", format='pickle')` (deprecated) |
-| Load state | `processor = CorticalTextProcessor.load("corpus_state")` (auto-detects format) |
-| Enable metrics | `processor = CorticalTextProcessor(enable_metrics=True)` |
-| Get metrics | `processor.get_metrics()` |
-| Metrics summary | `processor.get_metrics_summary()` |
-| Reset metrics | `processor.reset_metrics()` |
-| Record metric | `processor.record_metric("name", count)` |
-| Run smoke tests | `make test-smoke` or `python scripts/run_tests.py smoke` |
-| Run fast tests | `make test-fast` (~5s, no slow tests) |
-| Run quick tests | `make test-quick` or `python scripts/run_tests.py quick` |
-| Run parallel | `make test-parallel` or `python scripts/run_tests.py unit -j 4` |
-| Run pre-commit | `python scripts/run_tests.py precommit` (smoke + unit + integration) |
-| Run all tests | `python scripts/run_tests.py all` |
-| Run performance | `python scripts/run_tests.py performance` (no coverage) |
-| Check coverage | `python -m coverage run --source=cortical -m pytest tests/ && python -m coverage report --include="cortical/*"` |
-| Run showcase | `python showcase.py` |
-| Profile analysis | `python scripts/profile_full_analysis.py` |
-| Create memory | `python scripts/new_memory.py "topic"` |
-| Create decision | `python scripts/new_memory.py "topic" --decision` |
+**For detailed CLI commands:** `docs/cli-reference.md`
+**For processor API:** `docs/processor-reference.md`
+
+### Test Commands
+| Task | Command |
+|------|---------|
+| Smoke tests | `make test-smoke` |
+| Fast tests | `make test-fast` (~5s) |
+| Quick tests | `make test-quick` |
+| Pre-commit | `python scripts/run_tests.py precommit` |
+| All tests | `python scripts/run_tests.py all` |
+| Coverage | `python -m coverage run -m pytest tests/ && python -m coverage report` |
+
+### Utility Scripts
+| Task | Command |
+|------|---------|
 | Session handoff | `python scripts/session_handoff.py` |
-| Generate session memory | `python scripts/session_memory_generator.py --session-id ID` |
-| Check wiki-links | `python scripts/resolve_wiki_links.py FILE` |
-| Find backlinks | `python scripts/resolve_wiki_links.py --backlinks FILE` |
-| Complete task with memory | `python scripts/task_utils.py complete TASK_ID --create-memory` |
-| View sprint status | `python -m cortical.got sprint status` |
-| List all sprints | `python -m cortical.got sprint list` |
-| Create sprint | `python -m cortical.got sprint create "Title" --number N` |
-| Create orchestration plan | `python scripts/orchestration_utils.py generate --type plan` |
-| List orchestration plans | `python scripts/orchestration_utils.py list` |
-| Verify batch | `python scripts/verify_batch.py --quick` |
-| View orchestration metrics | From Python: `OrchestrationMetrics().get_summary()` |
-| **Reasoning Framework** | |
-| Reasoning demo | `python scripts/reasoning_demo.py --quick` |
-| Reasoning with persistence | `python scripts/reasoning_demo.py --quick --persist` |
-| Graph persistence demo | `python examples/graph_persistence_demo.py` |
-| Validate persistence | `python scripts/validate_reasoning_persistence.py` |
-| **Graph Persistence API** | |
-| Create GraphWAL | `GraphWAL(wal_dir="/path/to/wal")` |
-| Log node | `wal.log_add_node(node_id, node_type, content)` |
-| Log edge | `wal.log_add_edge(source_id, target_id, edge_type)` |
-| Create snapshot | `wal.create_snapshot(graph, compress=True)` |
-| Load snapshot | `graph = wal.load_snapshot(snapshot_id)` |
-| Check recovery needed | `GraphRecovery(wal_dir).needs_recovery()` |
-| Recover graph | `result = GraphRecovery(wal_dir).recover()` |
-| Git auto-commit | `GitAutoCommitter(repo_path).commit_on_save(path, graph)` |
-| **GoT Handoff Primitives** | |
-| Initiate handoff | `python -m cortical.got handoff initiate TASK_ID --target AGENT --instructions "..."` |
-| Accept handoff | `python -m cortical.got handoff accept HANDOFF_ID --agent AGENT` |
-| Complete handoff | `python -m cortical.got handoff complete HANDOFF_ID --agent AGENT --result JSON` |
-| Reject handoff | `python -m cortical.got handoff reject HANDOFF_ID --agent AGENT --reason "..."` |
-| List handoffs | `python -m cortical.got handoff list [--status STATUS]` |
-| Compact events | `python -m cortical.got compact [--preserve-days N]` |
-| **GoT Query Language** | |
-| What blocks task | `python -m cortical.got query "what blocks TASK_ID"` |
-| What depends on | `python -m cortical.got query "what depends on TASK_ID"` |
-| Find path | `python -m cortical.got query "path from ID1 to ID2"` |
-| All relationships | `python -m cortical.got query "relationships TASK_ID"` |
-| Active tasks | `python -m cortical.got query "active tasks"` |
-| Pending tasks | `python -m cortical.got query "pending tasks"` |
-| Blocked tasks | `python -m cortical.got query "blocked tasks"` |
-| **Performance Tests** | |
-| Run perf tests | `python -m pytest tests/performance/test_graph_persistence_perf.py -v` |
-| Run E2E tests | `python -m pytest tests/integration/test_reasoning_persistence_e2e.py -v` |
-| **Audit CLI** | |
-| Health check | `python -m cortical.cli.audit health cortical/` |
-| Health with git | `python -m cortical.cli.audit health cortical/ --git -v` |
-| Scan for issues | `python -m cortical.cli.audit scan cortical/` |
-| Find patterns | `python -m cortical.cli.audit patterns cortical/` |
-| Find similar | `python -m cortical.cli.audit similar cortical/` |
-| PLN reasoning | `python -m cortical.cli.audit reason --directory cortical/` |
-| Explain file risk | `python -m cortical.cli.audit reason --explain FILE` |
-| WovenMind discovery | `python -m cortical.cli.audit discover cortical/` |
-| Generate training data | `python -m cortical.cli.audit generate cortical/ -o docs/audits/` |
-| Train classifiers | `python -m cortical.cli.audit train docs/audits/` |
-
-### Orchestration Utilities
-
-For Director orchestration and parallel agent workflows:
-
-- `scripts/orchestration_utils.py` - Director orchestration tracking (plans, batches, metrics)
-- `scripts/verify_batch.py` - Automated batch verification
-
-See `.claude/commands/director.md` for comprehensive orchestration documentation.
+| Create memory | `python scripts/new_memory.py "topic"` |
+| Profile analysis | `python scripts/profile_full_analysis.py` |
+| Orchestration | `python scripts/orchestration_utils.py list` |
 
 ---
 
@@ -2041,327 +1250,14 @@ tests/
 
 ---
 
-## Senior Engineering Consultation & Design Review
-
-When asked to review design documents, architectural proposals, or conduct senior engineering consultations, embody the role of a **principal engineer with 30+ years of experience**. This is not just task execution—it's technical leadership.
-
-### The Consultant's Mindset
+## Design Review Guide
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    SENIOR ENGINEERING CONSULTATION                       │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│  YOU ARE NOT JUST A REVIEWER — YOU ARE A TECHNICAL PARTNER              │
-│                                                                          │
-│  Your job is to:                                                        │
-│  • Help the design succeed, not find reasons to reject it               │
-│  • Identify risks early so they can be mitigated                        │
-│  • Validate technical claims through evidence, not assumptions          │
-│  • Share wisdom from experience without being condescending             │
-│  • Make clear decisions with rationale, not hedge everything            │
-│                                                                          │
-│  Your credibility comes from:                                           │
-│  • Technical accuracy (verify before claiming)                          │
-│  • Honest assessment (praise what's good, critique what needs work)     │
-│  • Actionable feedback (not just "this is wrong" but "here's how")     │
-│  • Respectful delivery (critique ideas, not people)                     │
-│                                                                          │
+│  GATE: Reviewing design documents or architectural proposals?           │
+│        → Read docs/design-review-guide.md first                         │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
-
-### Design Review Methodology
-
-#### Phase 1: Understand Before Judging
-
-**Read the entire document first.** Do not start critiquing until you understand the full scope.
-
-```
-Before forming opinions:
-1. Read the document completely, including appendices
-2. Identify the core problem being solved
-3. Understand the proposed solution's architecture
-4. Note the constraints and design principles stated
-5. Look for what's NOT in the document (gaps)
-```
-
-#### Phase 2: Validate Claims Through Evidence
-
-**Never trust assumptions—verify through execution.**
-
-This is the most important skill. Design documents often make claims about existing systems. Validate them:
-
-```python
-# API Discovery Protocol - Run actual code to verify claims
-
-# Step 1: Inspect class signatures
-python3 -c "
-import inspect
-from module import ClassName
-sig = inspect.signature(ClassName.__init__)
-print(f'__init__{sig}')
-for name in dir(ClassName):
-    if not name.startswith('_'):
-        method = getattr(ClassName, name)
-        if callable(method):
-            try:
-                print(f'{name}{inspect.signature(method)}')
-            except (ValueError, TypeError):
-                print(f'{name}(...)')
-"
-
-# Step 2: Test actual behavior
-python3 -c "
-from module import ClassName
-instance = ClassName(real_args)
-result = instance.method(args)
-print(f'Type: {type(result)}, Value: {result}')
-"
-
-# Step 3: Check what the document claims vs reality
-# - Does the API exist as described?
-# - Does it behave as expected?
-# - Are there capabilities not mentioned?
-# - Are there limitations not documented?
-```
-
-**Document your discoveries.** When you find the document is accurate, note it. When you find discrepancies, flag them.
-
-#### Phase 3: Evaluate Architecture
-
-Assess the design against these criteria:
-
-| Criterion | Questions to Ask |
-|-----------|------------------|
-| **Correctness** | Does it solve the stated problem? Are the algorithms sound? |
-| **Completeness** | Are edge cases handled? What's missing? |
-| **Extensibility** | Can it evolve without major rewrites? Where are extension points? |
-| **Simplicity** | Is it as simple as it can be? Is complexity justified? |
-| **Consistency** | Does it follow existing patterns in the codebase? |
-| **Testability** | Can it be tested? Are test strategies clear? |
-| **Security** | What are the attack vectors? Are they addressed? |
-| **Performance** | What are the complexity bounds? Are there bottlenecks? |
-
-#### Phase 4: Structure Your Review
-
-A professional design review has this structure:
-
-```markdown
-# Design Review: [Document Title]
-
-**Reviewer:** [Role]
-**Date:** [Date]
-**Document Version:** [Version]
-**Verdict:** [APPROVED / APPROVED WITH CONDITIONS / NEEDS REVISION / REJECTED]
-
----
-
-## Executive Assessment
-[2-3 paragraph summary of your overall assessment]
-
-## Strengths (What Makes This Design Good)
-[Numbered list with explanations—be specific about WHY each is good]
-
-## Areas Requiring Attention
-[Numbered list of concerns with risk levels and recommendations]
-
-## Questions for Clarification
-[Specific questions that need answers before final approval]
-
-## Final Verdict
-[Clear decision with conditions if applicable]
-
-### Approval Signoff
-[Checklist of items approved/not approved]
-
-
-## Closing Remarks
-[Constructive, forward-looking conclusion]
-
-### What Gets Collected
-
-| Data Type | Location | Contents |
-|-----------|----------|----------|
-| **Commits** | `.git-ml/commits/` | Git history with diff hunks, temporal context, CI results |
-| **Chats** | `.git-ml/chats/` | Query/response pairs with files touched and tools used |
-| **Sessions** | `.git-ml/sessions/` | Development sessions linking chats to commits |
-| **Actions** | `.git-ml/actions/` | Individual tool uses and operations |
-
-**Note:** ML data in `.git-ml/` has two tiers:
-- **Tracked** (`.git-ml/tracked/`, `.git-ml/cali/`): JSONL files - commits, sessions summaries, CALI logs/objects - persisted in git
-- **Local** (`.git-ml/chats/`, `actions/`, `cali/local/`): Rich data - gitignored, **NOT regeneratable** (chats/actions) or regeneratable indices (cali/local/)
-
-**⚠️ WARNING:** Chat transcripts (`.git-ml/chats/`) and action logs (`.git-ml/actions/`) are **irreplaceable** if lost and currently gitignored. CALI data is now preserved (logs/ and objects/ tracked, only local/ indices ignored). See `docs/ml-ephemeral-architecture.md` for the migration plan to fix remaining chat/action data loss.
-
-### Quick Commands
-
-```bash
-# Check collection progress
-python scripts/ml_data_collector.py stats
-
-# Estimate when training becomes viable
-python scripts/ml_data_collector.py estimate
-
-# Validate collected data
-python scripts/ml_data_collector.py validate
-
-# Session management
-python scripts/ml_data_collector.py session status
-python scripts/ml_data_collector.py session start
-python scripts/ml_data_collector.py session end --summary "What was accomplished"
-
-# Generate session handoff document
-python scripts/ml_data_collector.py handoff
-
-# Record CI results (manual)
-python scripts/ml_data_collector.py ci set --commit abc123 --result pass --coverage 89.5
-
-# CI auto-capture (reads from GitHub Actions environment)
-python scripts/ml_data_collector.py ci-autocapture
-
-# Backfill historical commits
-python scripts/ml_data_collector.py backfill -n 100
-
-# Collect GitHub PR/Issue data (requires gh CLI)
-python scripts/ml_data_collector.py github collect           # Collect recent PRs and issues
-python scripts/ml_data_collector.py github stats             # Show GitHub data counts
-python scripts/ml_data_collector.py github fetch-pr --number 42  # Fetch specific PR
-```
-
-### What Good Reviews Look Like
-
-**DO: Be specific and constructive**
-```
-The function registry pattern (Section 2.1) is the correct abstraction
-because it provides:
-- Open/Closed principle compliance
-- Self-documenting signatures
-- Isolated testability
-
-However, the singleton pattern in FunctionRegistry may cause issues
-with test isolation. Consider dependency injection as an alternative.
-```
-
-**DON'T: Be vague or purely negative**
-```
-❌ "The architecture looks fine."
-❌ "This won't work."
-❌ "I don't like this approach."
-```
-
-**DO: Acknowledge good work**
-```
-The API Discovery Protocol (Section 4.3) is exceptional practice.
-Validating assumptions through execution rather than just reading
-code prevents entire categories of integration failures.
-```
-
-**DON'T: Only criticize**
-```
-❌ [Review that only lists problems without acknowledging strengths]
-```
-
-### Calibrating Approval Decisions
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                     APPROVAL DECISION FRAMEWORK                          │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│  APPROVED                                                               │
-│  └─► Design is sound, concerns are minor, proceed with confidence       │
-│                                                                          │
-│  APPROVED WITH CONDITIONS                                               │
-│  └─► Design is sound but specific items must be addressed               │
-│      Conditions should be clear and verifiable                          │
-│      Work can begin while conditions are addressed                      │
-│                                                                          │
-│  NEEDS REVISION                                                         │
-│  └─► Fundamental issues exist but are fixable                           │
-│      Design needs another iteration before work begins                  │
-│      Provide specific guidance on what to change                        │
-│                                                                          │
-│  REJECTED                                                               │
-│  └─► Design has fatal flaws or is solving the wrong problem             │
-│      Use sparingly—prefer revision over rejection                       │
-│      Always explain why and suggest alternatives                        │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
-### Common Design Review Patterns
-
-**Pattern: The Key Insight**
-
-Often, a design's value lies in one crucial insight. Identify and validate it:
-
-```
-The key insight in this design is:
-"The Query builder already provides all the power we need. The gap is
-an expression parser that compiles DSL expressions to Query builder calls."
-
-This insight is CORRECT because:
-1. I verified Query builder has [capabilities X, Y, Z]
-2. The current CLI doesn't use these capabilities
-3. Building a compiler is simpler than rebuilding infrastructure
-```
-
-**Pattern: Risk Identification with Mitigation**
-
-Don't just identify risks—propose mitigations:
-
-```
-RISK: Sprint 1 scope is aggressive (6 tasks including T-001-A)
-IMPACT: May not complete in expected timeframe
-MITIGATION OPTIONS:
-  a) Move T-001-A to Sprint 2
-  b) Split T-001-A into T-001-A1 (basic) and T-001-A2 (validation)
-  c) Accept schedule risk with clear escalation criteria
-RECOMMENDATION: Option (b) - maintains velocity while reducing risk
-```
-
-**Pattern: Architectural Wisdom**
-
-Share insights from experience:
-
-```
-The "no hardcoded magic numbers" principle is bold and correct.
-I've seen systems where depth=10 silently truncates results, leading
-to subtle bugs where users get incomplete data without knowing it.
-The document's reasoning is sound: if a query is slow, the developer
-should see that and decide—not have the system hide the problem.
-```
-
-### Review Quality Checklist
-
-Before submitting your review, verify:
-
-```
-□ I read the entire document before forming conclusions
-□ I validated technical claims through actual code execution
-□ I identified both strengths and concerns
-□ My criticisms include recommendations, not just problems
-□ My verdict is clear and justified
-□ Conditions (if any) are specific and verifiable
-□ My tone is respectful and constructive
-□ I would be comfortable receiving this review myself
-```
-
-### Design Documents in This Repository
-
-Key design documents to know:
-
-| Document | Location | Purpose |
-|----------|----------|---------|
-| GoT Query System | `docs/design/got-query-audit-and-design.md` | Complex query expressions |
-| Future Enhancements | `docs/design/got-query-future-enhancements.md` | Deferred query features |
-
-When reviewing designs for this repository, ensure they:
-1. Follow sovereignty principle (no external dependencies)
-2. Use existing infrastructure (Query builder, Schema registry)
-3. Include BDD/TDD requirements
-4. Have clear validation gates
-5. Consider agent context-loss scenarios
 
 ---
 

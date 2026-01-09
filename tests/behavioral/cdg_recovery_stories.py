@@ -29,6 +29,7 @@ from cortical.cdg.config import CDGConfig, RecoveryMode, OrphanStrategy
 from cortical.cdg.wal import CDGWALManager
 from cortical.cdg.errors import CorruptionError
 from cortical.utils.checksums import compute_checksum
+from cortical.common.filesystem import RealFileSystem
 
 
 # ============================================================================
@@ -44,6 +45,12 @@ def temp_cdg_dir(tmp_path):
 
 
 @pytest.fixture
+def cdg_filesystem(temp_cdg_dir):
+    """Provide a RealFileSystem bound to the temp CDG directory."""
+    return RealFileSystem(temp_cdg_dir)
+
+
+@pytest.fixture
 def recovery_config():
     """
     Provide CDG configuration with full recovery enabled.
@@ -55,15 +62,15 @@ def recovery_config():
 
 
 @pytest.fixture
-def recovery_manager(temp_cdg_dir, recovery_config):
+def recovery_manager(cdg_filesystem, recovery_config):
     """Provide a recovery manager for testing."""
-    return CDGRecoveryManager(temp_cdg_dir, recovery_config)
+    return CDGRecoveryManager(cdg_filesystem, recovery_config)
 
 
 @pytest.fixture
-def store_with_wal(temp_cdg_dir, recovery_config):
+def store_with_wal(cdg_filesystem, recovery_config):
     """Provide a CDG store with WAL enabled."""
-    store = CDGStore(temp_cdg_dir, config=recovery_config)
+    store = CDGStore(cdg_filesystem, config=recovery_config)
     return store
 
 
@@ -109,7 +116,8 @@ class TestSystemRecoversFromCrashGracefully:
         # No prepare, commit, or rollback - simulates crash during active phase
 
         # When the recovery manager performs recovery
-        manager = CDGRecoveryManager(temp_cdg_dir, recovery_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        manager = CDGRecoveryManager(fs, recovery_config)
         result = manager.recover()
 
         # Then incomplete transactions are rolled back
@@ -134,7 +142,8 @@ class TestSystemRecoversFromCrashGracefully:
         Because our recovery system tracks all entities in the WAL
         """
         # Given entity files exist on disk
-        store = CDGStore(temp_cdg_dir, config=recovery_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        store = CDGStore(fs, config=recovery_config)
 
         # Create entity file directly (bypassing WAL)
         orphan_id = "orphan-entity-001"
@@ -161,7 +170,8 @@ class TestSystemRecoversFromCrashGracefully:
         wal_file.write_text("")  # Empty WAL
 
         # When recovery scans for orphans
-        manager = CDGRecoveryManager(temp_cdg_dir, recovery_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        manager = CDGRecoveryManager(fs, recovery_config)
         orphans = manager.detect_orphaned_entities()
 
         # Then orphaned entities are detected
@@ -184,7 +194,8 @@ class TestSystemRecoversFromCrashGracefully:
         delete_config = CDGConfig.for_got()
         delete_config.orphan_strategy = OrphanStrategy.DELETE
 
-        store = CDGStore(temp_cdg_dir, config=delete_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        store = CDGStore(fs, config=delete_config)
 
         # Create orphan file
         orphan_id = "orphan-to-delete"
@@ -201,7 +212,8 @@ class TestSystemRecoversFromCrashGracefully:
         (wal_dir / "wal.log").write_text("")
 
         # And recovery is configured with DELETE strategy
-        manager = CDGRecoveryManager(temp_cdg_dir, delete_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        manager = CDGRecoveryManager(fs, delete_config)
 
         # When recovery repairs orphans
         repair_result = manager.repair_orphans()
@@ -227,7 +239,8 @@ class TestSystemRecoversFromCrashGracefully:
         """
         # Given orphaned entities exist on disk
         # (recovery_config uses REPAIR by default for GoT)
-        store = CDGStore(temp_cdg_dir, config=recovery_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        store = CDGStore(fs, config=recovery_config)
 
         # Create orphan file
         orphan_id = "orphan-to-adopt"
@@ -249,7 +262,8 @@ class TestSystemRecoversFromCrashGracefully:
         wal_file.write_text("")
 
         # And recovery is configured with REPAIR strategy
-        manager = CDGRecoveryManager(temp_cdg_dir, recovery_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        manager = CDGRecoveryManager(fs, recovery_config)
 
         # When recovery repairs orphans
         repair_result = manager.repair_orphans()
@@ -283,7 +297,8 @@ class TestSystemRecoversFromCrashGracefully:
         fail_config = CDGConfig.for_got()
         fail_config.orphan_strategy = OrphanStrategy.FAIL
 
-        store = CDGStore(temp_cdg_dir, config=fail_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        store = CDGStore(fs, config=fail_config)
 
         # Create orphan file
         orphan_id = "orphan-strict"
@@ -300,7 +315,8 @@ class TestSystemRecoversFromCrashGracefully:
         (wal_dir / "wal.log").write_text("")
 
         # And recovery is configured with FAIL strategy
-        manager = CDGRecoveryManager(temp_cdg_dir, fail_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        manager = CDGRecoveryManager(fs, fail_config)
 
         # When recovery attempts to repair orphans
         # Then a ValueError is raised
@@ -333,7 +349,8 @@ class TestSystemVerifiesDataIntegrity:
         Because we verify every checksum during recovery
         """
         # Given an entity file with invalid checksum
-        store = CDGStore(temp_cdg_dir, config=recovery_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        store = CDGStore(fs, config=recovery_config)
 
         # Create entity with correct checksum first
         valid_id = "entity-valid"
@@ -354,7 +371,8 @@ class TestSystemVerifiesDataIntegrity:
         )
 
         # When recovery verifies store integrity
-        manager = CDGRecoveryManager(temp_cdg_dir, recovery_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        manager = CDGRecoveryManager(fs, recovery_config)
         corrupted = manager.verify_store_integrity()
 
         # Then the corrupted entity is detected
@@ -404,7 +422,8 @@ class TestSystemVerifiesDataIntegrity:
         )
 
         # When recovery verifies WAL integrity
-        manager = CDGRecoveryManager(temp_cdg_dir, recovery_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        manager = CDGRecoveryManager(fs, recovery_config)
         corrupted_count = manager.verify_wal_integrity()
 
         # Then corrupted entries are counted
@@ -429,7 +448,8 @@ class TestSystemVerifiesDataIntegrity:
         Because we provide comprehensive diagnostics
         """
         # Given corrupted entities and WAL entries
-        store = CDGStore(temp_cdg_dir, config=recovery_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        store = CDGStore(fs, config=recovery_config)
 
         # Corrupted entity
         corrupt_id = "corrupt-entity"
@@ -446,7 +466,8 @@ class TestSystemVerifiesDataIntegrity:
         )
 
         # When full recovery is performed
-        manager = CDGRecoveryManager(temp_cdg_dir, recovery_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        manager = CDGRecoveryManager(fs, recovery_config)
         result = manager.recover()
 
         # Then the recovery result reports all issues
@@ -485,7 +506,8 @@ class TestRecoveryIsIdempotentAndSafe:
         Because we built recovery to be idempotent
         """
         # Given a store that has been recovered once
-        store = CDGStore(temp_cdg_dir, config=recovery_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        store = CDGStore(fs, config=recovery_config)
 
         # Create a valid entity
         entity_id = "stable-entity"
@@ -496,11 +518,12 @@ class TestRecoveryIsIdempotentAndSafe:
         )
 
         # First recovery
-        manager1 = CDGRecoveryManager(temp_cdg_dir, recovery_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        manager1 = CDGRecoveryManager(fs, recovery_config)
         result1 = manager1.recover()
 
         # When recovery runs a second time
-        manager2 = CDGRecoveryManager(temp_cdg_dir, recovery_config)
+        manager2 = CDGRecoveryManager(fs, recovery_config)
         result2 = manager2.recover()
 
         # Then no additional changes are made
@@ -523,7 +546,8 @@ class TestRecoveryIsIdempotentAndSafe:
         Because our detection is accurate
         """
         # Given a clean store with no issues
-        store = CDGStore(temp_cdg_dir, config=recovery_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        store = CDGStore(fs, config=recovery_config)
 
         # Create valid entity
         entity_id = "clean-entity"
@@ -539,7 +563,8 @@ class TestRecoveryIsIdempotentAndSafe:
         (wal_dir / "wal.log").write_text("")
 
         # When checking if recovery is needed
-        manager = CDGRecoveryManager(temp_cdg_dir, recovery_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        manager = CDGRecoveryManager(fs, recovery_config)
         needs_recovery = manager.needs_recovery()
 
         # Then needs_recovery returns False
@@ -557,7 +582,8 @@ class TestRecoveryIsIdempotentAndSafe:
         Because we detect issues proactively
         """
         # Given a store with corrupted entities
-        store = CDGStore(temp_cdg_dir, config=recovery_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        store = CDGStore(fs, config=recovery_config)
 
         # Corrupted entity
         (store.store_dir / "corrupt.json").write_text(
@@ -565,7 +591,8 @@ class TestRecoveryIsIdempotentAndSafe:
         )
 
         # When checking if recovery is needed
-        manager = CDGRecoveryManager(temp_cdg_dir, recovery_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        manager = CDGRecoveryManager(fs, recovery_config)
         needs_recovery = manager.needs_recovery()
 
         # Then needs_recovery returns True
@@ -598,7 +625,8 @@ class TestDeveloperConfiguresRecoveryStrategy:
         none_config.recovery_mode = RecoveryMode.NONE
 
         # When recovery runs
-        manager = CDGRecoveryManager(temp_cdg_dir, none_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        manager = CDGRecoveryManager(fs, none_config)
         result = manager.recover()
 
         # Then all recovery steps are skipped
@@ -622,7 +650,8 @@ class TestDeveloperConfiguresRecoveryStrategy:
         checksum_config = CDGConfig.for_got()
         checksum_config.recovery_mode = RecoveryMode.CHECKSUM
 
-        store = CDGStore(temp_cdg_dir, config=checksum_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        store = CDGStore(fs, config=checksum_config)
 
         # Create valid entity
         entity_id = "verify-only"
@@ -633,7 +662,8 @@ class TestDeveloperConfiguresRecoveryStrategy:
         )
 
         # When recovery runs
-        manager = CDGRecoveryManager(temp_cdg_dir, checksum_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        manager = CDGRecoveryManager(fs, checksum_config)
         result = manager.recover()
 
         # Then only checksum verification occurs
@@ -656,7 +686,8 @@ class TestDeveloperConfiguresRecoveryStrategy:
         """
         # Given recovery configured with mode FULL
         # (recovery_config is already FULL for GoT)
-        store = CDGStore(temp_cdg_dir, config=recovery_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        store = CDGStore(fs, config=recovery_config)
 
         # Create orphan
         orphan_id = "orphan-full"
@@ -673,7 +704,8 @@ class TestDeveloperConfiguresRecoveryStrategy:
         wal.log_tx_begin("tx-incomplete", snapshot_version=1)
 
         # When recovery runs
-        manager = CDGRecoveryManager(temp_cdg_dir, recovery_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        manager = CDGRecoveryManager(fs, recovery_config)
         result = manager.recover()
 
         # Then all recovery steps execute
@@ -702,7 +734,8 @@ class TestDeveloperConfiguresRecoveryStrategy:
         assert auto_config.auto_recover_on_startup is True
 
         # And issues exist in the store
-        store = CDGStore(temp_cdg_dir, config=auto_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        store = CDGStore(fs, config=auto_config)
 
         # Create orphan
         orphan_id = "auto-orphan"
@@ -718,7 +751,8 @@ class TestDeveloperConfiguresRecoveryStrategy:
         (wal_dir / "wal.log").write_text("")
 
         # When checking if recovery is needed (simulates startup check)
-        manager = CDGRecoveryManager(temp_cdg_dir, auto_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        manager = CDGRecoveryManager(fs, auto_config)
 
         # Note: needs_recovery() might return False if only orphans exist
         # and no corruption/incomplete txs are present. This is expected
@@ -757,7 +791,8 @@ class TestRecoveryHandlesEdgeCases:
         # (temp_cdg_dir is empty)
 
         # When recovery runs
-        manager = CDGRecoveryManager(temp_cdg_dir, recovery_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        manager = CDGRecoveryManager(fs, recovery_config)
         result = manager.recover()
 
         # Then it completes successfully
@@ -777,7 +812,8 @@ class TestRecoveryHandlesEdgeCases:
         Because they're not part of the committed state
         """
         # Given files with .tmp extension or _ prefix exist
-        store = CDGStore(temp_cdg_dir, config=recovery_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        store = CDGStore(fs, config=recovery_config)
 
         # Create temporary file
         (store.store_dir / "entity.tmp").write_text('{"data": {}}')
@@ -794,7 +830,8 @@ class TestRecoveryHandlesEdgeCases:
         )
 
         # When recovery scans for entities
-        manager = CDGRecoveryManager(temp_cdg_dir, recovery_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        manager = CDGRecoveryManager(fs, recovery_config)
         corrupted = manager.verify_store_integrity()
 
         # Then temporary files are ignored
@@ -813,7 +850,8 @@ class TestRecoveryHandlesEdgeCases:
         Because we never adopt corrupted data
         """
         # Given an orphaned entity with invalid checksum
-        store = CDGStore(temp_cdg_dir, config=recovery_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        store = CDGStore(fs, config=recovery_config)
 
         # Corrupted orphan
         corrupt_orphan_id = "corrupt-orphan"
@@ -827,7 +865,8 @@ class TestRecoveryHandlesEdgeCases:
         (wal_dir / "wal.log").write_text("")
 
         # And REPAIR strategy is configured
-        manager = CDGRecoveryManager(temp_cdg_dir, recovery_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        manager = CDGRecoveryManager(fs, recovery_config)
 
         # When recovery repairs orphans
         repair_result = manager.repair_orphans()
@@ -853,7 +892,8 @@ class TestRecoveryHandlesEdgeCases:
         Because we provide transparency into what recovery did
         """
         # Given various issues exist in the store
-        store = CDGStore(temp_cdg_dir, config=recovery_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        store = CDGStore(fs, config=recovery_config)
 
         # Orphan
         orphan_id = "diag-orphan"
@@ -870,7 +910,8 @@ class TestRecoveryHandlesEdgeCases:
         wal.log_tx_begin("tx-diag", snapshot_version=1)
 
         # When recovery completes
-        manager = CDGRecoveryManager(temp_cdg_dir, recovery_config)
+        fs = RealFileSystem(temp_cdg_dir)
+        manager = CDGRecoveryManager(fs, recovery_config)
         result = manager.recover()
 
         # Then the result contains detailed actions taken

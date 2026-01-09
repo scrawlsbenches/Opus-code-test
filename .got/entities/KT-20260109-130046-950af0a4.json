@@ -1,0 +1,28 @@
+{
+  "_checksum": "2b18f308fc27d447",
+  "_written_at": "2026-01-09T13:01:26.737350+00:00",
+  "data": {
+    "code_refs": [],
+    "created_at": "2026-01-09T13:00:46.771570+00:00",
+    "entity_type": "knowledge_transfer",
+    "id": "KT-20260109-130046-950af0a4",
+    "modified_at": "2026-01-09T13:01:26.737290+00:00",
+    "properties": {},
+    "related_decisions": [],
+    "related_handoffs": [],
+    "related_tasks": [],
+    "sections": {
+      "Files Created": "docs/cli-reference.md (451 lines), docs/processor-reference.md (219 lines), docs/development-guide.md (109 lines), docs/design-review-guide.md (141 lines), docs/got-query-language.md (288 lines)",
+      "Key Insight": "More detail \u2260 better guidance. Information overload causes skimming. The gate pattern solves this by pointing to where information lives rather than duplicating it.",
+      "What Worked": "Gate pattern: 'Need X? \u2192 Read docs/X.md first' triggers reasoning without information overload. Splitting detailed reference content into separate files while keeping core principles in CLAUDE.md. Testing queries before documenting them (found cycle_detect bug)."
+    },
+    "session_date": "",
+    "session_id": "",
+    "source_file": null,
+    "status": "published",
+    "summary": "Restructured CLAUDE.md from 2400 to 1274 lines using gate pattern. Created 5 reference files. Documented GoT query language with 22 functions and complex examples.",
+    "tags": [],
+    "title": "Session: CLAUDE.md Restructuring",
+    "version": 9
+  }
+}

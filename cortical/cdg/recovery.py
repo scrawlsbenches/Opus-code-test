@@ -42,6 +42,7 @@ from .config import CDGConfig, RecoveryMode, OrphanStrategy
 from .errors import CorruptionError
 from cortical.utils.checksums import compute_checksum
 from cortical.common.recovery_types import RecoveryResult, RepairResult
+from cortical.common.filesystem import FileSystem
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -73,7 +74,7 @@ class CDGRecoveryManager:
 
     def __init__(
         self,
-        store_dir: Path,
+        filesystem: FileSystem,
         config: CDGConfig,
         entity_factory: Optional[EntityFactory] = None,
         index_manager: Optional["CDGIndexManager"] = None,
@@ -82,13 +83,15 @@ class CDGRecoveryManager:
         Initialize recovery manager.
 
         Args:
-            store_dir: Base directory for CDG storage
+            filesystem: FileSystem implementation (required). The filesystem's
+                       base_dir determines where entities are stored.
             config: CDG configuration controlling recovery behavior
             entity_factory: Optional factory for creating domain-specific entities
             index_manager: Optional index manager for schema-based index recovery
         """
-        self.store_dir = Path(store_dir)
-        self.store_dir.mkdir(parents=True, exist_ok=True)
+        self._filesystem = filesystem
+        self.store_dir = filesystem.base_dir
+        self._filesystem.mkdir(self.store_dir, parents=True, exist_ok=True)
         self.config = config
 
         # Index manager for schema-based index recovery
@@ -96,7 +99,7 @@ class CDGRecoveryManager:
 
         # Initialize storage (without triggering transaction manager recovery)
         self.store = CDGStore(
-            self.store_dir,
+            filesystem,
             config=config,
             entity_factory=entity_factory,
             index_manager=index_manager,

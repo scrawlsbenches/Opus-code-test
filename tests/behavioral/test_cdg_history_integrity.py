@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from cortical.cdg.storage import CDGStore
 from cortical.cdg.types import Entity
 from cortical.cdg.config import CDGConfig
+from cortical.common.filesystem import RealFileSystem
 
 
 class SimpleEntity(Entity):
@@ -88,7 +89,8 @@ class TestHistoryAccuracyOnWriteFailure:
         # Given an existing entity
         config = CDGConfig()
         config.enable_wal = False
-        store = CDGStore(tmp_path, config=config, entity_factory=simple_entity_factory)
+        fs = RealFileSystem(tmp_path)
+        store = CDGStore(fs, config=config, entity_factory=simple_entity_factory)
 
         entity = SimpleEntity(id="E-test-001", name="original")
         store.write(entity)
@@ -145,7 +147,8 @@ class TestHistoryAccuracyOnWriteFailure:
         # Given multiple existing entities
         config = CDGConfig()
         config.enable_wal = False
-        store = CDGStore(tmp_path, config=config, entity_factory=simple_entity_factory)
+        fs = RealFileSystem(tmp_path)
+        store = CDGStore(fs, config=config, entity_factory=simple_entity_factory)
 
         entity1 = SimpleEntity(id="E-batch-001", name="original1")
         entity2 = SimpleEntity(id="E-batch-002", name="original2")
@@ -219,7 +222,8 @@ class TestHistoryOrderingCorrectness:
         # Given
         config = CDGConfig()
         config.enable_wal = False
-        store = CDGStore(tmp_path, config=config, entity_factory=simple_entity_factory)
+        fs = RealFileSystem(tmp_path)
+        store = CDGStore(fs, config=config, entity_factory=simple_entity_factory)
 
         entity = SimpleEntity(id="E-history-001", name="state-A")
         store.write(entity)
@@ -259,7 +263,8 @@ class TestHistoryPersistsAcrossRestart:
         config = CDGConfig()
         config.enable_wal = False
 
-        store1 = CDGStore(tmp_path, config=config, entity_factory=simple_entity_factory)
+        fs1 = RealFileSystem(tmp_path)
+        store1 = CDGStore(fs1, config=config, entity_factory=simple_entity_factory)
         entity = SimpleEntity(id="E-persist-001", name="original")
         store1.write(entity)
         entity.name = "modified"
@@ -270,7 +275,8 @@ class TestHistoryPersistsAcrossRestart:
         assert history_path.exists()
 
         # When I restart the store (create new instance)
-        store2 = CDGStore(tmp_path, config=config, entity_factory=simple_entity_factory)
+        fs2 = RealFileSystem(tmp_path)
+        store2 = CDGStore(fs2, config=config, entity_factory=simple_entity_factory)
 
         # Then history should be readable
         with open(history_path) as f:
@@ -306,7 +312,8 @@ class TestHistoryCrashRecovery:
         # Given an existing entity
         config = CDGConfig()
         config.enable_wal = False
-        store = CDGStore(tmp_path, config=config, entity_factory=simple_entity_factory)
+        fs = RealFileSystem(tmp_path)
+        store = CDGStore(fs, config=config, entity_factory=simple_entity_factory)
 
         entity = SimpleEntity(id="E-crash-001", name="original")
         store.write(entity)
@@ -344,7 +351,8 @@ class TestHistoryCrashRecovery:
         assert pending_file.exists(), "Pending file should exist (simulating crash state)"
 
         # When: System restarts (new store instance triggers recovery)
-        store2 = CDGStore(tmp_path, config=config, entity_factory=simple_entity_factory)
+        fs2 = RealFileSystem(tmp_path)
+        store2 = CDGStore(fs2, config=config, entity_factory=simple_entity_factory)
 
         # Then: Pending file should be gone (finalized)
         assert not pending_file.exists(), "Pending file should be finalized during recovery"
@@ -370,7 +378,8 @@ class TestHistoryCrashRecovery:
         # Given an existing entity
         config = CDGConfig()
         config.enable_wal = False
-        store = CDGStore(tmp_path, config=config, entity_factory=simple_entity_factory)
+        fs = RealFileSystem(tmp_path)
+        store = CDGStore(fs, config=config, entity_factory=simple_entity_factory)
 
         entity = SimpleEntity(id="E-crash-002", name="original")
         store.write(entity)
@@ -397,7 +406,8 @@ class TestHistoryCrashRecovery:
         assert pending_file.exists()
 
         # When: System restarts
-        store2 = CDGStore(tmp_path, config=config, entity_factory=simple_entity_factory)
+        fs2 = RealFileSystem(tmp_path)
+        store2 = CDGStore(fs2, config=config, entity_factory=simple_entity_factory)
 
         # Then: Pending file should be discarded (entity write never completed)
         assert not pending_file.exists(), "Pending should be discarded (version mismatch)"

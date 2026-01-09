@@ -95,40 +95,38 @@ class CDGTransactionManager:
 
     def __init__(
         self,
-        store_dir: Path,
+        filesystem: FileSystem,
         config: Optional[CDGConfig] = None,
         entity_factory: Optional[EntityFactory] = None,
-        filesystem: Optional[FileSystem] = None,
         index_manager: Optional["CDGIndexManager"] = None,
     ):
         """
         Initialize transaction manager.
 
         Creates directories if needed:
-        - {store_dir}/
-        - {store_dir}/wal/ (if WAL enabled)
+        - {base_dir}/
+        - {base_dir}/wal/ (if WAL enabled)
 
         Runs recovery on startup if config.auto_recover_on_startup is True.
 
         Args:
-            store_dir: Base directory for CDG storage
+            filesystem: FileSystem implementation (required). The filesystem's
+                       base_dir determines where entities are stored.
             config: CDG configuration (uses defaults if not provided)
             entity_factory: Optional factory for creating domain-specific entities
-            filesystem: FileSystem implementation (defaults to RealFileSystem).
-                       Pass InMemoryFileSystem for test isolation.
             index_manager: Optional CDGIndexManager for auto-indexing on commit
         """
-        self.store_dir = Path(store_dir)
+        self._filesystem = filesystem
+        self.store_dir = filesystem.base_dir
 
         # Use provided config or create default
         self.config = config or CDGConfig()
 
         # Initialize storage with filesystem abstraction
         self.store = CDGStore(
-            self.store_dir,
+            filesystem,
             config=self.config,
             entity_factory=entity_factory,
-            filesystem=filesystem,
         )
 
         # Initialize WAL if enabled
@@ -474,7 +472,7 @@ class CDGTransactionManager:
 
         # Create recovery manager (shares config and entity factory)
         recovery_manager = CDGRecoveryManager(
-            self.store_dir,
+            self._filesystem,
             self.config,
             entity_factory=self.store.entity_factory
         )

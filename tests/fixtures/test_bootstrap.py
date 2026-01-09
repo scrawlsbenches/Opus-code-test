@@ -54,7 +54,7 @@ def create_test_container(
 
     # Defaults
     effective_dir = base_dir or Path("/test/store")
-    effective_fs = filesystem or InMemoryFileSystem()
+    effective_fs = filesystem or InMemoryFileSystem(effective_dir)
 
     # Register filesystem first - other services depend on it
     container.register_instance(FileSystem, effective_fs)

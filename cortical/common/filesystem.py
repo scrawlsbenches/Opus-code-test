@@ -40,7 +40,19 @@ class FileSystem(Protocol):
 
     Implementations must provide all methods. The protocol is designed
     to be minimal - only operations actually used by storage code.
+
+    Each FileSystem instance is bound to a base directory. All operations
+    work within or relative to this directory.
     """
+
+    # =========================================================================
+    # Base Directory
+    # =========================================================================
+
+    @property
+    def base_dir(self) -> Path:
+        """Return the base directory for this filesystem."""
+        ...
 
     # =========================================================================
     # Directory Operations
@@ -181,7 +193,18 @@ class RealFileSystem:
     Real filesystem implementation using actual disk I/O.
 
     This is the production implementation. All operations go to disk.
+
+    Args:
+        base_dir: The base directory for this filesystem instance.
     """
+
+    def __init__(self, base_dir: Path):
+        self._base_dir = Path(base_dir)
+
+    @property
+    def base_dir(self) -> Path:
+        """Return the base directory for this filesystem."""
+        return self._base_dir
 
     def mkdir(self, path: Path, parents: bool = False, exist_ok: bool = False) -> None:
         path.mkdir(parents=parents, exist_ok=exist_ok)
@@ -247,17 +270,21 @@ class InMemoryFileSystem:
     - Operation tracking for behavioral test assertions
 
     Example:
-        fs = InMemoryFileSystem()
-        fs.mkdir(Path("/data"), parents=True)
-        fs.write_text(Path("/data/test.json"), '{"key": "value"}')
-        content = fs.read_text(Path("/data/test.json"))
+        fs = InMemoryFileSystem(Path("/data"))
+        fs.mkdir(fs.base_dir, parents=True)
+        fs.write_text(fs.base_dir / "test.json", '{"key": "value"}')
+        content = fs.read_text(fs.base_dir / "test.json")
 
         # Assert operations occurred
-        fs.assert_file_was_read(Path("/data/test.json"))
-        fs.assert_directory_was_created(Path("/data"))
+        fs.assert_file_was_read(fs.base_dir / "test.json")
+        fs.assert_directory_was_created(fs.base_dir)
+
+    Args:
+        base_dir: The base directory for this filesystem instance.
     """
 
-    def __init__(self):
+    def __init__(self, base_dir: Path):
+        self._base_dir = Path(base_dir)
         # Files: path_str -> content
         self._files: Dict[str, str] = {}
         # Directories: set of path_str
@@ -271,6 +298,11 @@ class InMemoryFileSystem:
         self._files_written: Set[str] = set()
         self._directories_created: Set[str] = set()
         self._directories_scanned: Set[str] = set()
+
+    @property
+    def base_dir(self) -> Path:
+        """Return the base directory for this filesystem."""
+        return self._base_dir
 
     def _normalize(self, path: Path) -> str:
         """Normalize path to string for dict keys."""

@@ -1,179 +1,288 @@
-# Graph of Thought Query Language
+# GoT Query Language Reference
 
-The GoT query language provides a simple way to traverse and query the project management graph. It supports relationship queries, path finding, and status-based filtering.
+> **Gate**: Writing GoT queries? Read this first.
 
-## Quick Reference
+The GoT has two query interfaces:
+1. **Natural language** (`query`) - Simple, conversational queries
+2. **Expression language** (`expr`) - Full SQL-like query language
+
+---
+
+## Natural Language Queries (Simple)
 
 ```bash
-# Relationship queries
-python -m cortical.got query "what blocks task:T-..."
-python -m cortical.got query "what depends on task:T-..."
-python -m cortical.got query "relationships task:T-..."
-
-# Path finding
-python -m cortical.got query "path from task:T-1 to task:T-2"
-
-# Status queries
-python -m cortical.got query "active tasks"
-python -m cortical.got query "pending tasks"
+python -m cortical.got query "what blocks T-001"
+python -m cortical.got query "what depends on T-001"
 python -m cortical.got query "blocked tasks"
-```
-
-## Query Types
-
-### 1. What Blocks
-
-Find all tasks that are blocking a given task.
-
-```bash
-python -m cortical.got query "what blocks task:T-20251220-123456-abcd"
-```
-
-**Returns:** List of tasks with BLOCKS edges pointing to the target task.
-
-**Example output:**
-```
-Query: what blocks task:T-20251220-123456-abcd
-
-Results (2):
-
-  task:T-20251220-111111-aaaa: Fix database connection
-      Status: in_progress
-
-  task:T-20251220-222222-bbbb: Update API schema
-      Status: pending
-```
-
-### 2. What Depends On
-
-Find all tasks that depend on a given task (i.e., tasks that have this task as a dependency).
-
-```bash
-python -m cortical.got query "what depends on task:T-20251220-123456-abcd"
-```
-
-**Returns:** List of tasks with DEPENDS_ON edges pointing to the target task.
-
-### 3. Relationships
-
-Get all relationships for a task in one query.
-
-```bash
-python -m cortical.got query "relationships task:T-20251220-123456-abcd"
-```
-
-**Returns:** All edges connected to the task, categorized by type:
-- `blocks` - Tasks this task blocks
-- `blocked_by` - Tasks blocking this task
-- `depends_on` - Tasks this task depends on
-- `depended_by` - Tasks depending on this task
-- `in_sprint` - Sprint containing this task
-
-### 4. Path From...To
-
-Find a path between two nodes using BFS (shortest path).
-
-```bash
-python -m cortical.got query "path from task:T-1 to task:T-2"
-```
-
-**Returns:** Ordered list of nodes forming the path, or empty if no path exists.
-
-**Example output:**
-```
-Query: path from task:T-1 to task:T-5
-
-Results (3):
-
-  [0] task:T-1: Initial setup
-  [1] task:T-3: Core implementation
-  [2] task:T-5: Final integration
-```
-
-### 5. Status Queries
-
-#### Active Tasks
-Tasks currently in progress.
-
-```bash
 python -m cortical.got query "active tasks"
+python -m cortical.got query "path from T-001 to T-010"
 ```
 
-#### Pending Tasks
-Tasks waiting to be started.
+---
+
+## Expression Language (Full Power)
+
+The expression language is SQL-like with boolean logic, operators, and functions.
+
+### Quick Examples
 
 ```bash
-python -m cortical.got query "pending tasks"
+# Simple comparison
+python -m cortical.got expr "status = 'pending'"
+
+# Boolean logic
+python -m cortical.got expr "status = 'pending' AND priority = 'high'"
+
+# With functions
+python -m cortical.got expr "blocked() AND category = 'bug'"
+
+# Order and limit
+python -m cortical.got expr "status = 'pending' ORDER BY created_at DESC LIMIT 10"
 ```
 
-#### Blocked Tasks
-Tasks that are blocked, with their blocking reasons.
+---
+
+## Grammar (EBNF)
+
+```
+query       ::= expression [ORDER BY field [ASC|DESC]] [LIMIT n [OFFSET m]]
+expression  ::= and_expr (OR and_expr)*
+and_expr    ::= not_expr (AND not_expr)*
+not_expr    ::= NOT not_expr | primary
+primary     ::= comparison | function_call | '(' expression ')'
+comparison  ::= field operator value
+operator    ::= = | != | > | < | >= | <= | IN | NOT IN | LIKE | NOT LIKE
+```
+
+---
+
+## Operators
+
+| Operator | Example | Description |
+|----------|---------|-------------|
+| `=` | `status = 'pending'` | Equality |
+| `!=` | `status != 'deleted'` | Inequality |
+| `>`, `<` | `priority > 3` | Greater/less than |
+| `>=`, `<=` | `priority >= 3` | Greater/less or equal |
+| `IN` | `status IN ['pending', 'active']` | In list |
+| `NOT IN` | `status NOT IN ['deleted']` | Not in list |
+| `LIKE` | `title LIKE '%bug%'` | Pattern match (% = wildcard) |
+
+---
+
+## Boolean Logic
 
 ```bash
-python -m cortical.got query "blocked tasks"
+# AND (both must match)
+status = 'pending' AND priority = 'high'
+
+# OR (either matches)
+status = 'pending' OR status = 'blocked'
+
+# NOT (negation)
+NOT status = 'completed'
+
+# Parentheses for grouping
+(status = 'pending' OR status = 'blocked') AND priority = 'high'
+
+# Precedence: NOT > AND > OR
 ```
 
-## Programmatic API
+---
 
-The query language is also available programmatically:
+## Filter Functions
 
-```python
-from scripts.got_utils import GoTProjectManager
+| Function | Description | Example |
+|----------|-------------|---------|
+| `recent(days)` | Modified within N days | `recent(7)` |
+| `stale(days)` | Not modified for N days | `stale(30)` |
+| `blocked()` | Blocked tasks | `blocked()` |
+| `blocking()` | Tasks blocking others | `blocking()` |
+| `in_sprint(id)` | In specific sprint | `in_sprint(S-001)` |
+| `unassigned()` | No assignment | `unassigned()` |
+| `overdue()` | Past due date | `overdue()` |
+| `has_edge(type)` | Has edge of type | `has_edge('DEPENDS_ON')` |
+| `entity_type(type)` | Filter by type | `entity_type('task')` |
 
-manager = GoTProjectManager()
+---
 
-# Using the query string interface
-results = manager.query("what blocks task:T-123")
+## Graph Functions
 
-# Or using direct methods
-blockers = manager.what_blocks("task:T-123")
-dependents = manager.what_depends_on("task:T-123")
-path = manager.find_path("task:T-1", "task:T-5")
-relationships = manager.get_all_relationships("task:T-123")
-```
+| Function | Description | Example |
+|----------|-------------|---------|
+| `connected_to(id)` | Connected entities | `connected_to(T-001)` |
+| `path(from, to)` | Find path | `path(T-001, T-010)` |
+| `children(id)` | Direct children | `children(S-001)` |
+| `parents(id)` | Direct parents | `parents(T-001)` |
+| `descendants(id)` | All descendants | `descendants(E-001)` |
+| `ancestors(id)` | All ancestors | `ancestors(T-001)` |
+| `orphan_nodes()` | Disconnected entities | `orphan_nodes()` |
+| `blockers(id)` | What blocks task | `blockers(T-001)` |
+| `dependents(id)` | What depends on task | `dependents(T-001)` |
+| `all_dependencies(id)` | Full dependency tree | `all_dependencies(T-001)` |
+| `cycle_detect(id)` | Find cycles from node | `cycle_detect(T-001)` |
 
-### Method Reference
+---
 
-| Method | Description | Returns |
-|--------|-------------|---------|
-| `what_blocks(task_id)` | Tasks blocking this task | `List[ThoughtNode]` |
-| `what_depends_on(task_id)` | Tasks depending on this task | `List[ThoughtNode]` |
-| `find_path(from_id, to_id)` | Shortest path between nodes | `Optional[List[ThoughtNode]]` |
-| `get_all_relationships(task_id)` | All edges for a task | `Dict[str, List[ThoughtNode]]` |
-| `query(query_str)` | Parse and execute query | `List[Dict[str, Any]]` |
-
-## Edge Types
-
-The query language understands these edge types:
-
-| Edge Type | Meaning | Example |
-|-----------|---------|---------|
-| `BLOCKS` | Source blocks target from starting | Task A blocks Task B |
-| `DEPENDS_ON` | Source requires target to complete first | Task A depends on Task B |
-| `CONTAINS` | Container relationship | Sprint contains Task |
-| `RELATES_TO` | General relationship | Task relates to Epic |
-
-## Creating Relationships
-
-To create edges that can be queried:
+## Order and Pagination
 
 ```bash
-# Add dependency (Task A depends on Task B)
-python -m cortical.got task create "New feature" --depends task:T-existing
+# Order ascending
+status = 'pending' ORDER BY created_at ASC
 
-# Block a task (creates BLOCKS edge)
-python -m cortical.got task block task:T-123 --reason "Waiting for API" --blocker task:T-456
+# Order descending
+status = 'pending' ORDER BY created_at DESC
+
+# Limit results
+category = 'bug' LIMIT 10
+
+# Pagination
+category = 'bug' LIMIT 10 OFFSET 20
 ```
 
-## Tips
+---
 
-1. **Task IDs are case-sensitive** - Use the full ID including the `task:` prefix
-2. **Queries are case-insensitive** - "What Blocks" and "what blocks" are equivalent
-3. **Path finding uses BFS** - Returns shortest path by edge count, not weight
-4. **Empty results are valid** - A task with no blockers returns an empty list
+## Function Arguments
 
-## See Also
+```bash
+# Positional
+path(T-001, T-002)
 
-- [GoT Event Sourcing](got-event-sourcing.md) - How events are stored
-- [Graph of Thought](graph-of-thought.md) - Core reasoning framework
-- [CLAUDE.md Quick Reference](../CLAUDE.md) - All CLI commands
+# Keyword
+path(from=T-001, to=T-002)
+
+# Mixed (positional first)
+path(T-001, T-002, max_depth=5)
+```
+
+---
+
+## Entity Fields
+
+### Task Fields
+| Field | Type | Values |
+|-------|------|--------|
+| `id` | string | T-XXX |
+| `title` | string | - |
+| `status` | string | pending/in_progress/completed/blocked |
+| `priority` | string | critical/high/medium/low |
+| `category` | string | feature/bugfix/refactor/docs/test |
+| `created_at` | datetime | - |
+| `updated_at` | datetime | - |
+
+---
+
+## Complex Examples
+
+### Sprint Planning
+
+```bash
+# Find candidates for next sprint: pending, high priority, not blocked, no dependencies
+status = 'pending' AND priority IN ['critical', 'high'] AND NOT blocked() AND orphan_nodes()
+ORDER BY priority DESC LIMIT 20
+
+# Tasks ready to start: pending with all dependencies completed
+status = 'pending' AND NOT blocked() AND NOT has_edge('DEPENDS_ON')
+
+# Sprint capacity check: unfinished tasks in current sprint
+in_sprint(S-005) AND status IN ['pending', 'in_progress', 'blocked']
+ORDER BY priority DESC
+```
+
+### Dependency Analysis
+
+```bash
+# Critical path: what must complete before T-100 can start
+ancestors(T-100) AND status != 'completed' ORDER BY created_at ASC
+
+# Ripple effect: everything that depends on T-050 (directly or indirectly)
+descendants(T-050) ORDER BY priority DESC
+
+# Circular dependency detection (from specific task)
+cycle_detect(T-001)
+
+# Tasks with many blockers (complexity indicator)
+blocked() AND has_edge('DEPENDS_ON') ORDER BY updated_at DESC LIMIT 10
+```
+
+### Risk Assessment
+
+```bash
+# Stale blocked tasks: blocked for 14+ days (needs escalation)
+blocked() AND stale(14) ORDER BY updated_at ASC
+
+# High-priority tasks with no recent activity
+priority IN ['critical', 'high'] AND stale(7) AND status = 'in_progress'
+
+# Overdue tasks blocking others
+overdue() AND blocking() ORDER BY priority DESC
+
+# Orphaned work: tasks not connected to any sprint or epic
+orphan_nodes() AND entity_type('task') AND status != 'completed'
+```
+
+### Progress Tracking
+
+```bash
+# Recently completed high-value work
+status = 'completed' AND priority IN ['critical', 'high'] AND recent(7)
+ORDER BY updated_at DESC LIMIT 20
+
+# Active work by category
+status = 'in_progress' ORDER BY category ASC, priority DESC
+
+# Bug fix velocity: completed bugs in last 30 days
+status = 'completed' AND category = 'bug' AND recent(30)
+```
+
+### Cleanup & Maintenance
+
+```bash
+# Find disconnected decisions (no implementing tasks)
+entity_type('decision') AND orphan_nodes()
+
+# Knowledge transfers still in draft
+entity_type('knowledge_transfer') AND status = 'draft' AND stale(7)
+
+# Handoffs pending acceptance
+entity_type('handoff') AND status = 'initiated' ORDER BY created_at ASC
+```
+
+### Combined Graph + Filter Queries
+
+```bash
+# All blockers of tasks in Sprint 5 that are themselves blocked
+blockers(in_sprint(S-005)) AND blocked()
+
+# Path between two tasks, excluding completed intermediate tasks
+path(T-001, T-100) AND status != 'completed'
+
+# Children of epic E-001 that are high priority and not started
+children(E-001) AND priority = 'high' AND status = 'pending'
+```
+
+---
+
+## CLI Options
+
+```bash
+# Expression query
+python -m cortical.got expr "expression"
+
+# Show execution plan
+python -m cortical.got expr "expression" --explain
+
+# JSON output
+python -m cortical.got expr "expression" --json
+```
+
+---
+
+## Source Files
+
+| File | Purpose |
+|------|---------|
+| `cortical/got/expression/grammar.py` | EBNF grammar definition |
+| `cortical/got/expression/parser.py` | Expression parser |
+| `cortical/got/expression/executor.py` | Query execution |
+| `cortical/got/expression/functions/` | Built-in functions |

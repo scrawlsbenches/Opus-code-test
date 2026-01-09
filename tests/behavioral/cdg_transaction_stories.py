@@ -28,6 +28,7 @@ from cortical.cdg.transaction import Transaction, TransactionState
 from cortical.cdg.types import Entity
 from cortical.cdg.config import CDGConfig
 from cortical.cdg.errors import TransactionError
+from cortical.common.filesystem import RealFileSystem
 
 
 # ============================================================================
@@ -50,7 +51,8 @@ def tx_manager(temp_cdg_dir):
     Uses default configuration with WAL enabled for durability.
     """
     config = CDGConfig()
-    manager = CDGTransactionManager(temp_cdg_dir, config)
+    fs = RealFileSystem(temp_cdg_dir)
+    manager = CDGTransactionManager(fs, config)
     return manager
 
 
@@ -61,7 +63,8 @@ def tx_manager_no_wal(temp_cdg_dir):
     """
     config = CDGConfig()
     config.enable_wal = False
-    manager = CDGTransactionManager(temp_cdg_dir, config)
+    fs = RealFileSystem(temp_cdg_dir)
+    manager = CDGTransactionManager(fs, config)
     return manager
 
 

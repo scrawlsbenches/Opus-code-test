@@ -310,8 +310,8 @@ class TestCDGBasicOperations:
         from cortical.cdg import CDGStore
         from cortical.common import InMemoryFileSystem
         from pathlib import Path
-        fs = InMemoryFileSystem()
-        store = CDGStore(Path("/test"), filesystem=fs)
+        fs = InMemoryFileSystem(Path("/test"))
+        store = CDGStore(filesystem=fs)
         assert store is not None
 
     def test_write_and_read_entity(self):
@@ -320,8 +320,8 @@ class TestCDGBasicOperations:
         from cortical.common import InMemoryFileSystem
         from pathlib import Path
 
-        fs = InMemoryFileSystem()
-        store = CDGStore(Path("/test"), filesystem=fs)
+        fs = InMemoryFileSystem(Path("/test"))
+        store = CDGStore(filesystem=fs)
 
         entity = Entity(id="smoke-test-001", entity_type="test")
         store.write(entity)

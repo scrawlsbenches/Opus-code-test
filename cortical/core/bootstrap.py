@@ -108,7 +108,9 @@ def create_container(
 
     # Register FileSystem as first-class injectable
     # This is the single source of truth for I/O strategy
-    filesystem: FileSystem = InMemoryFileSystem() if use_memory else RealFileSystem()
+    # FileSystem is bound to the entities directory - where CDG stores data
+    entities_dir = effective_got_dir / "entities"
+    filesystem: FileSystem = InMemoryFileSystem(entities_dir) if use_memory else RealFileSystem(entities_dir)
     container.register_instance(FileSystem, filesystem)
 
     # Apply subsystem modules

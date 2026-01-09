@@ -90,9 +90,8 @@ class CDGModule(ContainerModule):
             if not self.use_memory:
                 entities_dir.mkdir(parents=True, exist_ok=True)
             return CDGStore(
-                entities_dir,
-                config=config,
                 filesystem=filesystem,
+                config=config,
                 schema_registry=schema_registry,
                 index_manager=index_manager,
             )
@@ -123,10 +122,10 @@ class CDGModule(ContainerModule):
 
         # Register transaction manager factory
         def create_tx_manager() -> CDGTransactionManager:
-            store_dir = self.base_dir / "entities"
-            store_dir.mkdir(parents=True, exist_ok=True)
+            # Resolve filesystem from container - it's already configured with entities_dir
+            filesystem = container.resolve(FileSystem)
             return CDGTransactionManager(
-                store_dir=store_dir,
+                filesystem=filesystem,
                 config=config,
             )
 

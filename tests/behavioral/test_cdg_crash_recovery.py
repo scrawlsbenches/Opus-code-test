@@ -26,6 +26,7 @@ from cortical.cdg.recovery import CDGRecoveryManager
 from cortical.cdg.wal import CDGWALManager
 from cortical.cdg.config import CDGConfig, DurabilityMode, RecoveryMode, OrphanStrategy
 from cortical.cdg.types import Entity
+from cortical.common.filesystem import RealFileSystem
 from cortical.utils.checksums import compute_checksum
 
 
@@ -109,7 +110,8 @@ class TestWALFirstDurabilityModel:
         Because WAL-first means commit is durable first.
         """
         # Given a transaction with writes
-        tm = CDGTransactionManager(crash_test_dir, crash_config, simple_entity_factory)
+        fs = RealFileSystem(crash_test_dir)
+        tm = CDGTransactionManager(fs, crash_config, simple_entity_factory)
         tx = tm.begin()
 
         entity = SimpleEntity(id="E-wal-first-001", name="test")
@@ -183,7 +185,8 @@ class TestWALFirstDurabilityModel:
         # When recovery runs
         # Note: The current implementation doesn't yet redo writes from WAL,
         # but it should at least not corrupt anything
-        recovery = CDGRecoveryManager(crash_test_dir, crash_config)
+        fs = RealFileSystem(crash_test_dir)
+        recovery = CDGRecoveryManager(fs, crash_config)
         result = recovery.recover()
 
         # Then recovery completes (even if entity is not reconstructed yet)
@@ -215,7 +218,8 @@ class TestPartialWriteRecovery:
         entity_file.write_text('{"da')  # Truncated JSON
 
         # When integrity check runs
-        recovery = CDGRecoveryManager(crash_test_dir, crash_config)
+        fs = RealFileSystem(crash_test_dir)
+        recovery = CDGRecoveryManager(fs, crash_config)
         corrupted = recovery.verify_store_integrity()
 
         # Then file is detected as corrupted
@@ -238,7 +242,8 @@ class TestPartialWriteRecovery:
         entity_file.write_text('')
 
         # When integrity check runs
-        recovery = CDGRecoveryManager(crash_test_dir, crash_config)
+        fs = RealFileSystem(crash_test_dir)
+        recovery = CDGRecoveryManager(fs, crash_config)
         corrupted = recovery.verify_store_integrity()
 
         # Then file is detected as corrupted
@@ -261,7 +266,8 @@ class TestPartialWriteRecovery:
         entity_file.write_text('{"x": 1}')  # Valid JSON but too small for entity
 
         # When integrity check runs
-        recovery = CDGRecoveryManager(crash_test_dir, crash_config)
+        fs = RealFileSystem(crash_test_dir)
+        recovery = CDGRecoveryManager(fs, crash_config)
         corrupted = recovery.verify_store_integrity()
 
         # Then file is detected as corrupted (partial write)
@@ -311,7 +317,8 @@ class TestIncompleteTransactionRecovery:
             json.dump({"seq": 2}, f)
 
         # When recovery runs
-        recovery = CDGRecoveryManager(crash_test_dir, crash_config)
+        fs = RealFileSystem(crash_test_dir)
+        recovery = CDGRecoveryManager(fs, crash_config)
         result = recovery.recover()
 
         # Then transaction is rolled back
@@ -356,7 +363,8 @@ class TestIncompleteTransactionRecovery:
             json.dump({"seq": 3}, f)
 
         # When recovery runs
-        recovery = CDGRecoveryManager(crash_test_dir, crash_config)
+        fs = RealFileSystem(crash_test_dir)
+        recovery = CDGRecoveryManager(fs, crash_config)
         result = recovery.recover()
 
         # Then transaction is rolled back
@@ -383,7 +391,8 @@ class TestHistoryCrashRecoveryWithDeletes:
         Because delete history is just as important as write history.
         """
         # Given an existing entity
-        store = CDGStore(crash_test_dir, crash_config, simple_entity_factory)
+        fs = RealFileSystem(crash_test_dir)
+        store = CDGStore(fs, crash_config, simple_entity_factory)
         entity = SimpleEntity(id="E-delete-001", name="to-be-deleted")
         store.write(entity)
 
@@ -409,7 +418,8 @@ class TestHistoryCrashRecoveryWithDeletes:
         entity_file.unlink()
 
         # When system restarts (new store triggers recovery)
-        store2 = CDGStore(crash_test_dir, crash_config, simple_entity_factory)
+        fs2 = RealFileSystem(crash_test_dir)
+        store2 = CDGStore(fs2, crash_config, simple_entity_factory)
 
         # Then pending file should be finalized
         assert not pending_file.exists(), "Pending should be finalized"
@@ -434,7 +444,8 @@ class TestHistoryCrashRecoveryWithDeletes:
         Because the delete never happened.
         """
         # Given an existing entity
-        store = CDGStore(crash_test_dir, crash_config, simple_entity_factory)
+        fs = RealFileSystem(crash_test_dir)
+        store = CDGStore(fs, crash_config, simple_entity_factory)
         entity = SimpleEntity(id="E-nodelete-001", name="still-here")
         store.write(entity)
 
@@ -459,7 +470,8 @@ class TestHistoryCrashRecoveryWithDeletes:
         assert entity_file.exists()
 
         # When system restarts
-        store2 = CDGStore(crash_test_dir, crash_config, simple_entity_factory)
+        fs2 = RealFileSystem(crash_test_dir)
+        store2 = CDGStore(fs2, crash_config, simple_entity_factory)
 
         # Then pending file should be discarded
         assert not pending_file.exists(), "Pending should be discarded"
@@ -541,7 +553,8 @@ class TestEntityReconstructionFromWAL:
         assert not entity_file.exists()
 
         # When recovery runs
-        recovery = CDGRecoveryManager(crash_test_dir, crash_config, simple_entity_factory)
+        fs = RealFileSystem(crash_test_dir)
+        recovery = CDGRecoveryManager(fs, crash_config, simple_entity_factory)
         result = recovery.recover()
 
         # Then entity is reconstructed from WAL
@@ -550,7 +563,7 @@ class TestEntityReconstructionFromWAL:
         assert entity_file.exists()
 
         # And the entity can be read correctly
-        store = CDGStore(crash_test_dir, crash_config, simple_entity_factory)
+        store = CDGStore(fs, crash_config, simple_entity_factory)
         loaded = store.read("E-reconstruct-001")
         assert loaded is not None
         assert loaded.id == "E-reconstruct-001"
@@ -613,7 +626,8 @@ class TestEntityReconstructionFromWAL:
         entity_file.write_text('{"_checksum": "wrong", "data": {"trun')
 
         # When recovery runs
-        recovery = CDGRecoveryManager(crash_test_dir, crash_config, simple_entity_factory)
+        fs = RealFileSystem(crash_test_dir)
+        recovery = CDGRecoveryManager(fs, crash_config, simple_entity_factory)
         result = recovery.recover()
 
         # Then entity is reconstructed from WAL
@@ -621,7 +635,7 @@ class TestEntityReconstructionFromWAL:
         assert "E-corrupted-wal-001" in result.reconstructed_entities
 
         # And the entity can be read correctly
-        store = CDGStore(crash_test_dir, crash_config, simple_entity_factory)
+        store = CDGStore(fs, crash_config, simple_entity_factory)
         loaded = store.read("E-corrupted-wal-001")
         assert loaded is not None
         assert loaded.id == "E-corrupted-wal-001"
@@ -700,7 +714,8 @@ class TestEntityReconstructionFromWAL:
         assert not (crash_test_dir / "E-multi-002.json").exists()
 
         # When recovery runs
-        recovery = CDGRecoveryManager(crash_test_dir, crash_config, simple_entity_factory)
+        fs = RealFileSystem(crash_test_dir)
+        recovery = CDGRecoveryManager(fs, crash_config, simple_entity_factory)
         result = recovery.recover()
 
         # Then both entities are reconstructed
@@ -709,7 +724,7 @@ class TestEntityReconstructionFromWAL:
         assert "E-multi-002" in result.reconstructed_entities
 
         # And both entities can be read correctly
-        store = CDGStore(crash_test_dir, crash_config, simple_entity_factory)
+        store = CDGStore(fs, crash_config, simple_entity_factory)
         loaded1 = store.read("E-multi-001")
         loaded2 = store.read("E-multi-002")
         assert loaded1 is not None and loaded1.id == "E-multi-001"
@@ -767,7 +782,8 @@ class TestEntityReconstructionFromWAL:
             json.dump({"seq": 2}, f)
 
         # When recovery runs
-        recovery = CDGRecoveryManager(crash_test_dir, crash_config, simple_entity_factory)
+        fs = RealFileSystem(crash_test_dir)
+        recovery = CDGRecoveryManager(fs, crash_config, simple_entity_factory)
         result = recovery.recover()
 
         # Then entity is NOT reconstructed (tx was rolled back)
@@ -786,7 +802,8 @@ class TestEntityReconstructionFromWAL:
         Because transaction_manager now stores full entity state in WAL.
         """
         # Given a transaction committed through transaction manager
-        tm = CDGTransactionManager(crash_test_dir, crash_config, simple_entity_factory)
+        fs = RealFileSystem(crash_test_dir)
+        tm = CDGTransactionManager(fs, crash_config, simple_entity_factory)
         tx = tm.begin()
 
         entity = SimpleEntity(id="E-e2e-001", name="end_to_end_test")

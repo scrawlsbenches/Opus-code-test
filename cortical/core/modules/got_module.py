@@ -97,10 +97,9 @@ class GoTModule(ContainerModule):
             filesystem = container.resolve(FileSystem)
 
             return CDGTransactionManager(
-                store_dir=self.config.got_dir / "entities",
+                filesystem=filesystem,
                 config=cdg_config,
                 entity_factory=create_entity_from_dict,
-                filesystem=filesystem,
             )
 
         container.register(
