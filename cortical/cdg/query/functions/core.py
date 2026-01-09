@@ -45,12 +45,31 @@ class CountFunction(QueryFunction):
         args: List[Any],
         kwargs: Dict[str, Any]
     ) -> int:
-        from ..errors import QueryNotImplementedError
-        raise QueryNotImplementedError(
-            "count() as standalone function not yet implemented. "
-            "Use with query context: FROM task WHERE status = 'pending' then count results",
-            doc_reference="docs/design/cdg-query-language.md#core-functions"
-        )
+        """
+        Count entities.
+
+        Usage:
+            count()  - When used as query modifier, counts query results
+            count(entities)  - Counts provided list of entities
+
+        TODO(cdg-query): Integrate with query pipeline for modifier syntax
+        Currently count() works when passed a list of entities as first argument.
+        Future: Support piped syntax like `FROM task WHERE status = 'pending' | count()`
+        """
+        # If entities passed as argument, count them
+        if args:
+            first_arg = args[0]
+            if isinstance(first_arg, list):
+                return len(first_arg)
+            elif hasattr(first_arg, '__len__'):
+                return len(first_arg)
+            else:
+                return 1  # Single entity
+
+        # No arguments - return 0
+        # TODO(cdg-query): When integrated with query pipeline, this should
+        # receive the query results automatically
+        return 0
 
 
 @FunctionRegistry.register('exists')
@@ -119,23 +138,29 @@ class TypeOfFunction(QueryFunction):
         args: List[Any],
         kwargs: Dict[str, Any]
     ) -> Optional[str]:
-        from ..errors import QueryNotImplementedError
-
         if not args:
             return None
 
         entity_id = str(args[0])
-
-        if context.schema_registry is None:
-            raise QueryNotImplementedError(
-                "type_of() requires SchemaRegistry to resolve entity type from ID prefix",
-                doc_reference="docs/design/cdg-query-language.md"
-            )
-
-        # Extract prefix from ID and look up in schema registry
         prefix = self._extract_prefix(entity_id)
-        if prefix:
-            return context.schema_registry.get_entity_type_by_prefix(prefix)
+        if not prefix:
+            return None
+
+        # Try schema registry first (if available)
+        if context.schema_registry is not None:
+            entity_type = context.schema_registry.get_entity_type_by_prefix(prefix)
+            if entity_type:
+                return entity_type
+
+        # Fall back to entity_schemas module
+        try:
+            from cortical.got.entity_schemas import ALL_SCHEMAS
+            for entity_type, schema_class in ALL_SCHEMAS.items():
+                if schema_class.id_prefix == prefix:
+                    return entity_type
+        except ImportError:
+            pass
+
         return None
 
     def _extract_prefix(self, entity_id: str) -> Optional[str]:
@@ -179,24 +204,27 @@ class FieldsFunction(QueryFunction):
         args: List[Any],
         kwargs: Dict[str, Any]
     ) -> List[str]:
-        from ..errors import QueryNotImplementedError
-
         if not args:
             return []
 
         entity_type = str(args[0]).lower()
 
-        if context.schema_registry is None:
-            raise QueryNotImplementedError(
-                "fields() requires SchemaRegistry to list entity type fields",
-                doc_reference="docs/design/cdg-query-language.md"
-            )
+        # Try schema registry first (if available)
+        if context.schema_registry is not None:
+            schema = context.schema_registry.get_schema(entity_type)
+            if schema is not None:
+                return list(schema.fields.keys())
 
-        schema = context.schema_registry.get_schema(entity_type)
-        if schema is None:
-            return []
+        # Fall back to entity_schemas module
+        try:
+            from cortical.got.entity_schemas import get_schema_for_entity_type
+            schema_class = get_schema_for_entity_type(entity_type)
+            if schema_class is not None:
+                return list(schema_class.fields.keys())
+        except ImportError:
+            pass
 
-        return list(schema.fields.keys())
+        return []
 
 
 @FunctionRegistry.register('entity_types')
@@ -225,12 +253,15 @@ class EntityTypesFunction(QueryFunction):
         args: List[Any],
         kwargs: Dict[str, Any]
     ) -> List[str]:
-        from ..errors import QueryNotImplementedError
+        # Try schema registry first (if available)
+        if context.schema_registry is not None:
+            return list(context.schema_registry.list_schemas().keys())
 
-        if context.schema_registry is None:
-            raise QueryNotImplementedError(
-                "entity_types() requires SchemaRegistry to list registered entity types",
-                doc_reference="docs/design/cdg-query-language.md"
-            )
-
-        return list(context.schema_registry.list_schemas().keys())
+        # Fall back to entity_schemas module
+        try:
+            from cortical.got.entity_schemas import list_entity_types
+            return list_entity_types()
+        except ImportError:
+            # TODO(cdg-query): entity_schemas not available
+            # This should not happen in normal usage
+            return []

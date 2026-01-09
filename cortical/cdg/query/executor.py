@@ -188,10 +188,8 @@ class QueryExecutor:
     def _execute_index_scan(self, plan: QueryPlan) -> List[Any]:
         """Execute using single index lookup."""
         if self.index_manager is None or self.store is None:
-            raise QueryNotImplementedError(
-                "Index scan requires CDGIndexManager",
-                doc_reference="docs/design/cdg-query-language.md"
-            )
+            # Fall back to full scan when no index manager
+            return self._execute_full_scan(plan)
 
         # Perform single index lookup
         if not plan.index_lookups:
@@ -263,25 +261,33 @@ class QueryExecutor:
 
     def _get_entity_prefix(self, entity_type: str) -> Optional[str]:
         """Get the ID prefix for an entity type."""
-        if self.schema_registry is None:
-            raise QueryNotImplementedError(
-                "Entity queries require SchemaRegistry to resolve entity type prefixes",
-                doc_reference="docs/design/cdg-query-language.md"
-            )
+        # Try schema registry first (if available)
+        if self.schema_registry is not None:
+            schema = self.schema_registry.get_schema(entity_type)
+            if schema is not None:
+                return schema.id_prefix
 
-        schema = self.schema_registry.get_schema(entity_type)
-        if schema is None:
+        # Fall back to entity_schemas module (works without registry)
+        try:
+            from cortical.got.entity_schemas import get_id_prefix
+            return get_id_prefix(entity_type)
+        except (ImportError, KeyError):
             return None
-        return schema.id_prefix
 
     def _list_entity_types(self) -> List[str]:
         """List all known entity types."""
-        if self.schema_registry is None:
-            raise QueryNotImplementedError(
-                "Listing entity types requires SchemaRegistry",
-                doc_reference="docs/design/cdg-query-language.md"
-            )
-        return list(self.schema_registry.list_schemas().keys())
+        # Try schema registry first (if available)
+        if self.schema_registry is not None:
+            return list(self.schema_registry.list_schemas().keys())
+
+        # Fall back to entity_schemas module (works without registry)
+        try:
+            from cortical.got.entity_schemas import list_entity_types
+            return list_entity_types()
+        except ImportError:
+            # TODO(cdg-query): entity_schemas not available, return empty list
+            # This should not happen in normal usage - entity_schemas is part of cortical.got
+            return []
 
     def _evaluate(self, expr: Expression, entity: Any) -> bool:
         """Evaluate an expression against an entity."""
