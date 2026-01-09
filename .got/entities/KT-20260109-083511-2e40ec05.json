@@ -1,0 +1,29 @@
+{
+  "_checksum": "0dab08f73be6b7ce",
+  "_written_at": "2026-01-09T08:36:10.350050+00:00",
+  "data": {
+    "code_refs": [],
+    "created_at": "2026-01-09T08:35:11.436524+00:00",
+    "entity_type": "knowledge_transfer",
+    "id": "KT-20260109-083511-2e40ec05",
+    "modified_at": "2026-01-09T08:36:10.349996+00:00",
+    "properties": {},
+    "related_decisions": [],
+    "related_handoffs": [],
+    "related_tasks": [],
+    "sections": {
+      "Critical Warning": "DO NOT TRUST THE BEHAVIORAL TESTS. 8 tests are failing and the test assertions themselves may be wrong - testing CDG storage internals instead of actual data behavior. Do NOT attempt to 'fix' tests to make them pass. Work ONE TEST AT A TIME with user approval before ANY change.",
+      "Failing Tests": "1. cdg_transaction_stories.py::test_scenario_concurrent_conflicting_writes_one_wins\n2. test_container_di_stories.py::test_scenario_cdg_transaction_manager_requires_injection\n3. test_got_transactional_behavioral.py::test_scenario_incomplete_transaction_rolled_back_on_recovery\n4. test_got_transactional_behavioral.py::test_scenario_read_only_transaction_discards_writes\n5. test_hubris_moe.py::test_expert_selection_by_competence\n6. test_hubris_moe.py::test_stake_slashing\n7. test_semantic_knowledge_graph.py::test_graph_extracts_semantic_relations\n8. test_semantic_knowledge_graph.py::test_query_expansion",
+      "Key Lesson": "KT behavioral tests were WRONG - they tested CDG storage internals (checksums, file format) instead of testing KnowledgeTransfer as data through the API. The same pattern may apply to other failing tests. CDG is the foundation layer; tests should verify entity DATA behavior through GoTManager, not storage mechanics.",
+      "Required Workflow": "1. Pick ONE failing test\n2. Show the test to user, explain what it claims to test\n3. ASK user: Is this test correct? Should it be fixed or rewritten?\n4. WAIT for user direction before making ANY changes\n5. Only after user approval, make the specific change requested\n6. Verify test passes (or confirm test deletion if that was the direction)\n7. Repeat for next test"
+    },
+    "session_date": "",
+    "session_id": "",
+    "source_file": null,
+    "status": "published",
+    "summary": "8 behavioral tests are failing and should NOT be trusted. Tests may be testing wrong things (CDG internals vs data behavior). Work one test at a time with user driving all changes.",
+    "tags": [],
+    "title": "Session: Behavioral Test Trust Issues",
+    "version": 11
+  }
+}
