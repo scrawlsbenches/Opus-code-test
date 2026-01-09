@@ -23,6 +23,9 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import re
+import subprocess
 import threading
 import time
 from datetime import datetime, timezone
@@ -2038,6 +2041,474 @@ class GoTManager:
             return None
 
         return ClaudeMdLayer.from_dict(data)
+
+    # =========================================================================
+    # Methods migrated from TransactionalGoTAdapter
+    # TODO: Review and consolidate with existing methods
+    # =========================================================================
+
+    def save(self) -> None:
+        """No-op - GoTManager auto-saves. Kept for CLI compatibility."""
+        pass
+
+    def adapter_create_task(
+        self,
+        title: str,
+        priority: str = "medium",
+        category: str = "feature",
+        description: str = "",
+        sprint_id: Optional[str] = None,
+        depends_on: Optional[List[str]] = None,
+        blocks: Optional[List[str]] = None,
+    ) -> str:
+        """Create a new task with CLI conveniences."""
+        task = self.create_task(
+            title=title,
+            priority=priority,
+            description=description,
+            properties={"category": category},
+            metadata={
+                "session_id": os.environ.get("CLAUDE_SESSION_ID", "unknown"),
+                "branch": self._get_current_branch(),
+            },
+        )
+
+        # Add dependencies
+        if depends_on:
+            for dep_id in depends_on:
+                try:
+                    self.add_dependency(task.id, dep_id)
+                except Exception as e:
+                    logger.warning(f"Could not add dependency to {dep_id}: {e}")
+
+        # Add blocks
+        if blocks:
+            for blocked_id in blocks:
+                try:
+                    self.add_blocks(task.id, blocked_id)
+                except Exception as e:
+                    logger.warning(f"Could not add blocks to {blocked_id}: {e}")
+
+        # Add to sprint if specified
+        if sprint_id:
+            try:
+                self.add_edge(sprint_id, task.id, "CONTAINS")
+            except Exception as e:
+                logger.warning(f"Could not add task to sprint {sprint_id}: {e}")
+
+        return task.id
+
+    def list_tasks(
+        self,
+        status: Optional[str] = None,
+        priority: Optional[str] = None,
+        category: Optional[str] = None,
+        sprint_id: Optional[str] = None,
+        blocked_only: bool = False,
+    ) -> List[Task]:
+        """List tasks with optional filters."""
+        # Get tasks from manager
+        if sprint_id:
+            # Get tasks from sprint via edges
+            sprint_task_ids = set()
+            all_edges = self.list_edges()
+            for edge in all_edges:
+                if (edge.source_id == sprint_id and
+                    edge.edge_type == "CONTAINS" and
+                    edge.target_id.startswith("T-")):
+                    sprint_task_ids.add(edge.target_id)
+
+            if not sprint_task_ids:
+                return []
+
+            all_tasks = self.find_tasks(status=status, priority=priority)
+            tasks = [t for t in all_tasks if t.id in sprint_task_ids]
+        else:
+            tasks = self.find_tasks(status=status, priority=priority)
+
+        # Filter by category
+        if category:
+            tasks = [t for t in tasks if t.properties.get("category") == category]
+
+        return tasks
+
+    def start_task(self, task_id: str) -> bool:
+        """Start a task (set status to in_progress)."""
+        try:
+            task = self.get_task(task_id)
+            if not task:
+                return False
+            task.metadata["started_at"] = datetime.now(timezone.utc).isoformat()
+            self.update_task(task_id, status="in_progress", metadata=task.metadata)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to start task {task_id}: {e}")
+            return False
+
+    def block_task(self, task_id: str, reason: str = "", blocked_by: Optional[str] = None) -> bool:
+        """Block a task."""
+        try:
+            task = self.get_task(task_id)
+            if not task:
+                return False
+            props = dict(task.properties)
+            props["blocked_reason"] = reason or "No reason given"
+            self.update_task(task_id, status="blocked", properties=props)
+            if blocked_by:
+                self.add_blocks(blocked_by, task_id)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to block task {task_id}: {e}")
+            return False
+
+    def get_task_sprint(self, task_id: str) -> Optional[Dict[str, str]]:
+        """Get the sprint containing this task."""
+        _, incoming = self.get_edges_for_task(task_id)
+        for edge in incoming:
+            if edge.edge_type == "CONTAINS" and edge.source_id.startswith("S-"):
+                sprint = self.get_sprint(edge.source_id)
+                if sprint:
+                    return {'id': sprint.id, 'name': sprint.title}
+        return None
+
+    def get_task_dependencies(self, task_id: str) -> List[Task]:
+        """Get tasks this task depends on."""
+        outgoing, _ = self.get_edges_for_task(task_id)
+        deps = []
+        for edge in outgoing:
+            if edge.edge_type == "DEPENDS_ON":
+                task = self.get_task(edge.target_id)
+                if task:
+                    deps.append(task)
+        return deps
+
+    def what_blocks(self, task_id: str) -> List[Task]:
+        """Get tasks blocking this task."""
+        return self.get_blockers(task_id)
+
+    def what_depends_on(self, task_id: str) -> List[Task]:
+        """Get tasks that depend on this task."""
+        return self.get_dependents(task_id)
+
+    def get_active_tasks(self) -> List[Task]:
+        """Get in-progress tasks."""
+        return self.find_tasks(status="in_progress")
+
+    def get_blocked_tasks(self) -> List[Tuple[Task, Optional[str]]]:
+        """Get blocked tasks with reasons."""
+        tasks = self.find_tasks(status="blocked")
+        return [(t, t.properties.get("blocked_reason", "No reason given")) for t in tasks]
+
+    def get_next_task(self) -> Optional[Dict[str, Any]]:
+        """Get the next recommended task to work on."""
+        # Priority order
+        priority_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+
+        # Get pending tasks
+        pending = self.find_tasks(status="pending")
+        if not pending:
+            return None
+
+        # Sort by priority
+        pending.sort(key=lambda t: (priority_order.get(t.priority, 2), t.created_at))
+        task = pending[0]
+
+        return {
+            "id": task.id,
+            "title": task.title,
+            "priority": task.priority,
+            "category": task.properties.get("category", ""),
+        }
+
+    def claim_sprint(self, sprint_id: str, agent: str) -> Sprint:
+        """Claim a sprint for an agent."""
+        sprint = self.get_sprint(sprint_id)
+        if not sprint:
+            raise ValueError(f"Sprint not found: {sprint_id}")
+        current_owner = sprint.properties.get("claimed_by")
+        if current_owner and current_owner != agent:
+            raise ValueError(f"Sprint already claimed by {current_owner}")
+        props = dict(sprint.properties)
+        props["claimed_by"] = agent
+        props["claimed_at"] = datetime.now(timezone.utc).isoformat()
+        return self.update_sprint(sprint_id, properties=props)
+
+    def release_sprint(self, sprint_id: str, agent: str) -> Sprint:
+        """Release a sprint claim."""
+        sprint = self.get_sprint(sprint_id)
+        if not sprint:
+            raise ValueError(f"Sprint not found: {sprint_id}")
+        current_owner = sprint.properties.get("claimed_by")
+        if current_owner and current_owner != agent:
+            raise ValueError(f"Sprint claimed by {current_owner}, not {agent}")
+        props = dict(sprint.properties)
+        props.pop("claimed_by", None)
+        props.pop("claimed_at", None)
+        return self.update_sprint(sprint_id, properties=props)
+
+    def add_sprint_goal(self, sprint_id: str, description: str) -> bool:
+        """Add a goal to a sprint."""
+        sprint = self.get_sprint(sprint_id)
+        if not sprint:
+            return False
+        goals = list(sprint.goals)
+        goals.append({"description": description, "completed": False})
+        self.update_sprint(sprint_id, goals=goals)
+        return True
+
+    def list_sprint_goals(self, sprint_id: str) -> List[Dict]:
+        """List sprint goals."""
+        sprint = self.get_sprint(sprint_id)
+        return sprint.goals if sprint else []
+
+    def complete_sprint_goal(self, sprint_id: str, goal_index: int) -> bool:
+        """Complete a sprint goal."""
+        sprint = self.get_sprint(sprint_id)
+        if not sprint or goal_index >= len(sprint.goals):
+            return False
+        goals = list(sprint.goals)
+        goals[goal_index]["completed"] = True
+        self.update_sprint(sprint_id, goals=goals)
+        return True
+
+    def link_task_to_sprint(self, sprint_id: str, task_id: str) -> bool:
+        """Link a task to a sprint."""
+        try:
+            self.add_edge(sprint_id, task_id, "CONTAINS")
+            return True
+        except Exception:
+            return False
+
+    def adapter_create_decision(self, content: str, rationale: str = "",
+                       task_id: Optional[str] = None,
+                       alternatives: Optional[List[str]] = None) -> str:
+        """Create a decision with CLI conveniences."""
+        affects = [task_id] if task_id else []
+        decision = self.create_decision(
+            title=content, rationale=rationale, affects=affects,
+            properties={"alternatives": alternatives or []}
+        )
+        return decision.id
+
+    def why(self, task_id: str) -> List[Dict[str, Any]]:
+        """Get decisions affecting a task."""
+        decisions = self.list_decisions()
+        result = []
+        for d in decisions:
+            if task_id in d.affects:
+                result.append({
+                    "decision_id": d.id,
+                    "decision": d.title,
+                    "rationale": d.rationale,
+                    "alternatives": d.properties.get("alternatives", []),
+                    "created_at": d.created_at,
+                })
+        return result
+
+    def adapter_list_handoffs(self, status: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List handoffs as dicts."""
+        handoffs = self.list_handoffs(status=status)
+        return [
+            {
+                "id": h.id,
+                "source_agent": h.source_agent,
+                "target_agent": h.target_agent,
+                "task_id": h.task_id,
+                "status": h.status,
+                "instructions": h.instructions,
+                "context": h.context,
+                "result": h.result,
+                "artifacts": h.artifacts,
+                "created_at": h.created_at,
+                "accepted_at": getattr(h, 'accepted_at', ''),
+                "completed_at": getattr(h, 'completed_at', ''),
+            }
+            for h in handoffs
+        ]
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get graph statistics."""
+        all_tasks = self.list_all_tasks()
+        by_status = {}
+        for task in all_tasks:
+            by_status[task.status] = by_status.get(task.status, 0) + 1
+
+        edges = self.list_edges()
+        sprints = self.list_sprints()
+        epics = self.list_epics()
+
+        return {
+            "total_tasks": len(all_tasks),
+            "tasks_by_status": by_status,
+            "total_edges": len(edges),
+            "total_sprints": len(sprints),
+            "total_epics": len(epics),
+        }
+
+    def validate(self) -> List[str]:
+        """Validate GoT state."""
+        issues = []
+        try:
+            tasks = self.list_all_tasks()
+            if not tasks:
+                issues.append("No tasks found")
+        except Exception as e:
+            issues.append(f"Validation error: {e}")
+        return issues
+
+    def query(self, query_str: str) -> List[Dict[str, Any]]:
+        """Natural language query - basic support."""
+        results = []
+        q = query_str.lower()
+
+        if "blocked" in q:
+            for task, reason in self.get_blocked_tasks():
+                results.append({"id": task.id, "title": task.title, "reason": reason})
+        elif "active" in q or "in_progress" in q:
+            for task in self.get_active_tasks():
+                results.append({"id": task.id, "title": task.title})
+        elif "pending" in q:
+            for task in self.find_tasks(status="pending"):
+                results.append({"id": task.id, "title": task.title})
+
+        return results
+
+    def infer_edges_from_commit(self, commit_message: str, files_changed: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+        """Infer edges from a commit message."""
+        edges_created = []
+
+        # Find all task references
+        task_refs = re.findall(r'(?:task:)?(T-[\w-]+)', commit_message, re.IGNORECASE)
+
+        # Find specific relationship patterns
+        depends_pattern = re.findall(r'depends on (?:task:)?(T-[\w-]+)', commit_message, re.IGNORECASE)
+        blocks_pattern = re.findall(r'blocks (?:task:)?(T-[\w-]+)', commit_message, re.IGNORECASE)
+        closes_pattern = re.findall(r'(?:closes?|fixes?|resolves?) (?:task:)?(T-[\w-]+)', commit_message, re.IGNORECASE)
+
+        # Get all known task IDs for matching
+        all_tasks = {t.id.upper(): t.id for t in self.list_all_tasks()}
+
+        # Track which tasks were referenced
+        referenced_tasks = []
+        for ref in task_refs:
+            ref_upper = ref.upper()
+            if ref_upper in all_tasks:
+                referenced_tasks.append(all_tasks[ref_upper])
+                edges_created.append({
+                    "type": "REFERENCES",
+                    "task": all_tasks[ref_upper],
+                    "commit_message": commit_message[:50],
+                })
+
+        # Handle dependencies
+        for dep_ref in depends_pattern:
+            dep_upper = dep_ref.upper()
+            if dep_upper in all_tasks and referenced_tasks:
+                first_task = referenced_tasks[0]
+                target_task = all_tasks[dep_upper]
+                if first_task != target_task:
+                    self.add_dependency(first_task, target_task)
+                    edges_created.append({
+                        "type": "DEPENDS_ON",
+                        "from": first_task,
+                        "to": target_task,
+                    })
+
+        # Handle blocks
+        for block_ref in blocks_pattern:
+            block_upper = block_ref.upper()
+            if block_upper in all_tasks and referenced_tasks:
+                first_task = referenced_tasks[0]
+                target_task = all_tasks[block_upper]
+                if first_task != target_task:
+                    self.add_blocks(first_task, target_task)
+                    edges_created.append({
+                        "type": "BLOCKS",
+                        "from": first_task,
+                        "to": target_task,
+                    })
+
+        # Handle closes/fixes (mark tasks complete)
+        for close_ref in closes_pattern:
+            close_upper = close_ref.upper()
+            if close_upper in all_tasks:
+                task_id = all_tasks[close_upper]
+                self.complete_task(task_id, retrospective=f"Closed via commit: {commit_message[:50]}")
+                edges_created.append({
+                    "type": "CLOSES",
+                    "task": task_id,
+                })
+
+        return edges_created
+
+    def infer_edges_from_recent_commits(self, count: int = 10, project_root: Optional[Path] = None) -> List[Dict[str, Any]]:
+        """Infer edges from recent git commits."""
+        cwd = str(project_root) if project_root else str(self.got_dir.parent)
+        try:
+            result = subprocess.run(
+                ["git", "log", f"-{count}", "--pretty=format:%H|%s"],
+                capture_output=True, text=True, check=True,
+                cwd=cwd
+            )
+        except Exception as e:
+            logger.warning(f"Failed to read git log: {e}")
+            return []
+
+        all_edges = []
+        for line in result.stdout.strip().split("\n"):
+            if "|" in line:
+                commit_hash, message = line.split("|", 1)
+                edges = self.infer_edges_from_commit(message)
+                for edge in edges:
+                    edge["commit_hash"] = commit_hash[:8]
+                all_edges.extend(edges)
+
+        return all_edges
+
+    def append_to_knowledge_transfer(
+        self, kt_id: str, section_title: str, content: str
+    ) -> Optional[Any]:
+        """Append a section to a knowledge transfer and return the updated entity."""
+        result = self.append_knowledge_transfer_section(kt_id, section_title, content)
+        if result is not None:
+            return self.get_knowledge_transfer(kt_id)
+        return None
+
+    def link_knowledge_transfer(
+        self, kt_id: str, target_id: str, link_type: str = "DOCUMENTS"
+    ) -> bool:
+        """Link a knowledge transfer to another entity."""
+        try:
+            self.add_edge(kt_id, target_id, link_type)
+            return True
+        except Exception:
+            return False
+
+    def _get_current_branch(self) -> str:
+        """Get current git branch."""
+        try:
+            result = subprocess.run(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                capture_output=True, text=True, check=True
+            )
+            return result.stdout.strip()
+        except Exception:
+            return "unknown"
+
+    @property
+    def graph(self):
+        """Compatibility property - returns self for methods that access graph."""
+        return self
+
+    @property
+    def nodes(self):
+        """Compatibility property for graph.nodes access."""
+        return {t.id: t for t in self.list_all_tasks()}
+
+    @property
+    def edges_property(self):
+        """Compatibility property for graph.edges access."""
+        return self.list_edges()
 
 
 class TransactionContext:
