@@ -420,6 +420,10 @@ class TransactionalGoTAdapter:
         except Exception:
             return False
 
+    def unlink_task_from_sprint(self, sprint_id: str, task_id: str) -> bool:
+        """Unlink a task from a sprint (moves to backlog)."""
+        return self._manager.remove_task_from_sprint(task_id, sprint_id)
+
     # =========================================================================
     # Epic Operations
     # TODO(adapter-retirement): PURE DELEGATION - remove all, use GoTManager directly
