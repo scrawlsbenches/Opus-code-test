@@ -98,7 +98,8 @@ class CDGStore:
 
     Example:
         # Basic usage with default entity factory
-        store = CDGStore(Path("./data"))
+        fs = RealFileSystem(Path("./data"))
+        store = CDGStore(filesystem=fs)
 
         entity = Entity(id="E-001", entity_type="document")
         store.write(entity)
@@ -115,8 +116,9 @@ class CDGStore:
             else:
                 return Entity.from_dict(data)
 
+        fs = RealFileSystem(Path("./data"))
         store = CDGStore(
-            Path("./data"),
+            filesystem=fs,
             entity_factory=got_entity_factory
         )
 
@@ -128,11 +130,9 @@ class CDGStore:
 
     def __init__(
         self,
-        store_dir: Path,
+        filesystem: FileSystem,
         config: Optional[CDGConfig] = None,
         entity_factory: Optional[EntityFactory] = None,
-        # FileSystem abstraction for testability
-        filesystem: Optional[FileSystem] = None,
         # Caching (enabled by default for performance)
         cache_enabled: bool = True,
         # Schema registry for validation (injected via Container)
@@ -144,20 +144,20 @@ class CDGStore:
         Initialize store, creating directory structure if needed.
 
         Args:
-            store_dir: Directory path for storing entities
+            filesystem: FileSystem implementation (required). The filesystem's
+                       base_dir determines where entities are stored.
             config: CDG configuration (optional, creates default if not provided)
             entity_factory: Function to create Entity from dict (optional)
-            filesystem: FileSystem implementation (defaults to RealFileSystem)
             cache_enabled: Enable entity caching for read performance
             schema_registry: SchemaRegistry for entity validation (optional,
                            injected via Container for schema-aware validation)
             index_manager: CDGIndexManager for schema-based indexes (optional,
                           injected via Container for indexed field maintenance)
         """
-        # FileSystem abstraction - defaults to real disk I/O
-        self._fs: FileSystem = filesystem or RealFileSystem()
+        # FileSystem abstraction - required
+        self._fs: FileSystem = filesystem
 
-        self.store_dir = Path(store_dir)
+        self.store_dir = self._fs.base_dir
         self._fs.mkdir(self.store_dir, parents=True, exist_ok=True)
 
         # Configuration - use provided config or create default

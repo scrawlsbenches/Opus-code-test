@@ -123,10 +123,10 @@ class CDGModule(ContainerModule):
 
         # Register transaction manager factory
         def create_tx_manager() -> CDGTransactionManager:
-            store_dir = self.base_dir / "entities"
-            store_dir.mkdir(parents=True, exist_ok=True)
+            # Resolve filesystem from container - it's already configured with entities_dir
+            filesystem = container.resolve(FileSystem)
             return CDGTransactionManager(
-                store_dir=store_dir,
+                filesystem=filesystem,
                 config=config,
             )
 
