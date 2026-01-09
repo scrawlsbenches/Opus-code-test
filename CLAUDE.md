@@ -1146,6 +1146,170 @@ The Five Tenets:
 
 ---
 
+## Session Handoff Protocol
+
+Handoffs preserve context across agent sessions. Use them to ensure continuity when context windows fill or sessions end.
+
+### When to Create a Handoff
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     HANDOFF DECISION MATRIX                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  CREATE A HANDOFF DOCUMENT (docs/sessions/handoff-YYYY-MM-DD.md) when:  │
+│  • Session is ending with incomplete work                               │
+│  • Context window is filling up                                         │
+│  • Complex multi-session task needs continuity                          │
+│  • You want to preserve decision rationale for next agent               │
+│                                                                          │
+│  CREATE A KNOWLEDGE TRANSFER (kt create) when:                          │
+│  • Significant learning occurred worth preserving long-term             │
+│  • Pattern or solution should be documented for future reference        │
+│  • Bug fix has lessons that shouldn't be repeated                       │
+│                                                                          │
+│  USE BOTH when:                                                         │
+│  • Ending a major session with both learnings AND pending work          │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Ending a Session (Creating Handoff)
+
+**Step 1: Create or Update Scratchpad**
+```bash
+# Create session scratchpad if not exists
+# Location: docs/sessions/scratchpad-YYYY-MM-DD-topic.md
+```
+
+Include in scratchpad:
+- SESSION OVERRIDES section (if any checklist items should be skipped)
+- Pending work with specific next steps
+- Bugs fixed with root cause analysis
+- Commits made this session
+- Any blockers or known issues
+
+**Step 2: Create Handoff Document**
+```bash
+# Create handoff document
+# Location: docs/sessions/handoff-YYYY-MM-DD.md
+```
+
+Handoff document structure:
+```markdown
+# Agent Handoff Document - YYYY-MM-DD
+
+**From:** Claude Code (model)
+**Branch:** `branch-name`
+**Status:** Ready for continuation
+
+## Quick Validation Checklist
+[Commands to verify system state]
+
+## Session Summary
+[What was done, commits made]
+
+## Key Files to Review
+[Important files with purposes]
+
+## Known Issues
+[Pre-existing problems, blockers]
+
+## Next Steps
+[Prioritized options for next agent]
+
+## How to Continue
+[Step-by-step instructions]
+```
+
+**Step 3: Commit and Push**
+```bash
+git add docs/sessions/
+git commit -m "docs: Create agent handoff document for session continuation"
+git push
+```
+
+### Starting a Session (Receiving Handoff)
+
+**Step 1: Check for Handoffs**
+```bash
+# Look for handoff documents
+ls docs/sessions/handoff-*.md | tail -3
+
+# Check for pending GoT handoffs
+python -m cortical.got handoff list --status pending
+
+# Check for draft knowledge transfers
+python -m cortical.got kt list --status draft
+```
+
+**Step 2: Read Handoff Document**
+- Read the most recent handoff document
+- Check for SESSION OVERRIDES in any scratchpad
+- Note the validation checklist
+
+**Step 3: Run Validation**
+```bash
+# Typical validation
+python -m cortical.got stats
+pip install pytest -q && python -m pytest tests/smoke/ -v --tb=short
+git log --oneline -5
+```
+
+**Step 4: Choose Next Step**
+- Review the "Next Steps" options in handoff
+- Pick based on priority and current goals
+- Update scratchpad as you work
+
+### GoT Handoff Primitives (Task-Level)
+
+For task-specific handoffs between agents:
+
+```bash
+# Initiate handoff for a specific task
+python -m cortical.got handoff initiate T-XXX \
+    --target "next-agent" \
+    --instructions "Continue from step 3..."
+
+# Accept a handoff (as receiving agent)
+python -m cortical.got handoff accept H-XXX --agent "my-agent-id"
+
+# Complete a handoff with results
+python -m cortical.got handoff complete H-XXX \
+    --agent "my-agent-id" \
+    --result '{"status": "done", "notes": "..."}'
+
+# List pending handoffs
+python -m cortical.got handoff list --status pending
+```
+
+### Knowledge Transfer for Learnings
+
+When significant learning occurs:
+
+```bash
+# Create KT document
+python -m cortical.got kt create "Session: Bug Fix Analysis" \
+    --summary "Fixed 7 bugs in KT CLI, root causes documented"
+
+# Add sections with details
+python -m cortical.got kt append KT-XXX "Root Causes" "The bugs were..."
+python -m cortical.got kt append KT-XXX "Prevention" "To prevent similar..."
+
+# Finalize when complete
+python -m cortical.got kt finalize KT-XXX
+```
+
+### Best Practices
+
+1. **Always update scratchpad** - Your future self can't read your mind
+2. **Be specific about next steps** - "Fix the bug" is useless; "Fix TypeError in cmd_kt_show line 436" is actionable
+3. **Include validation commands** - Let next agent verify system state quickly
+4. **Document blockers clearly** - What's stopping progress and why
+5. **Commit handoff docs** - They're useless if not pushed to the branch
+
+---
+
 ## Cognitive Continuity Protocol
 
 When starting a new session or continuing from a handoff:
