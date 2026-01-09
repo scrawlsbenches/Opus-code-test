@@ -301,3 +301,151 @@ python -m cortical.cli.audit discover --reset-mind
 | Union-Find | health | Grouping similar items |
 | DAG | health | Import dependency analysis |
 | PLN (Probabilistic Logic Networks) | reason | Multi-rule risk aggregation |
+
+---
+
+## GoT Deep Dive: Understanding the Data Model
+
+This section teaches how the GoT CLI works internally.
+
+### Entity Types and Storage
+
+GoT stores entities as JSON files in `.got/entities/`:
+
+| Entity | ID Prefix | File Pattern | Key Fields |
+|--------|-----------|--------------|------------|
+| Task | T- | `T-*.json` | title, status, priority, description, properties |
+| Edge | E- | `E-*.json` | from_id, to_id, edge_type, weight |
+| Decision | D- | `D-*.json` | content, rationale, status |
+| Sprint | S- | `S-*.json` | name, goal, status, task_ids |
+| Handoff | H- | `H-*.json` | task_id, target, instructions, status |
+| KnowledgeTransfer | KT- | `KT-*.json` | title, summary, sections, status |
+
+### The Task Lifecycle
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        TASK STATE MACHINE                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│    [pending] ──start──► [in_progress] ──complete──► [completed]         │
+│        │                     │                                          │
+│        └───────block────────►│◄────unblock────────                      │
+│                              │                                          │
+│                         [blocked]                                       │
+│                                                                          │
+│    Commands:                                                            │
+│    - task create → pending                                              │
+│    - task start T-XXX → in_progress                                     │
+│    - task complete T-XXX → completed (requires retrospective!)          │
+│    - task block T-XXX --reason "..." → blocked                          │
+│    - task unblock T-XXX → in_progress                                   │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Task Properties: The Extensibility Point
+
+Every task has a `properties: Dict[str, Any]` field for storing arbitrary metadata:
+
+```python
+task.properties = {
+    "retrospective": "What worked: X. What didn't: Y. Learned: Z.",
+    "category": "feature",  # feature/bugfix/refactor/docs/test
+    "estimated_effort": "2h",
+    "actual_effort": "3h"
+}
+```
+
+### Edge Types and When to Use Them
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           EDGE TYPE GUIDE                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  DEPENDENCY EDGES:                                                      │
+│  - DEPENDS_ON: T-2 depends on T-1 (T-1 must complete first)            │
+│  - BLOCKS: T-1 blocks T-2 (inverse of DEPENDS_ON)                       │
+│                                                                          │
+│  STRUCTURAL EDGES:                                                      │
+│  - CONTAINS: Sprint S-1 contains Task T-1                               │
+│  - BELONGS_TO: T-1 belongs to Epic E-1                                  │
+│                                                                          │
+│  RELATIONSHIP EDGES:                                                    │
+│  - SIMILAR: T-1 is similar to T-2 (for guidance/learning)              │
+│  - RELATED: Generic relationship                                        │
+│  - IMPLEMENTS: T-1 implements Decision D-1                              │
+│  - TESTS: T-1 tests feature in T-2                                      │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Query Language (Natural Language)
+
+```bash
+# Blocking relationships
+python -m cortical.got query "what blocks T-001"
+python -m cortical.got query "what does T-001 depend on"
+
+# Status queries
+python -m cortical.got query "blocked tasks"
+python -m cortical.got query "high priority pending"
+
+# Path queries
+python -m cortical.got query "path from T-001 to T-010"
+
+# Free-form search
+python -m cortical.got query "authentication"
+```
+
+### TransactionalGoTAdapter API
+
+The `cortical/got/adapter.py` module wraps GoT with CLI-friendly methods:
+
+| Method | Purpose | Returns |
+|--------|---------|---------|
+| `create_task(title, **kwargs)` | Create new task | Task ID (T-XXX) |
+| `get_task(task_id)` | Fetch task by ID | Task object or None |
+| `update_task(task_id, **updates)` | Update task fields | Success boolean |
+| `complete_task(task_id, retrospective)` | Mark complete | Success boolean |
+| `query(query_str)` | Natural language query | List of results |
+| `get_blocked_tasks()` | Find blocked tasks | List[(Task, reason)] |
+| `get_active_tasks()` | Find in_progress | List[Task] |
+
+### Common Patterns
+
+**Pattern 1: Task Workflow**
+```bash
+T_ID=$(python -m cortical.got task create "Fix login bug" --priority high)
+python -m cortical.got task start $T_ID
+python -m cortical.got task complete $T_ID --retrospective "Fixed by extending TTL."
+```
+
+**Pattern 2: Dependency Chain**
+```bash
+python -m cortical.got edge add T-001 T-002 DEPENDS_ON
+python -m cortical.got blocked
+```
+
+**Pattern 3: Session Handoff**
+```bash
+python -m cortical.got kt create "Session: Auth refactor" --summary "..."
+python -m cortical.got handoff initiate T-001 --target "next-agent" --instructions "..."
+```
+
+**Pattern 4: Failed Approach Tracking**
+```bash
+python -m cortical.got failure record T-001 "Tried mutex lock - caused deadlock"
+```
+
+### Validation and Recovery
+
+```bash
+python -m cortical.got validate              # Basic validation
+python -m cortical.got validate --check-refs # Deep validation
+python -m cortical.got stats                 # Statistics
+python -m cortical.got recover               # If validation fails
+python -m cortical.got backup create "pre-refactor"
+python -m cortical.got backup restore BACKUP_ID
+```
