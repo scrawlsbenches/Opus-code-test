@@ -1,7 +1,7 @@
 """
 GoT Backend Factory.
 
-Creates instances of the transactional GoT backend.
+Creates instances of the GoT backend via DI container.
 """
 
 import os
@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from cortical.got.adapter import TransactionalGoTAdapter
+    from cortical.got.api import GoTManager
 
 # Project root for default paths
 _PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -19,32 +19,30 @@ GOT_DIR = Path(os.environ.get("GOT_DIR", _PROJECT_ROOT / ".got"))
 
 
 class GoTBackendFactory:
-    """Factory for creating GoT backend instances (transactional only)."""
+    """Factory for creating GoT backend instances."""
 
     @staticmethod
     def create(
         backend: Optional[str] = None,
         got_dir: Optional[Path] = None,
-    ) -> "TransactionalGoTAdapter":
+    ) -> "GoTManager":
         """
-        Create transactional GoT backend.
+        Create GoT backend via DI container.
 
         Args:
-            backend: Ignored (kept for compatibility), always uses transactional
+            backend: Ignored (kept for compatibility)
             got_dir: Override default directory
 
         Returns:
-            TransactionalGoTAdapter instance
-
-        Raises:
-            RuntimeError: If transactional backend not available
+            GoTManager instance
         """
-        # Import here to avoid circular imports
-        from cortical.got.adapter import TransactionalGoTAdapter
+        from cortical.got.api import GoTManager
+        from cortical.core.bootstrap import create_container
 
-        return TransactionalGoTAdapter(got_dir or GOT_DIR)
+        container = create_container(got_dir=got_dir or GOT_DIR)
+        return container.resolve(GoTManager)
 
     @staticmethod
     def get_available_backends() -> List[str]:
-        """Get list of available backends (transactional only)."""
+        """Get list of available backends."""
         return ["transactional"]

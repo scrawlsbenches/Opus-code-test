@@ -17,9 +17,10 @@ from datetime import datetime, timezone
 
 import pytest
 
-from cortical.got.adapter import TransactionalGoTAdapter
+from cortical.got.api import GoTManager
 from cortical.got.types import KnowledgeTransfer, Task, Decision, Handoff
 from cortical.got.errors import TransactionError
+from cortical.core.bootstrap import create_container
 
 
 # ============================================================================
@@ -27,13 +28,14 @@ from cortical.got.errors import TransactionError
 # ============================================================================
 
 def _create_tx_manager(got_dir, use_memory=True):
-    """Create a TransactionalGoTAdapter for testing.
+    """Create a GoTManager for testing.
 
     Args:
         got_dir: Directory for GoT storage
         use_memory: Ignored (always uses file storage for persistence tests)
     """
-    return TransactionalGoTAdapter(got_dir)
+    container = create_container(got_dir=got_dir)
+    return container.resolve(GoTManager)
 
 
 # ============================================================================
