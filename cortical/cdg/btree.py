@@ -23,18 +23,18 @@ Usage:
     # Create index
     btree = BTreeIndex()
 
-    # Insert entries
-    btree.insert("2026-01-01", "T-001")
-    btree.insert("2026-01-05", "T-002")
-    btree.insert("2026-01-01", "T-003")  # Same key, different value
+    # Insert entries (key -> entity_id)
+    btree.insert("2026-01-01", "E-001")
+    btree.insert("2026-01-05", "E-002")
+    btree.insert("2026-01-01", "E-003")  # Same key, different entity
 
     # Point lookup
-    ids = btree.lookup_eq("2026-01-01")  # {"T-001", "T-003"}
+    ids = btree.lookup_eq("2026-01-01")  # {"E-001", "E-003"}
 
     # Range queries
-    ids = btree.lookup_gt("2026-01-01")   # {"T-002"}
-    ids = btree.lookup_gte("2026-01-01")  # {"T-001", "T-002", "T-003"}
-    ids = btree.lookup_lt("2026-01-05")   # {"T-001", "T-003"}
+    ids = btree.lookup_gt("2026-01-01")   # {"E-002"}
+    ids = btree.lookup_gte("2026-01-01")  # {"E-001", "E-002", "E-003"}
+    ids = btree.lookup_lt("2026-01-05")   # {"E-001", "E-003"}
     ids = btree.lookup_range("2026-01-01", "2026-01-10")  # All
 
     # Serialization

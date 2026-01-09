@@ -333,15 +333,15 @@ class TestRuntimeIndexAPI:
     def test_create_index_hash(self, index_manager):
         """Create a runtime hash index."""
         idx_def = index_manager.create_index(
-            name="task_assignee_idx",
+            name="entity_author_idx",
             entity_type="test_entity",
-            fields=["assignee"],
+            fields=["author"],
             index_type="hash"
         )
 
-        assert idx_def.name == "task_assignee_idx"
+        assert idx_def.name == "entity_author_idx"
         assert idx_def.entity_type == "test_entity"
-        assert idx_def.fields == ["assignee"]
+        assert idx_def.fields == ["author"]
         assert idx_def.index_type == "hash"
         assert idx_def.source == "runtime"
         assert idx_def.config.created_at is not None
@@ -372,7 +372,7 @@ class TestRuntimeIndexAPI:
         """Create index with custom configuration."""
         config = IndexConfig(
             async_build=True,
-            description="Index for fast assignee lookups"
+            description="Index for fast author lookups"
         )
         idx_def = index_manager.create_index(
             name="configured_idx",
@@ -381,7 +381,7 @@ class TestRuntimeIndexAPI:
             options=config
         )
 
-        assert idx_def.config.description == "Index for fast assignee lookups"
+        assert idx_def.config.description == "Index for fast author lookups"
 
     def test_create_index_duplicate_name_raises(self, index_manager):
         """Creating index with duplicate name raises error."""

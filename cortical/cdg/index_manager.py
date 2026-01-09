@@ -12,22 +12,22 @@ This module provides automatic index management for CDG entities with two modes:
    - Useful for workload-specific or environment-specific indexes
 
 Example schema with indexes:
-    class TaskSchema(BaseSchema):
+    class DocumentSchema(BaseSchema):
         fields = {
             "id": Field("id", FieldType.STRING, required=True),
-            "status": Field("status", FieldType.STRING, indexed=True),  # Hash index
+            "category": Field("category", FieldType.STRING, indexed=True),  # Hash index
             "created_at": Field("created_at", FieldType.DATETIME, indexed=True, index_type="btree"),
         }
         indexes = [
-            'status',                           # Single field (redundant with Field.indexed)
-            ('priority', 'created_at'),         # Composite btree index
+            'category',                         # Single field (redundant with Field.indexed)
+            ('author', 'created_at'),           # Composite btree index
         ]
 
 Example runtime index creation:
     index_manager.create_index(
-        name="task_assignee_idx",
-        entity_type="task",
-        fields=["assignee"],
+        name="document_author_idx",
+        entity_type="document",
+        fields=["author"],
         index_type="hash",
         options=IndexConfig(async_build=True)
     )
@@ -96,9 +96,9 @@ class IndexConfig:
         config = IndexConfig(
             async_build=True,
             storage_budget_mb=100,
-            description="Index for fast status lookups"
+            description="Index for fast category lookups"
         )
-        index_manager.create_index("status_idx", "task", ["status"], "hash", config)
+        index_manager.create_index("category_idx", "document", ["category"], "hash", config)
     """
     # Build behavior
     async_build: bool = False
@@ -154,10 +154,10 @@ class IndexDefinition:
     This is the internal representation used by CDGIndexManager.
     """
     name: str
-    """Unique index name (e.g., 'status_idx', 'priority_created_at_idx')."""
+    """Unique index name (e.g., 'category_idx', 'priority_created_at_idx')."""
 
     entity_type: str
-    """Entity type this index applies to (e.g., 'task')."""
+    """Entity type this index applies to (e.g., 'document')."""
 
     fields: List[str]
     """List of field names (single for simple index, multiple for composite)."""
@@ -209,19 +209,19 @@ class CDGIndexManager:
 
         # Called by CDGStore on write (automatic)
         index_manager.update_index(
-            "task", "T-001",
-            old_data={"status": "pending"},
-            new_data={"status": "completed"}
+            "document", "E-001",
+            old_data={"category": "draft"},
+            new_data={"category": "published"}
         )
 
         # Lookup by index
-        task_ids = index_manager.lookup("task", "status", "completed")
+        entity_ids = index_manager.lookup("document", "category", "published")
 
         # Create runtime index
         index_manager.create_index(
-            name="task_assignee_idx",
-            entity_type="task",
-            fields=["assignee"],
+            name="document_author_idx",
+            entity_type="document",
+            fields=["author"],
             index_type="hash"
         )
 
@@ -322,7 +322,7 @@ class CDGIndexManager:
             List of IndexDefinition objects
 
         Example:
-            definitions = index_manager.get_all_index_definitions("task")
+            definitions = index_manager.get_all_index_definitions("document")
             for idx_def in definitions:
                 print(f"{idx_def.name}: {idx_def.fields} ({idx_def.index_type})")
         """
@@ -395,8 +395,8 @@ class CDGIndexManager:
         Called by CDGStore on write() and delete().
 
         Args:
-            entity_type: Type of entity (e.g., "task")
-            entity_id: Entity ID (e.g., "T-001")
+            entity_type: Type of entity (e.g., "document")
+            entity_id: Entity ID (e.g., "E-001")
             old_data: Previous entity data (None if new entity)
             new_data: New entity data (None if deleted)
         """
@@ -489,16 +489,16 @@ class CDGIndexManager:
         Look up entity IDs by indexed field value.
 
         Args:
-            entity_type: Type of entity (e.g., "task")
-            field_name: Indexed field name (e.g., "status")
-            value: Value to search for (e.g., "completed")
+            entity_type: Type of entity (e.g., "document")
+            field_name: Indexed field name (e.g., "category")
+            value: Value to search for (e.g., "published")
 
         Returns:
             Set of entity IDs matching the value
 
         Example:
-            # Find all completed tasks
-            completed_ids = index_manager.lookup("task", "status", "completed")
+            # Find all published documents
+            entity_ids = index_manager.lookup("document", "category", "published")
         """
         if entity_type not in self._indexes:
             return set()
@@ -608,7 +608,7 @@ class CDGIndexManager:
         For hash indexes, raises ValueError. Use lookup() for equality.
 
         Args:
-            entity_type: Type of entity (e.g., "task")
+            entity_type: Type of entity (e.g., "document")
             field_name: Indexed field name (must have btree index)
             start_value: Lower bound (None = no lower bound)
             end_value: Upper bound (None = no upper bound)
@@ -622,9 +622,9 @@ class CDGIndexManager:
             ValueError: If field does not have a btree index
 
         Example:
-            # Find tasks created after 2026-01-01
+            # Find entities created after 2026-01-01
             ids = index_manager.lookup_range(
-                "task", "created_at",
+                "document", "created_at",
                 start_value="2026-01-01",
                 start_inclusive=False
             )
@@ -791,8 +791,8 @@ class CDGIndexManager:
         Useful for workload-specific or environment-specific indexes.
 
         Args:
-            name: Unique index name (e.g., "task_assignee_idx")
-            entity_type: Entity type to index (e.g., "task")
+            name: Unique index name (e.g., "document_author_idx")
+            entity_type: Entity type to index (e.g., "document")
             fields: List of field names to index (single or composite)
             index_type: "hash" or "btree" (default: "hash")
             options: Additional configuration options
@@ -806,15 +806,15 @@ class CDGIndexManager:
         Example:
             # Create single-field hash index
             index_manager.create_index(
-                name="task_assignee_idx",
-                entity_type="task",
-                fields=["assignee"]
+                name="document_author_idx",
+                entity_type="document",
+                fields=["author"]
             )
 
             # Create composite btree index
             index_manager.create_index(
-                name="task_priority_date_idx",
-                entity_type="task",
+                name="document_priority_date_idx",
+                entity_type="document",
                 fields=["priority", "created_at"],
                 index_type="btree"
             )
@@ -890,7 +890,7 @@ class CDGIndexManager:
             ValueError: If attempting to drop a schema-defined index
 
         Example:
-            index_manager.drop_index("task_assignee_idx")
+            index_manager.drop_index("document_author_idx")
         """
         with self._lock:
             # Check if it's a runtime index
@@ -945,7 +945,7 @@ class CDGIndexManager:
                 print(f"{idx.name}: {idx.entity_type}.{idx.fields}")
 
             # List indexes for a specific entity type
-            task_indexes = index_manager.list_indexes("task")
+            doc_indexes = index_manager.list_indexes("document")
         """
         if entity_type is not None:
             return self.get_all_index_definitions(entity_type)
@@ -976,7 +976,7 @@ class CDGIndexManager:
             fields: List of field names
 
         Returns:
-            String key for index storage (e.g., "status" or "priority__created_at")
+            String key for index storage (e.g., "category" or "priority__created_at")
         """
         return "__".join(fields)
 

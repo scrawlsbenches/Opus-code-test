@@ -28,7 +28,7 @@ class TestBTreeIndexBasics:
     def test_insert_single_entry(self):
         """Insert a single entry."""
         btree = BTreeIndex()
-        btree.insert("2026-01-01", "T-001")
+        btree.insert("2026-01-01", "E-001")
 
         assert len(btree) == 1
         assert btree
@@ -36,57 +36,57 @@ class TestBTreeIndexBasics:
     def test_insert_multiple_entries_same_key(self):
         """Multiple entries with same key."""
         btree = BTreeIndex()
-        btree.insert("2026-01-01", "T-001")
-        btree.insert("2026-01-01", "T-002")
-        btree.insert("2026-01-01", "T-003")
+        btree.insert("2026-01-01", "E-001")
+        btree.insert("2026-01-01", "E-002")
+        btree.insert("2026-01-01", "E-003")
 
         assert len(btree) == 3
         result = btree.lookup_eq("2026-01-01")
-        assert result == {"T-001", "T-002", "T-003"}
+        assert result == {"E-001", "E-002", "E-003"}
 
     def test_insert_multiple_entries_different_keys(self):
         """Multiple entries with different keys."""
         btree = BTreeIndex()
-        btree.insert("2026-01-01", "T-001")
-        btree.insert("2026-01-05", "T-002")
-        btree.insert("2026-01-10", "T-003")
+        btree.insert("2026-01-01", "E-001")
+        btree.insert("2026-01-05", "E-002")
+        btree.insert("2026-01-10", "E-003")
 
         assert len(btree) == 3
 
     def test_remove_entry(self):
         """Remove an entry."""
         btree = BTreeIndex()
-        btree.insert("2026-01-01", "T-001")
-        btree.insert("2026-01-01", "T-002")
+        btree.insert("2026-01-01", "E-001")
+        btree.insert("2026-01-01", "E-002")
 
-        result = btree.remove("2026-01-01", "T-001")
+        result = btree.remove("2026-01-01", "E-001")
         assert result is True
         assert len(btree) == 1
-        assert btree.lookup_eq("2026-01-01") == {"T-002"}
+        assert btree.lookup_eq("2026-01-01") == {"E-002"}
 
     def test_remove_nonexistent_entry(self):
         """Remove a nonexistent entry returns False."""
         btree = BTreeIndex()
-        btree.insert("2026-01-01", "T-001")
+        btree.insert("2026-01-01", "E-001")
 
-        result = btree.remove("2026-01-01", "T-999")
+        result = btree.remove("2026-01-01", "E-999")
         assert result is False
         assert len(btree) == 1
 
     def test_remove_last_entry_for_key(self):
         """Removing last entry for a key removes the key."""
         btree = BTreeIndex()
-        btree.insert("2026-01-01", "T-001")
+        btree.insert("2026-01-01", "E-001")
 
-        btree.remove("2026-01-01", "T-001")
+        btree.remove("2026-01-01", "E-001")
         assert len(btree) == 0
         assert btree.lookup_eq("2026-01-01") == set()
 
     def test_clear(self):
         """Clear removes all entries."""
         btree = BTreeIndex()
-        btree.insert("2026-01-01", "T-001")
-        btree.insert("2026-01-05", "T-002")
+        btree.insert("2026-01-01", "E-001")
+        btree.insert("2026-01-05", "E-002")
 
         btree.clear()
         assert len(btree) == 0
@@ -98,17 +98,17 @@ class TestBTreeIndexEqualityLookup:
     def test_lookup_eq_found(self):
         """Lookup existing key."""
         btree = BTreeIndex()
-        btree.insert("pending", "T-001")
-        btree.insert("pending", "T-002")
-        btree.insert("completed", "T-003")
+        btree.insert("pending", "E-001")
+        btree.insert("pending", "E-002")
+        btree.insert("completed", "E-003")
 
         result = btree.lookup_eq("pending")
-        assert result == {"T-001", "T-002"}
+        assert result == {"E-001", "E-002"}
 
     def test_lookup_eq_not_found(self):
         """Lookup nonexistent key returns empty set."""
         btree = BTreeIndex()
-        btree.insert("pending", "T-001")
+        btree.insert("pending", "E-001")
 
         result = btree.lookup_eq("completed")
         assert result == set()
@@ -116,13 +116,13 @@ class TestBTreeIndexEqualityLookup:
     def test_lookup_eq_returns_copy(self):
         """Lookup returns a copy, not the original set."""
         btree = BTreeIndex()
-        btree.insert("pending", "T-001")
+        btree.insert("pending", "E-001")
 
         result = btree.lookup_eq("pending")
-        result.add("T-999")
+        result.add("E-999")
 
         # Original should be unchanged
-        assert btree.lookup_eq("pending") == {"T-001"}
+        assert btree.lookup_eq("pending") == {"E-001"}
 
 
 class TestBTreeIndexRangeQueries:
@@ -132,17 +132,17 @@ class TestBTreeIndexRangeQueries:
     def date_btree(self):
         """BTree with date keys."""
         btree = BTreeIndex()
-        btree.insert("2026-01-01", "T-001")
-        btree.insert("2026-01-05", "T-002")
-        btree.insert("2026-01-10", "T-003")
-        btree.insert("2026-01-15", "T-004")
-        btree.insert("2026-01-20", "T-005")
+        btree.insert("2026-01-01", "E-001")
+        btree.insert("2026-01-05", "E-002")
+        btree.insert("2026-01-10", "E-003")
+        btree.insert("2026-01-15", "E-004")
+        btree.insert("2026-01-20", "E-005")
         return btree
 
     def test_lookup_gt(self, date_btree):
         """Greater than lookup."""
         result = date_btree.lookup_gt("2026-01-10")
-        assert result == {"T-004", "T-005"}
+        assert result == {"E-004", "E-005"}
 
     def test_lookup_gt_none_match(self, date_btree):
         """Greater than with no matches."""
@@ -152,12 +152,12 @@ class TestBTreeIndexRangeQueries:
     def test_lookup_gte(self, date_btree):
         """Greater than or equal lookup."""
         result = date_btree.lookup_gte("2026-01-10")
-        assert result == {"T-003", "T-004", "T-005"}
+        assert result == {"E-003", "E-004", "E-005"}
 
     def test_lookup_lt(self, date_btree):
         """Less than lookup."""
         result = date_btree.lookup_lt("2026-01-10")
-        assert result == {"T-001", "T-002"}
+        assert result == {"E-001", "E-002"}
 
     def test_lookup_lt_none_match(self, date_btree):
         """Less than with no matches."""
@@ -167,7 +167,7 @@ class TestBTreeIndexRangeQueries:
     def test_lookup_lte(self, date_btree):
         """Less than or equal lookup."""
         result = date_btree.lookup_lte("2026-01-10")
-        assert result == {"T-001", "T-002", "T-003"}
+        assert result == {"E-001", "E-002", "E-003"}
 
     def test_lookup_range_inclusive(self, date_btree):
         """Range query with inclusive bounds."""
@@ -177,7 +177,7 @@ class TestBTreeIndexRangeQueries:
             start_inclusive=True,
             end_inclusive=True
         )
-        assert result == {"T-002", "T-003", "T-004"}
+        assert result == {"E-002", "E-003", "E-004"}
 
     def test_lookup_range_exclusive(self, date_btree):
         """Range query with exclusive bounds."""
@@ -187,7 +187,7 @@ class TestBTreeIndexRangeQueries:
             start_inclusive=False,
             end_inclusive=False
         )
-        assert result == {"T-003"}
+        assert result == {"E-003"}
 
     def test_lookup_range_no_lower_bound(self, date_btree):
         """Range query with no lower bound."""
@@ -196,7 +196,7 @@ class TestBTreeIndexRangeQueries:
             end_key="2026-01-10",
             end_inclusive=True
         )
-        assert result == {"T-001", "T-002", "T-003"}
+        assert result == {"E-001", "E-002", "E-003"}
 
     def test_lookup_range_no_upper_bound(self, date_btree):
         """Range query with no upper bound."""
@@ -205,17 +205,17 @@ class TestBTreeIndexRangeQueries:
             end_key=None,
             start_inclusive=True
         )
-        assert result == {"T-003", "T-004", "T-005"}
+        assert result == {"E-003", "E-004", "E-005"}
 
     def test_lookup_range_all(self, date_btree):
         """Range query for all entries."""
         result = date_btree.lookup_range()
-        assert result == {"T-001", "T-002", "T-003", "T-004", "T-005"}
+        assert result == {"E-001", "E-002", "E-003", "E-004", "E-005"}
 
     def test_get_all(self, date_btree):
         """Get all entity IDs."""
         result = date_btree.get_all()
-        assert result == {"T-001", "T-002", "T-003", "T-004", "T-005"}
+        assert result == {"E-001", "E-002", "E-003", "E-004", "E-005"}
 
 
 class TestBTreeIndexNumericKeys:
@@ -225,27 +225,27 @@ class TestBTreeIndexNumericKeys:
     def numeric_btree(self):
         """BTree with integer keys (priority levels)."""
         btree = BTreeIndex()
-        btree.insert(1, "T-LOW1")
-        btree.insert(1, "T-LOW2")
-        btree.insert(5, "T-MED")
-        btree.insert(10, "T-HIGH")
-        btree.insert(10, "T-HIGH2")
+        btree.insert(1, "E-LOW1")
+        btree.insert(1, "E-LOW2")
+        btree.insert(5, "E-MED")
+        btree.insert(10, "E-HIGH")
+        btree.insert(10, "E-HIGH2")
         return btree
 
     def test_numeric_equality(self, numeric_btree):
         """Equality lookup with numeric keys."""
         result = numeric_btree.lookup_eq(10)
-        assert result == {"T-HIGH", "T-HIGH2"}
+        assert result == {"E-HIGH", "E-HIGH2"}
 
     def test_numeric_gt(self, numeric_btree):
         """Greater than with numeric keys."""
         result = numeric_btree.lookup_gt(1)
-        assert result == {"T-MED", "T-HIGH", "T-HIGH2"}
+        assert result == {"E-MED", "E-HIGH", "E-HIGH2"}
 
     def test_numeric_lt(self, numeric_btree):
         """Less than with numeric keys."""
         result = numeric_btree.lookup_lt(10)
-        assert result == {"T-LOW1", "T-LOW2", "T-MED"}
+        assert result == {"E-LOW1", "E-LOW2", "E-MED"}
 
 
 class TestBTreeIndexSerialization:
@@ -263,15 +263,15 @@ class TestBTreeIndexSerialization:
     def test_to_dict_with_entries(self):
         """Serialize index with entries."""
         btree = BTreeIndex()
-        btree.insert("2026-01-01", "T-001")
-        btree.insert("2026-01-01", "T-002")
-        btree.insert("2026-01-05", "T-003")
+        btree.insert("2026-01-01", "E-001")
+        btree.insert("2026-01-01", "E-002")
+        btree.insert("2026-01-05", "E-003")
 
         data = btree.to_dict()
 
         assert "2026-01-01" in data["keys"]
         assert "2026-01-05" in data["keys"]
-        assert set(data["entries"]["2026-01-01"]) == {"T-001", "T-002"}
+        assert set(data["entries"]["2026-01-01"]) == {"E-001", "E-002"}
         assert data["count"] == 3
 
     def test_from_dict_empty(self):
@@ -286,29 +286,29 @@ class TestBTreeIndexSerialization:
         data = {
             "keys": ["2026-01-01", "2026-01-05"],
             "entries": {
-                "2026-01-01": ["T-001", "T-002"],
-                "2026-01-05": ["T-003"]
+                "2026-01-01": ["E-001", "E-002"],
+                "2026-01-05": ["E-003"]
             },
             "count": 3
         }
         btree = BTreeIndex.from_dict(data)
 
         assert len(btree) == 3
-        assert btree.lookup_eq("2026-01-01") == {"T-001", "T-002"}
-        assert btree.lookup_eq("2026-01-05") == {"T-003"}
+        assert btree.lookup_eq("2026-01-01") == {"E-001", "E-002"}
+        assert btree.lookup_eq("2026-01-05") == {"E-003"}
 
     def test_roundtrip(self):
         """Serialize and deserialize preserves data."""
         btree1 = BTreeIndex()
-        btree1.insert("2026-01-01", "T-001")
-        btree1.insert("2026-01-05", "T-002")
-        btree1.insert("2026-01-10", "T-003")
+        btree1.insert("2026-01-01", "E-001")
+        btree1.insert("2026-01-05", "E-002")
+        btree1.insert("2026-01-10", "E-003")
 
         data = btree1.to_dict()
         btree2 = BTreeIndex.from_dict(data)
 
-        assert btree2.lookup_eq("2026-01-01") == {"T-001"}
-        assert btree2.lookup_gt("2026-01-01") == {"T-002", "T-003"}
+        assert btree2.lookup_eq("2026-01-01") == {"E-001"}
+        assert btree2.lookup_gt("2026-01-01") == {"E-002", "E-003"}
         assert len(btree2) == 3
 
 
@@ -328,9 +328,9 @@ class TestBTreeIndexStats:
     def test_stats_with_entries(self):
         """Stats for index with entries."""
         btree = BTreeIndex()
-        btree.insert("2026-01-01", "T-001")
-        btree.insert("2026-01-01", "T-002")
-        btree.insert("2026-01-20", "T-003")
+        btree.insert("2026-01-01", "E-001")
+        btree.insert("2026-01-01", "E-002")
+        btree.insert("2026-01-20", "E-003")
 
         stats = btree.stats()
 
@@ -343,9 +343,9 @@ class TestBTreeIndexStats:
     def test_get_distinct_keys(self):
         """Get distinct keys in sorted order."""
         btree = BTreeIndex()
-        btree.insert("2026-01-10", "T-002")
-        btree.insert("2026-01-01", "T-001")
-        btree.insert("2026-01-20", "T-003")
+        btree.insert("2026-01-10", "E-002")
+        btree.insert("2026-01-01", "E-001")
+        btree.insert("2026-01-20", "E-003")
 
         keys = btree.get_distinct_keys()
         assert keys == ["2026-01-01", "2026-01-10", "2026-01-20"]
@@ -353,9 +353,9 @@ class TestBTreeIndexStats:
     def test_get_min_max_key(self):
         """Get min and max keys."""
         btree = BTreeIndex()
-        btree.insert("2026-01-10", "T-002")
-        btree.insert("2026-01-01", "T-001")
-        btree.insert("2026-01-20", "T-003")
+        btree.insert("2026-01-10", "E-002")
+        btree.insert("2026-01-01", "E-001")
+        btree.insert("2026-01-20", "E-003")
 
         assert btree.get_min_key() == "2026-01-01"
         assert btree.get_max_key() == "2026-01-20"
@@ -367,66 +367,66 @@ class TestBTreeIndexKeyNormalization:
     def test_string_keys(self):
         """String keys are stored as-is."""
         btree = BTreeIndex()
-        btree.insert("alpha", "T-001")
-        btree.insert("beta", "T-002")
-        btree.insert("gamma", "T-003")
+        btree.insert("alpha", "E-001")
+        btree.insert("beta", "E-002")
+        btree.insert("gamma", "E-003")
 
-        assert btree.lookup_eq("alpha") == {"T-001"}
+        assert btree.lookup_eq("alpha") == {"E-001"}
         keys = btree.get_distinct_keys()
         assert keys == ["alpha", "beta", "gamma"]
 
     def test_integer_keys_sorted_correctly(self):
         """Integer keys sort numerically, not lexicographically."""
         btree = BTreeIndex()
-        btree.insert(1, "T-001")
-        btree.insert(10, "T-002")
-        btree.insert(2, "T-003")
-        btree.insert(100, "T-004")
+        btree.insert(1, "E-001")
+        btree.insert(10, "E-002")
+        btree.insert(2, "E-003")
+        btree.insert(100, "E-004")
 
         # Range queries should work correctly
         result = btree.lookup_lt(10)
-        assert result == {"T-001", "T-003"}
+        assert result == {"E-001", "E-003"}
 
         result = btree.lookup_gt(2)
-        assert result == {"T-002", "T-004"}
+        assert result == {"E-002", "E-004"}
 
     def test_negative_integers_sort_correctly(self):
         """Negative integers sort before positive integers."""
         btree = BTreeIndex()
-        btree.insert(-10, "T-NEG10")
-        btree.insert(-1, "T-NEG1")
-        btree.insert(0, "T-ZERO")
-        btree.insert(1, "T-POS1")
-        btree.insert(10, "T-POS10")
+        btree.insert(-10, "E-NEG10")
+        btree.insert(-1, "E-NEG1")
+        btree.insert(0, "E-ZERO")
+        btree.insert(1, "E-POS1")
+        btree.insert(10, "E-POS10")
 
         # Negative numbers should sort before positive
         result = btree.lookup_lt(0)
-        assert result == {"T-NEG10", "T-NEG1"}
+        assert result == {"E-NEG10", "E-NEG1"}
 
         result = btree.lookup_lte(0)
-        assert result == {"T-NEG10", "T-NEG1", "T-ZERO"}
+        assert result == {"E-NEG10", "E-NEG1", "E-ZERO"}
 
         result = btree.lookup_gt(-1)
-        assert result == {"T-ZERO", "T-POS1", "T-POS10"}
+        assert result == {"E-ZERO", "E-POS1", "E-POS10"}
 
         # Check full ordering
         result = btree.lookup_range(start_key=-5, end_key=5)
-        assert result == {"T-NEG1", "T-ZERO", "T-POS1"}
+        assert result == {"E-NEG1", "E-ZERO", "E-POS1"}
 
     def test_none_key(self):
         """None key is handled specially."""
         btree = BTreeIndex()
-        btree.insert(None, "T-NULL")
-        btree.insert("value", "T-001")
+        btree.insert(None, "E-NULL")
+        btree.insert("value", "E-001")
 
-        assert btree.lookup_eq(None) == {"T-NULL"}
-        assert btree.lookup_eq("value") == {"T-001"}
+        assert btree.lookup_eq(None) == {"E-NULL"}
+        assert btree.lookup_eq("value") == {"E-001"}
 
     def test_boolean_keys(self):
         """Boolean keys are normalized to strings."""
         btree = BTreeIndex()
-        btree.insert(True, "T-TRUE")
-        btree.insert(False, "T-FALSE")
+        btree.insert(True, "E-TRUE")
+        btree.insert(False, "E-FALSE")
 
-        assert btree.lookup_eq(True) == {"T-TRUE"}
-        assert btree.lookup_eq(False) == {"T-FALSE"}
+        assert btree.lookup_eq(True) == {"E-TRUE"}
+        assert btree.lookup_eq(False) == {"E-FALSE"}
