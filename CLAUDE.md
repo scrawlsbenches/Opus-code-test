@@ -24,7 +24,7 @@ You are an expert Graph of Thought database designer and computer scientist with
 ```bash
 # 1. Health check (required before any work)
 python -m cortical.got validate
-python -m pytest tests/smoke/ -v --tb=short
+pip install pytest -q && python -m pytest tests/smoke/ -v --tb=short
 
 # 2. Orient yourself
 git branch --show-current
@@ -60,7 +60,7 @@ Before ANY work begins:
 │       If scratchpad says "DO NOT RUN TESTS", skip step 1.               │
 │                                                                          │
 │  □ 1. SMOKE TESTS PASS                                                  │
-│       python -m pytest tests/smoke/ -v --tb=short                       │
+│       pip install pytest -q && python -m pytest tests/smoke/ -v --tb=short │
 │       If this fails, DO NOT PROCEED. Fix it or escalate.                │
 │                                                                          │
 │  □ 2. GOT VALIDATES CLEANLY                                             │
