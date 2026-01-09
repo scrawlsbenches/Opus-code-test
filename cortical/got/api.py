@@ -5,7 +5,9 @@ Provides convenient context managers and methods for working with the GoT
 transactional system. This is the primary user-facing interface.
 
 Example:
-    >>> manager = GoTManager("/path/to/.got")
+    >>> from cortical.core.bootstrap import create_container
+    >>> container = create_container(got_dir=Path(".got"))
+    >>> manager = container.resolve(GoTManager)
     >>>
     >>> # Single-operation methods
     >>> task = manager.create_task("Implement feature", priority="high")
@@ -128,7 +130,9 @@ class GoTManager:
     and convenient methods for common tasks.
 
     Example:
-        manager = GoTManager("/path/to/.got")
+        from cortical.core.bootstrap import create_container
+        container = create_container(got_dir=Path(".got"))
+        manager = container.resolve(GoTManager)
 
         with manager.transaction() as tx:
             task = tx.create_task("Implement feature", priority="high")
@@ -149,7 +153,6 @@ class GoTManager:
 
     def __init__(
         self,
-        got_dir: Path,
         durability: DurabilityMode = DurabilityMode.BALANCED,
         cache_enabled: bool = True,  # Deprecated: caching now handled by CDGStore
         *,
@@ -160,7 +163,6 @@ class GoTManager:
         Initialize GoT manager with injected dependencies.
 
         Args:
-            got_dir: Base directory for GoT storage
             durability: Durability mode controlling fsync behavior (default: BALANCED)
             cache_enabled: DEPRECATED - Caching is now handled by CDGStore.
                           This parameter is ignored but kept for backwards compatibility.
@@ -187,7 +189,6 @@ class GoTManager:
                 f"schema_registry is required and must be SchemaRegistry instance, got {type(schema_registry).__name__}"
             )
 
-        self.got_dir = Path(got_dir)
         self.durability = durability
         self.tx_manager = tx_manager
         self._schema_registry = schema_registry
@@ -203,10 +204,38 @@ class GoTManager:
         )
 
     @property
+    def base_dir(self) -> Path:
+        """
+        Get base directory for GoT storage (e.g., .got/).
+
+        Derived from CDG store's store_dir parent.
+        """
+        return self.tx_manager.store.store_dir.parent
+
+    @property
+    def got_dir(self) -> Path:
+        """
+        Deprecated: Use base_dir instead.
+
+        This property is retained for backward compatibility with code
+        that accessed manager.got_dir. New code should use base_dir.
+        """
+        return self.base_dir
+
+    @property
+    def entities_dir(self) -> Path:
+        """
+        Get entities directory (e.g., .got/entities/).
+
+        Derived from CDG store's store_dir.
+        """
+        return self.tx_manager.store.store_dir
+
+    @property
     def sync_manager(self) -> SyncManager:
         """Get sync manager (lazy initialization)."""
         if self._sync_manager is None:
-            self._sync_manager = SyncManager(self.got_dir)
+            self._sync_manager = SyncManager(self.base_dir)
         return self._sync_manager
 
     @property
@@ -218,7 +247,7 @@ class GoTManager:
             config = CDGConfig.for_got()
 
             self._recovery_manager = CDGRecoveryManager(
-                store_dir=self.got_dir / "entities",
+                store_dir=self.entities_dir,
                 config=config,
                 entity_factory=lambda d: d  # GoT uses its own entity factory
             )
@@ -327,7 +356,8 @@ class GoTManager:
             Dictionary with counts of each entity type loaded
 
         Example:
-            >>> manager = GoTManager(got_dir)
+            >>> container = create_container(got_dir=Path(".got"))
+            >>> manager = container.resolve(GoTManager)
             >>> counts = manager.load_all()
             >>> print(f"Loaded {counts['tasks']} tasks, {counts['edges']} edges")
 
@@ -1549,8 +1579,7 @@ class GoTManager:
             return None
 
         # Fallback: read from disk
-        entities_dir = self.got_dir / "entities"
-        handoff_file = entities_dir / f"{handoff_id}.json"
+        handoff_file = self.entities_dir / f"{handoff_id}.json"
         if not handoff_file.exists():
             return None
 
@@ -1910,7 +1939,9 @@ class TransactionContext:
         Args:
             task_id: The task that was completed
         """
-        entities_dir = self.tx_manager.got_dir / "entities"
+        if self._got_manager is None:
+            return
+        entities_dir = self._got_manager.entities_dir
         if not entities_dir.exists():
             return
 

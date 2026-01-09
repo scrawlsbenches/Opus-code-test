@@ -68,12 +68,14 @@ python3 -c "
 from cortical.got.expression.registry import FunctionRegistry
 from cortical.got.expression.executor import QueryExecutor
 from cortical.got import GoTManager
+from cortical.core.bootstrap import create_container
 from pathlib import Path
 import tempfile
 
 # Create temporary GoT for testing
 with tempfile.TemporaryDirectory() as tmpdir:
-    got = GoTManager(Path(tmpdir))
+    container = create_container(got_dir=Path(tmpdir))
+    got = container.resolve(GoTManager)
     executor = QueryExecutor(got)
 
     # Try to execute a simple function if available
