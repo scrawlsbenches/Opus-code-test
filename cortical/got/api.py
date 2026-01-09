@@ -841,12 +841,17 @@ class GoTManager:
         """
         return self.add_edge(sprint_id, task_id, EdgeTypes.CONTAINS)
 
-    def delete_edge(self, edge_id: str) -> bool:
+    def delete_edge(
+        self,
+        edge_id: str,
+        tx: Optional['TransactionContext'] = None
+    ) -> bool:
         """
         Delete an edge by ID.
 
         Args:
             edge_id: Edge identifier to delete
+            tx: Optional transaction context (creates one if not provided)
 
         Returns:
             True if edge was found and deleted, False if not found
@@ -861,8 +866,13 @@ class GoTManager:
         if edge is None:
             return False
 
-        with self.transaction() as tx:
+        if tx is not None:
+            # Use provided transaction
             tx.tx_manager.delete(tx.tx, edge_id)
+        else:
+            # Create our own transaction
+            with self.transaction() as new_tx:
+                new_tx.tx_manager.delete(new_tx.tx, edge_id)
 
         return True
 
@@ -882,7 +892,8 @@ class GoTManager:
             if (edge.source_id == sprint_id and
                 edge.target_id == task_id and
                 edge.edge_type == EdgeTypes.CONTAINS):
-                return self.delete_edge(edge.id)
+                with self.transaction() as tx:
+                    return self.delete_edge(edge.id, tx=tx)
         return False
 
     def get_sprint_tasks(self, sprint_id: str) -> List[Task]:
