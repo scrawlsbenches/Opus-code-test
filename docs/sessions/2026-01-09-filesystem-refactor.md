@@ -43,7 +43,31 @@ Refactoring CDG to make FileSystem a required first-class dependency that encaps
 - [x] tests/behavioral/test_cdg_history_integrity.py (all CDGStore usages)
 - [x] cortical/core/modules/cdg_module.py (fixed duplicate filesystem argument)
 
-## Design Decisions
+## Design Discussions (Pending)
+
+### Are entity_factory and index_manager needed?
+
+**Question**: As database designers, do we actually need these classes based on:
+1. What the code is actually doing
+2. What is needed for the system to function well
+3. Theoretical database design principles
+
+**To investigate when we return to this**:
+- What does entity_factory actually do? Is it just JSON deserialization?
+- What does index_manager do? Is it essential for core storage operations?
+- Could these be handled differently (e.g., schema-based, convention-based)?
+- Are they adding unnecessary complexity?
+
+### Test Pattern Concerns
+
+**Issue raised**: Tests may be using `RealFileSystem` when they should use:
+- The bootstrap container with child containers for test isolation
+- `InMemoryFileSystem` for faster tests
+- Existing conftest.py fixtures
+
+**To investigate**: Review test bootstrap pattern before making more changes.
+
+## Design Decisions Made
 
 1. **entity_factory is Optional** - Has `default_entity_factory` fallback
 2. **index_manager is Optional** - Indexing is skipped when None
