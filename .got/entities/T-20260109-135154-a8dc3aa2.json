@@ -1,0 +1,19 @@
+{
+  "_checksum": "0c15935fbf9b3fb9",
+  "_written_at": "2026-01-09T13:51:54.166575+00:00",
+  "data": {
+    "created_at": "2026-01-09T13:51:54.153492+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260109-135154-a8dc3aa2",
+    "metadata": {},
+    "modified_at": "2026-01-09T13:51:54.166505+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "bugfix"
+    },
+    "status": "pending",
+    "title": "Fix weak/incorrect assertions in behavioral tests (3 files)",
+    "version": 2
+  }
+}

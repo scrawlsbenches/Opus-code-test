@@ -1,0 +1,19 @@
+{
+  "_checksum": "50eff0dc53aa69e0",
+  "_written_at": "2026-01-09T13:51:48.520454+00:00",
+  "data": {
+    "created_at": "2026-01-09T13:51:48.509516+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260109-135148-7da688bd",
+    "metadata": {},
+    "modified_at": "2026-01-09T13:51:48.520400+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "bugfix"
+    },
+    "status": "pending",
+    "title": "Fix timing-based flaky assertions in behavioral tests (4 files)",
+    "version": 2
+  }
+}
