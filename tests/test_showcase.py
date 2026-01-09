@@ -1,11 +1,18 @@
 """
 Tests for showcase.py - Timer class and utility functions.
+
+These tests require showcase.py which is only reliably available in CI.
 """
 
 import unittest
 import time
 import sys
 from pathlib import Path
+
+import pytest
+
+# Mark entire module as ci_only - requires showcase.py script
+pytestmark = pytest.mark.ci_only
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))

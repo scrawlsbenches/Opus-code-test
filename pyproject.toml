@@ -108,6 +108,7 @@ markers = [
     "optional: Tests requiring optional dependencies (hypothesis)",
     "fuzz: Property-based fuzzing tests (requires hypothesis)",
     "slow: Tests that take >5 seconds to run",
+    "ci_only: Tests that only run on CI (require samples/ corpus or specific env)",
     "behavioral: Behavioral tests for user stories and workflows",
     "cognitive: Tests for cognitive framework integration (learning, QAPV, state management)",
     "coherence: Phase 1 cognitive coherence tests (Woven Mind, PRISM-GoT, bottlenecks, metrics, escalation)",
@@ -118,9 +119,9 @@ markers = [
     "escalation: Tests for complete escalation action execution",
 ]
 
-# Default: skip optional and slow tests during development
+# Default: skip optional, slow, and ci_only tests during development
 # CI overrides with: pytest -m "" (run all) or explicitly includes markers
-addopts = "-m 'not optional and not slow'"
+addopts = "-m 'not optional and not slow and not ci_only'"
 
 # Include specification files in test collection
 # Specs use *_spec.py naming convention per CLAUDE.md Metus philosophy
