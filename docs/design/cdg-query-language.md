@@ -157,7 +157,7 @@ document         # DOC-*
 | `IN` | `priority IN ['high', 'critical']` | Yes (lookup_multi) |
 | `NOT IN` | `status NOT IN ['done']` | No (full scan) |
 | `LIKE` | `title LIKE '%bug%'` | No (full scan) |
-| `>`, `<`, `>=`, `<=` | `created_at > '2026-01-01'` | Future (btree index) |
+| `>`, `<`, `>=`, `<=` | `created_at > '2026-01-01'` | Yes (btree index) |
 | `IS NULL` | `assignee IS NULL` | Future |
 | `IS NOT NULL` | `assignee IS NOT NULL` | Future |
 

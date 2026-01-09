@@ -327,21 +327,31 @@ class QueryPlanner:
 
         Returns IndexLookup if the field is indexed and operator is supported,
         otherwise None.
+
+        Index lookup capabilities:
+        - Hash indexes: EQ, IN operators
+        - BTree indexes: EQ, IN, GT, GTE, LT, LTE operators
         """
         field_name = comp.field.name
 
-        # Check if field is indexed
-        if not self._is_field_indexed(entity_type, field_name):
-            return None
-
-        # Check if operator is index-compatible
-        # Only EQ and IN can use hash indexes
-        if comp.op not in (Op.EQ, Op.IN):
+        # Check if field is indexed and get index type
+        index_type = self._get_field_index_type(entity_type, field_name)
+        if index_type is None:
             return None
 
         # Extract literal value
         if not isinstance(comp.value, Literal):
             return None
+
+        # Check if operator is compatible with index type
+        if index_type == "btree":
+            # BTree supports EQ, IN, and range operators
+            if comp.op not in (Op.EQ, Op.IN, Op.GT, Op.GTE, Op.LT, Op.LTE):
+                return None
+        else:
+            # Hash index only supports EQ and IN
+            if comp.op not in (Op.EQ, Op.IN):
+                return None
 
         return IndexLookup(
             field=field_name,
@@ -351,19 +361,36 @@ class QueryPlanner:
 
     def _is_field_indexed(self, entity_type: str, field_name: str) -> bool:
         """Check if a field is indexed in the schema."""
+        return self._get_field_index_type(entity_type, field_name) is not None
+
+    def _get_field_index_type(self, entity_type: str, field_name: str) -> Optional[str]:
+        """
+        Get the index type for a field.
+
+        Args:
+            entity_type: Entity type name
+            field_name: Field name
+
+        Returns:
+            Index type ("hash" or "btree") if indexed, None otherwise
+        """
         if self.schema_registry is None:
-            return False
+            return None
 
         schema = self.schema_registry.get_schema(entity_type)
         if schema is None:
-            return False
+            return None
 
         # Check if field exists and is indexed
         field_def = schema.fields.get(field_name)
         if field_def is None:
-            return False
+            return None
 
-        return getattr(field_def, 'indexed', False)
+        if not getattr(field_def, 'indexed', False):
+            return None
+
+        # Return the index type (default is "hash")
+        return getattr(field_def, 'index_type', 'hash')
 
 
 def plan(query: CDGQuery, schema_registry: Optional["SchemaRegistry"] = None) -> QueryPlan:

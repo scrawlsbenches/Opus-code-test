@@ -10,23 +10,28 @@ Example schema:
         name="task",
         fields=[
             Field("id", FieldType.STRING, required=True),
-            Field("status", FieldType.STRING, indexed=True),  # Indexed!
-            Field("priority", FieldType.STRING, indexed=True),  # Indexed!
+            Field("status", FieldType.STRING, indexed=True),  # Hash index
+            Field("priority", FieldType.STRING, indexed=True),  # Hash index
+            Field("created_at", FieldType.DATETIME, indexed=True, index_type="btree"),
             Field("title", FieldType.STRING),  # Not indexed
         ]
     )
 
 Index types:
     - "hash": O(1) exact match lookups (default)
-    - "btree": Range queries (future)
+    - "btree": Range queries, ordering
     - "fulltext": Text search (future)
 
 Storage layout:
     {store_dir}/
         _indexes/
             {entity_type}/
-                {field_name}.json  # Hash index: {value: [entity_ids]}
-                _metadata.json     # Index metadata and rebuild status
+                {field_name}.json       # Hash index: {value: [entity_ids]}
+                {field_name}.btree.json # BTree index: {keys: [...], entries: {...}}
+                _metadata.json          # Index metadata and rebuild status
+
+See: docs/design/cdg-query-language.md
+See: docs/architecture/DISTRIBUTED_GRAPH_SPECIFICATION.md (Section 7: Index Structures)
 
 Design:
     - Indexes are CDG's responsibility (not GoT)
@@ -45,6 +50,7 @@ from pathlib import Path
 from typing import Dict, Set, Optional, Any, List, TYPE_CHECKING
 
 from cortical.common.filesystem import FileSystem, RealFileSystem
+from .btree import BTreeIndex
 
 if TYPE_CHECKING:
     from .schema import SchemaRegistry, EntitySchema
@@ -107,8 +113,11 @@ class CDGIndexManager:
         # Thread safety lock for index modifications (RLock allows reentry for rebuild_all)
         self._lock = threading.RLock()
 
-        # In-memory index cache: {entity_type: {field_name: {value: set(entity_ids)}}}
+        # In-memory hash indexes: {entity_type: {field_name: {value: set(entity_ids)}}}
         self._indexes: Dict[str, Dict[str, Dict[Any, Set[str]]]] = {}
+
+        # In-memory btree indexes: {entity_type: {field_name: BTreeIndex}}
+        self._btree_indexes: Dict[str, Dict[str, BTreeIndex]] = {}
 
         # Track index staleness
         self._dirty: bool = False
@@ -157,10 +166,16 @@ class CDGIndexManager:
         """Ensure index data structures exist for entity type."""
         if entity_type not in self._indexes:
             self._indexes[entity_type] = {}
+        if entity_type not in self._btree_indexes:
+            self._btree_indexes[entity_type] = {}
 
-        for field_name, _ in self._get_indexed_fields(entity_type):
-            if field_name not in self._indexes[entity_type]:
-                self._indexes[entity_type][field_name] = {}
+        for field_name, index_type in self._get_indexed_fields(entity_type):
+            if index_type == "btree":
+                if field_name not in self._btree_indexes[entity_type]:
+                    self._btree_indexes[entity_type][field_name] = BTreeIndex()
+            else:  # hash (default)
+                if field_name not in self._indexes[entity_type]:
+                    self._indexes[entity_type][field_name] = {}
 
     def update_index(
         self,
@@ -196,23 +211,36 @@ class CDGIndexManager:
                 if old_value == new_value:
                     continue
 
-                field_index = self._indexes[entity_type][field_name]
+                if index_type == "btree":
+                    # Use btree index
+                    btree = self._btree_indexes[entity_type][field_name]
 
-                # Remove from old value's index set
-                if old_value is not None:
-                    old_value_key = self._normalize_value(old_value)
-                    if old_value_key in field_index:
-                        field_index[old_value_key].discard(entity_id)
-                        # Clean up empty sets
-                        if not field_index[old_value_key]:
-                            del field_index[old_value_key]
+                    # Remove from old value
+                    if old_value is not None:
+                        btree.remove(old_value, entity_id)
 
-                # Add to new value's index set
-                if new_value is not None:
-                    new_value_key = self._normalize_value(new_value)
-                    if new_value_key not in field_index:
-                        field_index[new_value_key] = set()
-                    field_index[new_value_key].add(entity_id)
+                    # Add to new value
+                    if new_value is not None:
+                        btree.insert(new_value, entity_id)
+                else:
+                    # Use hash index (default)
+                    field_index = self._indexes[entity_type][field_name]
+
+                    # Remove from old value's index set
+                    if old_value is not None:
+                        old_value_key = self._normalize_value(old_value)
+                        if old_value_key in field_index:
+                            field_index[old_value_key].discard(entity_id)
+                            # Clean up empty sets
+                            if not field_index[old_value_key]:
+                                del field_index[old_value_key]
+
+                    # Add to new value's index set
+                    if new_value is not None:
+                        new_value_key = self._normalize_value(new_value)
+                        if new_value_key not in field_index:
+                            field_index[new_value_key] = set()
+                        field_index[new_value_key].add(entity_id)
 
             self._dirty = True
 
@@ -228,15 +256,21 @@ class CDGIndexManager:
             entity_id: Entity ID to remove
         """
         with self._lock:
-            if entity_type not in self._indexes:
-                return
+            # Remove from hash indexes
+            if entity_type in self._indexes:
+                for field_name, field_index in self._indexes[entity_type].items():
+                    # Find and remove entity_id from all value sets
+                    for value, entity_ids in list(field_index.items()):
+                        entity_ids.discard(entity_id)
+                        if not entity_ids:
+                            del field_index[value]
 
-            for field_name, field_index in self._indexes[entity_type].items():
-                # Find and remove entity_id from all value sets
-                for value, entity_ids in list(field_index.items()):
-                    entity_ids.discard(entity_id)
-                    if not entity_ids:
-                        del field_index[value]
+            # Remove from btree indexes
+            if entity_type in self._btree_indexes:
+                for field_name, btree in self._btree_indexes[entity_type].items():
+                    # Remove from all keys that contain this entity_id
+                    for key in btree.get_distinct_keys():
+                        btree.remove(key, entity_id)
 
             self._dirty = True
 
@@ -317,6 +351,203 @@ class CDGIndexManager:
 
         return set(self._indexes[entity_type][field_name].keys())
 
+    def get_index_type(
+        self,
+        entity_type: str,
+        field_name: str,
+    ) -> Optional[str]:
+        """
+        Get the index type for a field.
+
+        Args:
+            entity_type: Type of entity
+            field_name: Field name
+
+        Returns:
+            Index type ("hash" or "btree") or None if not indexed
+        """
+        for fname, itype in self._get_indexed_fields(entity_type):
+            if fname == field_name:
+                return itype
+        return None
+
+    def is_btree_indexed(
+        self,
+        entity_type: str,
+        field_name: str,
+    ) -> bool:
+        """
+        Check if a field has a btree index.
+
+        Args:
+            entity_type: Type of entity
+            field_name: Field name
+
+        Returns:
+            True if field has btree index, False otherwise
+        """
+        return self.get_index_type(entity_type, field_name) == "btree"
+
+    def lookup_range(
+        self,
+        entity_type: str,
+        field_name: str,
+        start_value: Optional[Any] = None,
+        end_value: Optional[Any] = None,
+        start_inclusive: bool = True,
+        end_inclusive: bool = True,
+    ) -> Set[str]:
+        """
+        Look up entity IDs within a value range (btree indexes only).
+
+        For hash indexes, raises ValueError. Use lookup() for equality.
+
+        Args:
+            entity_type: Type of entity (e.g., "task")
+            field_name: Indexed field name (must have btree index)
+            start_value: Lower bound (None = no lower bound)
+            end_value: Upper bound (None = no upper bound)
+            start_inclusive: Include start_value in results
+            end_inclusive: Include end_value in results
+
+        Returns:
+            Set of entity IDs within the range
+
+        Raises:
+            ValueError: If field does not have a btree index
+
+        Example:
+            # Find tasks created after 2026-01-01
+            ids = index_manager.lookup_range(
+                "task", "created_at",
+                start_value="2026-01-01",
+                start_inclusive=False
+            )
+        """
+        if entity_type not in self._btree_indexes:
+            raise ValueError(
+                f"No btree index for entity type '{entity_type}'. "
+                f"Field '{field_name}' may use hash index instead."
+            )
+
+        if field_name not in self._btree_indexes[entity_type]:
+            raise ValueError(
+                f"Field '{field_name}' does not have a btree index. "
+                f"Check schema definition or use lookup() for hash indexes."
+            )
+
+        btree = self._btree_indexes[entity_type][field_name]
+        return btree.lookup_range(
+            start_key=start_value,
+            end_key=end_value,
+            start_inclusive=start_inclusive,
+            end_inclusive=end_inclusive
+        )
+
+    def lookup_gt(
+        self,
+        entity_type: str,
+        field_name: str,
+        value: Any,
+    ) -> Set[str]:
+        """
+        Look up entity IDs with field value > given value (btree only).
+
+        Args:
+            entity_type: Type of entity
+            field_name: Indexed field name (must have btree index)
+            value: The lower bound (exclusive)
+
+        Returns:
+            Set of entity IDs
+
+        Raises:
+            ValueError: If field does not have a btree index
+        """
+        return self.lookup_range(
+            entity_type, field_name,
+            start_value=value,
+            start_inclusive=False
+        )
+
+    def lookup_gte(
+        self,
+        entity_type: str,
+        field_name: str,
+        value: Any,
+    ) -> Set[str]:
+        """
+        Look up entity IDs with field value >= given value (btree only).
+
+        Args:
+            entity_type: Type of entity
+            field_name: Indexed field name (must have btree index)
+            value: The lower bound (inclusive)
+
+        Returns:
+            Set of entity IDs
+
+        Raises:
+            ValueError: If field does not have a btree index
+        """
+        return self.lookup_range(
+            entity_type, field_name,
+            start_value=value,
+            start_inclusive=True
+        )
+
+    def lookup_lt(
+        self,
+        entity_type: str,
+        field_name: str,
+        value: Any,
+    ) -> Set[str]:
+        """
+        Look up entity IDs with field value < given value (btree only).
+
+        Args:
+            entity_type: Type of entity
+            field_name: Indexed field name (must have btree index)
+            value: The upper bound (exclusive)
+
+        Returns:
+            Set of entity IDs
+
+        Raises:
+            ValueError: If field does not have a btree index
+        """
+        return self.lookup_range(
+            entity_type, field_name,
+            end_value=value,
+            end_inclusive=False
+        )
+
+    def lookup_lte(
+        self,
+        entity_type: str,
+        field_name: str,
+        value: Any,
+    ) -> Set[str]:
+        """
+        Look up entity IDs with field value <= given value (btree only).
+
+        Args:
+            entity_type: Type of entity
+            field_name: Indexed field name (must have btree index)
+            value: The upper bound (inclusive)
+
+        Returns:
+            Set of entity IDs
+
+        Raises:
+            ValueError: If field does not have a btree index
+        """
+        return self.lookup_range(
+            entity_type, field_name,
+            end_value=value,
+            end_inclusive=True
+        )
+
     def _normalize_value(self, value: Any) -> str:
         """
         Normalize a value for index key storage.
@@ -394,8 +625,9 @@ class CDGIndexManager:
         start_time = time.time()
 
         with self._lock:
-            # Clear existing indexes
+            # Clear existing indexes (both hash and btree)
             self._indexes.clear()
+            self._btree_indexes.clear()
 
             # Clear index directory
             if self._fs.exists(self.index_dir):
@@ -453,26 +685,38 @@ class CDGIndexManager:
                 continue
 
             self._indexes[entity_type] = {}
+            self._btree_indexes[entity_type] = {}
 
             for index_file in self._fs.glob(type_dir, "*.json"):
                 if index_file.name.startswith("_"):
                     continue
 
-                field_name = index_file.stem
-
-                try:
-                    content = self._fs.read_text(index_file)
-                    data = json.loads(content)
-
-                    # Convert lists back to sets
-                    self._indexes[entity_type][field_name] = {
-                        k: set(v) for k, v in data.items()
-                    }
-                except (json.JSONDecodeError, OSError) as e:
-                    logger.warning(f"Failed to load index {index_file}: {e}")
+                # Check if this is a btree index file
+                if index_file.name.endswith(".btree.json"):
+                    # BTree index: field_name.btree.json
+                    field_name = index_file.stem.replace(".btree", "")
+                    try:
+                        content = self._fs.read_text(index_file)
+                        data = json.loads(content)
+                        self._btree_indexes[entity_type][field_name] = BTreeIndex.from_dict(data)
+                    except (json.JSONDecodeError, OSError) as e:
+                        logger.warning(f"Failed to load btree index {index_file}: {e}")
+                else:
+                    # Hash index: field_name.json
+                    field_name = index_file.stem
+                    try:
+                        content = self._fs.read_text(index_file)
+                        data = json.loads(content)
+                        # Convert lists back to sets
+                        self._indexes[entity_type][field_name] = {
+                            k: set(v) for k, v in data.items()
+                        }
+                    except (json.JSONDecodeError, OSError) as e:
+                        logger.warning(f"Failed to load index {index_file}: {e}")
 
     def _save_indexes(self) -> None:
-        """Save indexes to disk."""
+        """Save indexes to disk (both hash and btree)."""
+        # Save hash indexes
         for entity_type, field_indexes in self._indexes.items():
             type_dir = self.index_dir / entity_type
             self._fs.mkdir(type_dir, parents=True, exist_ok=True)
@@ -483,6 +727,18 @@ class CDGIndexManager:
                 # Convert sets to lists for JSON serialization
                 data = {k: sorted(v) for k, v in value_index.items()}
 
+                content = json.dumps(data, indent=2, sort_keys=True)
+                self._fs.write_text(index_file, content)
+
+        # Save btree indexes
+        for entity_type, btree_field_indexes in self._btree_indexes.items():
+            type_dir = self.index_dir / entity_type
+            self._fs.mkdir(type_dir, parents=True, exist_ok=True)
+
+            for field_name, btree in btree_field_indexes.items():
+                index_file = type_dir / f"{field_name}.btree.json"
+
+                data = btree.to_dict()
                 content = json.dumps(data, indent=2, sort_keys=True)
                 self._fs.write_text(index_file, content)
 
@@ -516,20 +772,40 @@ class CDGIndexManager:
         total_entries = 0
         type_stats = {}
 
+        # Hash index stats
         for entity_type, field_indexes in self._indexes.items():
-            field_stats = {}
+            if entity_type not in type_stats:
+                type_stats[entity_type] = {}
             for field_name, value_index in field_indexes.items():
                 entry_count = sum(len(ids) for ids in value_index.values())
-                field_stats[field_name] = {
+                type_stats[entity_type][field_name] = {
+                    "index_type": "hash",
                     "distinct_values": len(value_index),
                     "total_entries": entry_count,
                 }
                 total_entries += entry_count
-            type_stats[entity_type] = field_stats
+
+        # BTree index stats
+        for entity_type, btree_field_indexes in self._btree_indexes.items():
+            if entity_type not in type_stats:
+                type_stats[entity_type] = {}
+            for field_name, btree in btree_field_indexes.items():
+                btree_stats = btree.stats()
+                type_stats[entity_type][field_name] = {
+                    "index_type": "btree",
+                    "distinct_keys": btree_stats["distinct_keys"],
+                    "total_entries": btree_stats["total_entries"],
+                    "min_key": btree_stats["min_key"],
+                    "max_key": btree_stats["max_key"],
+                }
+                total_entries += btree_stats["total_entries"]
+
+        # Count all entity types (union of hash and btree)
+        all_entity_types = set(self._indexes.keys()) | set(self._btree_indexes.keys())
 
         return {
             "total_entries": total_entries,
-            "entity_types": len(self._indexes),
+            "entity_types": len(all_entity_types),
             "dirty": self._dirty,
             "last_rebuild": self._last_rebuild_time,
             "by_type": type_stats,

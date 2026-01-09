@@ -236,15 +236,55 @@ class QueryExecutor:
             return set()
 
         if lookup.op == Op.EQ:
+            # For btree fields, use btree lookup; for hash, use hash lookup
+            if self.index_manager.is_btree_indexed(entity_type, lookup.field):
+                # BTree can do equality lookup via lookup_range with same start/end
+                return self.index_manager.lookup_range(
+                    entity_type, lookup.field,
+                    start_value=lookup.value,
+                    end_value=lookup.value,
+                    start_inclusive=True,
+                    end_inclusive=True
+                )
             return self.index_manager.lookup(entity_type, lookup.field, lookup.value)
+
         elif lookup.op == Op.IN:
             if isinstance(lookup.value, list):
                 return self.index_manager.lookup_multi(entity_type, lookup.field, lookup.value)
             else:
                 return self.index_manager.lookup(entity_type, lookup.field, lookup.value)
+
+        elif lookup.op == Op.GT:
+            # Range query: field > value (btree only)
+            try:
+                return self.index_manager.lookup_gt(entity_type, lookup.field, lookup.value)
+            except ValueError:
+                # Field doesn't have btree index, return empty (will be post-filtered)
+                return set()
+
+        elif lookup.op == Op.GTE:
+            # Range query: field >= value (btree only)
+            try:
+                return self.index_manager.lookup_gte(entity_type, lookup.field, lookup.value)
+            except ValueError:
+                return set()
+
+        elif lookup.op == Op.LT:
+            # Range query: field < value (btree only)
+            try:
+                return self.index_manager.lookup_lt(entity_type, lookup.field, lookup.value)
+            except ValueError:
+                return set()
+
+        elif lookup.op == Op.LTE:
+            # Range query: field <= value (btree only)
+            try:
+                return self.index_manager.lookup_lte(entity_type, lookup.field, lookup.value)
+            except ValueError:
+                return set()
+
         else:
-            # TODO(cdg-query): Support range queries with btree index
-            # See: docs/design/cdg-query-language.md#operators
+            # Unsupported operator for index lookup
             return set()
 
     def _load_entities(self, entity_ids: Set[str]) -> List[Any]:
