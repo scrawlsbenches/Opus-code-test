@@ -97,7 +97,7 @@ python -m cortical.got kt finalize KT-XXX
 ```bash
 python -m cortical.got edge add T-001 T-002 DEPENDS_ON
 python -m cortical.got edge add S-001 T-001 CONTAINS
-python -m cortical.got edge list --from T-XXX
+python -m cortical.got edge list --source T-XXX
 ```
 
 Edge types: `DEPENDS_ON`, `BLOCKS`, `SIMILAR`, `CONTAINS`, `IMPLEMENTS`, `TESTS`, `JUSTIFIES`, `RELATED`
