@@ -887,41 +887,6 @@ class TransactionalGoTAdapter:
         except Exception:
             return False
 
-    def finalize_knowledge_transfer(
-        self,
-        kt_id: str,
-        handoff_to: Optional[str] = None,
-        instructions: str = ""
-    ) -> bool:
-        """Finalize a knowledge transfer (change status to published).
-
-        Args:
-            kt_id: Knowledge transfer ID to finalize
-            handoff_to: Optional agent to create a handoff to
-            instructions: Optional instructions for the handoff
-        """
-        kt = self.get_knowledge_transfer(kt_id)
-        if kt is None:
-            return False
-
-        kt.status = "published"
-        self._manager.tx_manager.store.write(kt)
-
-        # Optionally create a handoff
-        if handoff_to:
-            # Get a related task if available, otherwise use kt_id as context
-            related_tasks = getattr(kt, 'related_tasks', []) or []
-            task_id = related_tasks[0] if related_tasks else kt_id
-            self.initiate_handoff(
-                source_agent="cli",
-                target_agent=handoff_to,
-                task_id=task_id,
-                context={"kt_id": kt_id},
-                instructions=instructions
-            )
-
-        return True
-
     # =========================================================================
     # Utility Methods
     # TODO(adapter-retirement): PHASE 5-6

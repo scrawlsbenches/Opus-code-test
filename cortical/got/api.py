@@ -1711,6 +1711,20 @@ class GoTManager:
 
         return kt
 
+    def finalize_knowledge_transfer(self, kt_id: str) -> bool:
+        """
+        Finalize a knowledge transfer (change status to published).
+
+        Args:
+            kt_id: Knowledge transfer ID to finalize
+
+        Returns:
+            True if finalized successfully, False if not found
+        """
+        kt = self.update_knowledge_transfer(kt_id, status="published")
+        # Optional handoff creation is under investigation - not included in this migration
+        return kt is not None
+
     def append_knowledge_transfer_section(
         self, kt_id: str, section_title: str, content: str
     ) -> Optional[KnowledgeTransfer]:
