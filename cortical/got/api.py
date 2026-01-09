@@ -1603,6 +1603,68 @@ class GoTManager:
         """
         return self.query_api.list_decisions()
 
+    def list_entities(self, entity_type: str) -> List[Any]:
+        """
+        List all entities of a given type.
+
+        This is a unified method for listing any entity type, enabling
+        schema-driven queries that work across all domain objects.
+
+        Args:
+            entity_type: Entity type name (e.g., 'task', 'decision', 'sprint',
+                        'epic', 'edge', 'handoff', 'knowledge_transfer',
+                        'claudemd_layer', 'document', 'team', 'persona_profile')
+
+        Returns:
+            List of entities of the specified type
+
+        Raises:
+            ValueError: If entity_type is unknown
+
+        Example:
+            # Query any entity type uniformly
+            tasks = manager.list_entities('task')
+            decisions = manager.list_entities('decision')
+            sprints = manager.list_entities('sprint')
+        """
+        from cortical.got.entity_schemas import list_entity_types
+
+        # Map entity types to their list methods
+        # This enables the CDG query engine to work with any entity type
+        method_map = {
+            'task': self.list_all_tasks,
+            'decision': self.list_decisions,
+            'sprint': self.list_sprints,
+            'epic': self.list_epics,
+            'edge': self.list_edges,
+            'handoff': self.list_handoffs,
+            'knowledge_transfer': self.list_knowledge_transfers,
+            'claudemd_layer': self.list_claudemd_layers,
+            'document': self.list_documents,
+            # team and persona_profile don't have list methods yet
+        }
+
+        entity_type_lower = entity_type.lower()
+        method = method_map.get(entity_type_lower)
+
+        if method is not None:
+            return method()
+
+        # Check if it's a valid entity type without a list method
+        valid_types = list_entity_types()
+        if entity_type_lower in valid_types:
+            # Valid type but no list method implemented yet
+            raise NotImplementedError(
+                f"No listing method for entity type '{entity_type}'. "
+                f"Implemented types: {', '.join(sorted(method_map.keys()))}"
+            )
+
+        # Unknown entity type
+        raise ValueError(
+            f"Unknown entity type '{entity_type}'. "
+            f"Valid types: {', '.join(sorted(valid_types))}"
+        )
+
     def get_edges_for_task(self, task_id: str) -> Tuple[List[Edge], List[Edge]]:
         """
         Get all edges connected to a task.

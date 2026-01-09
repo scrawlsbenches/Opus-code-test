@@ -62,7 +62,7 @@ class ConnectedToFunction(QueryFunction):
             name='connected_to',
             description='Find all entities connected to the specified entity',
             required_args=['entity_id'],
-            optional_args={},
+            optional_args={'entity_type': 'task'},
             returns='List of entities connected via any edge type',
             category='graph'
         )
@@ -77,6 +77,7 @@ class ConnectedToFunction(QueryFunction):
         if not entity_id:
             raise ValueError("entity_id is required")
 
+        entity_type = kwargs.get('entity_type', 'task')
         manager = _get_manager(context)
 
         # Get all edges
@@ -90,8 +91,8 @@ class ConnectedToFunction(QueryFunction):
             if edge.target_id == entity_id:
                 connected_ids.add(edge.source_id)
 
-        # Get all tasks and filter by connected IDs
-        all_entities = manager.list_all_tasks()
+        # Get entities of the specified type and filter by connected IDs
+        all_entities = manager.list_entities(entity_type)
         return [e for e in all_entities if e.id in connected_ids]
 
 
@@ -150,7 +151,7 @@ class ChildrenFunction(QueryFunction):
             name='children',
             description='Find entities that directly depend on the specified entity',
             required_args=['entity_id'],
-            optional_args={},
+            optional_args={'entity_type': 'task'},
             returns='List of entities where this entity is their dependency',
             category='graph'
         )
@@ -165,6 +166,7 @@ class ChildrenFunction(QueryFunction):
         if not entity_id:
             raise ValueError("entity_id is required")
 
+        entity_type = kwargs.get('entity_type', 'task')
         manager = _get_manager(context)
         from cortical.got.types import EdgeTypes
 
@@ -177,7 +179,7 @@ class ChildrenFunction(QueryFunction):
             if edge.target_id == entity_id and edge.edge_type == EdgeTypes.DEPENDS_ON:
                 child_ids.add(edge.source_id)
 
-        all_entities = manager.list_all_tasks()
+        all_entities = manager.list_entities(entity_type)
         return [e for e in all_entities if e.id in child_ids]
 
 
@@ -191,7 +193,7 @@ class ParentsFunction(QueryFunction):
             name='parents',
             description='Find entities that the specified entity directly depends on',
             required_args=['entity_id'],
-            optional_args={},
+            optional_args={'entity_type': 'task'},
             returns='List of entities this entity depends on',
             category='graph'
         )
@@ -206,6 +208,7 @@ class ParentsFunction(QueryFunction):
         if not entity_id:
             raise ValueError("entity_id is required")
 
+        entity_type = kwargs.get('entity_type', 'task')
         manager = _get_manager(context)
         from cortical.got.types import EdgeTypes
 
@@ -218,7 +221,7 @@ class ParentsFunction(QueryFunction):
             if edge.source_id == entity_id and edge.edge_type == EdgeTypes.DEPENDS_ON:
                 parent_ids.add(edge.target_id)
 
-        all_entities = manager.list_all_tasks()
+        all_entities = manager.list_entities(entity_type)
         return [e for e in all_entities if e.id in parent_ids]
 
 
@@ -232,7 +235,7 @@ class DescendantsFunction(QueryFunction):
             name='descendants',
             description='Find all entities that transitively depend on the specified entity',
             required_args=['entity_id'],
-            optional_args={'max_depth': None},
+            optional_args={'max_depth': None, 'entity_type': 'task'},
             returns='List of all descendant entities',
             category='graph'
         )
@@ -254,6 +257,7 @@ class DescendantsFunction(QueryFunction):
         if not entity_id:
             raise ValueError("entity_id is required")
 
+        entity_type = kwargs.get('entity_type', 'task')
         manager = _get_manager(context)
         from cortical.got.types import EdgeTypes
 
@@ -289,7 +293,7 @@ class DescendantsFunction(QueryFunction):
 
         visited.discard(entity_id)
 
-        all_entities = manager.list_all_tasks()
+        all_entities = manager.list_entities(entity_type)
         return [e for e in all_entities if e.id in visited]
 
 
@@ -303,7 +307,7 @@ class AncestorsFunction(QueryFunction):
             name='ancestors',
             description='Find all entities this entity transitively depends on',
             required_args=['entity_id'],
-            optional_args={'max_depth': None},
+            optional_args={'max_depth': None, 'entity_type': 'task'},
             returns='List of all ancestor entities',
             category='graph'
         )
@@ -325,6 +329,7 @@ class AncestorsFunction(QueryFunction):
         if not entity_id:
             raise ValueError("entity_id is required")
 
+        entity_type = kwargs.get('entity_type', 'task')
         manager = _get_manager(context)
         from cortical.got.types import EdgeTypes
 
@@ -360,7 +365,7 @@ class AncestorsFunction(QueryFunction):
 
         visited.discard(entity_id)
 
-        all_entities = manager.list_all_tasks()
+        all_entities = manager.list_entities(entity_type)
         return [e for e in all_entities if e.id in visited]
 
 
@@ -374,7 +379,7 @@ class OrphanNodesFunction(QueryFunction):
             name='orphan_nodes',
             description='Find entities with no incoming or outgoing edges',
             required_args=[],
-            optional_args={},
+            optional_args={'entity_type': 'task'},
             returns='List of isolated entities',
             category='graph'
         )
@@ -385,6 +390,7 @@ class OrphanNodesFunction(QueryFunction):
         args: List[Any],
         kwargs: Dict[str, Any]
     ) -> List[Any]:
+        entity_type = kwargs.get('entity_type', 'task')
         manager = _get_manager(context)
 
         edges = manager.list_edges()
@@ -393,22 +399,22 @@ class OrphanNodesFunction(QueryFunction):
             connected_ids.add(edge.source_id)
             connected_ids.add(edge.target_id)
 
-        all_entities = manager.list_all_tasks()
+        all_entities = manager.list_entities(entity_type)
         return [e for e in all_entities if e.id not in connected_ids]
 
 
 @FunctionRegistry.register('blockers')
 class BlockersFunction(QueryFunction):
-    """Find tasks that block the given task."""
+    """Find entities that block the given entity."""
 
     @classmethod
     def signature(cls) -> FunctionSignature:
         return FunctionSignature(
             name='blockers',
-            description='Find tasks that block the specified task',
-            required_args=['task_id'],
-            optional_args={},
-            returns='List of tasks with BLOCKS edge to the specified task',
+            description='Find entities that block the specified entity',
+            required_args=['entity_id'],
+            optional_args={'entity_type': 'task'},
+            returns='List of entities with BLOCKS edge to the specified entity',
             category='graph'
         )
 
@@ -418,10 +424,11 @@ class BlockersFunction(QueryFunction):
         args: List[Any],
         kwargs: Dict[str, Any]
     ) -> List[Any]:
-        task_id = args[0] if args else kwargs.get('task_id')
-        if not task_id:
-            raise ValueError("task_id is required")
+        entity_id = args[0] if args else kwargs.get('entity_id', kwargs.get('task_id'))
+        if not entity_id:
+            raise ValueError("entity_id is required")
 
+        entity_type = kwargs.get('entity_type', 'task')
         manager = _get_manager(context)
         from cortical.got.types import EdgeTypes
 
@@ -429,25 +436,25 @@ class BlockersFunction(QueryFunction):
         blocker_ids = set()
 
         for edge in edges:
-            if edge.target_id == task_id and edge.edge_type == EdgeTypes.BLOCKS:
+            if edge.target_id == entity_id and edge.edge_type == EdgeTypes.BLOCKS:
                 blocker_ids.add(edge.source_id)
 
-        all_entities = manager.list_all_tasks()
+        all_entities = manager.list_entities(entity_type)
         return [e for e in all_entities if e.id in blocker_ids]
 
 
 @FunctionRegistry.register('dependents')
 class DependentsFunction(QueryFunction):
-    """Find tasks that depend on the given task."""
+    """Find entities that depend on the given entity."""
 
     @classmethod
     def signature(cls) -> FunctionSignature:
         return FunctionSignature(
             name='dependents',
-            description='Find tasks that depend on the specified task',
-            required_args=['task_id'],
-            optional_args={},
-            returns='List of tasks with DEPENDS_ON edge to the specified task',
+            description='Find entities that depend on the specified entity',
+            required_args=['entity_id'],
+            optional_args={'entity_type': 'task'},
+            returns='List of entities with DEPENDS_ON edge to the specified entity',
             category='graph'
         )
 
@@ -457,10 +464,11 @@ class DependentsFunction(QueryFunction):
         args: List[Any],
         kwargs: Dict[str, Any]
     ) -> List[Any]:
-        task_id = args[0] if args else kwargs.get('task_id')
-        if not task_id:
-            raise ValueError("task_id is required")
+        entity_id = args[0] if args else kwargs.get('entity_id', kwargs.get('task_id'))
+        if not entity_id:
+            raise ValueError("entity_id is required")
 
+        entity_type = kwargs.get('entity_type', 'task')
         manager = _get_manager(context)
         from cortical.got.types import EdgeTypes
 
@@ -468,10 +476,10 @@ class DependentsFunction(QueryFunction):
         dependent_ids = set()
 
         for edge in edges:
-            if edge.target_id == task_id and edge.edge_type == EdgeTypes.DEPENDS_ON:
+            if edge.target_id == entity_id and edge.edge_type == EdgeTypes.DEPENDS_ON:
                 dependent_ids.add(edge.source_id)
 
-        all_entities = manager.list_all_tasks()
+        all_entities = manager.list_entities(entity_type)
         return [e for e in all_entities if e.id in dependent_ids]
 
 
@@ -485,7 +493,7 @@ class AllDependenciesFunction(QueryFunction):
             name='all_dependencies',
             description='Find all direct and transitive dependencies',
             required_args=['entity_id'],
-            optional_args={},
+            optional_args={'entity_type': 'task'},
             returns='List of all entities this entity depends on',
             category='graph'
         )
@@ -500,6 +508,7 @@ class AllDependenciesFunction(QueryFunction):
         if not entity_id:
             raise ValueError("entity_id is required")
 
+        entity_type = kwargs.get('entity_type', 'task')
         manager = _get_manager(context)
         from cortical.got.types import EdgeTypes
 
@@ -529,7 +538,7 @@ class AllDependenciesFunction(QueryFunction):
 
         visited.discard(entity_id)
 
-        all_entities = manager.list_all_tasks()
+        all_entities = manager.list_entities(entity_type)
         return [e for e in all_entities if e.id in visited]
 
 
@@ -607,7 +616,7 @@ class RecentFunction(QueryFunction):
             name='recent',
             description='Find entities created within N days',
             required_args=[],
-            optional_args={'days': 7},
+            optional_args={'days': 7, 'entity_type': 'task'},
             returns='List of recent entities',
             category='filter'
         )
@@ -622,13 +631,14 @@ class RecentFunction(QueryFunction):
         if not isinstance(days, (int, float)) or days < 0:
             raise ValueError(f"days must be a non-negative number, got {days}")
 
+        entity_type = kwargs.get('entity_type', 'task')
         manager = _get_manager(context)
 
         cutoff = datetime.now(timezone.utc) - timedelta(days=days)
         cutoff_str = cutoff.isoformat()
 
-        tasks = manager.list_all_tasks()
-        return [t for t in tasks if t.created_at >= cutoff_str]
+        entities = manager.list_entities(entity_type)
+        return [e for e in entities if getattr(e, 'created_at', '') >= cutoff_str]
 
 
 @FunctionRegistry.register('stale')
@@ -641,7 +651,7 @@ class StaleFunction(QueryFunction):
             name='stale',
             description='Find entities created more than N days ago',
             required_args=[],
-            optional_args={'days': 30},
+            optional_args={'days': 30, 'entity_type': 'task'},
             returns='List of old entities',
             category='filter'
         )
@@ -656,13 +666,14 @@ class StaleFunction(QueryFunction):
         if not isinstance(days, (int, float)) or days < 0:
             raise ValueError(f"days must be a non-negative number, got {days}")
 
+        entity_type = kwargs.get('entity_type', 'task')
         manager = _get_manager(context)
 
         cutoff = datetime.now(timezone.utc) - timedelta(days=days)
         cutoff_str = cutoff.isoformat()
 
-        tasks = manager.list_all_tasks()
-        return [t for t in tasks if t.created_at < cutoff_str]
+        entities = manager.list_entities(entity_type)
+        return [e for e in entities if getattr(e, 'created_at', '') < cutoff_str]
 
 
 @FunctionRegistry.register('has_edge')
@@ -675,7 +686,7 @@ class HasEdgeFunction(QueryFunction):
             name='has_edge',
             description='Find entities with at least one edge of given type',
             required_args=['edge_type'],
-            optional_args={},
+            optional_args={'entity_type': 'task'},
             returns='List of entities with the edge type',
             category='filter'
         )
@@ -693,6 +704,7 @@ class HasEdgeFunction(QueryFunction):
         if not isinstance(edge_type, str):
             raise ValueError(f"edge_type must be a string, got {type(edge_type)}")
 
+        entity_type = kwargs.get('entity_type', 'task')
         manager = _get_manager(context)
 
         edges = manager.list_edges()
@@ -703,16 +715,9 @@ class HasEdgeFunction(QueryFunction):
                 entity_ids.add(edge.source_id)
                 entity_ids.add(edge.target_id)
 
-        # Load entities (supports any entity type via prefix)
-        results = []
-        for entity_id in entity_ids:
-            if entity_id.startswith('T-'):
-                task = manager.get_task(entity_id)
-                if task is not None:
-                    results.append(task)
-            # TODO(cdg-query): Add support for other entity types via CDGStore
-
-        return results
+        # Load entities of the specified type and filter by connected IDs
+        all_entities = manager.list_entities(entity_type)
+        return [e for e in all_entities if e.id in entity_ids]
 
 
 @FunctionRegistry.register('blocked')
@@ -816,16 +821,16 @@ class InSprintFunction(QueryFunction):
 
 @FunctionRegistry.register('unassigned')
 class UnassignedFunction(QueryFunction):
-    """Filter tasks with no assignee."""
+    """Filter entities with no assignee."""
 
     @classmethod
     def signature(cls) -> FunctionSignature:
         return FunctionSignature(
             name='unassigned',
-            description='Find tasks with no assignee',
+            description='Find entities with no assignee',
             required_args=[],
-            optional_args={},
-            returns='List of unassigned tasks',
+            optional_args={'entity_type': 'task'},
+            returns='List of unassigned entities',
             category='filter'
         )
 
@@ -835,32 +840,36 @@ class UnassignedFunction(QueryFunction):
         args: List[Any],
         kwargs: Dict[str, Any]
     ) -> List[Any]:
+        entity_type = kwargs.get('entity_type', 'task')
         manager = _get_manager(context)
 
-        tasks = manager.list_all_tasks()
+        entities = manager.list_entities(entity_type)
         results = []
 
-        for task in tasks:
-            assignee_prop = task.properties.get('assignee')
-            assignee_meta = task.metadata.get('assignee')
+        for entity in entities:
+            # Try properties dict first, then metadata
+            props = getattr(entity, 'properties', {}) or {}
+            meta = getattr(entity, 'metadata', {}) or {}
+            assignee_prop = props.get('assignee') if isinstance(props, dict) else None
+            assignee_meta = meta.get('assignee') if isinstance(meta, dict) else None
             if not assignee_prop and not assignee_meta:
-                results.append(task)
+                results.append(entity)
 
         return results
 
 
 @FunctionRegistry.register('overdue')
 class OverdueFunction(QueryFunction):
-    """Filter tasks past their due date."""
+    """Filter entities past their due date."""
 
     @classmethod
     def signature(cls) -> FunctionSignature:
         return FunctionSignature(
             name='overdue',
-            description='Find tasks past their due date',
+            description='Find entities past their due date',
             required_args=[],
-            optional_args={},
-            returns='List of overdue tasks',
+            optional_args={'entity_type': 'task'},
+            returns='List of overdue entities',
             category='filter'
         )
 
@@ -870,19 +879,26 @@ class OverdueFunction(QueryFunction):
         args: List[Any],
         kwargs: Dict[str, Any]
     ) -> List[Any]:
+        entity_type = kwargs.get('entity_type', 'task')
         manager = _get_manager(context)
 
         now = datetime.now(timezone.utc).isoformat()
-        tasks = manager.list_all_tasks()
+        entities = manager.list_entities(entity_type)
         results = []
 
-        for task in tasks:
-            if task.status == 'completed':
+        for entity in entities:
+            # Skip completed entities
+            status = getattr(entity, 'status', None)
+            if status == 'completed':
                 continue
 
-            due_date = task.properties.get('due_date') or task.metadata.get('due_date')
+            # Check due_date in properties or metadata
+            props = getattr(entity, 'properties', {}) or {}
+            meta = getattr(entity, 'metadata', {}) or {}
+            due_date = (props.get('due_date') if isinstance(props, dict) else None) or \
+                       (meta.get('due_date') if isinstance(meta, dict) else None)
             if due_date and isinstance(due_date, str) and due_date < now:
-                results.append(task)
+                results.append(entity)
 
         return results
 
