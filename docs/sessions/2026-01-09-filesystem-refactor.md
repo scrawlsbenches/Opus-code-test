@@ -65,7 +65,31 @@ Refactoring CDG to make FileSystem a required first-class dependency that encaps
 - `InMemoryFileSystem` for faster tests
 - Existing conftest.py fixtures
 
-**To investigate**: Review test bootstrap pattern before making more changes.
+**Root Cause - CLAUDE.md Gap:**
+
+The "Available Fixtures" section (lines 1385-1392) only documents CorticalTextProcessor fixtures:
+- `small_processor`, `shared_processor`, `fresh_processor`, `small_corpus_docs`
+
+**MISSING from CLAUDE.md** - The GoT/CDG fixtures that exist in conftest.py:
+- `tmp_got_dir` - temporary directory
+- `fresh_tx_manager` / `memory_tx_manager` - TransactionManager via container
+- `fresh_got_manager` / `memory_got_manager` - GoTManager via container
+- `memory_container` - full container access
+- Helper functions: `_create_tx_manager()`, `_create_got_manager()`, `_create_container()`
+
+The "Search Before Creating" section mentions conftest.py but doesn't explicitly say:
+> "When writing CDG/GoT tests, use fixtures. DO NOT directly instantiate CDGStore, CDGTransactionManager."
+
+**Action needed**: Update CLAUDE.md to document GoT/CDG fixtures explicitly.
+
+### Script to Fix Tests
+
+**TODO**: Write a script using git history to:
+1. Find my changes that used `RealFileSystem` directly
+2. Revert those specific patterns
+3. Replace with proper fixture usage (`fresh_tx_manager`, `_create_container()`, etc.)
+
+This should be done one test file at a time, verifying each works.
 
 ## Design Decisions Made
 
