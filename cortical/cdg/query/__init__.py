@@ -48,6 +48,10 @@ from .parser import Parser, parse
 from .planner import QueryPlanner, QueryPlan, PlanStrategy, IndexLookup, plan
 from .executor import QueryExecutor, execute
 from .registry import FunctionRegistry, FunctionSignature, QueryFunction, QueryContext
+
+# Import functions module to trigger registration via decorators
+from . import functions  # noqa: F401
+
 from .errors import (
     CDGQueryError,
     QueryLexerError,
