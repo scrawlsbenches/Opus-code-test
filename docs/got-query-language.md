@@ -174,21 +174,91 @@ path(T-001, T-002, max_depth=5)
 
 ## Complex Examples
 
+### Sprint Planning
+
 ```bash
-# High-priority pending bugs
-status = 'pending' AND priority = 'high' AND category = 'bug'
+# Find candidates for next sprint: pending, high priority, not blocked, no dependencies
+status = 'pending' AND priority IN ['critical', 'high'] AND NOT blocked() AND orphan_nodes()
+ORDER BY priority DESC LIMIT 20
 
-# Recently modified, not blocked
-recent(7) AND NOT blocked()
+# Tasks ready to start: pending with all dependencies completed
+status = 'pending' AND NOT blocked() AND NOT has_edge('DEPENDS_ON')
 
-# Tasks blocking Sprint 5
-blocking() AND in_sprint(S-005)
+# Sprint capacity check: unfinished tasks in current sprint
+in_sprint(S-005) AND status IN ['pending', 'in_progress', 'blocked']
+ORDER BY priority DESC
+```
 
-# Orphaned high-priority tasks
-orphan_nodes() AND priority = 'high'
+### Dependency Analysis
 
-# Full dependency tree, limited
-all_dependencies(T-001) ORDER BY created_at LIMIT 50
+```bash
+# Critical path: what must complete before T-100 can start
+ancestors(T-100) AND status != 'completed' ORDER BY created_at ASC
+
+# Ripple effect: everything that depends on T-050 (directly or indirectly)
+descendants(T-050) ORDER BY priority DESC
+
+# Circular dependency detection
+cycle_detect()
+
+# Tasks with many blockers (complexity indicator)
+blocked() AND has_edge('DEPENDS_ON') ORDER BY updated_at DESC LIMIT 10
+```
+
+### Risk Assessment
+
+```bash
+# Stale blocked tasks: blocked for 14+ days (needs escalation)
+blocked() AND stale(14) ORDER BY updated_at ASC
+
+# High-priority tasks with no recent activity
+priority IN ['critical', 'high'] AND stale(7) AND status = 'in_progress'
+
+# Overdue tasks blocking others
+overdue() AND blocking() ORDER BY priority DESC
+
+# Orphaned work: tasks not connected to any sprint or epic
+orphan_nodes() AND entity_type('task') AND status != 'completed'
+```
+
+### Progress Tracking
+
+```bash
+# Recently completed high-value work
+status = 'completed' AND priority IN ['critical', 'high'] AND recent(7)
+ORDER BY updated_at DESC LIMIT 20
+
+# Active work by category
+status = 'in_progress' ORDER BY category ASC, priority DESC
+
+# Bug fix velocity: completed bugs in last 30 days
+status = 'completed' AND category = 'bug' AND recent(30)
+```
+
+### Cleanup & Maintenance
+
+```bash
+# Find disconnected decisions (no implementing tasks)
+entity_type('decision') AND orphan_nodes()
+
+# Knowledge transfers still in draft
+entity_type('knowledge_transfer') AND status = 'draft' AND stale(7)
+
+# Handoffs pending acceptance
+entity_type('handoff') AND status = 'initiated' ORDER BY created_at ASC
+```
+
+### Combined Graph + Filter Queries
+
+```bash
+# All blockers of tasks in Sprint 5 that are themselves blocked
+blockers(in_sprint(S-005)) AND blocked()
+
+# Path between two tasks, excluding completed intermediate tasks
+path(T-001, T-100) AND status != 'completed'
+
+# Children of epic E-001 that are high priority and not started
+children(E-001) AND priority = 'high' AND status = 'pending'
 ```
 
 ---
