@@ -1625,6 +1625,119 @@ class GoTManager:
 
     # ==================== KnowledgeTransfer Methods ====================
 
+    def create_knowledge_transfer(
+        self,
+        title: str,
+        summary: str = "",
+        status: str = "draft",
+        **kwargs
+    ) -> KnowledgeTransfer:
+        """
+        Create a knowledge transfer in a single-operation transaction.
+
+        Args:
+            title: KT title (required)
+            summary: Executive summary
+            status: Initial status (default: draft)
+            **kwargs: Additional fields (session_id, sections, tags, code_refs, etc.)
+
+        Returns:
+            Created KnowledgeTransfer object
+
+        Raises:
+            TransactionError: If commit fails
+        """
+        from cortical.utils.id_generation import generate_kt_id
+
+        with self.transaction() as tx:
+            kt = tx.create_knowledge_transfer(
+                title=title,
+                summary=summary,
+                status=status,
+                **kwargs
+            )
+        return kt
+
+    def get_knowledge_transfer(self, kt_id: str) -> Optional[KnowledgeTransfer]:
+        """
+        Get a knowledge transfer by ID (read-only).
+
+        Args:
+            kt_id: Knowledge transfer identifier
+
+        Returns:
+            KnowledgeTransfer object or None if not found
+        """
+        entity = self.tx_manager.store.read(kt_id)
+        if entity is None:
+            return None
+        if not isinstance(entity, KnowledgeTransfer):
+            return None
+        return entity
+
+    def update_knowledge_transfer(
+        self, kt_id: str, **updates
+    ) -> Optional[KnowledgeTransfer]:
+        """
+        Update a knowledge transfer in a single-operation transaction.
+
+        Args:
+            kt_id: Knowledge transfer identifier
+            **updates: Fields to update (status, summary, sections, tags, etc.)
+
+        Returns:
+            Updated KnowledgeTransfer object or None if not found
+
+        Raises:
+            TransactionError: If commit fails
+        """
+        kt = self.get_knowledge_transfer(kt_id)
+        if kt is None:
+            return None
+
+        # Apply updates
+        for field, value in updates.items():
+            if hasattr(kt, field):
+                setattr(kt, field, value)
+
+        # Increment version
+        kt.version = getattr(kt, 'version', 0) + 1
+
+        # Write back using transaction
+        with self.transaction() as tx:
+            tx.tx_manager.write(tx.tx, kt)
+
+        return kt
+
+    def append_knowledge_transfer_section(
+        self, kt_id: str, section_title: str, content: str
+    ) -> Optional[KnowledgeTransfer]:
+        """
+        Append a section to a knowledge transfer.
+
+        Args:
+            kt_id: Knowledge transfer identifier
+            section_title: Section heading
+            content: Section content
+
+        Returns:
+            Updated KnowledgeTransfer object or None if not found
+        """
+        kt = self.get_knowledge_transfer(kt_id)
+        if kt is None:
+            return None
+
+        # Get existing sections
+        sections = getattr(kt, 'sections', {}) or {}
+
+        # Accumulate content if section already exists
+        if section_title in sections:
+            sections[section_title] = sections[section_title] + "\n\n" + content
+        else:
+            sections[section_title] = content
+
+        return self.update_knowledge_transfer(kt_id, sections=sections)
+
     def list_knowledge_transfers(
         self,
         status: Optional[str] = None,
@@ -2681,6 +2794,65 @@ class TransactionContext:
         if entity is None:
             return None
         if not isinstance(entity, Handoff):
+            return None
+        return entity
+
+    # ==================== KnowledgeTransfer Methods ====================
+
+    def create_knowledge_transfer(
+        self,
+        title: str,
+        summary: str = "",
+        status: str = "draft",
+        **kwargs
+    ) -> KnowledgeTransfer:
+        """
+        Create knowledge transfer within transaction.
+
+        Args:
+            title: KT title (required)
+            summary: Executive summary
+            status: Initial status (default: draft)
+            **kwargs: Additional fields (session_id, sections, tags, code_refs, etc.)
+
+        Returns:
+            Created KnowledgeTransfer object
+        """
+        from cortical.utils.id_generation import generate_kt_id
+
+        kt_id = generate_kt_id()
+        kt = KnowledgeTransfer(
+            id=kt_id,
+            title=title,
+            summary=summary,
+            status=status,
+            session_id=kwargs.get('session_id', ''),
+            session_date=kwargs.get('session_date', ''),
+            sections=kwargs.get('sections', {}),
+            tags=kwargs.get('tags', []),
+            code_refs=kwargs.get('code_refs', []),
+            source_file=kwargs.get('source_file'),
+            related_tasks=kwargs.get('related_tasks', []),
+            related_decisions=kwargs.get('related_decisions', []),
+            related_handoffs=kwargs.get('related_handoffs', []),
+        )
+        self.tx_manager.write(self.tx, kt)
+        return kt
+
+    def get_knowledge_transfer(self, kt_id: str) -> Optional[KnowledgeTransfer]:
+        """
+        Get knowledge transfer within transaction (sees own writes).
+
+        Args:
+            kt_id: Knowledge transfer identifier
+
+        Returns:
+            KnowledgeTransfer object or None if not found
+        """
+        entity = self.tx_manager.read(self.tx, kt_id)
+        if entity is None:
+            return None
+        if not isinstance(entity, KnowledgeTransfer):
             return None
         return entity
 

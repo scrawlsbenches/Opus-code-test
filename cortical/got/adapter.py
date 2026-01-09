@@ -777,33 +777,9 @@ class TransactionalGoTAdapter:
         Returns:
             The KT ID string
         """
-        # Delegate to manager if available
-        if hasattr(self._manager, 'create_knowledge_transfer'):
-            kt = self._manager.create_knowledge_transfer(title, summary, status, **kwargs)
-            return kt.id if hasattr(kt, 'id') else str(kt)
-
-        # Create KT entity directly via CDG store
-        kt_id = generate_kt_id()
-        kt = KnowledgeTransfer(
-            id=kt_id,
-            title=title,
-            summary=summary,
-            status=status,
-            session_id=kwargs.get('session_id', ''),
-            session_date=kwargs.get('session_date', ''),
-            sections=kwargs.get('sections', {}),
-            tags=kwargs.get('tags', []),
-            code_refs=kwargs.get('code_refs', []),
-            source_file=kwargs.get('source_file'),
-            related_tasks=kwargs.get('related_tasks', []),
-            related_decisions=kwargs.get('related_decisions', []),
-            related_handoffs=kwargs.get('related_handoffs', []),
-        )
-
-        # Write to CDG store
-        self._manager.tx_manager.store.write(kt)
-
-        return kt_id
+        # Delegate to GoTManager (which uses proper transactions)
+        kt = self._manager.create_knowledge_transfer(title, summary, status, **kwargs)
+        return kt.id
 
     def list_knowledge_transfers(
         self, status: Optional[str] = None, tags: Optional[List[str]] = None
@@ -815,11 +791,8 @@ class TransactionalGoTAdapter:
 
     def get_knowledge_transfer(self, kt_id: str) -> Optional[Any]:
         """Get a knowledge transfer by ID."""
-        # Try direct read from transaction manager store
-        entity = self._manager.tx_manager.store.read(kt_id)
-        if entity is not None:
-            return entity
-        return None
+        # Delegate to GoTManager
+        return self._manager.get_knowledge_transfer(kt_id)
 
     def update_knowledge_transfer(
         self, kt_id: str, **updates
@@ -833,45 +806,16 @@ class TransactionalGoTAdapter:
         Returns:
             Updated KT entity or None if not found
         """
-        kt = self.get_knowledge_transfer(kt_id)
-        if kt is None:
-            return None
-
-        # Apply updates
-        for field, value in updates.items():
-            if hasattr(kt, field):
-                setattr(kt, field, value)
-
-        # Increment version
-        kt.version = getattr(kt, 'version', 0) + 1
-
-        # Write back
-        self._manager.tx_manager.store.write(kt)
-        return kt
+        # Delegate to GoTManager (uses proper transactions)
+        return self._manager.update_knowledge_transfer(kt_id, **updates)
 
     def append_kt_section(
         self, kt_id: str, section_title: str, content: str
     ) -> bool:
         """Append a section to an existing knowledge transfer."""
-        kt = self.get_knowledge_transfer(kt_id)
-        if kt is None:
-            return False
-
-        # Get existing sections (Dict[str, str] - heading -> content)
-        sections = getattr(kt, 'sections', {}) or {}
-
-        # Accumulate content if section already exists
-        if section_title in sections:
-            sections[section_title] = sections[section_title] + "\n\n" + content
-        else:
-            sections[section_title] = content
-
-        # Update the entity
-        kt.sections = sections
-        # Increment version
-        kt.version = getattr(kt, 'version', 0) + 1
-        self._manager.tx_manager.store.write(kt)
-        return True
+        # Delegate to GoTManager (uses proper transactions)
+        result = self._manager.append_knowledge_transfer_section(kt_id, section_title, content)
+        return result is not None
 
     def append_to_knowledge_transfer(
         self, kt_id: str, section_title: str, content: str
