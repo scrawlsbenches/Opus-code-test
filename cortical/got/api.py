@@ -1711,19 +1711,43 @@ class GoTManager:
 
         return kt
 
-    def finalize_knowledge_transfer(self, kt_id: str) -> bool:
+    def finalize_knowledge_transfer(
+        self,
+        kt_id: str,
+        handoff_to: Optional[str] = None,
+        instructions: str = ""
+    ) -> bool:
         """
         Finalize a knowledge transfer (change status to published).
 
         Args:
             kt_id: Knowledge transfer ID to finalize
+            handoff_to: Optional target agent for handoff (currently disabled)
+            instructions: Instructions for handoff (currently disabled)
 
         Returns:
             True if finalized successfully, False if not found
         """
         kt = self.update_knowledge_transfer(kt_id, status="published")
-        # Optional handoff creation is under investigation - not included in this migration
-        return kt is not None
+        if kt is None:
+            return False
+
+        # TODO(adapter-retirement): Handoff creation under investigation
+        # The original adapter code created a handoff when handoff_to was specified.
+        # This functionality is disabled pending review of the handoff system.
+        # Original code:
+        # if handoff_to:
+        #     related_tasks = getattr(kt, 'related_tasks', []) or []
+        #     task_id = related_tasks[0] if related_tasks else kt_id
+        #     self.initiate_handoff(
+        #         source_agent="cli",
+        #         target_agent=handoff_to,
+        #         task_id=task_id,
+        #         context={"kt_id": kt_id},
+        #         instructions=instructions
+        #     )
+
+        return True
 
     def append_knowledge_transfer_section(
         self, kt_id: str, section_title: str, content: str
