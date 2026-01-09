@@ -1,10 +1,18 @@
 """
 Tests for scripts/search_codebase.py - search functions and utilities.
+
+These tests require the samples/ corpus and search_codebase.py script,
+which are only reliably available in CI environment.
 """
 
 import unittest
 import sys
 from pathlib import Path
+
+import pytest
+
+# Mark entire module as ci_only - these tests require samples/ corpus
+pytestmark = pytest.mark.ci_only
 
 # Add parent and scripts directories to path
 sys.path.insert(0, str(Path(__file__).parent.parent))

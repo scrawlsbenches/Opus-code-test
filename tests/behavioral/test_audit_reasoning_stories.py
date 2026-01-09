@@ -250,7 +250,7 @@ def reasoner_with_codebase(memory_fs, file_scanner):
 
     This is the realistic scenario: scan codebase -> extract findings -> reason.
     """
-    from scripts.audit_reasoning import AuditReasoner
+    from cortical.audits.reasoning import AuditReasoner
 
     # Scan the in-memory codebase
     findings = file_scanner.scan_directory(Path("/codebase"))
@@ -687,7 +687,7 @@ class TestDeveloperUsesNaturalLanguageQueries:
         When I translate it
         Then I should get a structured query with explain intent
         """
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         # When I translate a "why" question
         query = translate_audit_query("why is login.py risky?")
@@ -704,7 +704,7 @@ class TestDeveloperUsesNaturalLanguageQueries:
         When I translate it
         Then I should get a list query
         """
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         # When I translate a "what" question
         query = translate_audit_query("what files are flagged?")
@@ -722,7 +722,7 @@ class TestDeveloperUsesNaturalLanguageQueries:
         Then questions should be detected as NL
         And flags should not be detected as NL
         """
-        from scripts.audit_reasoning import is_natural_language_query
+        from cortical.audits.reasoning import is_natural_language_query
 
         # Natural language
         assert is_natural_language_query("why is this file risky?")
@@ -753,7 +753,7 @@ class TestInsightsPersistAcrossSessions:
         Then STI should decrease
         And LTI should remain more stable
         """
-        from scripts.audit_reasoning import AttentionValue
+        from cortical.audits.reasoning import AttentionValue
 
         # Given high importance
         attention = AttentionValue(sti=0.9, lti=0.7, vlti=False)
@@ -808,7 +808,7 @@ class TestReportGeneration:
         When I generate a report
         Then it should summarize all findings
         """
-        from scripts.audit_reasoning import generate_reasoning_report
+        from cortical.audits.reasoning import generate_reasoning_report
 
         reasoner, findings = reasoner_with_codebase
 
@@ -855,7 +855,7 @@ class TestCompleteAuditWorkflow:
         When I run the full audit workflow
         Then I should get prioritized findings with explanations
         """
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         # Given: Scan the codebase
         findings = file_scanner.scan_directory(Path("/codebase"))
@@ -892,7 +892,7 @@ class TestCompleteAuditWorkflow:
         Then security files should be prioritized
         And explanations should mention security patterns
         """
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         # Given: Scan
         findings = file_scanner.scan_directory(Path("/codebase"))

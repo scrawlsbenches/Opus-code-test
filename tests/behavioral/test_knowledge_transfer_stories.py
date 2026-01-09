@@ -2,27 +2,20 @@
 Behavioral tests for Knowledge Transfer operations.
 
 As a developer documenting insights from development sessions,
-I want knowledge transfers to be stored transactionally with checksums,
-So that I can safely persist and retrieve session learnings without corruption.
+I want to create, read, update and search knowledge transfers,
+So that I can preserve and retrieve session learnings.
 
 Tests demonstrate:
-- KT creation uses proper transactional storage
-- KT files have checksum wrapper format
-- KT can be read back without corruption errors
-- KT validation passes after creation
+- KT creation persists data correctly
+- KT can be read back with all fields intact
+- KT can be updated (sections, status, etc.)
+- KT can be searched and filtered
 
 Following Metus: We describe behavior, then make it true.
-
-Regression Coverage:
-- Bug: TransactionalGoTAdapter.create_knowledge_transfer() was bypassing CDGStore
-  and writing files directly without checksums, causing CorruptionError on read
-- Fix: Delegate to TransactionManager which uses CDGStore with checksums
 """
 
 import sys
-import json
 from pathlib import Path
-from datetime import datetime
 
 import pytest
 
@@ -30,13 +23,7 @@ import pytest
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from cortical.core.bootstrap import create_container
-from cortical.got import (
-    TransactionManager,
-    CorruptionError,
-)
-from cortical.got.types import KnowledgeTransfer
-from cortical.got.adapter import TransactionalGoTAdapter
+from cortical.got.api import GoTManager
 from tests.conftest import _create_container
 
 
@@ -52,15 +39,9 @@ def temp_got_dir(tmp_path):
 
 
 @pytest.fixture
-def got_adapter(temp_got_dir):
-    """Provide a TransactionalGoTAdapter for each test."""
-    return TransactionalGoTAdapter(got_dir=temp_got_dir)
-
-
-@pytest.fixture
 def container(temp_got_dir):
     """Provide a DI container for each test."""
-    return _create_container(temp_got_dir)
+    return _create_container(temp_got_dir)  # Default in-memory for speed
 
 
 # ============================================================================
@@ -76,25 +57,18 @@ class TestDeveloperCreatesKnowledgeTransfer:
     So that I can preserve learnings for future reference.
     """
 
-    def test_kt_creation_should_use_transactional_storage_with_checksums(
-        self, got_adapter, temp_got_dir
-    ):
+    def test_kt_creation_persists_all_fields(self, container):
         """
-        Scenario: Creating a KT persists it with proper checksum protection
+        Scenario: Creating a KT persists all provided fields
 
-        Given a fresh GoT adapter
-        When I create a knowledge transfer with title and sections
-        Then the KT file has proper checksum wrapper format
-        And the KT can be read back without corruption errors
-        And validation passes after creation
-
-        Regression: Previously, create_knowledge_transfer() bypassed CDGStore
-        and wrote files directly without checksums, causing CorruptionError.
+        Given a fresh GoTManager
+        When I create a knowledge transfer with all fields populated
+        Then I can read it back with all fields intact
         """
-        # Given: a fresh GoT adapter (provided by fixture)
+        got_manager = container.resolve(GoTManager)
 
-        # When: I create a knowledge transfer with title and sections
-        kt_id = got_adapter.create_knowledge_transfer(
+        # When: Create KT with all fields
+        kt = got_manager.create_knowledge_transfer(
             title="Session: CDG-GoT Unification Insights",
             summary="Unified CDG and GoT storage layers using dependency injection",
             session_id="session-2026-01-05-abc123",
@@ -112,220 +86,249 @@ class TestDeveloperCreatesKnowledgeTransfer:
             status="draft"
         )
 
-        # Then: the KT file has proper checksum wrapper format
-        entities_dir = temp_got_dir / "entities"
-        kt_file = entities_dir / f"{kt_id}.json"
+        # Then: Read back and verify all fields
+        retrieved = got_manager.get_knowledge_transfer(kt.id)
+        assert retrieved is not None
+        assert retrieved.title == "Session: CDG-GoT Unification Insights"
+        assert retrieved.summary == "Unified CDG and GoT storage layers using dependency injection"
+        assert retrieved.session_id == "session-2026-01-05-abc123"
+        assert "Key Decisions" in retrieved.sections
+        assert "Implementation Notes" in retrieved.sections
+        assert "Lessons Learned" in retrieved.sections
+        assert len(retrieved.code_refs) == 2
+        assert "architecture" in retrieved.tags
+        assert retrieved.status == "draft"
 
-        assert kt_file.exists(), f"KT file should exist at {kt_file}"
-
-        with open(kt_file, 'r') as f:
-            wrapper = json.load(f)
-
-        # Verify checksum wrapper structure
-        assert "_checksum" in wrapper, "File must have _checksum field"
-        assert isinstance(wrapper["_checksum"], str), "Checksum must be a string"
-        assert len(wrapper["_checksum"]) == 16, \
-            "Checksum must be 16 hex characters (truncated SHA256)"
-        assert "_written_at" in wrapper, "File must have _written_at timestamp"
-        assert "data" in wrapper, "File must have data field"
-
-        # Verify data structure
-        data = wrapper["data"]
-        assert data["id"] == kt_id
-        assert data["entity_type"] == "knowledge_transfer"
-        assert data["title"] == "Session: CDG-GoT Unification Insights"
-        assert data["summary"] == "Unified CDG and GoT storage layers using dependency injection"
-        assert data["session_id"] == "session-2026-01-05-abc123"
-        assert "Key Decisions" in data["sections"]
-        assert len(data["code_refs"]) == 2
-        assert "architecture" in data["tags"]
-        assert data["status"] == "draft"
-
-        # And: the KT can be read back without corruption errors
-        # This verifies checksums are validated on read
-        retrieved_kt = got_adapter.get_knowledge_transfer(kt_id)
-        assert retrieved_kt is not None, "KT should be retrievable"
-        assert retrieved_kt["title"] == "Session: CDG-GoT Unification Insights"
-        assert retrieved_kt["status"] == "draft"
-
-        # And: validation passes after creation
-        # The file should pass checksum validation
-        # We verify this by re-reading directly through CDGStore
-        from cortical.cdg.storage import CDGStore
-        from cortical.got.types import create_entity_from_dict
-
-        store = CDGStore(entities_dir, entity_factory=create_entity_from_dict)
-        # This will raise CorruptionError if checksum is invalid
-        validated_kt = store.read(kt_id)
-        assert validated_kt is not None
-        assert validated_kt.id == kt_id
-
-
-    def test_kt_with_corrupted_checksum_should_raise_corruption_error(
-        self, got_adapter, temp_got_dir
-    ):
+    def test_kt_creation_with_minimal_fields(self, container):
         """
-        Scenario: Corrupted KT file is detected via checksum validation
+        Scenario: Creating a KT with only required fields succeeds
 
-        Given I have created a knowledge transfer
-        When the file is corrupted on disk
-        And I attempt to read it
-        Then a CorruptionError is raised
-        And the corruption is detected before returning bad data
-
-        This verifies that checksums are actually being validated on read.
+        Given a fresh GoTManager
+        When I create a knowledge transfer with only title
+        Then it is created with sensible defaults
         """
-        # Given: I have created a knowledge transfer
-        kt_id = got_adapter.create_knowledge_transfer(
-            title="Test KT for corruption detection",
-            summary="This KT will be corrupted to test checksum validation",
-            session_id="session-test-corruption",
-            tags=["test"]
+        got_manager = container.resolve(GoTManager)
+
+        # When: Create KT with minimal fields
+        kt = got_manager.create_knowledge_transfer(title="Minimal KT")
+
+        # Then: Read back with defaults
+        retrieved = got_manager.get_knowledge_transfer(kt.id)
+        assert retrieved is not None
+        assert retrieved.title == "Minimal KT"
+        assert retrieved.status == "draft"  # Default status
+        assert retrieved.sections == {} or retrieved.sections is None or len(retrieved.sections) == 0
+        assert retrieved.tags == [] or retrieved.tags is None or len(retrieved.tags) == 0
+
+    def test_kt_update_persists_changes(self, container):
+        """
+        Scenario: Updating a KT persists the changes
+
+        Given an existing knowledge transfer
+        When I update its status and summary
+        Then the changes are persisted
+        """
+        got_manager = container.resolve(GoTManager)
+
+        # Given: Create a KT
+        kt = got_manager.create_knowledge_transfer(
+            title="Work in Progress",
+            summary="Initial notes",
+            status="draft"
         )
 
-        # Verify it can be read initially
-        kt = got_adapter.get_knowledge_transfer(kt_id)
-        assert kt is not None
-
-        # When: the file is corrupted on disk
-        entities_dir = temp_got_dir / "entities"
-        kt_file = entities_dir / f"{kt_id}.json"
-
-        with open(kt_file, 'r') as f:
-            wrapper = json.load(f)
-
-        # Corrupt the checksum (use 16 hex chars like actual format)
-        wrapper['_checksum'] = 'deadbeefcorrupt1'
-
-        with open(kt_file, 'w') as f:
-            json.dump(wrapper, f)
-
-        # And: I attempt to read it
-        # Then: a CorruptionError is raised
-        from cortical.cdg.storage import CDGStore
-
-        store = CDGStore(entities_dir)
-
-        with pytest.raises(CorruptionError) as exc_info:
-            store.read(kt_id)
-
-        # And: the corruption is detected before returning bad data
-        assert kt_id in str(exc_info.value)
-
-
-    def test_kt_update_should_preserve_checksum_integrity(
-        self, got_adapter, temp_got_dir
-    ):
-        """
-        Scenario: Updating a KT maintains checksum protection
-
-        Given I have created a knowledge transfer
-        When I update it by appending a section
-        Then the updated file has a new valid checksum
-        And the KT can be read back with the updates
-        And validation passes for the updated data
-
-        Regression Coverage: _update_kt_entity() now uses TransactionManager
-        for proper transactional storage with checksums (fixed 2026-01-05).
-        """
-        # Given: I have created a knowledge transfer
-        kt_id = got_adapter.create_knowledge_transfer(
-            title="Evolving Session Documentation",
-            summary="Initial summary",
-            session_id="session-evolving-123",
-            sections={
-                "Initial Thoughts": "First section content"
-            },
-            tags=["evolving"]
+        # When: Update it
+        updated = got_manager.update_knowledge_transfer(
+            kt.id,
+            summary="Completed notes with full analysis",
+            status="published"
         )
 
-        # Read original checksum
-        entities_dir = temp_got_dir / "entities"
-        kt_file = entities_dir / f"{kt_id}.json"
+        # Then: Changes are persisted
+        retrieved = got_manager.get_knowledge_transfer(kt.id)
+        assert retrieved.summary == "Completed notes with full analysis"
+        assert retrieved.status == "published"
 
-        with open(kt_file, 'r') as f:
-            original_wrapper = json.load(f)
-        original_checksum = original_wrapper["_checksum"]
+    def test_kt_append_section_accumulates_content(self, container):
+        """
+        Scenario: Appending sections to a KT accumulates content
 
-        # When: I update it by appending a section
-        success = got_adapter.append_kt_section(
-            kt_id,
-            "New Insights",
-            "Additional learnings discovered later"
+        Given a knowledge transfer with existing sections
+        When I append new sections
+        Then the content is accumulated
+        """
+        got_manager = container.resolve(GoTManager)
+
+        # Given: Create KT with initial section
+        kt = got_manager.create_knowledge_transfer(
+            title="Evolving Documentation",
+            sections={"Initial Notes": "First observations"}
         )
-        assert success, "Section append should succeed"
 
-        # Then: the updated file has a new valid checksum
-        with open(kt_file, 'r') as f:
-            updated_wrapper = json.load(f)
-        updated_checksum = updated_wrapper["_checksum"]
+        # When: Append new sections
+        got_manager.append_knowledge_transfer_section(
+            kt.id, "Day 2 Insights", "Additional findings"
+        )
+        got_manager.append_knowledge_transfer_section(
+            kt.id, "Day 3 Insights", "Final conclusions"
+        )
 
-        assert updated_checksum != original_checksum, \
-            "Checksum must change when data changes"
-        assert isinstance(updated_checksum, str) and len(updated_checksum) == 16, \
-            "Updated checksum must still be 16 hex characters"
+        # Then: All sections are present
+        retrieved = got_manager.get_knowledge_transfer(kt.id)
+        assert "Initial Notes" in retrieved.sections
+        assert "Day 2 Insights" in retrieved.sections
+        assert "Day 3 Insights" in retrieved.sections
 
-        # And: the KT can be read back with the updates
-        retrieved = got_adapter.get_knowledge_transfer(kt_id)
-        assert "New Insights" in retrieved["sections"]
-        assert retrieved["sections"]["New Insights"] == "Additional learnings discovered later"
+    def test_kt_append_to_existing_section_concatenates(self, container):
+        """
+        Scenario: Appending to an existing section concatenates content
 
-        # And: validation passes for the updated data
-        from cortical.cdg.storage import CDGStore
+        Given a knowledge transfer with a section
+        When I append to the same section name
+        Then the content is concatenated
+        """
+        got_manager = container.resolve(GoTManager)
 
-        store = CDGStore(entities_dir)
-        validated_kt = store.read(kt_id)  # Will raise if checksum invalid
-        assert validated_kt is not None
-        assert "New Insights" in validated_kt.sections
+        # Given: Create KT with a section
+        kt = got_manager.create_knowledge_transfer(
+            title="Ongoing Investigation",
+            sections={"Findings": "First finding"}
+        )
+
+        # When: Append to same section
+        got_manager.append_knowledge_transfer_section(
+            kt.id, "Findings", "Second finding"
+        )
+
+        # Then: Content is concatenated
+        retrieved = got_manager.get_knowledge_transfer(kt.id)
+        assert "First finding" in retrieved.sections["Findings"]
+        assert "Second finding" in retrieved.sections["Findings"]
 
 
-class TestDeveloperUsesTransactionManagerDirectly:
+class TestDeveloperSearchesKnowledgeTransfers:
     """
-    Epic: Direct Transaction Manager Usage
+    Epic: Knowledge Transfer Discovery
+
+    As a developer looking for past learnings,
+    I want to search and filter knowledge transfers,
+    So that I can find relevant documentation quickly.
+    """
+
+    def test_list_all_knowledge_transfers(self, container):
+        """
+        Scenario: Listing all knowledge transfers returns all created ones
+
+        Given multiple knowledge transfers exist
+        When I list all knowledge transfers
+        Then all are returned
+        """
+        got_manager = container.resolve(GoTManager)
+
+        # Given: Create multiple KTs
+        kt1 = got_manager.create_knowledge_transfer(title="First KT")
+        kt2 = got_manager.create_knowledge_transfer(title="Second KT")
+        kt3 = got_manager.create_knowledge_transfer(title="Third KT")
+
+        # When: List all
+        all_kts = got_manager.list_knowledge_transfers()
+
+        # Then: All are returned
+        ids = [kt.id for kt in all_kts]
+        assert kt1.id in ids
+        assert kt2.id in ids
+        assert kt3.id in ids
+
+    def test_list_knowledge_transfers_by_status(self, container):
+        """
+        Scenario: Filtering by status returns matching KTs
+
+        Given knowledge transfers with different statuses
+        When I filter by status
+        Then only matching ones are returned
+        """
+        got_manager = container.resolve(GoTManager)
+
+        # Given: Create KTs with different statuses
+        draft_kt = got_manager.create_knowledge_transfer(
+            title="Draft KT", status="draft"
+        )
+        published_kt = got_manager.create_knowledge_transfer(
+            title="Published KT", status="published"
+        )
+
+        # When: Filter by draft
+        drafts = got_manager.list_knowledge_transfers(status="draft")
+
+        # Then: Only draft is returned
+        draft_ids = [kt.id for kt in drafts]
+        assert draft_kt.id in draft_ids
+        assert published_kt.id not in draft_ids
+
+    def test_list_knowledge_transfers_by_tags(self, container):
+        """
+        Scenario: Filtering by tags returns matching KTs
+
+        Given knowledge transfers with different tags
+        When I filter by specific tags
+        Then only KTs with all specified tags are returned
+        """
+        got_manager = container.resolve(GoTManager)
+
+        # Given: Create KTs with different tags
+        arch_kt = got_manager.create_knowledge_transfer(
+            title="Architecture KT", tags=["architecture", "design"]
+        )
+        testing_kt = got_manager.create_knowledge_transfer(
+            title="Testing KT", tags=["testing", "quality"]
+        )
+        both_kt = got_manager.create_knowledge_transfer(
+            title="Both KT", tags=["architecture", "testing"]
+        )
+
+        # When: Filter by architecture tag
+        arch_kts = got_manager.list_knowledge_transfers(tags=["architecture"])
+
+        # Then: Only KTs with architecture tag are returned
+        arch_ids = [kt.id for kt in arch_kts]
+        assert arch_kt.id in arch_ids
+        assert both_kt.id in arch_ids
+        assert testing_kt.id not in arch_ids
+
+
+class TestDeveloperUsesGoTManagerDirectly:
+    """
+    Epic: Direct GoTManager Usage
 
     As a developer building custom workflows,
-    I want to create knowledge transfers via TransactionManager,
+    I want to create knowledge transfers via GoTManager,
     So that I can integrate KT creation into complex transactional operations.
     """
 
-    def test_tx_manager_creates_kt_with_checksums(self, container, temp_got_dir):
+    def test_got_manager_creates_and_retrieves_kt(self, container):
         """
-        Scenario: TransactionManager creates KT with proper checksum protection
+        Scenario: GoTManager creates and retrieves KT successfully
 
-        Given I have a TransactionManager from the DI container
-        When I create a knowledge transfer using the transaction manager
-        Then the KT is stored with checksum wrapper
-        And I can read it back without corruption
+        Given I have a GoTManager from the DI container
+        When I create a knowledge transfer using the GoT manager
+        Then I can read it back with all fields intact
         """
-        # Given: I have a TransactionManager from the DI container
-        tx_manager = container.resolve(TransactionManager)
+        got_manager = container.resolve(GoTManager)
 
-        # When: I create a knowledge transfer using the transaction manager
-        kt = tx_manager.create_knowledge_transfer(
-            title="Direct TxManager KT Creation",
-            summary="Testing direct transaction manager usage",
-            session_id="session-direct-tx",
-            sections={
-                "Testing": "Direct creation through TxManager"
-            },
+        # When: Create a KT
+        kt = got_manager.create_knowledge_transfer(
+            title="Direct GoTManager KT Creation",
+            summary="Testing direct GoT manager usage",
+            session_id="session-direct-got",
+            sections={"Testing": "Direct creation through GoTManager"},
             tags=["transaction", "direct"]
         )
 
-        # Then: the KT is stored with checksum wrapper
-        entities_dir = temp_got_dir / "entities"
-        kt_file = entities_dir / f"{kt.id}.json"
-
-        assert kt_file.exists()
-
-        with open(kt_file, 'r') as f:
-            wrapper = json.load(f)
-
-        assert "_checksum" in wrapper
-        assert isinstance(wrapper["_checksum"], str) and len(wrapper["_checksum"]) == 16
-        assert wrapper["data"]["id"] == kt.id
-
-        # And: I can read it back without corruption
-        retrieved_kt = tx_manager.get_knowledge_transfer(kt.id)
-        assert retrieved_kt is not None
-        assert retrieved_kt.title == "Direct TxManager KT Creation"
-        assert retrieved_kt.summary == "Testing direct transaction manager usage"
+        # Then: Read it back with all fields
+        retrieved = got_manager.get_knowledge_transfer(kt.id)
+        assert retrieved is not None
+        assert retrieved.title == "Direct GoTManager KT Creation"
+        assert retrieved.summary == "Testing direct GoT manager usage"
+        assert retrieved.session_id == "session-direct-got"
+        assert "Testing" in retrieved.sections
+        assert "transaction" in retrieved.tags

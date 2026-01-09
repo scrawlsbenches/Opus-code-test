@@ -1,0 +1,40 @@
+{
+  "_checksum": "5b19c67cbd60a022",
+  "_written_at": "2026-01-09T08:19:13.177823+00:00",
+  "data": {
+    "accepted_at": "",
+    "artifacts": [],
+    "completed_at": "",
+    "context": {
+      "blockers": [
+        "8 pre-existing behavioral test failures in: cdg_transaction_stories, test_container_di_stories, test_got_transactional_behavioral, test_hubris_moe, test_semantic_knowledge_graph"
+      ],
+      "current_branch": "claude/create-handoff-docs-4Iymv",
+      "files_modified": [],
+      "notes": "",
+      "recent_commits": [
+        "00743967 feat: Add KT methods to GoTManager with proper transactions",
+        "bc7c01b4 fix: Resolve behavioral test failures in KT and audit reasoning",
+        "3237e035 fix: Repair test suite API mismatches and attribute access",
+        "1b27c8ef feat: Add ci_only marker for tests requiring CI environment",
+        "7dcd3ea8 fix: Correct imports in test_got_workflow.py"
+      ],
+      "session_id": ""
+    },
+    "created_at": "2026-01-09T08:19:13.165382+00:00",
+    "entity_type": "handoff",
+    "id": "H-20260109-081913-a574a99c",
+    "initiated_at": "2026-01-09T08:19:13.165397+00:00",
+    "instructions": "Completed KT refactoring: behavioral tests now test KT as data through GoTManager API following same patterns as Task/Decision entities. All 9 KT tests passing. 8 unrelated behavioral test failures remain (pre-existing).",
+    "modified_at": "2026-01-09T08:19:13.177752+00:00",
+    "properties": {},
+    "reject_reason": "",
+    "rejected_at": "",
+    "result": {},
+    "source_agent": "cli",
+    "status": "initiated",
+    "target_agent": "next-agent",
+    "task_id": "",
+    "version": 2
+  }
+}

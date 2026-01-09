@@ -1,0 +1,49 @@
+{
+  "_checksum": "567c093e0c19e13e",
+  "_written_at": "2026-01-09T08:36:22.397428+00:00",
+  "data": {
+    "accepted_at": "",
+    "artifacts": [],
+    "completed_at": "",
+    "context": {
+      "blockers": [
+        "Tests may test wrong things",
+        "Do not fix tests without user approval",
+        "One test at a time only"
+      ],
+      "current_branch": "claude/create-handoff-docs-4Iymv",
+      "files_modified": [
+        "got/entities/_version.json",
+        ".got/entities/wal/_sequence.json",
+        ".got/entities/wal/current.wal",
+        ".got/entities/KT-20260109-083511-2e40ec05.json",
+        ".got/entities/_history/KT-20260109-083511-2e40ec05.jsonl"
+      ],
+      "kt_id": "KT-20260109-083511-2e40ec05",
+      "notes": "",
+      "recent_commits": [
+        "96721d9f chore: Accept handoff H-20260109-014316-2d85ab8d",
+        "00743967 feat: Add KT methods to GoTManager with proper transactions",
+        "bc7c01b4 fix: Resolve behavioral test failures in KT and audit reasoning",
+        "3237e035 fix: Repair test suite API mismatches and attribute access",
+        "1b27c8ef feat: Add ci_only marker for tests requiring CI environment"
+      ],
+      "session_id": ""
+    },
+    "created_at": "2026-01-09T08:36:22.382583+00:00",
+    "entity_type": "handoff",
+    "id": "H-20260109-083622-63cecb64",
+    "initiated_at": "2026-01-09T08:36:22.382595+00:00",
+    "instructions": "8 behavioral tests failing - DO NOT TRUST THEM. Tests may be wrong. Work ONE test at a time with user driving all changes. Read KT-20260109-083511-2e40ec05 FIRST.",
+    "modified_at": "2026-01-09T08:36:22.397355+00:00",
+    "properties": {},
+    "reject_reason": "",
+    "rejected_at": "",
+    "result": {},
+    "source_agent": "cli",
+    "status": "initiated",
+    "target_agent": "next-agent",
+    "task_id": "",
+    "version": 2
+  }
+}

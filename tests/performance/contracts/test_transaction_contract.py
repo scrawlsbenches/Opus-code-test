@@ -28,7 +28,6 @@ import pytest
 
 from cortical.cdg.transaction_manager import CDGTransactionManager as TransactionManager
 from cortical.got.types import Task
-from cortical.got.config import DurabilityMode
 from tests.conftest import _create_tx_manager, _create_got_manager
 
 
@@ -67,7 +66,7 @@ class TestTransactionBeginPerformanceContract:
         3. Log TX_BEGIN to WAL
         """
         with tempfile.TemporaryDirectory() as tmpdir:
-            tm = _create_tx_manager(Path(tmpdir), durability=DurabilityMode.BALANCED)
+            tm = _create_tx_manager(Path(tmpdir))
 
             latencies = []
             for _ in range(100):
@@ -94,7 +93,7 @@ class TestTransactionBeginPerformanceContract:
         and isolation guarantees from the moment it's created.
         """
         with tempfile.TemporaryDirectory() as tmpdir:
-            tm = _create_tx_manager(Path(tmpdir), durability=DurabilityMode.BALANCED)
+            tm = _create_tx_manager(Path(tmpdir))
 
             tx = tm.begin()
 
@@ -140,7 +139,7 @@ class TestTransactionCommitPerformanceContract:
         3. Efficient conflict detection
         """
         with tempfile.TemporaryDirectory() as tmpdir:
-            tm = _create_tx_manager(Path(tmpdir), durability=DurabilityMode.BALANCED)
+            tm = _create_tx_manager(Path(tmpdir))
 
             latencies = self._measure_simple_commits(tm, n=50)
             p50 = percentile(latencies, 50)
@@ -158,7 +157,7 @@ class TestTransactionCommitPerformanceContract:
         predictable performance through careful I/O management.
         """
         with tempfile.TemporaryDirectory() as tmpdir:
-            tm = _create_tx_manager(Path(tmpdir), durability=DurabilityMode.BALANCED)
+            tm = _create_tx_manager(Path(tmpdir))
 
             latencies = self._measure_simple_commits(tm, n=50)
             p95 = percentile(latencies, 95)
@@ -176,7 +175,7 @@ class TestTransactionCommitPerformanceContract:
         Threshold calibrated with 20% headroom for CI environments.
         """
         with tempfile.TemporaryDirectory() as tmpdir:
-            tm = _create_tx_manager(Path(tmpdir), durability=DurabilityMode.BALANCED)
+            tm = _create_tx_manager(Path(tmpdir))
 
             latencies = []
             for _ in range(50):
@@ -205,7 +204,7 @@ class TestTransactionCommitPerformanceContract:
         Threshold calibrated from measured 485ms + 20% headroom.
         """
         with tempfile.TemporaryDirectory() as tmpdir:
-            tm = _create_tx_manager(Path(tmpdir), durability=DurabilityMode.BALANCED)
+            tm = _create_tx_manager(Path(tmpdir))
 
             # Commit with 100 entities
             tx = tm.begin()
@@ -279,7 +278,7 @@ class TestConflictDetectionPerformanceContract:
         Includes commit overhead for empty write set.
         """
         with tempfile.TemporaryDirectory() as tmpdir:
-            tm = _create_tx_manager(Path(tmpdir), durability=DurabilityMode.BALANCED)
+            tm = _create_tx_manager(Path(tmpdir))
 
             # Create 100 entities
             setup_tx = tm.begin()
@@ -320,7 +319,7 @@ class TestConflictDetectionPerformanceContract:
         and abort conflicting transactions correctly.
         """
         with tempfile.TemporaryDirectory() as tmpdir:
-            tm = _create_tx_manager(Path(tmpdir), durability=DurabilityMode.BALANCED)
+            tm = _create_tx_manager(Path(tmpdir))
 
             # Create initial entity
             tx1 = tm.begin()
@@ -381,7 +380,7 @@ class TestReadPerformanceContract:
         verification. This must be fast.
         """
         with tempfile.TemporaryDirectory() as tmpdir:
-            tm = _create_tx_manager(Path(tmpdir), durability=DurabilityMode.BALANCED)
+            tm = _create_tx_manager(Path(tmpdir))
 
             # Create entities
             setup_tx = tm.begin()
@@ -425,7 +424,7 @@ class TestReadPerformanceContract:
         should add minimal overhead compared to reading current state.
         """
         with tempfile.TemporaryDirectory() as tmpdir:
-            tm = _create_tx_manager(Path(tmpdir), durability=DurabilityMode.BALANCED)
+            tm = _create_tx_manager(Path(tmpdir))
 
             # Create entity
             setup_tx = tm.begin()

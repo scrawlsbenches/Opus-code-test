@@ -564,22 +564,9 @@ class TransactionalGoTAdapter:
         except Exception:
             return False
 
-    def get_handoff(self, handoff_id: str) -> Optional[Dict[str, Any]]:
-        """Get handoff by ID."""
-        handoff = self._manager.get_handoff(handoff_id)
-        if not handoff:
-            return None
-        return {
-            "id": handoff.id,
-            "source_agent": handoff.source_agent,
-            "target_agent": handoff.target_agent,
-            "task_id": handoff.task_id,
-            "status": handoff.status,
-            "instructions": handoff.instructions,
-            "context": handoff.context,
-            "result": handoff.result,
-            "created_at": handoff.created_at,
-        }
+    def get_handoff(self, handoff_id: str) -> Optional[Any]:
+        """Get handoff by ID. Returns the Handoff entity."""
+        return self._manager.get_handoff(handoff_id)
 
     def list_handoffs(self, status: Optional[str] = None) -> List[Dict[str, Any]]:
         """List handoffs."""
@@ -790,31 +777,9 @@ class TransactionalGoTAdapter:
         Returns:
             The KT ID string
         """
-        # Delegate to manager if available
-        if hasattr(self._manager, 'create_knowledge_transfer'):
-            kt = self._manager.create_knowledge_transfer(title, summary, status, **kwargs)
-            return kt.id if hasattr(kt, 'id') else str(kt)
-
-        # Create KT entity directly via CDG store
-        kt_id = generate_kt_id()
-        kt = KnowledgeTransfer(
-            id=kt_id,
-            title=title,
-            summary=summary,
-            status=status,
-            session_id=kwargs.get('session_id', ''),
-            session_date=kwargs.get('session_date', ''),
-            sections=kwargs.get('sections', {}),
-            tags=kwargs.get('tags', []),
-            related_tasks=kwargs.get('related_tasks', []),
-            related_decisions=kwargs.get('related_decisions', []),
-            related_handoffs=kwargs.get('related_handoffs', []),
-        )
-
-        # Write to CDG store
-        self._manager.tx_manager.store.write(kt)
-
-        return kt_id
+        # Delegate to GoTManager (which uses proper transactions)
+        kt = self._manager.create_knowledge_transfer(title, summary, status, **kwargs)
+        return kt.id
 
     def list_knowledge_transfers(
         self, status: Optional[str] = None, tags: Optional[List[str]] = None
@@ -826,28 +791,61 @@ class TransactionalGoTAdapter:
 
     def get_knowledge_transfer(self, kt_id: str) -> Optional[Any]:
         """Get a knowledge transfer by ID."""
-        # Try direct read from transaction manager store
-        entity = self._manager.tx_manager.store.read(kt_id)
-        if entity is not None:
-            return entity
-        return None
+        # Delegate to GoTManager
+        return self._manager.get_knowledge_transfer(kt_id)
+
+    def update_knowledge_transfer(
+        self, kt_id: str, **updates
+    ) -> Optional[Any]:
+        """Update a knowledge transfer with the given fields.
+
+        Args:
+            kt_id: Knowledge transfer ID
+            **updates: Fields to update (status, summary, sections, etc.)
+
+        Returns:
+            Updated KT entity or None if not found
+        """
+        # Delegate to GoTManager (uses proper transactions)
+        return self._manager.update_knowledge_transfer(kt_id, **updates)
 
     def append_kt_section(
         self, kt_id: str, section_title: str, content: str
     ) -> bool:
         """Append a section to an existing knowledge transfer."""
-        kt = self.get_knowledge_transfer(kt_id)
-        if kt is None:
+        # Delegate to GoTManager (uses proper transactions)
+        result = self._manager.append_knowledge_transfer_section(kt_id, section_title, content)
+        return result is not None
+
+    def append_to_knowledge_transfer(
+        self, kt_id: str, section_title: str, content: str
+    ) -> Optional[Any]:
+        """Append a section to a knowledge transfer and return the updated entity.
+
+        This is the user-facing API that returns the updated KT entity.
+        """
+        if self.append_kt_section(kt_id, section_title, content):
+            return self.get_knowledge_transfer(kt_id)
+        return None
+
+    def link_knowledge_transfer(
+        self, kt_id: str, target_id: str, link_type: str = "DOCUMENTS"
+    ) -> bool:
+        """Link a knowledge transfer to another entity.
+
+        Args:
+            kt_id: Knowledge transfer ID
+            target_id: Target entity ID (task, decision, handoff, etc.)
+            link_type: Edge type (DOCUMENTS, CONTINUES, etc.)
+
+        Returns:
+            True if link was created successfully
+        """
+        try:
+            self.add_edge(kt_id, target_id, link_type)
+            return True
+        except Exception:
             return False
-
-        # Get existing sections
-        sections = getattr(kt, 'sections', []) or []
-        sections.append({"title": section_title, "content": content})
-
-        # Update the entity
-        kt.sections = sections
-        self._manager.tx_manager.store.write(kt)
-        return True
 
     def finalize_knowledge_transfer(
         self,
