@@ -422,6 +422,10 @@ class GoTManager:
         priority: str = "medium",
         status: str = "pending",
         description: str = "",
+        category: str = "feature",
+        sprint_id: Optional[str] = None,
+        depends_on: Optional[List[str]] = None,
+        blocks: Optional[List[str]] = None,
         **properties
     ) -> Task:
         """
@@ -432,6 +436,10 @@ class GoTManager:
             priority: Priority level (low, medium, high, critical)
             status: Task status (pending, in_progress, completed, blocked)
             description: Task description
+            category: Task category (feature, bugfix, refactor, docs, test)
+            sprint_id: Optional sprint to add task to
+            depends_on: Optional list of task IDs this task depends on
+            blocks: Optional list of task IDs this task blocks
             **properties: Additional task properties
 
         Returns:
@@ -440,6 +448,17 @@ class GoTManager:
         Raises:
             TransactionError: If commit fails
         """
+        # Merge category into properties
+        if "category" not in properties:
+            properties["category"] = category
+
+        # Add session metadata
+        if "metadata" not in properties:
+            properties["metadata"] = {
+                "session_id": os.environ.get("CLAUDE_SESSION_ID", "unknown"),
+                "branch": self._get_current_branch(),
+            }
+
         with self.transaction() as tx:
             task = tx.create_task(
                 title=title,
@@ -448,6 +467,30 @@ class GoTManager:
                 description=description,
                 **properties
             )
+
+        # Add dependencies
+        if depends_on:
+            for dep_id in depends_on:
+                try:
+                    self.add_dependency(task.id, dep_id)
+                except Exception as e:
+                    logger.warning(f"Could not add dependency to {dep_id}: {e}")
+
+        # Add blocks
+        if blocks:
+            for blocked_id in blocks:
+                try:
+                    self.add_blocks(task.id, blocked_id)
+                except Exception as e:
+                    logger.warning(f"Could not add blocks to {blocked_id}: {e}")
+
+        # Add to sprint if specified
+        if sprint_id:
+            try:
+                self.add_edge(sprint_id, task.id, "CONTAINS")
+            except Exception as e:
+                logger.warning(f"Could not add task to sprint {sprint_id}: {e}")
+
         return task
 
     def get_task(self, task_id: str) -> Optional[Task]:
@@ -2046,57 +2089,6 @@ class GoTManager:
     # Methods migrated from TransactionalGoTAdapter
     # TODO: Review and consolidate with existing methods
     # =========================================================================
-
-    def save(self) -> None:
-        """No-op - GoTManager auto-saves. Kept for CLI compatibility."""
-        pass
-
-    def adapter_create_task(
-        self,
-        title: str,
-        priority: str = "medium",
-        category: str = "feature",
-        description: str = "",
-        sprint_id: Optional[str] = None,
-        depends_on: Optional[List[str]] = None,
-        blocks: Optional[List[str]] = None,
-    ) -> str:
-        """Create a new task with CLI conveniences."""
-        task = self.create_task(
-            title=title,
-            priority=priority,
-            description=description,
-            properties={"category": category},
-            metadata={
-                "session_id": os.environ.get("CLAUDE_SESSION_ID", "unknown"),
-                "branch": self._get_current_branch(),
-            },
-        )
-
-        # Add dependencies
-        if depends_on:
-            for dep_id in depends_on:
-                try:
-                    self.add_dependency(task.id, dep_id)
-                except Exception as e:
-                    logger.warning(f"Could not add dependency to {dep_id}: {e}")
-
-        # Add blocks
-        if blocks:
-            for blocked_id in blocks:
-                try:
-                    self.add_blocks(task.id, blocked_id)
-                except Exception as e:
-                    logger.warning(f"Could not add blocks to {blocked_id}: {e}")
-
-        # Add to sprint if specified
-        if sprint_id:
-            try:
-                self.add_edge(sprint_id, task.id, "CONTAINS")
-            except Exception as e:
-                logger.warning(f"Could not add task to sprint {sprint_id}: {e}")
-
-        return task.id
 
     def list_tasks(
         self,
