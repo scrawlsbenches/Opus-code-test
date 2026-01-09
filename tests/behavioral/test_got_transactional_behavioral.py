@@ -18,7 +18,6 @@ Following Metus: We describe behavior, then make it true.
 import sys
 import tempfile
 from pathlib import Path
-from datetime import datetime
 
 import pytest
 
@@ -28,12 +27,9 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from cortical.got import (
     GoTManager,
-    TransactionManager,
     Task,
     Decision,
     Edge,
-    CDGWALManager as WALManager,
-    RecoveryManager,
     ConflictResolver,
     ConflictStrategy,
     generate_task_id,
