@@ -1,7 +1,7 @@
 # Forensic Audit Report - 2026-01-08
 
-**Status:** ✅ PHASE 1-4 COMPLETE
-**Next:** Clean up 28 corrupted GoT entities (optional), build forward
+**Status:** ✅ PHASE 1-5 COMPLETE
+**Next:** Implement GOT_DIR → CDG migration (see `docs/design/got-cdg-storage-migration.md`)
 
 ---
 
@@ -30,6 +30,8 @@ Successfully merged all unique code into current branch.
 | Mass branch merge script | Jan 8, 2026 | ✅ COMPLETE |
 | Mass merge execution | Jan 8, 2026 | ✅ COMPLETE (7/162) |
 | Post-merge verification | Jan 8, 2026 | ✅ COMPLETE |
+| CLI migration (got_utils.py deleted) | Jan 9, 2026 | ✅ COMPLETE |
+| GOT_DIR migration plan created | Jan 9, 2026 | ✅ COMPLETE |
 
 ---
 
@@ -120,7 +122,7 @@ Successfully merged all unique code into current branch.
 **Files with conflict markers:**
 - `cortical/got/cli/handoff.py`
 - `cortical/got/cli/query.py`
-- `scripts/got_utils.py`
+- ~~`scripts/got_utils.py`~~ (deleted in Phase 5)
 
 **Backup:** `backup-before-mass-merge-20260108-215836`
 **Report:** `.git-ml/merge-report-20260108-215836.md`
@@ -169,8 +171,8 @@ Continuation session on Jan 8, 2026 (new thread).
 
 | File | Issue | Fix |
 |------|-------|-----|
-| `scripts/got_utils.py:3144` | Empty `suggest_command()` function | Added function body |
-| `scripts/got_utils.py:3686` | `cmd_compact` docstring merged with `suggest_command` | Separated and fixed both |
+| `scripts/got_utils.py:3144` | Empty `suggest_command()` function | Added function body (file later deleted in Phase 5) |
+| `scripts/got_utils.py:3686` | `cmd_compact` docstring merged with `suggest_command` | Separated and fixed both (file later deleted in Phase 5) |
 | `cortical/got/cli/handoff.py:328` | Duplicate `--reason/-r` argument | Removed duplicate |
 
 ### Pre-existing Issues Found (Not From Merge)
@@ -228,3 +230,91 @@ grep -r "MERGE_CONFLICT_RESOLVED" cortical/ scripts/
 *Phase 1 completed: 2026-01-08*
 *Phase 2 completed: 2026-01-08*
 *Phase 3 completed: 2026-01-08*
+*Phase 4 completed: 2026-01-08*
+*Phase 5 completed: 2026-01-09*
+
+---
+
+## Phase 5: CLI Migration & Architecture Cleanup ✅ COMPLETE
+
+Continuation session on Jan 9, 2026.
+
+### got_utils.py Migration
+
+| Action | Result |
+|--------|--------|
+| Delete `scripts/got_utils.py` | ✅ Removed 3,378 lines |
+| Migrate to `cortical/got/adapter.py` | ✅ All functionality preserved |
+| Update CLI entry point | ✅ `python -m cortical.got` |
+| Update 13 CLI module imports | ✅ All use `from cortical.got.adapter import` |
+| Bulk replace references | ✅ 49 files updated |
+
+### Documentation Updates
+
+| Document | Changes |
+|----------|---------|
+| `CLAUDE.md` | Full GoT CLI Reference section added |
+| `CLAUDE.md` | Audit CLI Reference section added |
+| `CLAUDE.md` | All `python scripts/got_utils.py` → `python -m cortical.got` |
+| `CLAUDE.md` | Quick Reference table updated with audit commands |
+
+### Architecture Analysis
+
+**Issue Found:** GoT layer has 115+ `got_dir` references that bypass CDG abstractions.
+
+**Migration Plan Created:** `docs/design/got-cdg-storage-migration.md`
+- 6 sprints to consolidate all storage into CDG layer
+- Remove `got_dir` from GoTManager
+- Migrate failures/learning/claudemd to CDG partitions
+
+### Files Still Referencing got_dir (To Be Fixed)
+
+| File | Count | Priority |
+|------|-------|----------|
+| `cli/doc.py` | 27 | HIGH |
+| `cli/failure.py` | 25 | HIGH |
+| `claudemd.py` | 14 | MEDIUM |
+| `cli/task.py` | 11 | MEDIUM |
+| `api.py` | 9 | HIGH |
+| Others | 29 | LOW |
+
+### Commits
+
+```
+544c96b4 refactor: Replace all got_utils.py references with cortical.got
+6c1fd092 docs: Update CLAUDE.md to use python -m cortical.got
+2aabc7e5 refactor: Delete got_utils.py, migrate to python -m cortical.got
+0cb0e6de feat: Add infer_edges_from_commit methods to CLI adapter
+bd738b5e docs: Add Audit CLI reference to CLAUDE.md
+6697e787 docs: Add GOT_DIR to CDG storage migration plan
+```
+
+---
+
+## Pre-existing Issues (Not Addressed)
+
+### Corrupted GoT Entities (28 total)
+
+These are from December 2025, not from any merge:
+- 25x Edge entities (E-S-018-T-*-CONTAINS) - JSONDecodeError
+- 2x Handoff entities (H-*) - JSONDecodeError/ChecksumMismatch
+- 1x Task entity (T-20251223-*) - JSONDecodeError
+
+**Status:** System skips them gracefully. Low priority to fix.
+
+### Documentation with Legacy References
+
+16 docs still reference `scripts/got_utils.py`:
+- Most are historical analysis/forensic reports (keep as-is)
+- `docs/got-cli-spec.md` and `docs/got-process-safety.md` should be updated
+
+---
+
+## Session State
+
+```
+Branch: claude/forensic-audit-continuation-mdoMJ
+Commits ahead of main: 106+
+Phase 5 (CLI migration): ✅ COMPLETE
+Next: GOT_DIR → CDG migration (Sprint 1: CDG Foundation)
+```
