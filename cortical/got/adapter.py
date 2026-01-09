@@ -564,22 +564,9 @@ class TransactionalGoTAdapter:
         except Exception:
             return False
 
-    def get_handoff(self, handoff_id: str) -> Optional[Dict[str, Any]]:
-        """Get handoff by ID."""
-        handoff = self._manager.get_handoff(handoff_id)
-        if not handoff:
-            return None
-        return {
-            "id": handoff.id,
-            "source_agent": handoff.source_agent,
-            "target_agent": handoff.target_agent,
-            "task_id": handoff.task_id,
-            "status": handoff.status,
-            "instructions": handoff.instructions,
-            "context": handoff.context,
-            "result": handoff.result,
-            "created_at": handoff.created_at,
-        }
+    def get_handoff(self, handoff_id: str) -> Optional[Any]:
+        """Get handoff by ID. Returns the Handoff entity."""
+        return self._manager.get_handoff(handoff_id)
 
     def list_handoffs(self, status: Optional[str] = None) -> List[Dict[str, Any]]:
         """List handoffs."""
@@ -806,6 +793,8 @@ class TransactionalGoTAdapter:
             session_date=kwargs.get('session_date', ''),
             sections=kwargs.get('sections', {}),
             tags=kwargs.get('tags', []),
+            code_refs=kwargs.get('code_refs', []),
+            source_file=kwargs.get('source_file'),
             related_tasks=kwargs.get('related_tasks', []),
             related_decisions=kwargs.get('related_decisions', []),
             related_handoffs=kwargs.get('related_handoffs', []),
@@ -832,6 +821,34 @@ class TransactionalGoTAdapter:
             return entity
         return None
 
+    def update_knowledge_transfer(
+        self, kt_id: str, **updates
+    ) -> Optional[Any]:
+        """Update a knowledge transfer with the given fields.
+
+        Args:
+            kt_id: Knowledge transfer ID
+            **updates: Fields to update (status, summary, sections, etc.)
+
+        Returns:
+            Updated KT entity or None if not found
+        """
+        kt = self.get_knowledge_transfer(kt_id)
+        if kt is None:
+            return None
+
+        # Apply updates
+        for field, value in updates.items():
+            if hasattr(kt, field):
+                setattr(kt, field, value)
+
+        # Increment version
+        kt.version = getattr(kt, 'version', 0) + 1
+
+        # Write back
+        self._manager.tx_manager.store.write(kt)
+        return kt
+
     def append_kt_section(
         self, kt_id: str, section_title: str, content: str
     ) -> bool:
@@ -842,12 +859,49 @@ class TransactionalGoTAdapter:
 
         # Get existing sections (Dict[str, str] - heading -> content)
         sections = getattr(kt, 'sections', {}) or {}
-        sections[section_title] = content
+
+        # Accumulate content if section already exists
+        if section_title in sections:
+            sections[section_title] = sections[section_title] + "\n\n" + content
+        else:
+            sections[section_title] = content
 
         # Update the entity
         kt.sections = sections
+        # Increment version
+        kt.version = getattr(kt, 'version', 0) + 1
         self._manager.tx_manager.store.write(kt)
         return True
+
+    def append_to_knowledge_transfer(
+        self, kt_id: str, section_title: str, content: str
+    ) -> Optional[Any]:
+        """Append a section to a knowledge transfer and return the updated entity.
+
+        This is the user-facing API that returns the updated KT entity.
+        """
+        if self.append_kt_section(kt_id, section_title, content):
+            return self.get_knowledge_transfer(kt_id)
+        return None
+
+    def link_knowledge_transfer(
+        self, kt_id: str, target_id: str, link_type: str = "DOCUMENTS"
+    ) -> bool:
+        """Link a knowledge transfer to another entity.
+
+        Args:
+            kt_id: Knowledge transfer ID
+            target_id: Target entity ID (task, decision, handoff, etc.)
+            link_type: Edge type (DOCUMENTS, CONTINUES, etc.)
+
+        Returns:
+            True if link was created successfully
+        """
+        try:
+            self.add_edge(kt_id, target_id, link_type)
+            return True
+        except Exception:
+            return False
 
     def finalize_knowledge_transfer(
         self,

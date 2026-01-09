@@ -646,8 +646,11 @@ class AuditReasoner:
         - facts: List of facts asserted for this file
         - inferences: Inference chains that fired
         - risk_level: Overall risk assessment
+        - traces: Reasoning traces (inference chains)
+        - summary: Brief summary of the risk assessment
         """
-        file_id_clean = file_id.replace(".", "_")
+        # Normalize file_id the same way as assert_file_facts
+        file_id_clean = Path(file_id).name.replace(".", "_")
 
         explanation = {
             "file_id": file_id_clean,
@@ -655,13 +658,16 @@ class AuditReasoner:
             "inferences": [],
             "risk_level": None,
             "suggestions": [],
+            "traces": {},
+            "summary": "",
         }
 
         # Gather facts
-        for atom, tv in self.pln._atoms.items():
-            if file_id_clean in atom:
+        for atom_name, atom_obj in self.pln.graph._atoms.items():
+            if file_id_clean in atom_name:
+                tv = atom_obj.truth_value
                 explanation["facts"].append({
-                    "atom": atom,
+                    "atom": atom_name,
                     "strength": tv.strength,
                     "confidence": tv.confidence,
                 })
@@ -685,4 +691,188 @@ class AuditReasoner:
             elif "has_trait" in atom and "high_churn" in atom:
                 explanation["suggestions"].append("Consider stabilizing this high-churn file")
 
+        # Build traces from inference chain
+        trace_steps = []
+        for fact in explanation["facts"]:
+            atom = fact["atom"]
+            trace_steps.append({
+                "step": "assert",
+                "atom": atom,
+                "source": "codebase_scan",
+            })
+        explanation["traces"] = {
+            "steps": trace_steps,
+            "count": len(trace_steps),
+        }
+
+        # Build summary
+        risk_level = "unknown"
+        if explanation["risk_level"]:
+            mean = explanation["risk_level"]["mean"]
+            if mean > 0.7:
+                risk_level = "high"
+            elif mean > 0.4:
+                risk_level = "medium"
+            else:
+                risk_level = "low"
+
+        num_facts = len(explanation["facts"])
+        num_suggestions = len(explanation["suggestions"])
+        explanation["summary"] = (
+            f"File {file_id_clean} has {risk_level} risk "
+            f"({num_facts} facts, {num_suggestions} suggestions)"
+        )
+
         return explanation
+
+    def query_file_risk(
+        self,
+        file_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Query risk assessment for a specific file.
+
+        Returns dict with risk score, evidence, and importance.
+        """
+        # Normalize file_id the same way as assert_file_facts
+        file_id_clean = Path(file_id).name.replace(".", "_")
+        tv = self.query_risk(file_id_clean, aggregate=True)
+        if tv is None:
+            return None
+
+        # Get importance info
+        av = self.file_importance.get(file_id_clean, AttentionValue())
+        importance_total = av.sti + av.lti
+        if av.vlti:
+            importance_total += 0.5
+
+        return {
+            "file_id": file_id,
+            "risk_score": tv.mean(),
+            "strength": tv.strength,
+            "confidence": tv.confidence,
+            "_importance": {
+                "sti": av.sti,
+                "lti": av.lti,
+                "vlti": av.vlti,
+                "total": importance_total,
+            },
+        }
+
+    def get_priority_files(
+        self,
+        top_n: int = 10
+    ) -> List[Tuple[str, float]]:
+        """
+        Get files prioritized by risk and importance.
+
+        Returns list of (file_id, priority_score) tuples.
+        """
+        priorities = []
+
+        # Gather all known files from attention and facts
+        known_files = set(self.file_importance.keys())
+        for atom in self.pln.graph._atoms:
+            # Extract file IDs from atoms like "has_pattern(file_id, pattern)"
+            if "(" in atom and ")" in atom:
+                parts = atom.split("(")[1].split(")")[0].split(",")
+                if parts:
+                    known_files.add(parts[0].strip())
+
+        for file_id in known_files:
+            # Calculate priority from risk + importance
+            risk_tv = self.query_risk(file_id, aggregate=True)
+            risk_score = risk_tv.mean() if risk_tv else 0.0
+
+            importance = self.file_importance.get(file_id, AttentionValue())
+            importance_score = importance.sti * 0.3 + importance.lti * 0.5
+
+            # VLTI files get priority boost
+            if importance.vlti:
+                importance_score += 0.3
+
+            priority = risk_score * 0.6 + importance_score * 0.4
+            if priority > 0:
+                priorities.append((file_id, priority))
+
+        # Sort by priority descending
+        priorities.sort(key=lambda x: x[1], reverse=True)
+        return priorities[:top_n]
+
+    def stimulate_file(
+        self,
+        file_id: str,
+        amount: float = 0.1
+    ) -> None:
+        """
+        Increase the short-term importance of a file.
+
+        This simulates a file being accessed or modified.
+        """
+        # Normalize file_id the same way as assert_file_facts
+        file_id_clean = Path(file_id).name.replace(".", "_")
+        if file_id_clean in self.file_importance:
+            current = self.file_importance[file_id_clean]
+            new_sti = min(1.0, current.sti + amount)
+            self.file_importance[file_id_clean] = AttentionValue(
+                sti=new_sti,
+                lti=current.lti,
+                vlti=current.vlti
+            )
+        else:
+            self.file_importance[file_id_clean] = AttentionValue(
+                sti=amount,
+                lti=0.0,
+                vlti=False
+            )
+
+
+# =============================================================================
+# REPORT GENERATION
+# =============================================================================
+
+
+def generate_reasoning_report(results: Dict[str, Any]) -> str:
+    """
+    Generate a formatted report from audit analysis results.
+
+    Args:
+        results: Dictionary containing:
+            - files_analyzed: List of file paths analyzed
+            - rules_loaded: Number of rules loaded
+            - analysis_results: List of per-file analysis results
+
+    Returns:
+        Formatted markdown report string
+    """
+    lines = []
+    lines.append("# Audit Reasoning Report")
+    lines.append("")
+    lines.append(f"## Summary")
+    lines.append(f"- Files analyzed: {len(results.get('files_analyzed', []))}")
+    lines.append(f"- Rules loaded: {results.get('rules_loaded', 0)}")
+    lines.append("")
+    lines.append("## Analysis Results")
+    lines.append("")
+
+    for result in results.get("analysis_results", []):
+        file_path = result.get("file", "unknown")
+        patterns = result.get("patterns", [])
+        explanation = result.get("explanation", {})
+
+        lines.append(f"### {file_path}")
+        if patterns:
+            lines.append(f"- Patterns: {', '.join(patterns)}")
+        if explanation:
+            risk = explanation.get("risk_level", {})
+            if risk:
+                lines.append(f"- Risk strength: {risk.get('strength', 0):.2f}")
+                lines.append(f"- Confidence: {risk.get('confidence', 0):.2f}")
+            suggestions = explanation.get("suggestions", [])
+            if suggestions:
+                lines.append("- Suggestions:")
+                for s in suggestions:
+                    lines.append(f"  - {s}")
+        lines.append("")
+
+    return "\n".join(lines)
