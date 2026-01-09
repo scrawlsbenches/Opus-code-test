@@ -840,9 +840,9 @@ class TransactionalGoTAdapter:
         if kt is None:
             return False
 
-        # Get existing sections
-        sections = getattr(kt, 'sections', []) or []
-        sections.append({"title": section_title, "content": content})
+        # Get existing sections (Dict[str, str] - heading -> content)
+        sections = getattr(kt, 'sections', {}) or {}
+        sections[section_title] = content
 
         # Update the entity
         kt.sections = sections
