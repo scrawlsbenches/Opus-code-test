@@ -8,7 +8,7 @@ import tempfile
 import pytest
 from pathlib import Path
 
-from cortical.got.api import GoTManager, TransactionContext, generate_task_id, generate_decision_id
+from cortical.got.api import GoTManager, generate_task_id, generate_decision_id
 from cortical.got.types import Task, Decision, Edge
 from cortical.got.errors import TransactionError
 from cortical.core.bootstrap import create_container
@@ -27,87 +27,6 @@ class TestGoTManager:
         """Provide GoTManager instance via container."""
         container = create_container(got_dir=got_dir)
         return container.resolve(GoTManager)
-
-    def test_context_manager_commits_on_success(self, manager):
-        """Context manager commits transaction on successful exit."""
-        # Create task in transaction
-        with manager.transaction() as tx:
-            task = tx.create_task("Test task", priority="high")
-            task_id = task.id
-
-        # Verify task persisted
-        retrieved = manager.get_task(task_id)
-        assert retrieved is not None
-        assert retrieved.title == "Test task"
-        assert retrieved.priority == "high"
-
-    def test_context_manager_rolls_back_on_exception(self, manager):
-        """Context manager rolls back transaction on exception."""
-        task_id = None
-
-        try:
-            with manager.transaction() as tx:
-                task = tx.create_task("Test task")
-                task_id = task.id
-                raise ValueError("Simulated error")
-        except ValueError:
-            pass  # Expected
-
-        # Verify task was NOT persisted
-        retrieved = manager.get_task(task_id)
-        assert retrieved is None
-
-    def test_create_task_in_transaction(self, manager):
-        """Task creation within transaction works correctly."""
-        with manager.transaction() as tx:
-            task = tx.create_task(
-                "Implement feature",
-                priority="high",
-                status="in_progress",
-                description="Test description"
-            )
-
-            assert task.title == "Implement feature"
-            assert task.priority == "high"
-            assert task.status == "in_progress"
-            assert task.description == "Test description"
-            assert task.id.startswith("T-")
-
-    def test_update_task_in_transaction(self, manager):
-        """Task update within transaction works correctly."""
-        # Create task first
-        task = manager.create_task("Original title", status="pending")
-        task_id = task.id
-        original_version = task.version
-
-        # Update in transaction
-        with manager.transaction() as tx:
-            updated = tx.update_task(
-                task_id,
-                title="Updated title",
-                status="in_progress",
-                priority="critical"
-            )
-
-            assert updated.title == "Updated title"
-            assert updated.status == "in_progress"
-            assert updated.priority == "critical"
-
-        # Version is incremented during commit, verify after transaction
-        retrieved = manager.get_task(task_id)
-        assert retrieved.version == original_version + 1
-
-    def test_read_only_context(self, manager):
-        """Read-only context rolls back instead of committing."""
-        task_id = None
-
-        with manager.transaction(read_only=True) as tx:
-            task = tx.create_task("Read-only task")
-            task_id = task.id
-
-        # Verify task was NOT persisted
-        retrieved = manager.get_task(task_id)
-        assert retrieved is None
 
     def test_get_task_returns_none_for_missing(self, manager):
         """get_task returns None for non-existent task."""
@@ -171,26 +90,6 @@ class TestGoTManager:
         assert edge.weight == 0.8
         assert edge.id == f"E-{task1.id}-{task2.id}-DEPENDS_ON"
 
-    def test_transaction_sees_own_writes(self, manager):
-        """Reads within transaction see pending writes."""
-        with manager.transaction() as tx:
-            # Create task
-            task = tx.create_task("Test task")
-            task_id = task.id
-
-            # Read it back within same transaction
-            retrieved = tx.get_task(task_id)
-            assert retrieved is not None
-            assert retrieved.title == "Test task"
-
-            # Update it
-            tx.update_task(task_id, title="Modified")
-
-            # Read again - should see update
-            retrieved2 = tx.get_task(task_id)
-            assert retrieved2.title == "Modified"
-
-
 class TestHelperFunctions:
     """Tests for ID generation helper functions."""
 
@@ -241,46 +140,6 @@ class TestDecisionOperations:
         assert decision.rationale == "Better ACID guarantees"
         assert decision.affects == ["T-001", "T-002"]
         assert decision.id.startswith("D-")
-
-    def test_create_decision_in_transaction(self, manager):
-        """Decision creation in transaction context."""
-        with manager.transaction() as tx:
-            decision = tx.create_decision(
-                "Architectural choice",
-                rationale="Simplifies implementation"
-            )
-            decision_id = decision.id
-
-        # Verify persistence
-        with manager.transaction(read_only=True) as tx:
-            retrieved = tx.read(decision_id)
-            assert retrieved is not None
-            assert isinstance(retrieved, Decision)
-            assert retrieved.title == "Architectural choice"
-
-
-class TestErrorHandling:
-    """Tests for error handling in API."""
-
-    @pytest.fixture
-    def manager(self, tmp_path):
-        """Provide GoTManager instance via container."""
-        container = create_container(got_dir=tmp_path / ".got")
-        return container.resolve(GoTManager)
-
-    def test_update_missing_task_raises_error(self, manager):
-        """Updating non-existent task raises TransactionError."""
-        with pytest.raises(TransactionError, match="Task not found"):
-            with manager.transaction() as tx:
-                tx.update_task("T-20251221-000000-abcd", title="New title")
-
-    def test_exception_propagates_from_context(self, manager):
-        """Exceptions from within context are propagated."""
-        with pytest.raises(ValueError, match="Test error"):
-            with manager.transaction() as tx:
-                tx.create_task("Test")
-                raise ValueError("Test error")
-
 
 class TestQueryAPI:
     """Tests for GoTManager query API methods."""

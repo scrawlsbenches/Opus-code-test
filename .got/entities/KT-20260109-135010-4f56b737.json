@@ -1,0 +1,29 @@
+{
+  "_checksum": "73b15c90ac0a5b3c",
+  "_written_at": "2026-01-09T13:51:12.509017+00:00",
+  "data": {
+    "code_refs": [],
+    "created_at": "2026-01-09T13:50:10.321947+00:00",
+    "entity_type": "knowledge_transfer",
+    "id": "KT-20260109-135010-4f56b737",
+    "modified_at": "2026-01-09T13:51:12.508976+00:00",
+    "properties": {},
+    "related_decisions": [],
+    "related_handoffs": [],
+    "related_tasks": [],
+    "sections": {
+      "Always-Passing Assertions (8 files)": "Tests with assertions that always pass regardless of actual behavior:\n\nTAUTOLOGICAL (always True):\n1. test_developer_detects_code_patterns.py (242-243): assert x is not None or x is None\n2. test_developer_uses_async_api.py (297): assert result is not None or result is None\n3. test_developer_uses_async_api.py (328): assert True\n4. test_developer_uses_parallel_processing.py (126): assert stats is not None or stats is None\n\nVACUOUS (>= 0 on list lengths):\n5. developer_gets_code_intelligence_stories.py (51, 98): assert len(x) >= 0\n6. developer_gets_predictions_stories.py (51, 85, 115): assert len(x) >= 0\n7. system_detects_anomalies_stories.py (90): assert len(predictions) >= 0\n8. system_learns_from_usage_stories.py (91): assert len(x) >= 0\n\nFix: Replace with meaningful assertions (>= 1, specific values, or remove if redundant).",
+      "Time.sleep Violations (12 files)": "Files using time.sleep() without approval per CLAUDE.md rules:\n1. agents_coordinate_via_context_stories.py (lines 84, 169, 175)\n2. cdg_wal_stories.py (line 234)\n3. developer_manages_nested_loops_stories.py (lines 81, 160)\n4. system_learns_from_usage_stories.py (lines 159, 223)\n5. test_agent_spawning_stories.py (lines 134, 152, 226)\n6. test_agents_communicate_via_pubsub.py (lines 367, 388, 410)\n7. test_developer_uses_transactions.py (line 213)\n8. test_developer_verifies_qapv_cycles.py (lines 124, 143, 396)\n9. test_graph_persistence_behavioral.py (lines 216, 417, 419, 851, 863, 892)\n10. test_graph_persistence_wal_behavioral.py (line 216)\n11. test_pubsub_messaging_stories.py (lines 218, 249)\n\nFix: Replace with mocked time, polling with short intervals, or injectable clock dependencies.",
+      "Timing-Based Flaky Assertions (4 files)": "Tests with hard-coded timing thresholds that may fail under load:\n\n1. test_researcher_searches_corpus_stories.py (93): assert elapsed < 0.5\n2. test_researcher_searches_documents_semantically.py (215): assert elapsed < 1.0\n3. test_security_engineer_searches_threat_knowledge.py (425): assert avg_time < 1.0\n4. test_semantic_knowledge_graph.py (460, 650): assert incremental_time < rebuild_time, assert search_time_ms < 500\n\nFix: Use relative comparisons, increase thresholds with margin, or mark as performance tests with appropriate markers.",
+      "Weak/Incorrect Assertions (3 files)": "Tests with assertions that don't properly validate behavior:\n\n1. test_behavioral.py (215): assert >= 0.5 allows wrong ordering in similarity comparison\n2. test_cel_sanity_health.py (516): Accepts DEGRADED state as valid for empty store (masks bug)\n3. test_hubris_moe.py (74): assert 'x' in names or len(selected) > 0 - OR condition always passes if any expert selected\n\nFix: Strengthen assertions to require specific expected outcomes."
+    },
+    "session_date": "",
+    "session_id": "",
+    "source_file": null,
+    "status": "published",
+    "summary": "Comprehensive analysis of 119 behavioral test files identified 25 tests with issues across 4 categories: time.sleep violations (12), always-passing assertions (8), timing-based flaky assertions (4), and weak/incorrect assertions (3).",
+    "tags": [],
+    "title": "Behavioral Test Quality Audit - January 2026",
+    "version": 11
+  }
+}

@@ -3,10 +3,14 @@
 Query and validation CLI commands for GoT system.
 
 Provides commands for:
-- Querying the graph (legacy natural language and new expression-based)
+- Querying the graph (SQL-like CDG query language)
+- Expression-based queries (legacy expr command)
 - Showing blocked/active/stats
 - Validating graph health
 - Inferring edges from git
+
+This module uses the CDG Query Language for structured queries.
+See: docs/design/cdg-query-language.md
 
 This module can be integrated into got_utils.py CLI or used standalone.
 """
@@ -18,20 +22,30 @@ from typing import TYPE_CHECKING, Any, List
 from .shared import format_task_table
 
 if TYPE_CHECKING:
-    from cortical.got.adapter import TransactionalGoTAdapter
+    from cortical.got.api import GoTManager
 
 
 # 
 # CLI COMMAND HANDLERS
 # 
 
-def cmd_query(args, manager: "TransactionalGoTAdapter") -> int:
-    """Handle 'got query' command."""
+def cmd_query(args, manager: "GoTManager") -> int:
+    """Handle 'got query' command - now using CDG Query Language."""
     query_str = " ".join(args.query_string)
 
     print(f"Query: {query_str}\n")
 
-    results = manager.query(query_str)
+    # Use CDG Query Engine
+    from cortical.cdg.query import CDGQueryEngine
+
+    engine = CDGQueryEngine()
+    engine.register_extension('got_manager', manager)
+
+    try:
+        results = engine.query(query_str)
+    except Exception as e:
+        print(f"Query Error: {e}")
+        return 1
 
     if not results:
         print("No results found.")
@@ -39,31 +53,35 @@ def cmd_query(args, manager: "TransactionalGoTAdapter") -> int:
 
     print(f"Results ({len(results)}):\n")
     for r in results:
-        if "step" in r:
-            # Path query
-            print(f"  [{r['step']}] {r['id']}: {r['title']}")
-        elif "relation" in r:
-            # Relationship query
-            print(f"  {r['relation']}: {r['id']}")
-            if r.get('title'):
-                print(f"      {r['title']}")
-        elif "reason" in r:
-            # Blocked tasks
-            print(f"  {r['id']}: {r['title']}")
-            print(f"      Reason: {r['reason']}")
+        # Handle dict results (legacy format)
+        if isinstance(r, dict):
+            if "step" in r:
+                # Path query
+                print(f"  [{r['step']}] {r['id']}: {r['title']}")
+            elif "relation" in r:
+                # Relationship query
+                print(f"  {r['relation']}: {r['id']}")
+                if r.get('title'):
+                    print(f"      {r['title']}")
+            elif "reason" in r:
+                # Blocked tasks
+                print(f"  {r['id']}: {r['title']}")
+                print(f"      Reason: {r['reason']}")
+            else:
+                # Generic result
+                print(f"  {r['id']}: {r.get('title', '')}")
+                if r.get('priority'):
+                    print(f"      Priority: {r['priority']}")
+                if r.get('status'):
+                    print(f"      Status: {r['status']}")
         else:
-            # Generic result
-            print(f"  {r['id']}: {r.get('title', '')}")
-            if r.get('priority'):
-                print(f"      Priority: {r['priority']}")
-            if r.get('status'):
-                print(f"      Status: {r['status']}")
-        print()
+            # Handle entity objects
+            _print_result_item(r)
 
     return 0
 
 
-def cmd_blocked(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_blocked(args, manager: "GoTManager") -> int:
     """Handle 'got blocked' command."""
     blocked = manager.get_blocked_tasks()
 
@@ -83,14 +101,14 @@ def cmd_blocked(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_active(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_active(args, manager: "GoTManager") -> int:
     """Handle 'got active' command."""
     active = manager.get_active_tasks()
     print(format_task_table(active))
     return 0
 
 
-def cmd_stats(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_stats(args, manager: "GoTManager") -> int:
     """Handle 'got stats' command."""
     stats = manager.get_stats()
 
@@ -107,7 +125,7 @@ def cmd_stats(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_dashboard(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_dashboard(args, manager: "GoTManager") -> int:
     """Handle 'got dashboard' command."""
     # Import dashboard module
     try:
@@ -125,7 +143,7 @@ def cmd_dashboard(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
-def cmd_validate(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_validate(args, manager: "GoTManager") -> int:
     """Handle 'got validate' command."""
     from cortical.reasoning.graph_of_thought import NodeType
 
@@ -277,7 +295,7 @@ def cmd_validate(args, manager: "TransactionalGoTAdapter") -> int:
     return 1 if issues else 0
 
 
-def cmd_infer(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_infer(args, manager: "GoTManager") -> int:
     """Handle 'got infer' command."""
     if args.message:
         # Analyze a specific message
@@ -308,7 +326,7 @@ def cmd_infer(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_export(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_export(args, manager: "GoTManager") -> int:
     """Handle 'got export' command."""
     from pathlib import Path
 
@@ -330,17 +348,22 @@ def cmd_export(args, manager: "TransactionalGoTAdapter") -> int:
 # EXPRESSION QUERY COMMANDS
 # 
 
-def cmd_expr(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_expr(args, manager: "GoTManager") -> int:
     """
     Handle 'got expr' command - expression-based queries.
 
-    Uses the new expression parser to execute structured queries like:
+    Now uses the CDG Query Language. Supports both:
+    - Legacy syntax: got expr "status = 'pending'" --type task
+    - Full syntax: got expr "FROM task WHERE status = 'pending'"
+
+    Examples:
         got expr "status = 'pending' AND priority = 'high'"
-        got expr "NOT status = 'completed'"
+        got expr "FROM task WHERE status = 'pending'"
         got expr "recent(days=7)"
+        got expr "blockers('T-123')"
     """
-    from cortical.got.expression import parse, execute, validate
-    from cortical.got.expression.errors import QueryError
+    from cortical.cdg.query import CDGQueryEngine, parse
+    from cortical.cdg.query.errors import CDGQueryError
 
     query_str = " ".join(args.expression)
 
@@ -357,29 +380,32 @@ def cmd_expr(args, manager: "TransactionalGoTAdapter") -> int:
     if not query_str:
         print("Error: No expression provided.")
         print("Usage: got expr \"status = 'pending'\"")
+        print("       got expr \"FROM task WHERE status = 'pending'\"")
         return 1
 
     try:
-        # Parse the expression
-        query = parse(query_str)
-
-        # Validate if entity type is specified
+        # Check if query already has FROM clause (new syntax)
+        # If not, prepend "FROM <entity_type> WHERE" for backwards compatibility
         entity_type = getattr(args, 'type', 'task')
-        if entity_type:
-            validate(query, entity_type=entity_type)
+        upper_query = query_str.upper().strip()
 
-        # Execute against the GoT manager
-        # The execute function expects a GoTManager. TransactionalGoTAdapter
-        # stores the actual manager in _manager
-        got_manager = getattr(manager, '_manager', manager)
-        results = execute(got_manager, query)
+        if not upper_query.startswith('FROM ') and not _is_function_call(query_str):
+            # Legacy syntax - wrap with FROM/WHERE
+            query_str = f"FROM {entity_type} WHERE {query_str}"
+
+        # Create CDG query engine with GoT manager
+        engine = CDGQueryEngine()
+        engine.register_extension('got_manager', manager)
+
+        # Execute query
+        results = engine.query(query_str)
 
         # Format and display results
         _display_results(results, query_str, args)
 
         return 0
 
-    except QueryError as e:
+    except CDGQueryError as e:
         print(f"Query Error: {e}")
         return 1
     except Exception as e:
@@ -388,6 +414,18 @@ def cmd_expr(args, manager: "TransactionalGoTAdapter") -> int:
             import traceback
             traceback.print_exc()
         return 1
+
+
+def _is_function_call(query_str: str) -> bool:
+    """Check if query string looks like a function call."""
+    # Simple heuristic: function calls start with identifier followed by (
+    stripped = query_str.strip()
+    if '(' not in stripped:
+        return False
+    paren_idx = stripped.index('(')
+    identifier = stripped[:paren_idx].strip()
+    # Must be a valid identifier (alphanumeric + underscore)
+    return identifier.isidentifier()
 
 
 def _display_results(results: Any, query_str: str, args) -> None:
@@ -434,14 +472,24 @@ def _display_results(results: Any, query_str: str, args) -> None:
 
 def _print_result_item(item: Any) -> None:
     """Print a single result item."""
+    # Check if item lacks __dict__ (not a user-defined object with attributes)
+    # This handles primitives, builtins, and containers without hard-coding types
+    if not hasattr(item, '__dict__'):
+        print(f"  {item}")
+        return
+
     # Get entity ID
     entity_id = getattr(item, 'id', None) or getattr(item, 'entity_id', None)
 
-    # Get title/content
-    title = (getattr(item, 'title', None) or
-             getattr(item, 'content', None) or
-             getattr(item, 'name', None) or
-             str(item))
+    # Get title/content - only use non-callable attributes (skip methods)
+    title = None
+    for attr in ('title', 'content', 'name'):
+        val = getattr(item, attr, None)
+        if val is not None and not callable(val):
+            title = val
+            break
+    if title is None:
+        title = str(item)
 
     if entity_id:
         print(f"  {entity_id}")
@@ -498,13 +546,9 @@ def _cmd_list_fields(args) -> int:
 
 def _cmd_list_functions() -> int:
     """List available query functions."""
-    from cortical.got.expression.registry import FunctionRegistry
+    from cortical.cdg.query import FunctionRegistry
 
-    # Ensure functions are registered
-    from cortical.got.expression.functions import graph, filters  # noqa: F401
-
-    registry = FunctionRegistry.instance()
-    functions = registry.list_functions()
+    functions = FunctionRegistry.list_functions()
 
     if not functions:
         print("No functions registered.")
@@ -512,23 +556,26 @@ def _cmd_list_functions() -> int:
 
     print("Available query functions:\n")
 
-    # Group functions - FunctionSignature doesn't have category, so just list all
-    for sig in sorted(functions, key=lambda s: s.name):
-        # Format parameters from required_args and optional_args
-        params = []
-        # Required args first
-        for arg in sig.required_args:
-            params.append(arg)
-        # Optional args with defaults
-        for arg, default in sig.optional_args.items():
-            params.append(f"{arg}={default}")
-        params_str = ", ".join(params)
+    # Group functions by category
+    categories = sorted(set(f.category for f in functions))
+    for category in categories:
+        cat_funcs = [f for f in functions if f.category == category]
+        print(f"  [{category.upper()}]")
 
-        print(f"  {sig.name}({params_str})")
-        if sig.description:
-            print(f"      {sig.description}")
-        if sig.returns:
-            print(f"      Returns: {sig.returns}")
+        for sig in sorted(cat_funcs, key=lambda s: s.name):
+            # Format parameters from required_args and optional_args
+            params = []
+            for arg in sig.required_args:
+                params.append(arg)
+            for arg, default in sig.optional_args.items():
+                params.append(f"{arg}={default}")
+            params_str = ", ".join(params)
+
+            print(f"    {sig.name}({params_str})")
+            if sig.description:
+                print(f"        {sig.description}")
+            if sig.returns:
+                print(f"        Returns: {sig.returns}")
         print()
 
     return 0
@@ -536,8 +583,8 @@ def _cmd_list_functions() -> int:
 
 def _cmd_explain(query_str: str) -> int:
     """Explain how a query will be executed."""
-    from cortical.got.expression import parse
-    from cortical.got.expression.errors import QueryError
+    from cortical.cdg.query import parse, plan
+    from cortical.cdg.query.errors import CDGQueryError
 
     if not query_str:
         print("Error: No expression to explain.")
@@ -550,7 +597,7 @@ def _cmd_explain(query_str: str) -> int:
         print("Parsed AST:")
         _print_ast(query.expression, indent=2)
 
-        print(f"\nEntity type: {query.entity_type or 'task (default)'}")
+        print(f"\nEntity type: {query.entity_type or '(function call)'}")
         if query.order_by:
             field, desc = query.order_by
             print(f"Order by: {field} {'DESC' if desc else 'ASC'}")
@@ -559,16 +606,30 @@ def _cmd_explain(query_str: str) -> int:
         if query.offset:
             print(f"Offset: {query.offset}")
 
+        # Show execution plan
+        try:
+            query_plan = plan(query)
+            print(f"\nExecution Plan:")
+            print(f"  Strategy: {query_plan.strategy.name}")
+            if query_plan.index_lookups:
+                print(f"  Index lookups: {query_plan.index_lookups}")
+            if query_plan.union_branches:
+                print(f"  Union branches: {len(query_plan.union_branches)}")
+            if query_plan.post_filter:
+                print(f"  Post-filter: {type(query_plan.post_filter).__name__}")
+        except Exception as e:
+            print(f"\nCould not create plan: {e}")
+
         return 0
 
-    except QueryError as e:
+    except CDGQueryError as e:
         print(f"Parse Error: {e}")
         return 1
 
 
 def _print_ast(node, indent=0) -> None:
     """Print AST node for debugging."""
-    from cortical.got.expression.ast import (
+    from cortical.cdg.query import (
         Comparison, AndExpr, OrExpr, NotExpr, FunctionCall, Literal, Field
     )
 
@@ -711,7 +772,7 @@ Examples:
     export_parser.add_argument("--output", "-o", help="Output file")
 
 
-def handle_query_commands(args, manager: "TransactionalGoTAdapter") -> int:
+def handle_query_commands(args, manager: "GoTManager") -> int:
     """
     Route query-related commands to appropriate handlers.
 

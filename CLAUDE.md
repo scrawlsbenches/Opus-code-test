@@ -33,7 +33,7 @@ python -m cortical.got task list --status in_progress
 
 # 3. Check for handoffs from previous sessions
 python -m cortical.got kt list --status draft | head -5
-python -m cortical.got handoff list --status pending | head -5
+python -m cortical.got handoff list --status initiated | head -5
 ```
 
 If any of these fail, **stop and investigate** before proceeding.
@@ -848,7 +848,7 @@ python -m cortical.got task list --status in_progress
 
 # 2. Recover Context
 python -m cortical.got kt list --status draft | head -5
-python -m cortical.got handoff list --status pending | head -5
+python -m cortical.got handoff list --status initiated | head -5
 
 # 3. Verify System State
 python -m cortical.got validate

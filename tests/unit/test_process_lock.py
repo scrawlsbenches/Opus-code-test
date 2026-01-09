@@ -255,7 +255,7 @@ class TestGoTManagerLocking:
 
     def test_manager_uses_lock_for_mutations(self, tmp_path):
         """TransactionalGoTAdapter should use lock for graph mutations."""
-        from cortical.got.adapter import GoTBackendFactory
+        from cortical.got.factory import GoTBackendFactory
 
         manager = GoTBackendFactory.create(got_dir=tmp_path)
 
@@ -269,7 +269,7 @@ class TestGoTManagerLocking:
 
     def test_manager_lock_file_location(self, tmp_path):
         """Manager should create lock file in got_dir."""
-        from cortical.got.adapter import GoTBackendFactory
+        from cortical.got.factory import GoTBackendFactory
 
         manager = GoTBackendFactory.create(got_dir=tmp_path)
         manager.create_task("Test", priority="high")

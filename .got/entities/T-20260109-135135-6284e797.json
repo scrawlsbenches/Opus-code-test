@@ -1,0 +1,19 @@
+{
+  "_checksum": "84e7074c5f31a062",
+  "_written_at": "2026-01-09T13:51:35.780197+00:00",
+  "data": {
+    "created_at": "2026-01-09T13:51:35.765629+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20260109-135135-6284e797",
+    "metadata": {},
+    "modified_at": "2026-01-09T13:51:35.780131+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "bugfix"
+    },
+    "status": "pending",
+    "title": "Fix time.sleep violations in behavioral tests (12 files)",
+    "version": 2
+  }
+}
