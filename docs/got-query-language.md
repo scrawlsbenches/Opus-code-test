@@ -121,6 +121,9 @@ NOT status = 'completed'
 | `dependents(id)` | What depends on task | `dependents(T-001)` |
 | `all_dependencies(id)` | Full dependency tree | `all_dependencies(T-001)` |
 | `cycle_detect(id)` | Find cycles from node | `cycle_detect(T-001)` |
+| `exists(id)` | Check if entity exists | `exists(T-001)` |
+| `type_of(id)` | Get entity type | `type_of(T-001)` |
+| `aggregate(field)` | Count/group by field | `aggregate(status)` |
 
 ---
 
