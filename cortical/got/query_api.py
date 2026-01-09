@@ -12,10 +12,12 @@ The QueryAPI class takes a reference to a GoTManager and provides methods for:
 - Document-task relationships
 
 Example:
+    >>> from cortical.core.bootstrap import create_container
     >>> from cortical.got import GoTManager
     >>> from cortical.got.query_api import QueryAPI
     >>>
-    >>> manager = GoTManager("/path/to/.got")
+    >>> container = create_container(got_dir=Path(".got"))
+    >>> manager = container.resolve(GoTManager)
     >>> query = QueryAPI(manager)
     >>>
     >>> # Find pending high-priority tasks

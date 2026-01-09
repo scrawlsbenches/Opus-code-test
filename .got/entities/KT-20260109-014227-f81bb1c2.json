@@ -1,0 +1,33 @@
+{
+  "_checksum": "61e14a27dd2815f5",
+  "_written_at": "2026-01-09T01:43:04.614851+00:00",
+  "data": {
+    "code_refs": [],
+    "created_at": "2026-01-09T01:42:27.786348+00:00",
+    "entity_type": "knowledge_transfer",
+    "id": "KT-20260109-014227-f81bb1c2",
+    "modified_at": "2026-01-09T01:43:04.614800+00:00",
+    "properties": {},
+    "related_decisions": [],
+    "related_handoffs": [],
+    "related_tasks": [],
+    "sections": [
+      {
+        "content": "- Removed got_dir parameter from GoTManager.__init__\n- Added base_dir property (tx_manager.store.store_dir.parent)\n- Added entities_dir property (tx_manager.store.store_dir)\n- Added deprecated got_dir property for backward compat\n- Updated GoTModule to not pass got_dir\n- Updated docstrings, examples, scripts to use container pattern",
+        "title": "Changes Made"
+      },
+      {
+        "content": "1. Run full test suite: python -m pytest tests/ -v --tb=short\n2. Verify CLI works: python -m cortical.got validate\n3. Test container resolution: python -c 'from cortical.core.bootstrap import create_container; from cortical.got import GoTManager; c = create_container(); m = c.resolve(GoTManager); print(m.base_dir)'\n4. Check backward compat: python -c 'from cortical.core.bootstrap import create_container; from cortical.got import GoTManager; c = create_container(); m = c.resolve(GoTManager); print(m.got_dir)'",
+        "title": "Validation Tasks"
+      }
+    ],
+    "session_date": "",
+    "session_id": "",
+    "source_file": null,
+    "status": "published",
+    "summary": "Completed Sprint 2 of GOT_DIR\u2192CDG migration. Removed got_dir parameter from GoTManager, added base_dir/entities_dir properties derived from tx_manager.store. 305 tests pass.",
+    "tags": [],
+    "title": "Session: GOT_DIR Removal from GoTManager",
+    "version": 5
+  }
+}

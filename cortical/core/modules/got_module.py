@@ -110,11 +110,11 @@ class GoTModule(ContainerModule):
         )
 
         # Register GoTManager with injected CDGTransactionManager and SchemaRegistry
+        # GoTManager derives paths from tx_manager.store - no got_dir needed
         def create_got_manager() -> GoTManager:
             tx_manager = container.resolve(CDGTransactionManager)
             registry = container.resolve(SchemaRegistry)
             return GoTManager(
-                self.config.got_dir,
                 tx_manager=tx_manager,
                 schema_registry=registry,
             )

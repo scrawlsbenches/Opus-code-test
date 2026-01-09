@@ -27,6 +27,7 @@ from datetime import datetime
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from cortical.core.bootstrap import create_container
 from cortical.got import (
     # High-level API
     GoTManager, TransactionContext,
@@ -511,8 +512,9 @@ def run_all_demos(clean: bool = True):
     print(f"\nDemo directory: {demo_dir}")
 
     try:
-        # Initialize manager
-        manager = GoTManager(got_dir)
+        # Initialize manager via container
+        container = create_container(got_dir=got_dir)
+        manager = container.resolve(GoTManager)
 
         # Run demos
         demo_basic_crud(manager)
