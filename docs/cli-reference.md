@@ -399,19 +399,28 @@ python -m cortical.got query "path from T-001 to T-010"
 python -m cortical.got query "authentication"
 ```
 
-### TransactionalGoTAdapter API
+### GoTManager API
 
-The `cortical/got/adapter.py` module wraps GoT with CLI-friendly methods:
+The `cortical/got/api.py` module provides the primary interface for GoT operations:
+
+```python
+from cortical.core.bootstrap import create_container
+from cortical.got.api import GoTManager
+
+container = create_container()
+manager = container.resolve(GoTManager)
+```
 
 | Method | Purpose | Returns |
 |--------|---------|---------|
-| `create_task(title, **kwargs)` | Create new task | Task ID (T-XXX) |
-| `get_task(task_id)` | Fetch task by ID | Task object or None |
-| `update_task(task_id, **updates)` | Update task fields | Success boolean |
-| `complete_task(task_id, retrospective)` | Mark complete | Success boolean |
-| `query(query_str)` | Natural language query | List of results |
+| `create_task(title, **kwargs)` | Create new task | Task object |
+| `get_task(task_id)` | Fetch task by ID | Task or None |
+| `update_task(task_id, **updates)` | Update task fields | Task object |
+| `complete_task(task_id, retrospective)` | Mark complete | bool |
+| `list_tasks(status, priority)` | Query tasks | List[Task] |
 | `get_blocked_tasks()` | Find blocked tasks | List[(Task, reason)] |
-| `get_active_tasks()` | Find in_progress | List[Task] |
+| `add_edge(from_id, to_id, edge_type)` | Create relationship | Edge object |
+| `list_edges()` | Get all edges | List[Edge] |
 
 ### Common Patterns
 
