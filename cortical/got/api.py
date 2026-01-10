@@ -506,24 +506,27 @@ class GoTManager:
             )
             self.tx_manager.write(tx, task)
 
-        # Add dependencies
+        # Add dependencies (normalize IDs in case Entity objects are passed)
         if depends_on:
-            for dep_id in depends_on:
+            for dep in depends_on:
+                dep_id = self._normalize_id(dep)
                 try:
                     self.add_dependency(task.id, dep_id)
                 except Exception as e:
                     logger.warning(f"Could not add dependency to {dep_id}: {e}")
 
-        # Add blocks
+        # Add blocks (normalize IDs in case Entity objects are passed)
         if blocks:
-            for blocked_id in blocks:
+            for blocked in blocks:
+                blocked_id = self._normalize_id(blocked)
                 try:
                     self.add_blocks(task.id, blocked_id)
                 except Exception as e:
                     logger.warning(f"Could not add blocks to {blocked_id}: {e}")
 
-        # Add to sprint if specified
+        # Add to sprint if specified (normalize in case Sprint object is passed)
         if sprint_id:
+            sprint_id = self._normalize_id(sprint_id)
             try:
                 self.add_edge(sprint_id, task.id, "CONTAINS")
             except Exception as e:

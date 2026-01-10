@@ -317,35 +317,34 @@ class TestSprintManagement:
         Scenario: User creates a sprint and assigns tasks to it.
         Expected: Sprint is created and contains assigned tasks.
         """
-        # Create sprint
-        sprint_id = got_manager.create_sprint(
-            name="Sprint 1 - Authentication",
+        # Create sprint (returns Sprint object)
+        sprint = got_manager.create_sprint(
+            title="Sprint 1 - Authentication",
             number=1
         )
 
         # Verify sprint exists
-        sprint = got_manager.get_sprint(sprint_id)
         assert sprint is not None
         assert sprint.content == "Sprint 1 - Authentication"
         assert sprint.number == 1
         assert sprint.status == "available"
 
         # Create tasks and assign to sprint
-        task1_id = got_manager.create_task(
+        task1 = got_manager.create_task(
             title="Implement login",
-            sprint_id=sprint_id
+            sprint_id=sprint.id
         )
-        task2_id = got_manager.create_task(
+        task2 = got_manager.create_task(
             title="Implement logout",
-            sprint_id=sprint_id
+            sprint_id=sprint.id
         )
 
         # Verify tasks are in sprint
-        sprint_tasks = got_manager.list_tasks(sprint_id=sprint_id)
+        sprint_tasks = got_manager.list_tasks(sprint_id=sprint.id)
         assert len(sprint_tasks) >= 2
         task_ids = [task.id for task in sprint_tasks]
-        assert task1_id in task_ids
-        assert task2_id in task_ids
+        assert task1.id in task_ids
+        assert task2.id in task_ids
 
     def test_sprint_progress_tracking(self, got_manager):
         """
