@@ -91,6 +91,9 @@ class TruthValue:
         TruthValue(0.99, 0.95) - Very likely true, high confidence
         TruthValue(0.5, 0.1)   - Uncertain, low evidence
         TruthValue(0.01, 0.99) - Almost certainly false, high confidence
+
+    Grounding: Bayesian probability theory.
+    Algorithm: Beta distribution (strength = mode, confidence = concentration).
     """
 
     strength: float = 1.0
@@ -123,6 +126,46 @@ class TruthValue:
 
         return TruthValue(new_strength, new_confidence)
 
+    def update(self, observation: bool, learning_rate: float = 0.1) -> 'TruthValue':
+        """
+        Bayesian update from observation.
+
+        Grounding: Conjugate prior update for Beta distribution.
+
+        Args:
+            observation: True if observation confirmed, False if refuted
+            learning_rate: How fast to update (default 0.1)
+
+        Returns:
+            New TruthValue with updated strength and confidence
+        """
+        obs_value = 1.0 if observation else 0.0
+
+        # Weighted update toward observation
+        new_strength = self.strength + learning_rate * (obs_value - self.strength)
+
+        # Confidence increases with evidence (diminishing returns)
+        new_confidence = self.confidence + learning_rate * (1.0 - self.confidence)
+
+        return TruthValue(new_strength, new_confidence)
+
+    def surprise(self, observation: bool) -> float:
+        """
+        Prediction error magnitude (surprisal).
+
+        Grounding: Information theory - surprisal = -log(P(observation))
+        Simplified: |predicted - observed|
+
+        Args:
+            observation: What actually happened
+
+        Returns:
+            Surprise level in [0, 1]. 0 = expected, 1 = completely unexpected
+        """
+        predicted = self.strength
+        observed = 1.0 if observation else 0.0
+        return abs(predicted - observed)
+
     def __repr__(self) -> str:
         return f"TV({self.strength:.2f}, {self.confidence:.2f})"
 
@@ -141,8 +184,12 @@ class Atom:
         name: Human-readable name (for nodes)
         outgoing: List of atom IDs this atom points to (for links)
         tv: Probabilistic truth value
-        sti: Short-term importance (attention)
-        lti: Long-term importance (persistent significance)
+        sti: Short-term importance (attention) [0, 1]
+        lti: Long-term importance (persistent significance) [0, 1]
+        created_at: Timestamp of creation
+        accessed_at: Last access timestamp (for LRU tracking)
+
+    Grounding: Standard graph theory + probabilistic databases.
     """
 
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
@@ -152,6 +199,8 @@ class Atom:
     tv: TruthValue = field(default_factory=TruthValue)
     sti: float = 0.0  # Short-term importance
     lti: float = 0.0  # Long-term importance
+    created_at: float = 0.0  # Timestamp of creation
+    accessed_at: float = 0.0  # Last access timestamp
 
     def is_link(self) -> bool:
         """True if this atom is a link (has outgoing connections)."""
@@ -664,4 +713,614 @@ class CognitiveGraphModule(ContainerModule):
             CognitiveGraph,
             lifecycle=self.lifecycle,
             storage=StorageBackend,  # Explicit dependency injection
+        )
+
+
+# =============================================================================
+# Cognitive Layers: Grounded Architecture v3.0
+# =============================================================================
+#
+# These layers extend the hypergraph foundation with proven cognitive algorithms:
+#   - Working Memory (LRU cache with capacity limits)
+#   - Prediction (co-occurrence based, swappable for neural models)
+#   - Goals (control theory with urgency tracking)
+#   - Exploration (ε-greedy bandit algorithm)
+#
+# Design Principle: Each layer is independently testable and grounded in
+# proven algorithms. No metaphors, just computer science.
+# =============================================================================
+
+
+@dataclass
+class Goal:
+    """
+    A target state with progress tracking.
+
+    Grounding: Control theory - goal = setpoint, progress = error signal.
+
+    Attributes:
+        id: Unique identifier
+        description: Human-readable description
+        target_state: What we're trying to achieve
+        current_state: Where we are now
+        importance: How much this matters [0, 1]
+    """
+    id: str
+    description: str
+    target_state: Any
+    current_state: Any = None
+    importance: float = 0.5
+
+    @property
+    def progress(self) -> float:
+        """Distance covered toward target [0, 1]."""
+        if self.current_state is None:
+            return 0.0
+        if self.current_state == self.target_state:
+            return 1.0
+        # For numeric states, use normalized distance
+        if isinstance(self.target_state, (int, float)):
+            if self.target_state == 0:
+                return 1.0 if self.current_state == 0 else 0.0
+            return min(1.0, abs(self.current_state / self.target_state))
+        # Default: binary
+        return 0.0
+
+    @property
+    def urgency(self) -> float:
+        """Priority for attention allocation = importance × (1 - progress)."""
+        return self.importance * (1.0 - self.progress)
+
+    def is_complete(self) -> bool:
+        """Check if goal has been achieved."""
+        return self.progress >= 0.99
+
+
+class WorkingMemory:
+    """
+    Bounded capacity workspace with LRU eviction.
+
+    Grounding: Cowan's 4±1 capacity limit, LRU cache.
+
+    This is literally a cache with eviction policy.
+    No metaphor. Just computer science.
+
+    TODO: Consider O(1) eviction with doubly-linked list + hashmap
+    TODO: Add memory consolidation to long-term storage
+    """
+
+    def __init__(self, capacity: int = 4):
+        """
+        Initialize working memory.
+
+        Args:
+            capacity: Maximum number of atoms to hold (default 4, based on Cowan's research)
+        """
+        self.capacity = capacity
+        self._slots: List[Atom] = []
+        self._access_order: List[str] = []  # For LRU tracking
+
+    def load(self, atom: Atom) -> Optional[Atom]:
+        """
+        Load atom into working memory.
+
+        Returns evicted atom if capacity exceeded, None otherwise.
+        """
+        # Already present? Move to front of access order (most recent)
+        for i, slot in enumerate(self._slots):
+            if slot.id == atom.id:
+                self._access_order.remove(atom.id)
+                self._access_order.append(atom.id)
+                self._slots[i] = atom  # Update with latest version
+                return None
+
+        evicted = None
+
+        # At capacity? Evict LRU (least recently used)
+        if len(self._slots) >= self.capacity:
+            lru_id = self._access_order.pop(0)
+            for i, slot in enumerate(self._slots):
+                if slot.id == lru_id:
+                    evicted = self._slots.pop(i)
+                    break
+
+        # Add new atom
+        self._slots.append(atom)
+        self._access_order.append(atom.id)
+
+        return evicted
+
+    def get(self, atom_id: str) -> Optional[Atom]:
+        """Get atom from working memory (updates access order)."""
+        for slot in self._slots:
+            if slot.id == atom_id:
+                self._access_order.remove(atom_id)
+                self._access_order.append(atom_id)
+                return slot
+        return None
+
+    def contains(self, atom_id: str) -> bool:
+        """Check if atom is in working memory."""
+        return any(s.id == atom_id for s in self._slots)
+
+    def contents(self) -> List[Atom]:
+        """Get all atoms in working memory."""
+        return list(self._slots)
+
+    def clear(self) -> None:
+        """Clear working memory."""
+        self._slots.clear()
+        self._access_order.clear()
+
+    def is_full(self) -> bool:
+        """Check if working memory is at capacity."""
+        return len(self._slots) >= self.capacity
+
+
+class AssociativePredictor:
+    """
+    Simple co-occurrence based predictor.
+
+    Grounding: Association rules, Hebbian learning.
+    Algorithm: Count co-activations, normalize to probabilities.
+
+    This is a minimal predictor that predicts based on what we tell it.
+    The predictor learns from recorded co-occurrences only.
+
+    TODO: Swap for neural model (e.g., transformer, RNN)
+    TODO: Add context window for temporal patterns
+    TODO: Add decay for old co-occurrences
+    """
+
+    def __init__(self, graph: 'CognitiveGraph'):
+        """
+        Initialize predictor.
+
+        Args:
+            graph: The cognitive graph to make predictions about
+        """
+        self.graph = graph
+        self._co_occurrences: Dict[str, Dict[str, int]] = {}  # a -> b -> count
+
+    def record_co_occurrence(self, atom_a_id: str, atom_b_id: str) -> None:
+        """
+        Record that these atoms were active together.
+
+        This is how the predictor learns: you tell it what co-occurs.
+        """
+        if atom_a_id not in self._co_occurrences:
+            self._co_occurrences[atom_a_id] = {}
+        if atom_b_id not in self._co_occurrences[atom_a_id]:
+            self._co_occurrences[atom_a_id][atom_b_id] = 0
+        self._co_occurrences[atom_a_id][atom_b_id] += 1
+
+    def predict(self, context: List[Atom]) -> List[Tuple[str, float]]:
+        """
+        Predict next relevant atoms based on context.
+
+        Args:
+            context: List of atoms currently active
+
+        Returns:
+            List of (atom_id, probability) pairs, sorted by probability
+        """
+        if not context:
+            return []
+
+        # Aggregate predictions from all context atoms
+        scores: Dict[str, float] = {}
+        context_ids = {a.id for a in context}
+
+        for atom in context:
+            if atom.id in self._co_occurrences:
+                for target_id, count in self._co_occurrences[atom.id].items():
+                    if target_id not in context_ids:  # Don't predict what's already there
+                        scores[target_id] = scores.get(target_id, 0.0) + count
+
+        if not scores:
+            return []
+
+        # Normalize to probabilities
+        total = sum(scores.values())
+        predictions = [(atom_id, score / total) for atom_id, score in scores.items()]
+
+        # Sort by probability descending
+        predictions.sort(key=lambda x: -x[1])
+
+        return predictions[:10]  # Top 10
+
+
+class SurpriseTracker:
+    """
+    Tracks prediction errors to drive learning.
+
+    Grounding: Predictive coding, Rescorla-Wagner learning rule.
+    Metric: Mean absolute prediction error.
+
+    TODO: Add exponential moving average for smoother tracking
+    TODO: Add per-context surprise tracking
+    """
+
+    def __init__(self, predictor: AssociativePredictor):
+        """
+        Initialize surprise tracker.
+
+        Args:
+            predictor: The predictor whose errors we track
+        """
+        self.predictor = predictor
+        self._prediction_history: List[Tuple[List[str], str, float]] = []
+
+    def record_outcome(
+        self,
+        context: List[Atom],
+        actual_atom_id: str,
+    ) -> float:
+        """
+        Record what actually happened and return surprise level.
+
+        Args:
+            context: The atoms that were active before the outcome
+            actual_atom_id: What actually happened
+
+        Returns:
+            Surprise in [0, 1]. 0 = perfectly predicted, 1 = completely unexpected
+        """
+        predictions = self.predictor.predict(context)
+        predicted_ids = {p[0]: p[1] for p in predictions}
+
+        if actual_atom_id in predicted_ids:
+            # Predicted - surprise is inverse of probability
+            surprise = 1.0 - predicted_ids[actual_atom_id]
+        else:
+            # Not predicted at all - maximum surprise
+            surprise = 1.0
+
+        self._prediction_history.append((
+            [a.id for a in context],
+            actual_atom_id,
+            surprise
+        ))
+
+        return surprise
+
+    def mean_surprise(self, window: int = 100) -> float:
+        """
+        Average surprise over recent predictions.
+
+        Args:
+            window: Number of recent predictions to consider
+
+        Returns:
+            Mean surprise level [0, 1]
+        """
+        if not self._prediction_history:
+            return 0.5  # Uncertain baseline
+
+        recent = self._prediction_history[-window:]
+        return sum(s for _, _, s in recent) / len(recent)
+
+
+class GoalTracker:
+    """
+    Tracks goals and their progress.
+
+    Grounding: Control theory - error = target - current.
+    Algorithm: Priority queue by urgency.
+
+    No desires. No hierarchy. Just goals with progress.
+
+    TODO: Add goal dependencies (blocked_by relationships)
+    TODO: Add goal decomposition (subgoals)
+    TODO: Integrate with GoT task system
+    """
+
+    def __init__(self):
+        """Initialize goal tracker."""
+        self._goals: Dict[str, Goal] = {}
+
+    def add_goal(self, goal: Goal) -> None:
+        """Add a goal to track."""
+        self._goals[goal.id] = goal
+
+    def remove_goal(self, goal_id: str) -> bool:
+        """Remove a goal. Returns True if found."""
+        if goal_id in self._goals:
+            del self._goals[goal_id]
+            return True
+        return False
+
+    def update_progress(self, goal_id: str, current_state: Any) -> None:
+        """Update a goal's current state."""
+        if goal_id in self._goals:
+            self._goals[goal_id].current_state = current_state
+
+    def get_active_goals(self) -> List[Goal]:
+        """Get incomplete goals sorted by urgency (highest first)."""
+        active = [g for g in self._goals.values() if not g.is_complete()]
+        return sorted(active, key=lambda g: g.urgency, reverse=True)
+
+    def get_top_goal(self) -> Optional[Goal]:
+        """Get highest urgency goal."""
+        active = self.get_active_goals()
+        return active[0] if active else None
+
+    def complete_count(self) -> int:
+        """Count completed goals."""
+        return sum(1 for g in self._goals.values() if g.is_complete())
+
+    def total_progress(self) -> float:
+        """Average progress across all goals."""
+        if not self._goals:
+            return 0.0
+        return sum(g.progress for g in self._goals.values()) / len(self._goals)
+
+
+class ExplorationController:
+    """
+    Balances exploration vs exploitation.
+
+    Grounding: Multi-armed bandit algorithms (ε-greedy).
+    Single parameter: ε (exploration rate).
+
+    No affect states. No multiple emotions.
+    Just one number that adapts based on success/failure.
+
+    TODO: Implement UCB (Upper Confidence Bound) as alternative
+    TODO: Add Thompson sampling option
+    TODO: Add contextual bandits for state-dependent exploration
+    """
+
+    def __init__(
+        self,
+        initial_epsilon: float = 0.3,
+        min_epsilon: float = 0.05,
+        max_epsilon: float = 0.9,
+        adaptation_rate: float = 0.1,
+    ):
+        """
+        Initialize exploration controller.
+
+        Args:
+            initial_epsilon: Starting exploration rate [0, 1]
+            min_epsilon: Minimum exploration rate
+            max_epsilon: Maximum exploration rate
+            adaptation_rate: How fast to adapt
+        """
+        self.epsilon = initial_epsilon
+        self.min_epsilon = min_epsilon
+        self.max_epsilon = max_epsilon
+        self.adaptation_rate = adaptation_rate
+        self._consecutive_failures: int = 0
+        self._consecutive_successes: int = 0
+
+    def should_explore(self) -> bool:
+        """
+        Decide whether to explore (try something new) or exploit (use best known).
+
+        Grounding: ε-greedy policy.
+
+        Returns:
+            True if should explore, False if should exploit
+        """
+        import random
+        return random.random() < self.epsilon
+
+    def record_success(self) -> None:
+        """Current approach is working - reduce exploration (exploit more)."""
+        self._consecutive_successes += 1
+        self._consecutive_failures = 0
+
+        # Decrease epsilon
+        self.epsilon = max(
+            self.min_epsilon,
+            self.epsilon - self.adaptation_rate
+        )
+
+    def record_failure(self) -> None:
+        """Current approach failed - increase exploration (try new things)."""
+        self._consecutive_failures += 1
+        self._consecutive_successes = 0
+
+        # Increase epsilon
+        self.epsilon = min(
+            self.max_epsilon,
+            self.epsilon + self.adaptation_rate
+        )
+
+    def is_stuck(self, threshold: int = 3) -> bool:
+        """
+        Are we in a failure loop?
+
+        Args:
+            threshold: Number of consecutive failures to consider "stuck"
+
+        Returns:
+            True if stuck in failure pattern
+        """
+        return self._consecutive_failures >= threshold
+
+
+class CognitiveAgent:
+    """
+    The complete minimal cognitive agent integrating all six layers.
+
+    Layers:
+        1. Knowledge (CognitiveGraph) - Hypergraph with truth values
+        2. Attention (via CognitiveGraph) - STI/LTI with decay
+        3. Working Memory - LRU bounded buffer
+        4. Prediction - Co-occurrence based
+        5. Goals - Control theory with urgency
+        6. Exploration - ε-greedy adaptation
+
+    Each layer is independently testable.
+    The integration is also testable.
+
+    TODO: Add persistence/serialization for agent state
+    TODO: Add event hooks for layer interactions
+    TODO: Connect to GoT for task/entity integration
+    TODO: Add episodic memory for experience replay
+    """
+
+    def __init__(
+        self,
+        graph: Optional[CognitiveGraph] = None,
+        working_memory_size: int = 4,
+        attention_focus_size: int = 7,
+    ):
+        """
+        Initialize cognitive agent.
+
+        Args:
+            graph: Knowledge graph (creates new if None)
+            working_memory_size: Capacity of working memory (default 4)
+            attention_focus_size: Size of attention focus (default 7, Miller's 7±2)
+        """
+        self.graph = graph or CognitiveGraph()
+        self._attention_focus_size = attention_focus_size
+        self.working_memory = WorkingMemory(capacity=working_memory_size)
+        self.predictor = AssociativePredictor(self.graph)
+        self.surprise_tracker = SurpriseTracker(self.predictor)
+        self.goals = GoalTracker()
+        self.exploration = ExplorationController()
+        self._step_count: int = 0
+
+    def step(self) -> Dict[str, Any]:
+        """
+        Execute one cognitive step.
+
+        Returns:
+            Metrics about what happened in this step
+        """
+        self._step_count += 1
+
+        # 1. Apply attention decay (delegates to graph)
+        self.graph.step()
+
+        # 2. Get current focus
+        focus = self.graph.get_attention_focus(top_k=self._attention_focus_size)
+
+        # 3. Record co-occurrences for learning
+        focus_ids = [a.id for a in focus]
+        for i, a_id in enumerate(focus_ids):
+            for b_id in focus_ids[i+1:]:
+                self.predictor.record_co_occurrence(a_id, b_id)
+                self.predictor.record_co_occurrence(b_id, a_id)
+
+        # 4. Check goal progress
+        top_goal = self.goals.get_top_goal()
+
+        # 5. Decide explore vs exploit
+        exploring = self.exploration.should_explore()
+
+        return {
+            "step": self._step_count,
+            "focus_size": len(focus),
+            "working_memory_size": len(self.working_memory.contents()),
+            "mean_surprise": self.surprise_tracker.mean_surprise(),
+            "top_goal": top_goal.id if top_goal else None,
+            "goal_progress": self.goals.total_progress(),
+            "epsilon": self.exploration.epsilon,
+            "exploring": exploring,
+        }
+
+    def attend(self, name_or_id: str, amount: float = 0.2) -> None:
+        """
+        Direct attention to an atom and load it into working memory.
+
+        Args:
+            name_or_id: Atom name or ID to attend to
+            amount: Amount to increase STI (default 0.2)
+        """
+        self.graph.stimulate(name_or_id, amount)
+        atom = self.graph.get_node(name_or_id)
+        if atom is None:
+            atom = self.graph.get_atom(name_or_id)
+        if atom:
+            evicted = self.working_memory.load(atom)
+            # TODO: Could log evicted atoms for analysis
+
+    def learn_from_surprise(self, context_ids: List[str], actual_id: str) -> float:
+        """
+        Update beliefs based on prediction error.
+
+        Args:
+            context_ids: IDs of atoms that were active before outcome
+            actual_id: ID of atom that actually appeared
+
+        Returns:
+            Surprise level [0, 1]
+        """
+        context = []
+        for aid in context_ids:
+            atom = self.graph.get_node(aid)
+            if atom is None:
+                atom = self.graph.get_atom(aid)
+            if atom:
+                context.append(atom)
+
+        surprise = self.surprise_tracker.record_outcome(context, actual_id)
+
+        # High surprise = update beliefs more strongly
+        actual_atom = self.graph.get_atom(actual_id)
+        if actual_atom and surprise > 0.5:
+            # Increase confidence in surprising observation
+            actual_atom.tv = actual_atom.tv.update(True, learning_rate=surprise * 0.2)
+            self.graph._storage.save(actual_atom)
+
+        return surprise
+
+
+# =============================================================================
+# Container Module for Full Cognitive Agent
+# =============================================================================
+
+
+class CognitiveAgentModule(ContainerModule):
+    """
+    DI module for full cognitive agent stack.
+
+    Registers:
+        - StorageBackend
+        - CognitiveGraph
+        - CognitiveAgent
+
+    Usage:
+        container = Container()
+        container.apply_module(CognitiveAgentModule())
+        agent = container.resolve(CognitiveAgent)
+    """
+
+    def __init__(
+        self,
+        lifecycle: Lifecycle = Lifecycle.SINGLETON,
+        storage_class: type = InMemoryStorage,
+        working_memory_size: int = 4,
+        attention_focus_size: int = 7,
+    ):
+        self.lifecycle = lifecycle
+        self.storage_class = storage_class
+        self.working_memory_size = working_memory_size
+        self.attention_focus_size = attention_focus_size
+
+    def register(self, container: Container) -> None:
+        """Register cognitive agent components."""
+        container.register(
+            StorageBackend,
+            self.storage_class,
+            lifecycle=self.lifecycle,
+        )
+        container.register(
+            CognitiveGraph,
+            CognitiveGraph,
+            lifecycle=self.lifecycle,
+            storage=StorageBackend,
+        )
+        # Register factory for CognitiveAgent
+        container.register_instance(
+            CognitiveAgent,
+            CognitiveAgent(
+                working_memory_size=self.working_memory_size,
+                attention_focus_size=self.attention_focus_size,
+            )
         )
