@@ -53,11 +53,12 @@ def temp_got_dir(tmp_path):
 @pytest.fixture
 def tx_manager(temp_got_dir):
     """
-    Provide a TransactionalGoTAdapter for testing.
+    Provide a GoTManager for testing.
 
     Provides high-level API for knowledge transfer operations.
     """
-    return TransactionalGoTAdapter(temp_got_dir)
+    container = create_container(got_dir=temp_got_dir)
+    return container.resolve(GoTManager)
 
 
 @pytest.fixture
@@ -1037,7 +1038,7 @@ class TestSystemMaintainsKnowledgeIntegrity:
         assert updated_kt.version > initial_version
 
         # TODO: Optimistic locking test requires low-level transaction API
-        # The TransactionalGoTAdapter doesn't expose begin/read/write/commit.
+        # GoTManager wraps transactions internally.
         # Consider adding a dedicated test in integration tests with CDGTransactionManager
         # to verify optimistic locking behavior when concurrent updates occur.
         # For now, we verify version incrementing works correctly.
