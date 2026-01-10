@@ -27,7 +27,7 @@ from .shared import (
 )
 
 if TYPE_CHECKING:
-    from cortical.got.adapter import TransactionalGoTAdapter
+    from cortical.got.api import GoTManager
 
 # Learning integration
 try:
@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 # CLI COMMAND HANDLERS
 # =============================================================================
 
-def cmd_task_create(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_task_create(args, manager: "GoTManager") -> int:
     """Handle 'got task create' command."""
     task_id = manager.create_task(
         title=args.title,
@@ -77,7 +77,7 @@ def cmd_task_create(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_task_list(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_task_list(args, manager: "GoTManager") -> int:
     """Handle 'got task list' command."""
     tasks = manager.list_tasks(
         status=getattr(args, 'status', None),
@@ -101,7 +101,7 @@ def cmd_task_list(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_task_next(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_task_next(args, manager: "GoTManager") -> int:
     """Handle 'got task next' command."""
     result = manager.get_next_task()
 
@@ -127,7 +127,7 @@ def cmd_task_next(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_task_show(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_task_show(args, manager: "GoTManager") -> int:
     """Handle 'got task show' command."""
     task_id = args.task_id
 
@@ -171,7 +171,7 @@ def cmd_task_show(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_task_start(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_task_start(args, manager: "GoTManager") -> int:
     """Handle 'got task start' command."""
     # Get task details for guidance
     task = manager.get_task(args.task_id)
@@ -243,7 +243,7 @@ def cmd_task_start(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
-def cmd_task_complete(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_task_complete(args, manager: "GoTManager") -> int:
     """Handle 'got task complete' command."""
     # Get task details before completing (for learning capture)
     task = manager.get_task(args.task_id)
@@ -305,7 +305,7 @@ def cmd_task_complete(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
-def cmd_task_block(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_task_block(args, manager: "GoTManager") -> int:
     """Handle 'got task block' command."""
     # Get task details before blocking (for learning capture)
     task = manager.get_task(args.task_id)
@@ -360,7 +360,7 @@ def cmd_task_block(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
-def cmd_task_depends(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_task_depends(args, manager: "GoTManager") -> int:
     """Handle 'got task depends' command."""
     try:
         # Use add_dependency method
@@ -376,7 +376,7 @@ def cmd_task_depends(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
-def cmd_task_update(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_task_update(args, manager: "GoTManager") -> int:
     """Handle 'got task update' command.
 
     Updates task properties. Only specified fields are updated.
@@ -421,7 +421,7 @@ def cmd_task_update(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
-def cmd_task_delete(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_task_delete(args, manager: "GoTManager") -> int:
     """Handle 'got task delete' command.
 
     TRANSACTIONAL: Verifies pre-conditions before deletion.
@@ -474,7 +474,7 @@ def cmd_task_delete(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
-def cmd_task_history(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_task_history(args, manager: "GoTManager") -> int:
     """Handle 'got task history' command.
 
     Shows the version history of a task, including:
@@ -489,7 +489,7 @@ def cmd_task_history(args, manager: "TransactionalGoTAdapter") -> int:
     task_id = args.task_id
 
     # Get the history file path
-    # Support both TransactionalGoTAdapter (got_dir) and direct GoTManager (got_dir)
+    # Support both GoTManager (got_dir) and direct GoTManager (got_dir)
     got_dir = getattr(manager, 'got_dir', None)
     if got_dir is None:
         # Fallback for direct managers
@@ -584,7 +584,7 @@ def cmd_task_history(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_task_import(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_task_import(args, manager: "GoTManager") -> int:
     """Handle 'got task import' command.
 
     Imports tasks from a YAML or JSON file.
@@ -889,7 +889,7 @@ def setup_task_parser(subparsers) -> None:
     )
 
 
-def handle_task_command(args, manager: "TransactionalGoTAdapter") -> int:
+def handle_task_command(args, manager: "GoTManager") -> int:
     """
     Route task subcommand to appropriate handler.
 

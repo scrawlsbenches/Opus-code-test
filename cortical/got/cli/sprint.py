@@ -16,14 +16,14 @@ from typing import TYPE_CHECKING
 from .shared import format_sprint_status, PRIORITY_SCORES
 
 if TYPE_CHECKING:
-    from cortical.got.adapter import TransactionalGoTAdapter
+    from cortical.got.api import GoTManager
 
 
 # =============================================================================
 # SPRINT CLI COMMAND HANDLERS
 # =============================================================================
 
-def cmd_sprint_create(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_sprint_create(args, manager: "GoTManager") -> int:
     """Handle 'got sprint create' command."""
     description = getattr(args, 'description', None)
     sprint_id = manager.create_sprint(
@@ -40,7 +40,7 @@ def cmd_sprint_create(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_sprint_list(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_sprint_list(args, manager: "GoTManager") -> int:
     """Handle 'got sprint list' command."""
     sprints = manager.list_sprints(
         status=getattr(args, 'status', None),
@@ -61,7 +61,8 @@ def cmd_sprint_list(args, manager: "TransactionalGoTAdapter") -> int:
         claimed_by = sprint.properties.get("claimed_by", "")
 
         # Build status line
-        status_line = f"{sprint.id}: {sprint.content} [{status}] - {progress['progress_percent']:.0f}% complete"
+        completion = progress.get('completion_rate', progress.get('progress_percent', 0)) * 100
+        status_line = f"{sprint.id}: {sprint.content} [{status}] - {completion:.0f}% complete"
         if claimed_by:
             status_line += f" (claimed by {claimed_by})"
 
@@ -70,7 +71,7 @@ def cmd_sprint_list(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_sprint_status(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_sprint_status(args, manager: "GoTManager") -> int:
     """Handle 'got sprint status' command."""
     sprint_id = getattr(args, 'sprint_id', None)
 
@@ -94,7 +95,7 @@ def cmd_sprint_status(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_sprint_start(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_sprint_start(args, manager: "GoTManager") -> int:
     """Handle 'got sprint start' command."""
     sprint = manager.update_sprint(args.sprint_id, status="in_progress")
     manager.save()
@@ -103,7 +104,7 @@ def cmd_sprint_start(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_sprint_complete(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_sprint_complete(args, manager: "GoTManager") -> int:
     """Handle 'got sprint complete' command."""
     sprint = manager.update_sprint(args.sprint_id, status="completed")
     manager.save()
@@ -112,7 +113,7 @@ def cmd_sprint_complete(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_sprint_delete(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_sprint_delete(args, manager: "GoTManager") -> int:
     """Handle 'got sprint delete' command."""
     try:
         sprint = manager.get_sprint(args.sprint_id)
@@ -136,7 +137,7 @@ def cmd_sprint_delete(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
-def cmd_sprint_claim(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_sprint_claim(args, manager: "GoTManager") -> int:
     """Handle 'got sprint claim' command."""
     try:
         sprint = manager.claim_sprint(args.sprint_id, args.agent)
@@ -149,7 +150,7 @@ def cmd_sprint_claim(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
-def cmd_sprint_release(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_sprint_release(args, manager: "GoTManager") -> int:
     """Handle 'got sprint release' command."""
     try:
         sprint = manager.release_sprint(args.sprint_id, args.agent)
@@ -161,7 +162,7 @@ def cmd_sprint_release(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
-def cmd_sprint_goal_add(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_sprint_goal_add(args, manager: "GoTManager") -> int:
     """Handle 'got sprint goal add' command."""
     if manager.add_sprint_goal(args.sprint_id, args.description):
         manager.save()
@@ -172,7 +173,7 @@ def cmd_sprint_goal_add(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
-def cmd_sprint_goal_list(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_sprint_goal_list(args, manager: "GoTManager") -> int:
     """Handle 'got sprint goal list' command."""
     goals = manager.list_sprint_goals(args.sprint_id)
     if not goals:
@@ -185,7 +186,7 @@ def cmd_sprint_goal_list(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_sprint_goal_complete(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_sprint_goal_complete(args, manager: "GoTManager") -> int:
     """Handle 'got sprint goal complete' command."""
     if manager.complete_sprint_goal(args.sprint_id, args.index):
         manager.save()
@@ -196,7 +197,7 @@ def cmd_sprint_goal_complete(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
-def cmd_sprint_link(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_sprint_link(args, manager: "GoTManager") -> int:
     """Handle 'got sprint link' command."""
     if manager.link_task_to_sprint(args.sprint_id, args.task_id):
         manager.save()
@@ -207,7 +208,7 @@ def cmd_sprint_link(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
-def cmd_sprint_unlink(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_sprint_unlink(args, manager: "GoTManager") -> int:
     """Handle 'got sprint unlink' command."""
     if manager.unlink_task_from_sprint(args.sprint_id, args.task_id):
         manager.save()
@@ -218,7 +219,7 @@ def cmd_sprint_unlink(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
-def cmd_sprint_tasks(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_sprint_tasks(args, manager: "GoTManager") -> int:
     """Handle 'got sprint tasks' command."""
     tasks = manager.get_sprint_tasks(args.sprint_id)
     if not tasks:
@@ -232,7 +233,7 @@ def cmd_sprint_tasks(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_sprint_suggest(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_sprint_suggest(args, manager: "GoTManager") -> int:
     """Handle 'got sprint suggest' command."""
     try:
         # Get pending tasks
@@ -295,7 +296,7 @@ def cmd_sprint_suggest(args, manager: "TransactionalGoTAdapter") -> int:
 # EPIC CLI COMMAND HANDLERS
 # =============================================================================
 
-def cmd_epic_create(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_epic_create(args, manager: "GoTManager") -> int:
     """Handle 'got epic create' command."""
     # Build properties dict for custom fields
     properties = {}
@@ -314,7 +315,7 @@ def cmd_epic_create(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_epic_list(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_epic_list(args, manager: "GoTManager") -> int:
     """Handle 'got epic list' command."""
     epics = manager.list_epics(
         status=getattr(args, 'status', None),
@@ -337,7 +338,7 @@ def cmd_epic_list(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_epic_show(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_epic_show(args, manager: "GoTManager") -> int:
     """Handle 'got epic show' command."""
     epic = manager.get_epic(args.epic_id)
 
@@ -513,7 +514,7 @@ def setup_epic_parser(subparsers) -> None:
     epic_show.add_argument("epic_id", help="Epic ID to display")
 
 
-def handle_sprint_command(args, manager: "TransactionalGoTAdapter") -> int:
+def handle_sprint_command(args, manager: "GoTManager") -> int:
     """
     Route sprint subcommand to appropriate handler.
 
@@ -564,7 +565,7 @@ def handle_sprint_command(args, manager: "TransactionalGoTAdapter") -> int:
     return 1
 
 
-def handle_epic_command(args, manager: "TransactionalGoTAdapter") -> int:
+def handle_epic_command(args, manager: "GoTManager") -> int:
     """
     Route epic subcommand to appropriate handler.
 

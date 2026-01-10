@@ -60,8 +60,8 @@ class TestCompleteTaskWorkflow:
         Scenario: User creates a task, starts it, then completes it.
         Expected: Task goes through lifecycle cleanly with proper state tracking.
         """
-        # Create task
-        task_id = got_manager.create_task(
+        # Create task (returns Task object)
+        task = got_manager.create_task(
             title="Fix authentication bug",
             priority=PRIORITY_HIGH,
             category="bugfix",
@@ -69,7 +69,6 @@ class TestCompleteTaskWorkflow:
         )
 
         # Verify created state
-        task = got_manager.get_task(task_id)
         assert task is not None
         assert task.content == "Fix authentication bug"
         assert task.status == STATUS_PENDING
@@ -78,23 +77,23 @@ class TestCompleteTaskWorkflow:
         assert task.created_at is not None  # Direct attribute on Entity
 
         # Start task
-        success = got_manager.start_task(task_id)
+        success = got_manager.start_task(task.id)
         assert success is True
 
         # Verify in-progress state
-        task = got_manager.get_task(task_id)
+        task = got_manager.get_task(task.id)
         assert task.status == STATUS_IN_PROGRESS
         assert task.modified_at is not None  # Direct attribute on Entity
 
         # Complete task with retrospective
         success = got_manager.complete_task(
-            task_id,
+            task.id,
             retrospective="Fixed null pointer in AuthService. Root cause was missing input validation."
         )
         assert success is True
 
         # Verify completed state
-        task = got_manager.get_task(task_id)
+        task = got_manager.get_task(task.id)
         assert task.status == STATUS_COMPLETED
         assert task.properties["retrospective"] == "Fixed null pointer in AuthService. Root cause was missing input validation."
         assert "completed_at" in task.metadata or task.modified_at is not None
@@ -122,13 +121,13 @@ class TestCompleteTaskWorkflow:
         # Verify dependency relationship
         deps = got_manager.get_task_dependencies(task2_id)
         assert len(deps) == 1
-        assert deps[0].id == task1_id
+        assert deps[0].id == task1_id.id
         assert deps[0].content == "Design API schema"
 
         # Query what depends on task1
         dependents = got_manager.what_depends_on(task1_id)
         assert len(dependents) == 1
-        assert dependents[0].id == task2_id
+        assert dependents[0].id == task2_id.id
 
     def test_blocked_task_workflow(self, got_manager):
         """
@@ -157,7 +156,7 @@ class TestCompleteTaskWorkflow:
         blocked_tasks = got_manager.get_blocked_tasks()
         assert len(blocked_tasks) >= 1
         blocked_task_ids = [task.id for task, _ in blocked_tasks]
-        assert task_id in blocked_task_ids
+        assert task_id.id in blocked_task_ids  # task_id is a Task object
 
     def test_task_with_blocker_relationship(self, got_manager):
         """
@@ -189,7 +188,7 @@ class TestCompleteTaskWorkflow:
         # Query what blocks the task
         blockers = got_manager.what_blocks(blocked_id)
         assert len(blockers) == 1
-        assert blockers[0].id == blocker_id
+        assert blockers[0].id == blocker_id.id  # blocker_id is a Task object
 
 
 class TestDecisionLoggingAndRelationships:
@@ -318,35 +317,34 @@ class TestSprintManagement:
         Scenario: User creates a sprint and assigns tasks to it.
         Expected: Sprint is created and contains assigned tasks.
         """
-        # Create sprint
-        sprint_id = got_manager.create_sprint(
-            name="Sprint 1 - Authentication",
+        # Create sprint (returns Sprint object)
+        sprint = got_manager.create_sprint(
+            title="Sprint 1 - Authentication",
             number=1
         )
 
         # Verify sprint exists
-        sprint = got_manager.get_sprint(sprint_id)
         assert sprint is not None
         assert sprint.content == "Sprint 1 - Authentication"
         assert sprint.number == 1
         assert sprint.status == "available"
 
         # Create tasks and assign to sprint
-        task1_id = got_manager.create_task(
+        task1 = got_manager.create_task(
             title="Implement login",
-            sprint_id=sprint_id
+            sprint_id=sprint.id
         )
-        task2_id = got_manager.create_task(
+        task2 = got_manager.create_task(
             title="Implement logout",
-            sprint_id=sprint_id
+            sprint_id=sprint.id
         )
 
         # Verify tasks are in sprint
-        sprint_tasks = got_manager.list_tasks(sprint_id=sprint_id)
+        sprint_tasks = got_manager.list_tasks(sprint_id=sprint.id)
         assert len(sprint_tasks) >= 2
         task_ids = [task.id for task in sprint_tasks]
-        assert task1_id in task_ids
-        assert task2_id in task_ids
+        assert task1.id in task_ids
+        assert task2.id in task_ids
 
     def test_sprint_progress_tracking(self, got_manager):
         """
@@ -354,7 +352,7 @@ class TestSprintManagement:
         Expected: Progress is calculated correctly.
         """
         # Create sprint with explicit number to avoid ID collision
-        sprint_id = got_manager.create_sprint(name="Test Sprint", number=999)
+        sprint_id = got_manager.create_sprint(title="Test Sprint", number=999)
 
         # Create tasks in sprint
         task1 = got_manager.create_task(
@@ -371,10 +369,10 @@ class TestSprintManagement:
         )
 
         # Complete one task
-        got_manager.complete_task(task1)
+        got_manager.complete_task(task1.id)
 
         # Start one task
-        got_manager.start_task(task2)
+        got_manager.start_task(task2.id)
 
         # Check progress (using actual API keys)
         progress = got_manager.get_sprint_progress(sprint_id)
@@ -390,8 +388,8 @@ class TestSprintManagement:
         Expected: All created sprints are returned.
         """
         # Create multiple sprints with explicit numbers to avoid collision
-        sprint1_id = got_manager.create_sprint(name="Sprint 1", number=1001)
-        sprint2_id = got_manager.create_sprint(name="Sprint 2", number=1002)
+        sprint1_id = got_manager.create_sprint(title="Sprint 1", number=1001)
+        sprint2_id = got_manager.create_sprint(title="Sprint 2", number=1002)
 
         # List sprints
         sprints = got_manager.list_sprints()
@@ -399,8 +397,9 @@ class TestSprintManagement:
         # Verify sprints exist
         assert len(sprints) >= 2
         sprint_ids = [s.id for s in sprints]
-        assert sprint1_id in sprint_ids
-        assert sprint2_id in sprint_ids
+        # sprint1_id and sprint2_id are Sprint objects
+        assert sprint1_id.id in sprint_ids
+        assert sprint2_id.id in sprint_ids
 
 
 class TestQueryOperations:
@@ -450,18 +449,18 @@ class TestQueryOperations:
         """
         # Create chain: A -> B -> C
         task_a = got_manager.create_task(title="Task A")
-        task_b = got_manager.create_task(title="Task B", depends_on=[task_a])
-        task_c = got_manager.create_task(title="Task C", depends_on=[task_b])
+        task_b = got_manager.create_task(title="Task B", depends_on=[task_a.id])
+        task_c = got_manager.create_task(title="Task C", depends_on=[task_b.id])
 
         # Query path
-        results = got_manager.query(f"path from {task_c} to {task_a}")
+        results = got_manager.query(f"path from {task_c.id} to {task_a.id}")
 
         # Verify path
         if results:  # Path might be found
             assert len(results) >= 2  # At least start and end
             path_ids = [r["id"] for r in results]
-            assert task_c in path_ids
-            assert task_a in path_ids
+            assert task_c.id in path_ids
+            assert task_a.id in path_ids
 
     def test_query_relationships(self, got_manager):
         """
@@ -472,13 +471,13 @@ class TestQueryOperations:
         dep_task = got_manager.create_task(title="Dependency")
         main_task = got_manager.create_task(
             title="Main task",
-            depends_on=[dep_task]
+            depends_on=[dep_task.id]
         )
         blocker_task = got_manager.create_task(title="Blocker")
-        got_manager.block_task(main_task, "Blocked", blocked_by=blocker_task)
+        got_manager.block_task(main_task.id, "Blocked", blocked_by=blocker_task.id)
 
         # Query all relationships
-        results = got_manager.query(f"relationships {main_task}")
+        results = got_manager.query(f"relationships {main_task.id}")
 
         # Verify query returns a list
         assert isinstance(results, list)
@@ -492,8 +491,8 @@ class TestQueryOperations:
         task1 = got_manager.create_task(title="Task 1")
         task2 = got_manager.create_task(title="Task 2")
 
-        got_manager.block_task(task1, "Waiting for approval")
-        got_manager.block_task(task2, "Missing dependency")
+        got_manager.block_task(task1.id, "Waiting for approval")
+        got_manager.block_task(task2.id, "Missing dependency")
 
         # Query
         results = got_manager.query("blocked tasks")
@@ -501,8 +500,8 @@ class TestQueryOperations:
         # Verify results
         assert len(results) >= 2
         blocked_ids = {r["id"] for r in results}
-        assert task1 in blocked_ids
-        assert task2 in blocked_ids
+        assert task1.id in blocked_ids
+        assert task2.id in blocked_ids
 
         # Verify reasons are included
         for result in results:
@@ -519,8 +518,8 @@ class TestQueryOperations:
         task2 = got_manager.create_task(title="Active task 2")
         task3 = got_manager.create_task(title="Pending task")
 
-        got_manager.start_task(task1)
-        got_manager.start_task(task2)
+        got_manager.start_task(task1.id)
+        got_manager.start_task(task2.id)
         # task3 stays pending
 
         # Query
@@ -529,9 +528,9 @@ class TestQueryOperations:
         # Verify only in-progress tasks returned
         assert len(results) >= 2
         active_ids = {r["id"] for r in results}
-        assert task1 in active_ids
-        assert task2 in active_ids
-        assert task3 not in active_ids
+        assert task1.id in active_ids
+        assert task2.id in active_ids
+        assert task3.id not in active_ids
 
     def test_query_pending_tasks(self, got_manager):
         """
@@ -542,7 +541,7 @@ class TestQueryOperations:
         pending1 = got_manager.create_task(title="Pending 1")
         pending2 = got_manager.create_task(title="Pending 2")
         started = got_manager.create_task(title="Started")
-        got_manager.start_task(started)
+        got_manager.start_task(started.id)
 
         # Query
         results = got_manager.query("pending tasks")
@@ -550,9 +549,9 @@ class TestQueryOperations:
         # Verify only pending tasks returned
         assert len(results) >= 2
         pending_ids = {r["id"] for r in results}
-        assert pending1 in pending_ids
-        assert pending2 in pending_ids
-        assert started not in pending_ids
+        assert pending1.id in pending_ids
+        assert pending2.id in pending_ids
+        assert started.id not in pending_ids
 
 
 class TestCrossSessionContinuity:
@@ -654,9 +653,10 @@ class TestEdgeCasesAndErrorHandling:
 
         assert len(high_tasks) >= 2
         high_ids = {task.id for task in high_tasks}
-        assert high1 in high_ids
-        assert high2 in high_ids
-        assert low1 not in high_ids
+        # high1, high2, low1 are Task objects, need .id for comparison
+        assert high1.id in high_ids
+        assert high2.id in high_ids
+        assert low1.id not in high_ids
 
     def test_circular_dependencies_detected(self, got_manager):
         """
@@ -705,9 +705,10 @@ class TestTaskShowCommand:
         task = got_manager.get_task(task_id)
 
         # Verify we can retrieve full task details
-        assert task is not None, f"Task {task_id} should be retrievable"
-        assert task.id == task_id
-        assert task.content == "Implement feature X"
+        # Note: task_id is a Task object returned by create_task
+        assert task is not None, f"Task {task_id.id} should be retrievable"
+        assert task.id == task_id.id  # task_id is Task object
+        assert task.title == "Implement feature X"
         assert task.priority == PRIORITY_HIGH
         assert task.properties["category"] == "feature"
         assert task.status == STATUS_PENDING
@@ -741,7 +742,7 @@ class TestTaskShowCommand:
         # Get dependencies should work
         deps = got_manager.get_task_dependencies(task2_id)
         assert len(deps) == 1
-        assert deps[0].id == task1_id
+        assert deps[0].id == task1_id.id  # task1_id is Task object
 
     def test_task_show_with_id_format_variations(self, got_manager):
         """
@@ -750,7 +751,8 @@ class TestTaskShowCommand:
 
         This tests the ID normalization fix from commit 6964017e.
         """
-        task_id = got_manager.create_task(title="Test ID formats")
+        task = got_manager.create_task(title="Test ID formats")
+        task_id = task.id  # Extract the string ID
 
         # Task ID format: T-YYYYMMDD-HHMMSS-XXXX
         # Internal storage might use: task:T-YYYYMMDD-HHMMSS-XXXX

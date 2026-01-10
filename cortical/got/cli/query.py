@@ -156,7 +156,7 @@ def cmd_validate(args, manager: "GoTManager") -> int:
 
     # Count nodes and edges from TX backend entities
     total_nodes = len(manager.graph.nodes)
-    total_edges = len(manager.graph.edges)
+    total_edges = len(manager.list_edges())
 
     # Count tasks by status - use list_all_tasks for compatibility with both adapters
     tasks = manager.list_all_tasks()
@@ -537,9 +537,9 @@ def _cmd_list_fields(args) -> int:
     else:
         print(f"No schema registered for '{entity_type}'.")
         # Fall back to common fields
-        from cortical.got.expression.validator import COMMON_FIELDS
+        common_fields = {'id', 'title', 'status', 'created_at', 'modified_at'}
         print(f"\nCommon fields (available for all entity types):")
-        for field in sorted(COMMON_FIELDS):
+        for field in sorted(common_fields):
             print(f"  {field}")
         return 0
 

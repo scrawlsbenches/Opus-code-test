@@ -187,7 +187,7 @@ def load_got_tasks(task_ids: List[str]) -> List[Dict[str, Any]]:
     tasks = []
 
     try:
-        from cortical.got.adapter import GoTBackendFactory
+        from cortical.got.factory import GoTBackendFactory
         manager = GoTBackendFactory.create()
 
         for task_id in task_ids:

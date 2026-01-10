@@ -235,10 +235,10 @@ class DashboardMetrics:
     def get_overview_stats(self) -> Dict[str, Any]:
         """Get overview statistics."""
         tasks = self.manager.list_tasks()
-        edges = self.manager.graph.edges  # Use graph property for edges
+        edges = self.manager.list_edges()
         decisions = self.manager.list_decisions()
 
-        # Count handoffs using adapter method
+        # Count handoffs using manager method
         handoffs = self.manager.list_handoffs()
 
         # Task completion rate
@@ -337,9 +337,10 @@ class DashboardMetrics:
         current_sprint = self._get_current_sprint()
         if current_sprint:
             task_ids = set(t.id for t in tasks)
-            for edge in self.manager.graph.edges:
+            for edge in self.manager.list_edges():
+                edge_type = edge.edge_type if isinstance(edge.edge_type, str) else edge.edge_type.name
                 if (edge.source_id == current_sprint.id and
-                    edge.edge_type.name == "CONTAINS" and
+                    edge_type == "CONTAINS" and
                     edge.target_id in task_ids):
                     # Find the task object
                     for t in tasks:
@@ -390,13 +391,13 @@ class DashboardMetrics:
                         pass
 
         # Orphan nodes (no edges)
-        # Get all nodes and edges through the adapter's graph property
-        graph = self.manager.graph
+        # Get all nodes and edges through the manager's graph property
+        all_edges = self.manager.list_edges()
         orphan_nodes = []
-        for node in graph.nodes.values():
+        for node in self.manager.nodes.values():
             # Check if node has any edges
             has_edges = False
-            for edge in graph.edges:  # edges is a list
+            for edge in all_edges:
                 if edge.source_id == node.id or edge.target_id == node.id:
                     has_edges = True
                     break
@@ -433,8 +434,8 @@ class DashboardMetrics:
         })
 
         for handoff in handoffs:
-            target_agent = handoff.get("target_agent", "unknown")
-            status = handoff.get("status", "pending")
+            target_agent = getattr(handoff, 'target_agent', 'unknown')
+            status = getattr(handoff, 'status', 'pending')
 
             agent_stats[target_agent]["total"] += 1
 
@@ -442,8 +443,8 @@ class DashboardMetrics:
                 agent_stats[target_agent]["completed"] += 1
 
                 # Calculate duration
-                initiated_at = handoff.get("initiated_at")
-                completed_at = handoff.get("completed_at")
+                initiated_at = getattr(handoff, 'initiated_at', None)
+                completed_at = getattr(handoff, 'completed_at', None)
 
                 if initiated_at and completed_at:
                     try:
@@ -1027,9 +1028,11 @@ def render_dashboard(manager) -> str:
 def main():
     """Main entry point."""
     # Import here to avoid circular imports
-    from cortical.got.adapter import TransactionalGoTAdapter
+    from cortical.core.bootstrap import create_container
+    from cortical.got.api import GoTManager
 
-    manager = TransactionalGoTAdapter()
+    container = create_container()
+    manager = container.resolve(GoTManager)
     dashboard = render_dashboard(manager)
     print(dashboard)
     return 0

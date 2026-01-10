@@ -96,7 +96,7 @@ jobs:
     - name: Validate GoT State
       run: |
         echo "=== Validating GoT State ==="
-        python scripts/got_utils.py validate
+        python -m cortical.got validate
         echo "✅ GoT validation passed"
 
     - name: Report Pending Tasks

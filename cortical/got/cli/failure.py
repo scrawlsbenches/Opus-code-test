@@ -20,7 +20,7 @@ from cortical.utils.persistence import atomic_write_json
 from cortical.utils.id_generation import generate_short_id
 
 if TYPE_CHECKING:
-    from cortical.got.adapter import TransactionalGoTAdapter
+    from cortical.got.api import GoTManager
 
 
 # =============================================================================
@@ -285,7 +285,7 @@ def _get_failures_for_task(got_dir: Path, task_id: str) -> List[Dict[str, Any]]:
 # =============================================================================
 
 def _create_failure_edge(
-    manager: "TransactionalGoTAdapter",
+    manager: "GoTManager",
     failure_id: str,
     task_id: str,
     attempt: str,
@@ -297,7 +297,7 @@ def _create_failure_edge(
     and failures gracefully.
 
     Args:
-        manager: TransactionalGoTAdapter instance
+        manager: GoTManager instance
         failure_id: Failure ID
         task_id: Task ID
         attempt: Brief description of what was attempted
@@ -360,7 +360,7 @@ def _create_failure_edge(
 # CLI COMMAND HANDLERS
 # =============================================================================
 
-def cmd_failure_log(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_failure_log(args, manager: "GoTManager") -> int:
     """Handle 'got failure log' command."""
     task_id = args.task_id
     attempt = args.attempt
@@ -437,7 +437,7 @@ def cmd_failure_log(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
-def cmd_failure_list(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_failure_list(args, manager: "GoTManager") -> int:
     """Handle 'got failure list' command."""
     limit = getattr(args, 'limit', 10)
     task_filter = getattr(args, 'task', None)
@@ -502,7 +502,7 @@ def cmd_failure_list(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_failure_show(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_failure_show(args, manager: "GoTManager") -> int:
     """Handle 'got failure show' command."""
     target = args.target
 
@@ -644,13 +644,13 @@ def setup_failure_parser(subparsers) -> None:
     )
 
 
-def handle_failure_command(args, manager: "TransactionalGoTAdapter") -> int:
+def handle_failure_command(args, manager: "GoTManager") -> int:
     """
     Route failure subcommand to appropriate handler.
 
     Args:
         args: Parsed command-line arguments
-        manager: TransactionalGoTAdapter instance
+        manager: GoTManager instance
 
     Returns:
         Exit code (0 for success, non-zero for error)

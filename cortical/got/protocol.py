@@ -14,9 +14,8 @@ class GoTBackend(Protocol):
     """
     Protocol defining the GoT backend interface.
 
-    This protocol establishes the contract that all GoT backend implementations
-    must follow. Both GoTProjectManager (event-sourced) and TransactionalGoTAdapter
-    (transactional) implement this protocol.
+    GoTManager implements this protocol, providing a consistent API for
+    all GoT operations.
 
     The protocol ensures:
     - Consistent API across different backend strategies
