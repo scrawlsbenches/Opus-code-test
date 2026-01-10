@@ -18,7 +18,7 @@ import sys
 from typing import TYPE_CHECKING, Dict, List, Optional
 
 if TYPE_CHECKING:
-    from cortical.got.adapter import TransactionalGoTAdapter
+    from cortical.got.api import GoTManager
 
 
 def _get_git_branch() -> str:
@@ -66,7 +66,7 @@ def _get_recent_commits(count: int = 5) -> List[str]:
 # CLI COMMAND HANDLERS
 # 
 
-def cmd_handoff_initiate(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_handoff_initiate(args, manager: "GoTManager") -> int:
     """Handle 'got handoff initiate' command."""
     task = manager.get_task(args.task_id)
     if not task:
@@ -101,7 +101,7 @@ def cmd_handoff_initiate(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_handoff_accept(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_handoff_accept(args, manager: "GoTManager") -> int:
     """Handle 'got handoff accept' command."""
     # Use manager's handoff method (works with TX backend)
     success = manager.accept_handoff(
@@ -119,7 +119,7 @@ def cmd_handoff_accept(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_handoff_complete(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_handoff_complete(args, manager: "GoTManager") -> int:
     """Handle 'got handoff complete' command."""
     try:
         result = json.loads(args.result)
@@ -144,7 +144,7 @@ def cmd_handoff_complete(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_handoff_reject(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_handoff_reject(args, manager: "GoTManager") -> int:
     """Handle 'got handoff reject' command."""
     # Read reason from stdin if '-' is specified
     reason = args.reason
@@ -167,7 +167,7 @@ def cmd_handoff_reject(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_handoff_show(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_handoff_show(args, manager: "GoTManager") -> int:
     """Handle 'got handoff show' command."""
     handoff_id = args.handoff_id
 
@@ -236,7 +236,7 @@ def cmd_handoff_show(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_handoff_list(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_handoff_list(args, manager: "GoTManager") -> int:
     """Handle 'got handoff list' command."""
     # Normalize status: 'in_progress' is an alias for 'accepted'
     # This provides UX consistency with task terminology
@@ -277,7 +277,7 @@ def cmd_handoff_list(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_handoff_session(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_handoff_session(args, manager: "GoTManager") -> int:
     """
     Handle 'got handoff session' command.
 
@@ -480,7 +480,7 @@ def setup_handoff_parser(subparsers) -> None:
     )
 
 
-def handle_handoff_command(args, manager: "TransactionalGoTAdapter") -> int:
+def handle_handoff_command(args, manager: "GoTManager") -> int:
     """
     Route handoff subcommand to appropriate handler.
 

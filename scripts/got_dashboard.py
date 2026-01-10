@@ -238,7 +238,7 @@ class DashboardMetrics:
         edges = self.manager.graph.edges  # Use graph property for edges
         decisions = self.manager.list_decisions()
 
-        # Count handoffs using adapter method
+        # Count handoffs using manager method
         handoffs = self.manager.list_handoffs()
 
         # Task completion rate
@@ -390,7 +390,7 @@ class DashboardMetrics:
                         pass
 
         # Orphan nodes (no edges)
-        # Get all nodes and edges through the adapter's graph property
+        # Get all nodes and edges through the manager's graph property
         graph = self.manager.graph
         orphan_nodes = []
         for node in graph.nodes.values():
@@ -1027,9 +1027,11 @@ def render_dashboard(manager) -> str:
 def main():
     """Main entry point."""
     # Import here to avoid circular imports
-    from cortical.got.adapter import TransactionalGoTAdapter
+    from cortical.core.bootstrap import create_container
+    from cortical.got.api import GoTManager
 
-    manager = TransactionalGoTAdapter()
+    container = create_container()
+    manager = container.resolve(GoTManager)
     dashboard = render_dashboard(manager)
     print(dashboard)
     return 0

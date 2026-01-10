@@ -19,7 +19,7 @@ import json
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from cortical.got.adapter import TransactionalGoTAdapter
+    from cortical.got.api import GoTManager
 
 from ..entity_schemas import get_valid_statuses
 from ..orphan import OrphanDetector
@@ -29,7 +29,7 @@ from ..orphan import OrphanDetector
 # CLI COMMAND HANDLERS
 # =============================================================================
 
-def cmd_backlog_list(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_backlog_list(args, manager: "GoTManager") -> int:
     """Handle 'got backlog list' command."""
     got_manager = getattr(manager, '_manager', None) or getattr(manager, '_got_manager', None)
     if got_manager is None:
@@ -89,7 +89,7 @@ def cmd_backlog_list(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_backlog_promote(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_backlog_promote(args, manager: "GoTManager") -> int:
     """Handle 'got backlog promote' command - moves task to a sprint."""
     got_manager = getattr(manager, '_manager', None) or getattr(manager, '_got_manager', None)
     if got_manager is None:
@@ -131,7 +131,7 @@ def cmd_backlog_promote(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_backlog_review(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_backlog_review(args, manager: "GoTManager") -> int:
     """Handle 'got backlog review' command - review a task with suggestions."""
     got_manager = getattr(manager, '_manager', None) or getattr(manager, '_got_manager', None)
     if got_manager is None:
@@ -187,7 +187,7 @@ def cmd_backlog_review(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_backlog_stats(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_backlog_stats(args, manager: "GoTManager") -> int:
     """Handle 'got backlog stats' command."""
     got_manager = getattr(manager, '_manager', None) or getattr(manager, '_got_manager', None)
     if got_manager is None:
@@ -312,13 +312,13 @@ def setup_backlog_parser(subparsers) -> None:
     )
 
 
-def handle_backlog_command(args, manager: "TransactionalGoTAdapter") -> int:
+def handle_backlog_command(args, manager: "GoTManager") -> int:
     """
     Route backlog subcommand to appropriate handler.
 
     Args:
         args: Parsed command-line arguments
-        manager: TransactionalGoTAdapter instance
+        manager: GoTManager instance
 
     Returns:
         Exit code (0 for success, non-zero for error)
