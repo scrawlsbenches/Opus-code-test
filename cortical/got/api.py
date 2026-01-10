@@ -1166,11 +1166,12 @@ class GoTManager:
         Get sprint progress statistics.
 
         Args:
-            sprint_id: Sprint identifier
+            sprint_id: Sprint identifier (or Sprint object)
 
         Returns:
             Dictionary with progress statistics
         """
+        sprint_id = self._normalize_id(sprint_id)
         return self.query_api.get_sprint_progress(sprint_id)
 
     # Epic management methods

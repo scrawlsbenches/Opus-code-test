@@ -156,7 +156,7 @@ class TestCompleteTaskWorkflow:
         blocked_tasks = got_manager.get_blocked_tasks()
         assert len(blocked_tasks) >= 1
         blocked_task_ids = [task.id for task, _ in blocked_tasks]
-        assert task_id in blocked_task_ids
+        assert task_id.id in blocked_task_ids  # task_id is a Task object
 
     def test_task_with_blocker_relationship(self, got_manager):
         """
@@ -188,7 +188,7 @@ class TestCompleteTaskWorkflow:
         # Query what blocks the task
         blockers = got_manager.what_blocks(blocked_id)
         assert len(blockers) == 1
-        assert blockers[0].id == blocker_id
+        assert blockers[0].id == blocker_id.id  # blocker_id is a Task object
 
 
 class TestDecisionLoggingAndRelationships:
@@ -397,8 +397,9 @@ class TestSprintManagement:
         # Verify sprints exist
         assert len(sprints) >= 2
         sprint_ids = [s.id for s in sprints]
-        assert sprint1_id in sprint_ids
-        assert sprint2_id in sprint_ids
+        # sprint1_id and sprint2_id are Sprint objects
+        assert sprint1_id.id in sprint_ids
+        assert sprint2_id.id in sprint_ids
 
 
 class TestQueryOperations:
@@ -652,9 +653,10 @@ class TestEdgeCasesAndErrorHandling:
 
         assert len(high_tasks) >= 2
         high_ids = {task.id for task in high_tasks}
-        assert high1 in high_ids
-        assert high2 in high_ids
-        assert low1 not in high_ids
+        # high1, high2, low1 are Task objects, need .id for comparison
+        assert high1.id in high_ids
+        assert high2.id in high_ids
+        assert low1.id not in high_ids
 
     def test_circular_dependencies_detected(self, got_manager):
         """
@@ -703,9 +705,10 @@ class TestTaskShowCommand:
         task = got_manager.get_task(task_id)
 
         # Verify we can retrieve full task details
-        assert task is not None, f"Task {task_id} should be retrievable"
-        assert task.id == task_id
-        assert task.content == "Implement feature X"
+        # Note: task_id is a Task object returned by create_task
+        assert task is not None, f"Task {task_id.id} should be retrievable"
+        assert task.id == task_id.id  # task_id is Task object
+        assert task.title == "Implement feature X"
         assert task.priority == PRIORITY_HIGH
         assert task.properties["category"] == "feature"
         assert task.status == STATUS_PENDING
@@ -739,7 +742,7 @@ class TestTaskShowCommand:
         # Get dependencies should work
         deps = got_manager.get_task_dependencies(task2_id)
         assert len(deps) == 1
-        assert deps[0].id == task1_id
+        assert deps[0].id == task1_id.id  # task1_id is Task object
 
     def test_task_show_with_id_format_variations(self, got_manager):
         """
@@ -748,7 +751,8 @@ class TestTaskShowCommand:
 
         This tests the ID normalization fix from commit 6964017e.
         """
-        task_id = got_manager.create_task(title="Test ID formats")
+        task = got_manager.create_task(title="Test ID formats")
+        task_id = task.id  # Extract the string ID
 
         # Task ID format: T-YYYYMMDD-HHMMSS-XXXX
         # Internal storage might use: task:T-YYYYMMDD-HHMMSS-XXXX
