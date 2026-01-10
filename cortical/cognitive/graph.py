@@ -22,10 +22,12 @@ Built on First Principles:
 
 from __future__ import annotations
 
+import json
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum, auto
+from pathlib import Path
 from typing import (
     Any,
     Dict,
@@ -1269,6 +1271,194 @@ class CognitiveAgent:
             self.graph._storage.save(actual_atom)
 
         return surprise
+
+    # =========================================================================
+    # Persistence (JSON-based for security and git-friendliness)
+    # =========================================================================
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize agent state to a dictionary.
+
+        Returns:
+            Dictionary containing all agent state
+        """
+        # Serialize atoms
+        atoms_data = []
+        for atom in self.graph._storage.all_atoms():
+            atoms_data.append({
+                "id": atom.id,
+                "atom_type": atom.atom_type.name,
+                "name": atom.name,
+                "outgoing": atom.outgoing,
+                "tv": {"strength": atom.tv.strength, "confidence": atom.tv.confidence},
+                "sti": atom.sti,
+                "lti": atom.lti,
+                "created_at": atom.created_at,
+                "accessed_at": atom.accessed_at,
+            })
+
+        # Serialize goals
+        goals_data = []
+        for goal in self.goals._goals.values():
+            goals_data.append({
+                "id": goal.id,
+                "description": goal.description,
+                "target_state": goal.target_state,
+                "current_state": goal.current_state,
+                "importance": goal.importance,
+            })
+
+        # Serialize working memory
+        wm_data = {
+            "capacity": self.working_memory.capacity,
+            "slot_ids": [a.id for a in self.working_memory._slots],
+            "access_order": self.working_memory._access_order,
+        }
+
+        # Serialize predictor co-occurrences
+        co_occurrences = self.predictor._co_occurrences
+
+        # Serialize exploration state
+        exploration_data = {
+            "epsilon": self.exploration.epsilon,
+            "min_epsilon": self.exploration.min_epsilon,
+            "max_epsilon": self.exploration.max_epsilon,
+            "adaptation_rate": self.exploration.adaptation_rate,
+            "consecutive_failures": self.exploration._consecutive_failures,
+            "consecutive_successes": self.exploration._consecutive_successes,
+        }
+
+        return {
+            "version": "3.0",
+            "step_count": self._step_count,
+            "attention_focus_size": self._attention_focus_size,
+            "atoms": atoms_data,
+            "goals": goals_data,
+            "working_memory": wm_data,
+            "co_occurrences": co_occurrences,
+            "exploration": exploration_data,
+            "surprise_history": [
+                {"context": ctx, "actual": actual, "surprise": s}
+                for ctx, actual, s in self.surprise_tracker._prediction_history[-1000:]
+            ],
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'CognitiveAgent':
+        """
+        Deserialize agent from dictionary.
+
+        Args:
+            data: Dictionary from to_dict()
+
+        Returns:
+            Reconstructed CognitiveAgent
+        """
+        # Create agent with correct sizes
+        wm_capacity = data.get("working_memory", {}).get("capacity", 4)
+        focus_size = data.get("attention_focus_size", 7)
+        agent = cls(
+            working_memory_size=wm_capacity,
+            attention_focus_size=focus_size,
+        )
+
+        # Restore step count
+        agent._step_count = data.get("step_count", 0)
+
+        # Restore atoms
+        atom_lookup: Dict[str, Atom] = {}
+        for atom_data in data.get("atoms", []):
+            atom = Atom(
+                id=atom_data["id"],
+                atom_type=AtomType[atom_data["atom_type"]],
+                name=atom_data.get("name", ""),
+                outgoing=atom_data.get("outgoing", []),
+                tv=TruthValue(
+                    atom_data["tv"]["strength"],
+                    atom_data["tv"]["confidence"],
+                ),
+                sti=atom_data.get("sti", 0.0),
+                lti=atom_data.get("lti", 0.0),
+                created_at=atom_data.get("created_at", 0.0),
+                accessed_at=atom_data.get("accessed_at", 0.0),
+            )
+            agent.graph._storage.save(atom)
+            atom_lookup[atom.id] = atom
+
+        # Restore goals
+        for goal_data in data.get("goals", []):
+            goal = Goal(
+                id=goal_data["id"],
+                description=goal_data["description"],
+                target_state=goal_data["target_state"],
+                current_state=goal_data.get("current_state"),
+                importance=goal_data.get("importance", 0.5),
+            )
+            agent.goals.add_goal(goal)
+
+        # Restore working memory
+        wm_data = data.get("working_memory", {})
+        for atom_id in wm_data.get("slot_ids", []):
+            if atom_id in atom_lookup:
+                agent.working_memory.load(atom_lookup[atom_id])
+
+        # Restore co-occurrences
+        agent.predictor._co_occurrences = data.get("co_occurrences", {})
+
+        # Restore exploration state
+        exp_data = data.get("exploration", {})
+        agent.exploration.epsilon = exp_data.get("epsilon", 0.3)
+        agent.exploration.min_epsilon = exp_data.get("min_epsilon", 0.05)
+        agent.exploration.max_epsilon = exp_data.get("max_epsilon", 0.9)
+        agent.exploration.adaptation_rate = exp_data.get("adaptation_rate", 0.1)
+        agent.exploration._consecutive_failures = exp_data.get("consecutive_failures", 0)
+        agent.exploration._consecutive_successes = exp_data.get("consecutive_successes", 0)
+
+        # Restore surprise history
+        for entry in data.get("surprise_history", []):
+            agent.surprise_tracker._prediction_history.append((
+                entry["context"],
+                entry["actual"],
+                entry["surprise"],
+            ))
+
+        return agent
+
+    def save(self, path: Union[str, Path]) -> None:
+        """
+        Save agent state to JSON file.
+
+        Args:
+            path: File path (will add .json if not present)
+        """
+        path = Path(path)
+        if path.suffix != ".json":
+            path = path.with_suffix(".json")
+
+        data = self.to_dict()
+        with open(path, "w") as f:
+            json.dump(data, f, indent=2)
+
+    @classmethod
+    def load(cls, path: Union[str, Path]) -> 'CognitiveAgent':
+        """
+        Load agent state from JSON file.
+
+        Args:
+            path: File path to load from
+
+        Returns:
+            Reconstructed CognitiveAgent
+        """
+        path = Path(path)
+        if not path.exists() and path.with_suffix(".json").exists():
+            path = path.with_suffix(".json")
+
+        with open(path, "r") as f:
+            data = json.load(f)
+
+        return cls.from_dict(data)
 
 
 # =============================================================================
