@@ -61,7 +61,8 @@ def cmd_sprint_list(args, manager: "GoTManager") -> int:
         claimed_by = sprint.properties.get("claimed_by", "")
 
         # Build status line
-        status_line = f"{sprint.id}: {sprint.content} [{status}] - {progress['progress_percent']:.0f}% complete"
+        completion = progress.get('completion_rate', progress.get('progress_percent', 0)) * 100
+        status_line = f"{sprint.id}: {sprint.content} [{status}] - {completion:.0f}% complete"
         if claimed_by:
             status_line += f" (claimed by {claimed_by})"
 

@@ -258,7 +258,7 @@ def cmd_handoff_list(args, manager: "GoTManager") -> int:
 
     print(f"Handoffs ({len(handoffs)}):\n")
     for h in handoffs:
-        status = h.get("status", "?")
+        status = getattr(h, 'status', '?')
         status_icon = {
             "initiated": "→",
             "accepted": "✓",
@@ -266,12 +266,15 @@ def cmd_handoff_list(args, manager: "GoTManager") -> int:
             "rejected": "✗",
         }.get(status, "?")
 
-        print(f"  {status_icon} {h['id']}")
-        print(f"      {h.get('source_agent', '?')} → {h.get('target_agent', '?')}")
-        print(f"      Task: {h.get('task_id', '?')}")
+        print(f"  {status_icon} {h.id}")
+        source = getattr(h, 'source_agent', '?')
+        target = getattr(h, 'target_agent', '?')
+        print(f"      {source} → {target}")
+        print(f"      Task: {getattr(h, 'task_id', '?')}")
         print(f"      Status: {status}")
-        if h.get("instructions"):
-            print(f"      Instructions: {h['instructions'][:50]}...")
+        instructions = getattr(h, 'instructions', '')
+        if instructions:
+            print(f"      Instructions: {instructions[:50]}...")
         print()
 
     return 0

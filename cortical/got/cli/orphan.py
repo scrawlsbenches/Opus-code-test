@@ -28,7 +28,7 @@ def cmd_orphan_report(args, manager: "GoTManager") -> int:
     """Handle 'got orphan report' command."""
     # Get the underlying GoTManager from adapter
     # Try multiple attribute names for compatibility
-    got_manager = getattr(manager, '_manager', None) or getattr(manager, '_manager', None) or getattr(manager, '_got_manager', None)
+    got_manager = getattr(manager, '_manager', None) or getattr(manager, '_got_manager', None) or manager or manager
     if got_manager is None:
         print("Error: Cannot access GoTManager from adapter")
         return 1
@@ -46,7 +46,7 @@ def cmd_orphan_report(args, manager: "GoTManager") -> int:
 
 def cmd_orphan_check(args, manager: "GoTManager") -> int:
     """Handle 'got orphan check TASK_ID' command."""
-    got_manager = getattr(manager, '_manager', None) or getattr(manager, '_manager', None) or getattr(manager, '_got_manager', None)
+    got_manager = getattr(manager, '_manager', None) or getattr(manager, '_got_manager', None) or manager or manager
     if got_manager is None:
         print("Error: Cannot access GoTManager from adapter")
         return 1
@@ -97,7 +97,7 @@ def cmd_orphan_check(args, manager: "GoTManager") -> int:
 
 def cmd_orphan_suggest_sprint(args, manager: "GoTManager") -> int:
     """Handle 'got orphan suggest-sprint TASK_ID' command."""
-    got_manager = getattr(manager, '_manager', None) or getattr(manager, '_got_manager', None)
+    got_manager = getattr(manager, '_manager', None) or getattr(manager, '_got_manager', None) or manager
     if got_manager is None:
         print("Error: Cannot access GoTManager from adapter")
         return 1
@@ -125,7 +125,7 @@ def cmd_orphan_suggest_sprint(args, manager: "GoTManager") -> int:
 
 def cmd_orphan_suggest_links(args, manager: "GoTManager") -> int:
     """Handle 'got orphan suggest-links TASK_ID' command."""
-    got_manager = getattr(manager, '_manager', None) or getattr(manager, '_got_manager', None)
+    got_manager = getattr(manager, '_manager', None) or getattr(manager, '_got_manager', None) or manager
     if got_manager is None:
         print("Error: Cannot access GoTManager from adapter")
         return 1
@@ -156,7 +156,7 @@ def cmd_orphan_suggest_links(args, manager: "GoTManager") -> int:
 
 def cmd_orphan_auto_link(args, manager: "GoTManager") -> int:
     """Handle 'got orphan auto-link' command."""
-    got_manager = getattr(manager, '_manager', None) or getattr(manager, '_got_manager', None)
+    got_manager = getattr(manager, '_manager', None) or getattr(manager, '_got_manager', None) or manager
     if got_manager is None:
         print("Error: Cannot access GoTManager from adapter")
         return 1
@@ -197,7 +197,7 @@ def cmd_orphan_auto_link(args, manager: "GoTManager") -> int:
 
 def cmd_orphan_list(args, manager: "GoTManager") -> int:
     """Handle 'got orphan list' command."""
-    got_manager = getattr(manager, '_manager', None) or getattr(manager, '_got_manager', None)
+    got_manager = getattr(manager, '_manager', None) or getattr(manager, '_got_manager', None) or manager
     if got_manager is None:
         print("Error: Cannot access GoTManager from adapter")
         return 1

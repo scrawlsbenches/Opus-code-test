@@ -156,7 +156,7 @@ def cmd_validate(args, manager: "GoTManager") -> int:
 
     # Count nodes and edges from TX backend entities
     total_nodes = len(manager.graph.nodes)
-    total_edges = len(manager.graph.edges)
+    total_edges = len(manager.list_edges())
 
     # Count tasks by status - use list_all_tasks for compatibility with both adapters
     tasks = manager.list_all_tasks()

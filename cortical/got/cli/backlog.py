@@ -31,7 +31,7 @@ from ..orphan import OrphanDetector
 
 def cmd_backlog_list(args, manager: "GoTManager") -> int:
     """Handle 'got backlog list' command."""
-    got_manager = getattr(manager, '_manager', None) or getattr(manager, '_got_manager', None)
+    got_manager = getattr(manager, '_manager', None) or getattr(manager, '_got_manager', None) or manager
     if got_manager is None:
         print("Error: Cannot access GoTManager from adapter")
         return 1
@@ -91,7 +91,7 @@ def cmd_backlog_list(args, manager: "GoTManager") -> int:
 
 def cmd_backlog_promote(args, manager: "GoTManager") -> int:
     """Handle 'got backlog promote' command - moves task to a sprint."""
-    got_manager = getattr(manager, '_manager', None) or getattr(manager, '_got_manager', None)
+    got_manager = getattr(manager, '_manager', None) or getattr(manager, '_got_manager', None) or manager
     if got_manager is None:
         print("Error: Cannot access GoTManager from adapter")
         return 1
@@ -133,7 +133,7 @@ def cmd_backlog_promote(args, manager: "GoTManager") -> int:
 
 def cmd_backlog_review(args, manager: "GoTManager") -> int:
     """Handle 'got backlog review' command - review a task with suggestions."""
-    got_manager = getattr(manager, '_manager', None) or getattr(manager, '_got_manager', None)
+    got_manager = getattr(manager, '_manager', None) or getattr(manager, '_got_manager', None) or manager
     if got_manager is None:
         print("Error: Cannot access GoTManager from adapter")
         return 1
@@ -189,7 +189,7 @@ def cmd_backlog_review(args, manager: "GoTManager") -> int:
 
 def cmd_backlog_stats(args, manager: "GoTManager") -> int:
     """Handle 'got backlog stats' command."""
-    got_manager = getattr(manager, '_manager', None) or getattr(manager, '_got_manager', None)
+    got_manager = getattr(manager, '_manager', None) or getattr(manager, '_got_manager', None) or manager
     if got_manager is None:
         print("Error: Cannot access GoTManager from adapter")
         return 1
