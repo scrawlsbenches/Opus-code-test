@@ -1462,6 +1462,155 @@ class CognitiveAgent:
 
 
 # =============================================================================
+# GoT Integration Bridge
+# =============================================================================
+
+
+class GoTBridge:
+    """
+    Bridge between CognitiveAgent and Graph of Thought (GoT) system.
+
+    Enables bidirectional sync between:
+    - CognitiveAgent Goals <-> GoT Tasks
+    - CognitiveAgent Atoms <-> GoT Entities (future)
+
+    This is a loose coupling - CognitiveAgent works standalone,
+    but can optionally sync with GoT when available.
+
+    Usage:
+        from cortical.core.bootstrap import create_container
+        from cortical.got.api import GoTManager
+
+        container = create_container()
+        got_manager = container.resolve(GoTManager)
+
+        bridge = GoTBridge(agent, got_manager)
+        bridge.sync_goals_to_tasks()
+    """
+
+    def __init__(
+        self,
+        agent: CognitiveAgent,
+        got_manager: Any = None,  # GoTManager, but optional import
+    ):
+        """
+        Initialize the bridge.
+
+        Args:
+            agent: The CognitiveAgent to sync
+            got_manager: Optional GoTManager for GoT operations
+        """
+        self.agent = agent
+        self.got_manager = got_manager
+        self._goal_to_task_map: Dict[str, str] = {}  # goal_id -> task_id
+        self._task_to_goal_map: Dict[str, str] = {}  # task_id -> goal_id
+
+    def sync_goals_to_tasks(self) -> Dict[str, str]:
+        """
+        Export agent goals as GoT tasks.
+
+        Creates new tasks for goals that don't have corresponding tasks,
+        updates existing tasks if goal progress changed.
+
+        Returns:
+            Mapping of goal_id -> task_id
+        """
+        if self.got_manager is None:
+            raise RuntimeError("GoT manager not available")
+
+        results = {}
+
+        for goal in self.agent.goals._goals.values():
+            if goal.id in self._goal_to_task_map:
+                # Update existing task
+                task_id = self._goal_to_task_map[goal.id]
+                status = "completed" if goal.is_complete() else (
+                    "in_progress" if goal.progress > 0 else "pending"
+                )
+                try:
+                    self.got_manager.update_task(
+                        task_id,
+                        status=status,
+                        properties={"progress": goal.progress},
+                    )
+                except Exception:
+                    pass  # Task may have been deleted
+            else:
+                # Create new task
+                priority = "critical" if goal.importance > 0.8 else (
+                    "high" if goal.importance > 0.5 else "medium"
+                )
+                task = self.got_manager.create_task(
+                    title=goal.description,
+                    priority=priority,
+                    properties={
+                        "cognitive_goal_id": goal.id,
+                        "target_state": str(goal.target_state),
+                        "progress": goal.progress,
+                    },
+                )
+                self._goal_to_task_map[goal.id] = task.id
+                self._task_to_goal_map[task.id] = goal.id
+
+            results[goal.id] = self._goal_to_task_map.get(goal.id, "")
+
+        return results
+
+    def import_tasks_as_goals(self, status_filter: Optional[str] = None) -> int:
+        """
+        Import GoT tasks as agent goals.
+
+        Args:
+            status_filter: Optional status to filter tasks (e.g., "in_progress")
+
+        Returns:
+            Number of goals created
+        """
+        if self.got_manager is None:
+            raise RuntimeError("GoT manager not available")
+
+        count = 0
+
+        # Query tasks
+        tasks = self.got_manager.query_tasks(status=status_filter)
+
+        for task in tasks:
+            if task.id in self._task_to_goal_map:
+                # Already mapped - update progress
+                goal_id = self._task_to_goal_map[task.id]
+                if goal_id in self.agent.goals._goals:
+                    if task.status == "completed":
+                        self.agent.goals._goals[goal_id].current_state = \
+                            self.agent.goals._goals[goal_id].target_state
+            else:
+                # Create new goal from task
+                importance = {"critical": 0.95, "high": 0.8, "medium": 0.5, "low": 0.3}.get(
+                    task.priority, 0.5
+                )
+                goal = Goal(
+                    id=f"got-{task.id}",
+                    description=task.title,
+                    target_state=1.0,  # Completion = 100%
+                    current_state=1.0 if task.status == "completed" else 0.0,
+                    importance=importance,
+                )
+                self.agent.goals.add_goal(goal)
+                self._task_to_goal_map[task.id] = goal.id
+                self._goal_to_task_map[goal.id] = task.id
+                count += 1
+
+        return count
+
+    def get_task_for_goal(self, goal_id: str) -> Optional[str]:
+        """Get the GoT task ID mapped to a goal."""
+        return self._goal_to_task_map.get(goal_id)
+
+    def get_goal_for_task(self, task_id: str) -> Optional[str]:
+        """Get the goal ID mapped to a GoT task."""
+        return self._task_to_goal_map.get(task_id)
+
+
+# =============================================================================
 # Container Module for Full Cognitive Agent
 # =============================================================================
 

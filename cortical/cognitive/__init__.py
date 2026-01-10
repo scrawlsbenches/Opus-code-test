@@ -50,6 +50,8 @@ from cortical.cognitive.graph import (
     # Integrated agent
     CognitiveAgent,
     CognitiveAgentModule,
+    # GoT integration
+    GoTBridge,
 )
 
 __all__ = [
@@ -72,4 +74,6 @@ __all__ = [
     # Integrated agent
     "CognitiveAgent",
     "CognitiveAgentModule",
+    # GoT integration
+    "GoTBridge",
 ]
