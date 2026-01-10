@@ -30,6 +30,7 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import (
     Any,
+    Callable,
     Dict,
     List,
     Optional,
@@ -719,6 +720,119 @@ class CognitiveGraphModule(ContainerModule):
 
 
 # =============================================================================
+# Event System for Observability
+# =============================================================================
+
+
+class EventType(Enum):
+    """Types of events emitted by the cognitive agent."""
+
+    # Working Memory events
+    ATOM_LOADED = auto()       # Atom loaded into working memory
+    ATOM_EVICTED = auto()      # Atom evicted from working memory
+
+    # Attention events
+    ATTENTION_FOCUSED = auto()  # Attention directed to atom
+    ATTENTION_DECAYED = auto()  # Attention decay applied
+
+    # Prediction events
+    PREDICTION_MADE = auto()    # Predictor made a prediction
+    SURPRISE_RECORDED = auto()  # Surprise level recorded
+
+    # Goal events
+    GOAL_ADDED = auto()         # New goal added
+    GOAL_COMPLETED = auto()     # Goal reached completion
+    GOAL_PROGRESS = auto()      # Goal progress updated
+
+    # Exploration events
+    EXPLORE_DECISION = auto()   # Explore vs exploit decision made
+    STRATEGY_ADAPTED = auto()   # Epsilon changed due to success/failure
+
+    # Agent lifecycle
+    STEP_STARTED = auto()       # Agent step began
+    STEP_COMPLETED = auto()     # Agent step finished
+
+
+@dataclass
+class CognitiveEvent:
+    """
+    An event emitted by the cognitive agent.
+
+    Attributes:
+        event_type: Type of event
+        data: Event-specific data
+        step: Agent step number when event occurred
+        timestamp: When the event occurred (agent time)
+    """
+    event_type: EventType
+    data: Dict[str, Any]
+    step: int = 0
+    timestamp: float = 0.0
+
+
+# Type alias for event handlers
+EventHandler = Callable[[CognitiveEvent], None]
+
+
+class EventBus:
+    """
+    Simple pub/sub event bus for cognitive events.
+
+    Usage:
+        bus = EventBus()
+
+        def on_eviction(event):
+            print(f"Evicted: {event.data['atom_id']}")
+
+        bus.subscribe(EventType.ATOM_EVICTED, on_eviction)
+        bus.emit(CognitiveEvent(EventType.ATOM_EVICTED, {"atom_id": "abc"}))
+    """
+
+    def __init__(self):
+        self._handlers: Dict[EventType, List[EventHandler]] = {}
+        self._global_handlers: List[EventHandler] = []
+
+    def subscribe(self, event_type: EventType, handler: EventHandler) -> None:
+        """Subscribe to a specific event type."""
+        if event_type not in self._handlers:
+            self._handlers[event_type] = []
+        self._handlers[event_type].append(handler)
+
+    def subscribe_all(self, handler: EventHandler) -> None:
+        """Subscribe to all events."""
+        self._global_handlers.append(handler)
+
+    def unsubscribe(self, event_type: EventType, handler: EventHandler) -> bool:
+        """Unsubscribe from an event type. Returns True if found."""
+        if event_type in self._handlers and handler in self._handlers[event_type]:
+            self._handlers[event_type].remove(handler)
+            return True
+        return False
+
+    def emit(self, event: CognitiveEvent) -> None:
+        """Emit an event to all subscribers."""
+        # Global handlers
+        for handler in self._global_handlers:
+            try:
+                handler(event)
+            except Exception:
+                pass  # Don't let handler errors break the agent
+
+        # Type-specific handlers
+        if event.event_type in self._handlers:
+            for handler in self._handlers[event.event_type]:
+                try:
+                    handler(event)
+                except Exception:
+                    pass
+
+    def clear(self) -> None:
+        """Remove all handlers."""
+        self._handlers.clear()
+        self._global_handlers.clear()
+
+
+# =============================================================================
 # Cognitive Layers: Grounded Architecture v3.0
 # =============================================================================
 #
@@ -1238,9 +1352,19 @@ class CognitiveAgent:
     Implemented:
         - Persistence via save()/load() JSON serialization
         - GoT integration via GoTBridge class
+        - Event hooks via EventBus for observability
 
-    TODO: Add event hooks for layer interactions
     TODO: Add episodic memory for experience replay
+
+    Event Hooks:
+        Subscribe to events to observe agent internals:
+
+            agent = CognitiveAgent()
+
+            def on_eviction(event):
+                print(f"Evicted {event.data['atom_name']} from working memory")
+
+            agent.events.subscribe(EventType.ATOM_EVICTED, on_eviction)
     """
 
     def __init__(
@@ -1264,7 +1388,17 @@ class CognitiveAgent:
         self.surprise_tracker = SurpriseTracker(self.predictor)
         self.goals = GoalTracker()
         self.exploration = ExplorationController()
+        self.events = EventBus()  # Event system for observability
         self._step_count: int = 0
+
+    def _emit(self, event_type: EventType, data: Dict[str, Any]) -> None:
+        """Emit an event with current step context."""
+        self.events.emit(CognitiveEvent(
+            event_type=event_type,
+            data=data,
+            step=self._step_count,
+            timestamp=float(self._step_count),  # Simple time for now
+        ))
 
     def step(self) -> Dict[str, Any]:
         """
@@ -1275,11 +1409,17 @@ class CognitiveAgent:
         """
         self._step_count += 1
 
+        # Emit step started
+        self._emit(EventType.STEP_STARTED, {"step": self._step_count})
+
         # 1. Apply attention decay (delegates to graph)
         self.graph.step()
+        self._emit(EventType.ATTENTION_DECAYED, {
+            "decay_rate": self.graph._attention_decay,
+        })
 
         # 2. Apply predictor decay (prevents memory leak)
-        self.predictor.decay_all()
+        pruned = self.predictor.decay_all()
 
         # 3. Get current focus
         focus = self.graph.get_attention_focus(top_k=self._attention_focus_size)
@@ -1296,8 +1436,12 @@ class CognitiveAgent:
 
         # 6. Decide explore vs exploit
         exploring = self.exploration.should_explore()
+        self._emit(EventType.EXPLORE_DECISION, {
+            "exploring": exploring,
+            "epsilon": self.exploration.epsilon,
+        })
 
-        return {
+        metrics = {
             "step": self._step_count,
             "focus_size": len(focus),
             "working_memory_size": len(self.working_memory.contents()),
@@ -1307,6 +1451,11 @@ class CognitiveAgent:
             "epsilon": self.exploration.epsilon,
             "exploring": exploring,
         }
+
+        # Emit step completed with metrics
+        self._emit(EventType.STEP_COMPLETED, metrics)
+
+        return metrics
 
     def attend(self, name_or_id: str, amount: float = 0.2) -> None:
         """
@@ -1321,8 +1470,30 @@ class CognitiveAgent:
         if atom is None:
             atom = self.graph.get_atom(name_or_id)
         if atom:
+            # Emit attention focused event
+            self._emit(EventType.ATTENTION_FOCUSED, {
+                "atom_id": atom.id,
+                "atom_name": atom.name,
+                "amount": amount,
+                "new_sti": atom.sti,
+            })
+
             evicted = self.working_memory.load(atom)
-            # TODO: Could log evicted atoms for analysis
+
+            # Emit atom loaded event
+            self._emit(EventType.ATOM_LOADED, {
+                "atom_id": atom.id,
+                "atom_name": atom.name,
+                "working_memory_size": len(self.working_memory.contents()),
+            })
+
+            # Emit eviction event if something was evicted
+            if evicted:
+                self._emit(EventType.ATOM_EVICTED, {
+                    "atom_id": evicted.id,
+                    "atom_name": evicted.name,
+                    "reason": "lru_eviction",
+                })
 
     def learn_from_surprise(self, context_ids: List[str], actual_id: str) -> float:
         """
@@ -1344,6 +1515,14 @@ class CognitiveAgent:
                 context.append(atom)
 
         surprise = self.surprise_tracker.record_outcome(context, actual_id)
+
+        # Emit surprise recorded event
+        self._emit(EventType.SURPRISE_RECORDED, {
+            "context_ids": context_ids,
+            "actual_id": actual_id,
+            "surprise": surprise,
+            "mean_surprise": self.surprise_tracker.mean_surprise(),
+        })
 
         # High surprise = update beliefs more strongly
         actual_atom = self.graph.get_atom(actual_id)

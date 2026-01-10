@@ -52,6 +52,10 @@ from cortical.cognitive.graph import (
     CognitiveAgentModule,
     # GoT integration
     GoTBridge,
+    # Event system
+    EventType,
+    CognitiveEvent,
+    EventBus,
 )
 
 __all__ = [
@@ -76,4 +80,8 @@ __all__ = [
     "CognitiveAgentModule",
     # GoT integration
     "GoTBridge",
+    # Event system
+    "EventType",
+    "CognitiveEvent",
+    "EventBus",
 ]
