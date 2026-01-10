@@ -749,49 +749,118 @@ class TestKnowledgeGraphLayer:
     """
     Layer 1: Knowledge storage and retrieval.
 
-    Grounding: Graph databases.
-    Success criterion: O(1) access, O(n) traversal.
+    The knowledge graph is the foundation of the cognitive architecture.
+    It stores atoms (concepts, links, predicates) and their relationships.
+
+    Grounding: Graph databases (Neo4j, JanusGraph), OpenCog AtomSpace.
+    Success criterion: O(1) access by ID, O(n) predicate queries.
     """
 
-    def test_add_and_retrieve_atom(self):
-        """Atoms can be stored and retrieved by ID."""
+    def test_atoms_can_be_stored_and_retrieved_by_id(self):
+        """
+        GIVEN an empty knowledge graph
+        WHEN an atom is added with a specific ID and content
+        THEN the atom can be retrieved by that ID with its content intact.
+
+        This is the fundamental storage contract: the graph acts as a
+        dictionary keyed by atom ID. O(1) access is critical for performance.
+        """
+        # GIVEN
         graph = InMemoryKnowledgeGraph()
 
-        atom = Atom(id="test-1", content="hello")
+        # WHEN
+        atom_id = "test-1"
+        atom_content = "hello"
+        atom = Atom(id=atom_id, content=atom_content)
         graph.add(atom)
 
-        retrieved = graph.get("test-1")
-        assert retrieved is not None
-        assert retrieved.content == "hello"
+        # THEN
+        retrieved = graph.get(atom_id)
 
-    def test_query_with_predicate(self):
-        """Atoms can be queried by predicate."""
+        assert retrieved is not None, (
+            f"Atom with id='{atom_id}' should be retrievable after adding"
+        )
+
+        expected_content = atom_content
+        actual_content = retrieved.content
+        assert actual_content == expected_content, (
+            f"Expected content='{expected_content}', got '{actual_content}'"
+        )
+
+    def test_atoms_can_be_queried_by_predicate(self):
+        """
+        GIVEN a knowledge graph with atoms having different confidence levels
+        WHEN querying for atoms with confidence > 0.7
+        THEN only atoms meeting that criterion are returned.
+
+        Predicate queries enable flexible retrieval patterns. This is O(n)
+        since we must check each atom, but enables powerful filtering.
+        """
+        # GIVEN
         graph = InMemoryKnowledgeGraph()
 
-        graph.add(Atom(id="a1", content="cat", tv=TruthValue(0.9, 0.8)))
-        graph.add(Atom(id="a2", content="dog", tv=TruthValue(0.5, 0.3)))
-        graph.add(Atom(id="a3", content="bird", tv=TruthValue(0.95, 0.9)))
+        # Add atoms with varying confidence levels
+        graph.add(Atom(id="a1", content="cat", tv=TruthValue(0.9, 0.8)))   # conf=0.8 ✓
+        graph.add(Atom(id="a2", content="dog", tv=TruthValue(0.5, 0.3)))   # conf=0.3 ✗
+        graph.add(Atom(id="a3", content="bird", tv=TruthValue(0.95, 0.9))) # conf=0.9 ✓
 
-        # Query high-confidence atoms
-        high_conf = graph.query(lambda a: a.tv.confidence > 0.7)
-        assert len(high_conf) == 2
+        # WHEN
+        confidence_threshold = 0.7
+        high_conf = graph.query(lambda a: a.tv.confidence > confidence_threshold)
 
-    def test_link_creates_neighbors(self):
-        """Links connect atoms as neighbors."""
+        # THEN
+        expected_count = 2  # cat (0.8) and bird (0.9) exceed threshold
+        actual_count = len(high_conf)
+        assert actual_count == expected_count, (
+            f"Expected {expected_count} atoms with confidence > {confidence_threshold}, "
+            f"got {actual_count}"
+        )
+
+        # Verify we got the right atoms
+        returned_ids = {a.id for a in high_conf}
+        expected_ids = {"a1", "a3"}
+        assert returned_ids == expected_ids, (
+            f"Expected atoms {expected_ids}, got {returned_ids}"
+        )
+
+    def test_links_connect_atoms_as_neighbors(self):
+        """
+        GIVEN a knowledge graph with two concept atoms
+        WHEN a link atom is added with outgoing edges to both concepts
+        THEN the link appears as a neighbor of the source concept.
+
+        Links are atoms too (hypergraph property). The outgoing list defines
+        which atoms the link connects. Neighbors are atoms that share a link.
+        This enables graph traversal for inference and spreading activation.
+        """
+        # GIVEN
         graph = InMemoryKnowledgeGraph()
 
         cat = Atom(id="cat", content="cat")
         animal = Atom(id="animal", content="animal")
-        link = Atom(id="link-1", content="is-a", outgoing=["cat", "animal"])
-
         graph.add(cat)
         graph.add(animal)
+
+        # WHEN - create "cat is-a animal" link
+        # outgoing=["cat", "animal"] means this link connects cat → animal
+        link = Atom(id="link-1", content="is-a", outgoing=["cat", "animal"])
         graph.add(link)
 
-        # Cat has link as neighbor
+        # THEN - cat should have the link as a neighbor
         cat_neighbors = graph.neighbors("cat")
-        assert len(cat_neighbors) == 1
-        assert cat_neighbors[0].id == "link-1"
+
+        expected_neighbor_count = 1
+        actual_neighbor_count = len(cat_neighbors)
+        assert actual_neighbor_count == expected_neighbor_count, (
+            f"Cat should have {expected_neighbor_count} neighbor (the is-a link), "
+            f"got {actual_neighbor_count}"
+        )
+
+        expected_neighbor_id = "link-1"
+        actual_neighbor_id = cat_neighbors[0].id
+        assert actual_neighbor_id == expected_neighbor_id, (
+            f"Cat's neighbor should be '{expected_neighbor_id}', got '{actual_neighbor_id}'"
+        )
 
 
 # =============================================================================
@@ -803,64 +872,147 @@ class TestAttentionLayer:
     """
     Layer 2: Priority-based attention allocation.
 
-    Grounding: OS schedulers, priority queues.
-    Success criterion: Top-K selection in O(n log k).
+    Attention determines which atoms get processing resources. STI (Short-Term
+    Importance) is a priority score that decays over time. High-STI atoms are
+    in the "attentional focus" and get preferential processing.
+
+    Grounding: OS schedulers (priority queues), LIDA cognitive architecture.
+    Success criterion: Top-K selection in O(n log k), decay in O(n).
     """
 
     def test_stimulation_increases_sti(self):
-        """Stimulating an atom increases its STI."""
+        """
+        GIVEN an atom with STI=0.0 in the knowledge graph
+        WHEN the atom is stimulated with amount=0.5
+        THEN its STI increases to 0.5.
+
+        Stimulation is how external events or internal focus direct attention.
+        The amount is additive to the current STI value.
+        """
+        # GIVEN
         graph = InMemoryKnowledgeGraph()
-        atom = Atom(id="test", content="x", sti=0.0)
+        initial_sti = 0.0
+        atom = Atom(id="test", content="x", sti=initial_sti)
         graph.add(atom)
 
+        # WHEN
         attention = AttentionSystem(graph)
-        attention.stimulate("test", amount=0.5)
+        stimulation_amount = 0.5
+        attention.stimulate("test", amount=stimulation_amount)
 
-        assert atom.sti == 0.5
+        # THEN
+        expected_sti = initial_sti + stimulation_amount
+        actual_sti = atom.sti
+        assert actual_sti == expected_sti, (
+            f"After stimulating by {stimulation_amount}, "
+            f"expected STI={expected_sti}, got STI={actual_sti}"
+        )
 
-    def test_decay_reduces_sti(self):
-        """STI decays over time."""
+    def test_decay_reduces_sti_each_step(self):
+        """
+        GIVEN an atom with STI=1.0 and decay_rate=0.1
+        WHEN one attention step is executed
+        THEN STI decreases to 0.9 (multiplicative decay: 1.0 * (1 - 0.1)).
+
+        Decay prevents old stimuli from dominating attention forever.
+        Without decay, attention would accumulate infinitely. The decay
+        formula is: new_sti = old_sti * (1 - decay_rate).
+        """
+        # GIVEN
         graph = InMemoryKnowledgeGraph()
-        atom = Atom(id="test", content="x", sti=1.0)
+        initial_sti = 1.0
+        decay_rate = 0.1
+        atom = Atom(id="test", content="x", sti=initial_sti)
         graph.add(atom)
 
-        attention = AttentionSystem(graph, decay_rate=0.1)
+        # WHEN
+        attention = AttentionSystem(graph, decay_rate=decay_rate)
         attention.step()
 
-        assert atom.sti == 0.9
+        # THEN
+        # Decay formula: new_sti = old_sti * (1 - decay_rate) = 1.0 * 0.9 = 0.9
+        expected_sti = initial_sti * (1 - decay_rate)
+        actual_sti = atom.sti
+        assert actual_sti == expected_sti, (
+            f"After decay with rate={decay_rate}, "
+            f"expected STI={expected_sti}, got STI={actual_sti}"
+        )
 
-    def test_focus_returns_top_k_by_sti(self):
-        """Focus returns atoms with highest STI."""
+    def test_focus_returns_top_k_atoms_by_sti(self):
+        """
+        GIVEN 10 atoms with STI values 0.0, 0.1, 0.2, ..., 0.9
+        WHEN focus is retrieved with focus_size=3
+        THEN the 3 atoms with highest STI (0.9, 0.8, 0.7) are returned in order.
+
+        The attentional focus is a bounded window of the most important atoms.
+        This is the "working set" that cognitive processes operate on. Top-K
+        selection uses a heap for O(n log k) complexity.
+        """
+        # GIVEN
         graph = InMemoryKnowledgeGraph()
+        num_atoms = 10
 
-        for i in range(10):
+        for i in range(num_atoms):
+            # atom-0 has STI=0.0, atom-9 has STI=0.9
             graph.add(Atom(id=f"atom-{i}", content=f"x{i}", sti=i * 0.1))
 
-        attention = AttentionSystem(graph, focus_size=3)
+        # WHEN
+        focus_size = 3
+        attention = AttentionSystem(graph, focus_size=focus_size)
         focus = attention.get_focus()
 
-        assert len(focus) == 3
-        assert abs(focus[0].sti - 0.9) < 0.001
-        assert abs(focus[1].sti - 0.8) < 0.001
-        assert abs(focus[2].sti - 0.7) < 0.001
+        # THEN - should get exactly focus_size atoms
+        expected_count = focus_size
+        actual_count = len(focus)
+        assert actual_count == expected_count, (
+            f"Focus should contain {expected_count} atoms, got {actual_count}"
+        )
 
-    def test_spreading_activation(self):
-        """Activation spreads to neighbors."""
+        # Verify top-3 STI values in descending order
+        expected_stis = [0.9, 0.8, 0.7]
+        for i, expected_sti in enumerate(expected_stis):
+            actual_sti = focus[i].sti
+            # Use approximate comparison for floating point
+            assert abs(actual_sti - expected_sti) < 0.001, (
+                f"Focus[{i}] should have STI≈{expected_sti}, got {actual_sti}"
+            )
+
+    def test_spreading_activation_propagates_to_neighbors(self):
+        """
+        GIVEN a source atom (STI=1.0) linked to a target atom (STI=0.0)
+        WHEN spreading activation is applied from source with spread_factor=0.5
+        THEN the link atom receives activation (STI > 0).
+
+        Spreading activation is how attention flows through the graph.
+        Related concepts become activated when you think about something.
+        This is grounded in neural network activation propagation.
+
+        Note: We check link.sti > 0 rather than an exact value because the
+        spread formula may vary. The key behavior is that activation flows.
+        """
+        # GIVEN
         graph = InMemoryKnowledgeGraph()
 
         source = Atom(id="source", content="s", sti=1.0)
         target = Atom(id="target", content="t", sti=0.0)
+        # Link connects source to target
         link = Atom(id="link", content="l", outgoing=["source", "target"])
 
         graph.add(source)
         graph.add(target)
         graph.add(link)
 
+        # WHEN
         attention = AttentionSystem(graph)
-        attention.spread_activation("source", spread_factor=0.5)
+        spread_factor = 0.5
+        attention.spread_activation("source", spread_factor=spread_factor)
 
-        # Link should have received activation
-        assert link.sti > 0
+        # THEN - link should have received some activation
+        # We don't assert exact value because spread formula is implementation detail
+        assert link.sti > 0, (
+            f"Link should have received activation from source, but STI={link.sti}. "
+            f"Spreading activation should propagate through graph edges."
+        )
 
 
 # =============================================================================
@@ -872,52 +1024,117 @@ class TestWorkingMemoryLayer:
     """
     Layer 3: Bounded capacity workspace.
 
-    Grounding: LRU cache, Cowan's 4±1 limit.
-    Success criterion: O(1) access, LRU eviction.
+    Working memory is the cognitive "scratchpad" - the small set of items
+    currently being processed. Humans can hold ~4 items (Cowan's limit).
+    When full, least-recently-used items are evicted to make room.
+
+    Grounding: LRU cache algorithms, Cowan's 4±1 capacity limit.
+    Success criterion: O(1) access/insert, automatic LRU eviction.
     """
 
-    def test_capacity_limit(self):
-        """Cannot exceed capacity."""
-        wm = WorkingMemory(capacity=4)
+    def test_capacity_cannot_be_exceeded(self):
+        """
+        GIVEN a working memory with capacity=4
+        WHEN 6 atoms are loaded sequentially
+        THEN only 4 atoms remain (capacity is enforced via eviction).
 
-        for i in range(6):
+        Working memory is strictly bounded. This models cognitive limits -
+        we can only actively hold so many things at once. Excess items are
+        automatically evicted using LRU policy.
+        """
+        # GIVEN
+        capacity = 4
+        wm = WorkingMemory(capacity=capacity)
+
+        # WHEN - load more items than capacity allows
+        items_to_load = 6
+        for i in range(items_to_load):
             wm.load(Atom(id=f"a{i}", content=f"x{i}"))
 
-        assert len(wm.contents()) == 4
+        # THEN - working memory respects capacity limit
+        expected_size = capacity
+        actual_size = len(wm.contents())
+        assert actual_size == expected_size, (
+            f"Working memory should hold at most {expected_size} items, "
+            f"but contains {actual_size}"
+        )
 
-    def test_lru_eviction(self):
-        """Least recently used is evicted."""
-        wm = WorkingMemory(capacity=3)
+    def test_lru_item_is_evicted_when_capacity_exceeded(self):
+        """
+        GIVEN a full working memory [a, b, c] with capacity=3
+        WHEN 'a' is accessed (making it most recent), then 'd' is loaded
+        THEN 'b' is evicted (it's now the least recently used).
+
+        LRU eviction order: [a, b, c] -> access 'a' -> [b, c, a] -> load 'd'
+        -> evict 'b' (oldest) -> [c, a, d].
+
+        This models how we forget things we haven't thought about recently.
+        """
+        # GIVEN
+        capacity = 3
+        wm = WorkingMemory(capacity=capacity)
 
         wm.load(Atom(id="a", content="a"))
         wm.load(Atom(id="b", content="b"))
         wm.load(Atom(id="c", content="c"))
+        # Order is now: a (oldest), b, c (newest)
 
         # Access 'a' to make it most recent
         wm.get("a")
+        # Order is now: b (oldest), c, a (newest)
 
-        # Add new item - 'b' should be evicted (LRU)
+        # WHEN - load a new item, exceeding capacity
         evicted = wm.load(Atom(id="d", content="d"))
 
-        assert evicted is not None
-        assert evicted.id == "b"
-        assert wm.contains("a")
-        assert not wm.contains("b")
+        # THEN - 'b' should be evicted (it's LRU)
+        assert evicted is not None, "An atom should be evicted when capacity exceeded"
 
-    def test_reload_refreshes_access(self):
-        """Reloading an atom refreshes its access time."""
-        wm = WorkingMemory(capacity=2)
+        expected_evicted_id = "b"
+        actual_evicted_id = evicted.id
+        assert actual_evicted_id == expected_evicted_id, (
+            f"Expected '{expected_evicted_id}' to be evicted (LRU), "
+            f"but '{actual_evicted_id}' was evicted"
+        )
+
+        # Verify 'a' was protected by the access
+        assert wm.contains("a"), "'a' should still be in memory (was accessed recently)"
+        assert not wm.contains("b"), "'b' should have been evicted"
+        assert wm.contains("c"), "'c' should still be in memory"
+        assert wm.contains("d"), "'d' should have been loaded"
+
+    def test_reloading_atom_refreshes_its_access_time(self):
+        """
+        GIVEN a working memory [a, b] with capacity=2
+        WHEN 'a' is reloaded (same atom loaded again), then 'c' is loaded
+        THEN 'b' is evicted, not 'a' (reload counts as access).
+
+        Reloading an already-present atom updates its access time without
+        duplication. This models "thinking about something again" - it
+        refreshes its position in memory.
+        """
+        # GIVEN
+        capacity = 2
+        wm = WorkingMemory(capacity=capacity)
 
         wm.load(Atom(id="a", content="a"))
         wm.load(Atom(id="b", content="b"))
+        # Order: a (oldest), b (newest)
 
-        # Reload 'a'
+        # WHEN - reload 'a' (refreshes its access time)
         wm.load(Atom(id="a", content="a"))
+        # Order should now be: b (oldest), a (newest)
 
-        # Add 'c' - 'b' should be evicted, not 'a'
+        # Load 'c' to trigger eviction
         evicted = wm.load(Atom(id="c", content="c"))
 
-        assert evicted.id == "b"
+        # THEN - 'b' should be evicted (now LRU), not 'a'
+        expected_evicted_id = "b"
+        actual_evicted_id = evicted.id
+        assert actual_evicted_id == expected_evicted_id, (
+            f"Expected '{expected_evicted_id}' to be evicted after 'a' was reloaded, "
+            f"but '{actual_evicted_id}' was evicted. "
+            "Reloading should refresh access time."
+        )
 
 
 # =============================================================================
@@ -929,31 +1146,61 @@ class TestPredictionLayer:
     """
     Layer 4: Anticipate next relevant atoms.
 
-    Grounding: Association rules, language models.
-    Success criterion: Surprise decreases with experience.
+    Prediction enables the system to anticipate what comes next based on
+    current context. This is the foundation of learning - recording what
+    co-occurs and using that to make predictions. Surprise (prediction error)
+    drives learning by highlighting what wasn't expected.
+
+    Grounding: Association rules, n-gram language models, Hebbian learning.
+    Success criterion: Surprise decreases with experience (learning works).
     """
 
-    def test_cooccurrence_enables_prediction(self):
-        """Recording co-occurrences enables prediction."""
+    def test_cooccurrence_learning_enables_prediction(self):
+        """
+        GIVEN a predictor with "cat" and "meow" atoms
+        WHEN "cat" and "meow" co-occur 10 times
+        THEN predicting from "cat" context returns "meow" as top prediction.
+
+        This is associative learning: things that occur together become
+        linked. After seeing "cat" with "meow" many times, the system
+        learns to predict "meow" when it sees "cat".
+        """
+        # GIVEN
         graph = InMemoryKnowledgeGraph()
         graph.add(Atom(id="cat", content="cat"))
         graph.add(Atom(id="meow", content="meow"))
-
         predictor = AssociativePredictor(graph)
 
-        # Record co-occurrences
-        for _ in range(10):
+        # WHEN - record co-occurrences (learning phase)
+        learning_iterations = 10
+        for _ in range(learning_iterations):
             predictor.record_co_occurrence("cat", "meow")
 
-        # Now predict
+        # THEN - prediction should work
         context = [graph.get("cat")]
         predictions = predictor.predict(context)
 
-        assert len(predictions) > 0
-        assert predictions[0][0] == "meow"
+        assert len(predictions) > 0, (
+            "After learning co-occurrences, predictor should return predictions"
+        )
 
-    def test_surprise_high_for_unexpected(self):
-        """Surprise is high when observation wasn't predicted."""
+        expected_top_prediction = "meow"
+        actual_top_prediction = predictions[0][0]
+        assert actual_top_prediction == expected_top_prediction, (
+            f"Top prediction from 'cat' context should be '{expected_top_prediction}', "
+            f"got '{actual_top_prediction}'"
+        )
+
+    def test_surprise_is_maximum_for_unpredicted_outcome(self):
+        """
+        GIVEN a predictor with no learned associations
+        WHEN an outcome is observed
+        THEN surprise is 1.0 (maximum) because nothing was predicted.
+
+        Surprise = 1 - P(outcome|context). With no learning, P = 0,
+        so surprise = 1.0. This is the baseline before any learning occurs.
+        """
+        # GIVEN
         graph = InMemoryKnowledgeGraph()
         graph.add(Atom(id="a", content="a"))
         graph.add(Atom(id="b", content="b"))
@@ -961,15 +1208,31 @@ class TestPredictionLayer:
 
         predictor = AssociativePredictor(graph)
         tracker = SurpriseTracker(predictor)
+        # No co-occurrences recorded - predictor knows nothing
 
-        # No co-occurrences recorded - everything is surprising
+        # WHEN - observe an outcome
         context = [graph.get("a")]
         surprise = tracker.record_outcome(context, "b")
 
-        assert surprise == 1.0  # Maximum surprise
+        # THEN - surprise should be maximum
+        expected_surprise = 1.0
+        actual_surprise = surprise
+        assert actual_surprise == expected_surprise, (
+            f"With no learned associations, surprise should be {expected_surprise} "
+            f"(maximum), got {actual_surprise}"
+        )
 
-    def test_surprise_decreases_with_learning(self):
-        """Surprise decreases as patterns are learned."""
+    def test_surprise_decreases_as_patterns_are_learned(self):
+        """
+        GIVEN a predictor that has not yet learned the a→b pattern
+        WHEN the a→b co-occurrence is recorded 20 times (learning)
+        THEN surprise for observing 'b' after 'a' decreases.
+
+        This is the core learning test: as the system learns patterns,
+        it becomes less surprised when those patterns occur. Decreasing
+        surprise indicates successful learning.
+        """
+        # GIVEN
         graph = InMemoryKnowledgeGraph()
         graph.add(Atom(id="a", content="a"))
         graph.add(Atom(id="b", content="b"))
@@ -977,20 +1240,26 @@ class TestPredictionLayer:
 
         predictor = AssociativePredictor(graph)
         tracker = SurpriseTracker(predictor)
-
-        # First observation - no learning yet, should be surprising
         context = [graph.get("a")]
+
+        # Measure initial surprise (before learning)
         first_surprise = tracker.record_outcome(context, "b")
 
-        # Now learn the pattern through repeated co-occurrence
-        for _ in range(20):
+        # WHEN - learn the a→b pattern
+        learning_iterations = 20
+        for _ in range(learning_iterations):
             predictor.record_co_occurrence("a", "b")
 
-        # After learning, should be less surprising
+        # Measure surprise after learning
         last_surprise = tracker.record_outcome(context, "b")
 
-        # Surprise should decrease after learning
-        assert last_surprise < first_surprise
+        # THEN - surprise should have decreased
+        assert last_surprise < first_surprise, (
+            f"After learning a→b pattern, surprise should decrease. "
+            f"Initial surprise: {first_surprise}, "
+            f"After {learning_iterations} iterations: {last_surprise}. "
+            "Learning should reduce prediction error."
+        )
 
 
 # =============================================================================
@@ -1002,58 +1271,127 @@ class TestGoalLayer:
     """
     Layer 5: Track progress toward targets.
 
-    Grounding: Control theory.
-    Success criterion: Urgency reflects importance × remaining work.
+    Goals represent desired states the system is working toward. Each goal
+    has a target state, current state, and importance. Progress is measured
+    as the ratio of current to target. Urgency combines importance with
+    remaining work to prioritize what needs attention now.
+
+    Grounding: Control theory (PID controllers), utility theory.
+    Success criterion: Urgency = importance × (1 - progress).
     """
 
-    def test_goal_progress(self):
-        """Progress tracks distance to target."""
+    def test_progress_measures_fraction_of_target_achieved(self):
+        """
+        GIVEN a goal with target_state=100 and current_state=50
+        WHEN progress is calculated
+        THEN progress = 0.5 (50% of the way to target).
+
+        Progress formula: current_state / target_state.
+        This is a simple linear measure of goal completion.
+        """
+        # GIVEN
+        target = 100
+        current = 50
         goal = Goal(
             id="g1",
             description="reach 100",
-            target_state=100,
-            current_state=50,
+            target_state=target,
+            current_state=current,
             importance=1.0
         )
 
-        assert goal.progress == 0.5
+        # WHEN/THEN - progress is computed automatically
+        expected_progress = current / target  # 50/100 = 0.5
+        actual_progress = goal.progress
 
-    def test_goal_urgency(self):
-        """Urgency = importance × (1 - progress)."""
+        assert actual_progress == expected_progress, (
+            f"Progress should be {current}/{target} = {expected_progress}, "
+            f"got {actual_progress}"
+        )
+
+    def test_urgency_combines_importance_with_remaining_work(self):
+        """
+        GIVEN a goal with progress=0.8 and importance=0.8
+        WHEN urgency is calculated
+        THEN urgency = 0.8 × (1 - 0.8) = 0.16.
+
+        Urgency formula: importance × (1 - progress).
+        - High importance + low progress = high urgency (needs work now)
+        - Low importance OR high progress = low urgency (can wait)
+
+        This prioritizes important goals that aren't close to done.
+        """
+        # GIVEN
+        target = 100
+        current = 80  # progress = 0.8
+        importance = 0.8
         goal = Goal(
             id="g1",
             description="reach 100",
-            target_state=100,
-            current_state=80,
-            importance=0.8
+            target_state=target,
+            current_state=current,
+            importance=importance
         )
 
-        # progress = 0.8, urgency = 0.8 * 0.2 = 0.16
-        assert abs(goal.urgency - 0.16) < 0.01
+        # WHEN/THEN - urgency is computed automatically
+        progress = current / target  # 0.8
+        expected_urgency = importance * (1 - progress)  # 0.8 * 0.2 = 0.16
+        actual_urgency = goal.urgency
 
-    def test_goals_sorted_by_urgency(self):
-        """Active goals are sorted by urgency."""
+        # Use approximate comparison for floating point
+        assert abs(actual_urgency - expected_urgency) < 0.01, (
+            f"Urgency should be {importance} × (1 - {progress}) = {expected_urgency}, "
+            f"got {actual_urgency}"
+        )
+
+    def test_active_goals_are_sorted_by_urgency_descending(self):
+        """
+        GIVEN two goals: "low" (progress=0.9, importance=0.5) and
+                         "high" (progress=0.1, importance=0.9)
+        WHEN active goals are retrieved
+        THEN "high" comes first (higher urgency).
+
+        Urgency calculations:
+        - "low":  0.5 × (1 - 0.9) = 0.5 × 0.1 = 0.05
+        - "high": 0.9 × (1 - 0.1) = 0.9 × 0.9 = 0.81
+
+        The tracker returns goals sorted by urgency so the most pressing
+        goal is always first. This drives attention allocation.
+        """
+        # GIVEN
         tracker = GoalTracker()
 
+        # Low urgency goal: nearly complete, not very important
         tracker.add_goal(Goal(
             id="low",
-            description="low",
+            description="low priority goal",
             target_state=100,
-            current_state=90,
+            current_state=90,  # progress = 0.9
             importance=0.5
         ))
+        # Urgency: 0.5 × (1 - 0.9) = 0.05
 
+        # High urgency goal: barely started, very important
         tracker.add_goal(Goal(
             id="high",
-            description="high",
+            description="high priority goal",
             target_state=100,
-            current_state=10,
+            current_state=10,  # progress = 0.1
             importance=0.9
         ))
+        # Urgency: 0.9 × (1 - 0.1) = 0.81
 
+        # WHEN
         active = tracker.get_active_goals()
 
-        assert active[0].id == "high"
+        # THEN - high urgency goal should be first
+        expected_first_goal_id = "high"
+        actual_first_goal_id = active[0].id
+        assert actual_first_goal_id == expected_first_goal_id, (
+            f"First goal should be '{expected_first_goal_id}' (highest urgency), "
+            f"got '{actual_first_goal_id}'. "
+            f"Goals should be sorted by urgency descending."
+        )
 
 
 # =============================================================================
@@ -1065,52 +1403,130 @@ class TestExplorationLayer:
     """
     Layer 6: Balance exploration and exploitation.
 
-    Grounding: Multi-armed bandits (ε-greedy).
-    Success criterion: ε adapts to success/failure patterns.
+    The exploration/exploitation tradeoff is fundamental: should we use
+    what we know works (exploit) or try new things (explore)? ε-greedy
+    explores with probability ε, otherwise exploits. ε adapts based on
+    recent success/failure to automatically balance this tradeoff.
+
+    Grounding: Multi-armed bandits (ε-greedy), reinforcement learning.
+    Success criterion: ε adapts down on success, up on failure, stays bounded.
     """
 
-    def test_epsilon_decreases_on_success(self):
-        """Success reduces exploration (exploit what works)."""
-        controller = ExplorationController(initial_epsilon=0.5)
+    def test_epsilon_decreases_after_repeated_success(self):
+        """
+        GIVEN an exploration controller with initial ε=0.5
+        WHEN 5 consecutive successes are recorded
+        THEN ε decreases (exploit what works).
 
-        for _ in range(5):
+        Success → reduce exploration. If current strategy is working,
+        keep doing it more often. This is adaptive exploitation.
+        """
+        # GIVEN
+        initial_epsilon = 0.5
+        controller = ExplorationController(initial_epsilon=initial_epsilon)
+
+        # WHEN - record multiple successes
+        success_count = 5
+        for _ in range(success_count):
             controller.record_success()
 
-        assert controller.epsilon < 0.5
+        # THEN - epsilon should have decreased
+        assert controller.epsilon < initial_epsilon, (
+            f"After {success_count} successes, ε should decrease from {initial_epsilon}. "
+            f"Current ε={controller.epsilon}. Success should reduce exploration."
+        )
 
-    def test_epsilon_increases_on_failure(self):
-        """Failure increases exploration (try something new)."""
-        controller = ExplorationController(initial_epsilon=0.3)
+    def test_epsilon_increases_after_repeated_failure(self):
+        """
+        GIVEN an exploration controller with initial ε=0.3
+        WHEN 5 consecutive failures are recorded
+        THEN ε increases (try something new).
 
-        for _ in range(5):
+        Failure → increase exploration. If current strategy isn't working,
+        try different approaches more often. This is adaptive exploration.
+        """
+        # GIVEN
+        initial_epsilon = 0.3
+        controller = ExplorationController(initial_epsilon=initial_epsilon)
+
+        # WHEN - record multiple failures
+        failure_count = 5
+        for _ in range(failure_count):
             controller.record_failure()
 
-        assert controller.epsilon > 0.3
+        # THEN - epsilon should have increased
+        assert controller.epsilon > initial_epsilon, (
+            f"After {failure_count} failures, ε should increase from {initial_epsilon}. "
+            f"Current ε={controller.epsilon}. Failure should increase exploration."
+        )
 
-    def test_stuck_detection(self):
-        """Consecutive failures detected as stuck."""
+    def test_consecutive_failures_detected_as_stuck(self):
+        """
+        GIVEN an exploration controller with no history
+        WHEN 3 consecutive failures are recorded
+        THEN is_stuck(threshold=3) returns True.
+
+        "Stuck" detection identifies when we're in a rut - repeated failures
+        without any success. This can trigger more drastic interventions
+        like resetting state or switching strategies entirely.
+        """
+        # GIVEN
         controller = ExplorationController()
 
-        assert not controller.is_stuck()
+        # Initially should not be stuck
+        assert not controller.is_stuck(), (
+            "New controller should not be stuck"
+        )
 
-        for _ in range(3):
+        # WHEN - record consecutive failures
+        failure_count = 3
+        for _ in range(failure_count):
             controller.record_failure()
 
-        assert controller.is_stuck(threshold=3)
+        # THEN - should be detected as stuck
+        threshold = 3
+        assert controller.is_stuck(threshold=threshold), (
+            f"After {failure_count} consecutive failures, "
+            f"is_stuck(threshold={threshold}) should return True"
+        )
 
-    def test_epsilon_bounded(self):
-        """Epsilon stays within bounds."""
-        controller = ExplorationController(min_epsilon=0.1, max_epsilon=0.8)
+    def test_epsilon_respects_minimum_and_maximum_bounds(self):
+        """
+        GIVEN an exploration controller with min_ε=0.1 and max_ε=0.8
+        WHEN many successes push ε down, then many failures push ε up
+        THEN ε never goes below 0.1 or above 0.8.
 
+        Bounds prevent pathological behavior:
+        - min_ε > 0 ensures we always explore a little (avoid local optima)
+        - max_ε < 1 ensures we always exploit a little (don't waste effort)
+        """
+        # GIVEN
+        min_epsilon = 0.1
+        max_epsilon = 0.8
+        controller = ExplorationController(
+            min_epsilon=min_epsilon,
+            max_epsilon=max_epsilon
+        )
+
+        # WHEN - push epsilon down with many successes
         for _ in range(100):
             controller.record_success()
 
-        assert controller.epsilon >= 0.1
+        # THEN - should not go below minimum
+        assert controller.epsilon >= min_epsilon, (
+            f"ε should never go below min_epsilon={min_epsilon}. "
+            f"Current ε={controller.epsilon}"
+        )
 
+        # WHEN - push epsilon up with many failures
         for _ in range(100):
             controller.record_failure()
 
-        assert controller.epsilon <= 0.8
+        # THEN - should not go above maximum
+        assert controller.epsilon <= max_epsilon, (
+            f"ε should never go above max_epsilon={max_epsilon}. "
+            f"Current ε={controller.epsilon}"
+        )
 
 
 # =============================================================================
@@ -1120,61 +1536,136 @@ class TestExplorationLayer:
 
 class TestIntegratedSystem:
     """
-    Test the complete cognitive agent.
+    Test the complete cognitive agent with all layers working together.
 
-    Success criterion: Measurable improvement over time.
+    These tests verify that the six layers integrate correctly:
+    Knowledge → Attention → Working Memory → Prediction → Goals → Exploration
+
+    The integrated agent should be more than the sum of its parts - the layers
+    should interact to produce emergent cognitive behavior.
+
+    Success criterion: Agent functions as a cohesive unit with measurable state.
     """
 
-    def test_agent_initializes(self):
-        """Agent can be created with all layers."""
+    def test_agent_initializes_with_all_six_layers(self):
+        """
+        GIVEN no special configuration
+        WHEN a CognitiveAgent is created
+        THEN all six cognitive layers are initialized and accessible.
+
+        This verifies the agent's structural integrity. All layers must be
+        present for the cognitive loop to function. Missing layers would
+        break the integration.
+        """
+        # GIVEN/WHEN
         agent = CognitiveAgent()
 
-        assert agent.graph is not None
-        assert agent.attention is not None
-        assert agent.working_memory is not None
-        assert agent.predictor is not None
-        assert agent.goals is not None
-        assert agent.exploration is not None
+        # THEN - all six layers should be initialized
+        assert agent.graph is not None, "Layer 1 (Knowledge) should be initialized"
+        assert agent.attention is not None, "Layer 2 (Attention) should be initialized"
+        assert agent.working_memory is not None, "Layer 3 (Working Memory) should be initialized"
+        assert agent.predictor is not None, "Layer 4 (Prediction) should be initialized"
+        assert agent.goals is not None, "Layer 5 (Goals) should be initialized"
+        assert agent.exploration is not None, "Layer 6 (Exploration) should be initialized"
 
-    def test_agent_step_produces_metrics(self):
-        """Each step produces measurable metrics."""
+    def test_step_produces_measurable_cognitive_metrics(self):
+        """
+        GIVEN a CognitiveAgent with some atoms in its graph
+        WHEN one cognitive step is executed
+        THEN a metrics dictionary is returned with key cognitive state variables.
+
+        Metrics enable observability and debugging. The agent should always
+        report its internal state so we can understand what it's doing.
+        Required metrics: step count, focus size, exploration epsilon.
+        """
+        # GIVEN
         agent = CognitiveAgent()
-
-        # Add some atoms
         agent.graph.add(Atom(id="a", content="a", sti=0.5))
         agent.graph.add(Atom(id="b", content="b", sti=0.3))
 
+        # WHEN
         metrics = agent.step()
 
-        assert "step" in metrics
-        assert "focus_size" in metrics
-        assert "epsilon" in metrics
-        assert metrics["step"] == 1
+        # THEN - metrics should contain key cognitive state
+        required_metrics = ["step", "focus_size", "epsilon"]
+        for metric_name in required_metrics:
+            assert metric_name in metrics, (
+                f"Metrics should include '{metric_name}'. Got: {list(metrics.keys())}"
+            )
 
-    def test_agent_attention_integration(self):
-        """Attending to atoms updates working memory."""
+        # Step count should be 1 after first step
+        expected_step = 1
+        actual_step = metrics["step"]
+        assert actual_step == expected_step, (
+            f"After first step, step count should be {expected_step}, got {actual_step}"
+        )
+
+    def test_attend_integrates_attention_and_working_memory(self):
+        """
+        GIVEN a CognitiveAgent with an atom in its graph
+        WHEN attend() is called on that atom
+        THEN the atom is loaded into working memory AND its STI increases.
+
+        attend() demonstrates layer integration: it affects both the Attention
+        layer (increases STI) and the Working Memory layer (loads atom).
+        This is the primary mechanism for directing cognitive resources.
+        """
+        # GIVEN
         agent = CognitiveAgent()
-
-        atom = Atom(id="test", content="test")
+        initial_sti = 0.0
+        atom = Atom(id="test", content="test", sti=initial_sti)
         agent.graph.add(atom)
 
+        # WHEN
         agent.attend("test")
 
-        assert agent.working_memory.contains("test")
-        assert atom.sti > 0
+        # THEN - working memory should contain the atom
+        assert agent.working_memory.contains("test"), (
+            "After attend(), atom should be in working memory"
+        )
 
-    def test_agent_learns_from_surprise(self):
-        """Agent updates beliefs based on surprise."""
+        # AND - STI should have increased
+        assert atom.sti > initial_sti, (
+            f"After attend(), atom STI should increase from {initial_sti}. "
+            f"Current STI: {atom.sti}"
+        )
+
+    def test_learn_from_surprise_updates_beliefs(self):
+        """
+        GIVEN a CognitiveAgent with a context atom and an outcome atom (confidence=0.5)
+        WHEN learn_from_surprise() is called with high surprise
+        THEN the outcome atom's confidence increases (belief updated).
+
+        This tests the learning loop: surprise (prediction error) drives
+        belief updates. High surprise means "this was unexpected" which
+        should increase confidence in the surprising observation.
+
+        Note: Initial confidence is 0.5 (uncertain). After observing the
+        outcome, confidence should increase because we now have evidence.
+        """
+        # GIVEN
         agent = CognitiveAgent()
-
         agent.graph.add(Atom(id="context", content="c"))
-        agent.graph.add(Atom(id="outcome", content="o", tv=TruthValue(0.5, 0.5)))
 
+        initial_confidence = 0.5
+        agent.graph.add(Atom(
+            id="outcome",
+            content="o",
+            tv=TruthValue(0.5, initial_confidence)
+        ))
+
+        # WHEN - learn from a surprising observation
         surprise = agent.learn_from_surprise(["context"], "outcome")
 
-        # High surprise should have updated the belief
+        # THEN - confidence should have increased
         outcome = agent.graph.get("outcome")
-        assert outcome.tv.confidence > 0.5  # Confidence increased
+        actual_confidence = outcome.tv.confidence
+
+        assert actual_confidence > initial_confidence, (
+            f"After learning from surprise, confidence should increase from "
+            f"{initial_confidence}. Current confidence: {actual_confidence}. "
+            f"Surprise level was: {surprise}"
+        )
 
 
 class TestEventHooks:
