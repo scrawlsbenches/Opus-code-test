@@ -1179,118 +1179,265 @@ class TestIntegratedSystem:
 
 class TestEventHooks:
     """
-    Test the event hooks system for observability.
+    Behavioral tests for the event hooks observability system.
 
-    The event system allows external components to observe
-    cognitive agent internals without tight coupling.
+    The event system enables external components to observe cognitive agent
+    internals without tight coupling. This is the Observer pattern applied
+    to cognitive architecture - useful for debugging, logging, visualization,
+    and integration with external systems.
+
+    Grounding: Observer pattern (Gang of Four), Event Sourcing.
     """
 
-    def test_event_bus_basic_subscription(self):
-        """Can subscribe to specific event types."""
+    def test_event_bus_delivers_to_type_specific_subscribers(self):
+        """
+        GIVEN an EventBus with a handler subscribed to STEP_STARTED events
+        WHEN a STEP_STARTED event is emitted with step=1
+        THEN the handler receives exactly one event with the correct data.
+
+        This verifies the fundamental pub/sub contract: subscribers only
+        receive events of the types they subscribed to.
+        """
         from cortical.cognitive.graph import EventBus, EventType, CognitiveEvent
 
+        # GIVEN
         bus = EventBus()
-        received = []
+        received_events = []
 
-        def handler(event):
-            received.append(event)
+        def capture_handler(event):
+            received_events.append(event)
 
-        bus.subscribe(EventType.STEP_STARTED, handler)
-        bus.emit(CognitiveEvent(EventType.STEP_STARTED, {"step": 1}))
+        bus.subscribe(EventType.STEP_STARTED, capture_handler)
 
-        assert len(received) == 1
-        assert received[0].data["step"] == 1
+        # WHEN
+        emitted_event = CognitiveEvent(EventType.STEP_STARTED, {"step": 1})
+        bus.emit(emitted_event)
 
-    def test_event_bus_global_subscription(self):
-        """Can subscribe to all events."""
+        # THEN
+        expected_event_count = 1
+        actual_event_count = len(received_events)
+        assert actual_event_count == expected_event_count, (
+            f"Expected {expected_event_count} event, got {actual_event_count}"
+        )
+
+        expected_step = 1
+        actual_step = received_events[0].data["step"]
+        assert actual_step == expected_step, (
+            f"Expected step={expected_step}, got step={actual_step}"
+        )
+
+    def test_event_bus_global_subscriber_receives_all_event_types(self):
+        """
+        GIVEN an EventBus with a global subscriber (subscribe_all)
+        WHEN events of different types are emitted
+        THEN the global subscriber receives all of them.
+
+        Global subscription is useful for logging/debugging where you want
+        to see everything that happens, regardless of event type.
+        """
         from cortical.cognitive.graph import EventBus, EventType, CognitiveEvent
 
+        # GIVEN
         bus = EventBus()
-        received = []
+        received_events = []
+        bus.subscribe_all(lambda e: received_events.append(e))
 
-        bus.subscribe_all(lambda e: received.append(e))
-        bus.emit(CognitiveEvent(EventType.STEP_STARTED, {}))
-        bus.emit(CognitiveEvent(EventType.ATOM_LOADED, {}))
+        # WHEN - emit two different event types
+        bus.emit(CognitiveEvent(EventType.STEP_STARTED, {"source": "test1"}))
+        bus.emit(CognitiveEvent(EventType.ATOM_LOADED, {"source": "test2"}))
 
-        assert len(received) == 2
+        # THEN - global subscriber receives both
+        expected_count = 2
+        actual_count = len(received_events)
+        assert actual_count == expected_count, (
+            f"Global subscriber should receive all events. "
+            f"Expected {expected_count}, got {actual_count}"
+        )
 
-    def test_agent_emits_step_events(self):
-        """CognitiveAgent emits step events."""
+        # Verify we got both event types
+        received_types = {e.event_type for e in received_events}
+        expected_types = {EventType.STEP_STARTED, EventType.ATOM_LOADED}
+        assert received_types == expected_types, (
+            f"Expected event types {expected_types}, got {received_types}"
+        )
+
+    def test_agent_step_emits_lifecycle_events_in_order(self):
+        """
+        GIVEN a CognitiveAgent with subscriptions to step lifecycle events
+        WHEN the agent executes one step
+        THEN STEP_STARTED fires before STEP_COMPLETED (order matters).
+
+        The ordering contract is important: observers may depend on
+        STEP_STARTED to initialize state that STEP_COMPLETED reads.
+        """
         from cortical.cognitive.graph import (
             CognitiveAgent as RealAgent,
             EventType,
         )
 
+        # GIVEN
         agent = RealAgent()
-        events = []
+        events_in_order = []
 
-        agent.events.subscribe(EventType.STEP_STARTED, lambda e: events.append(e))
-        agent.events.subscribe(EventType.STEP_COMPLETED, lambda e: events.append(e))
+        agent.events.subscribe(EventType.STEP_STARTED, lambda e: events_in_order.append(e))
+        agent.events.subscribe(EventType.STEP_COMPLETED, lambda e: events_in_order.append(e))
 
+        # WHEN
         agent.step()
 
-        assert len(events) == 2
-        assert events[0].event_type == EventType.STEP_STARTED
-        assert events[1].event_type == EventType.STEP_COMPLETED
+        # THEN - exactly 2 events in correct order
+        expected_count = 2
+        actual_count = len(events_in_order)
+        assert actual_count == expected_count, (
+            f"Step should emit exactly {expected_count} lifecycle events, got {actual_count}"
+        )
 
-    def test_agent_emits_attention_events(self):
-        """Attending to atoms emits ATTENTION_FOCUSED and ATOM_LOADED events."""
+        # Order matters: STARTED must come before COMPLETED
+        first_event_type = events_in_order[0].event_type
+        second_event_type = events_in_order[1].event_type
+
+        assert first_event_type == EventType.STEP_STARTED, (
+            f"First event should be STEP_STARTED, got {first_event_type}"
+        )
+        assert second_event_type == EventType.STEP_COMPLETED, (
+            f"Second event should be STEP_COMPLETED, got {second_event_type}"
+        )
+
+    def test_attend_emits_attention_and_memory_events(self):
+        """
+        GIVEN a CognitiveAgent with an atom in its graph
+        WHEN attend() is called on that atom
+        THEN both ATTENTION_FOCUSED and ATOM_LOADED events are emitted.
+
+        attend() does two things: (1) increases STI (attention), and
+        (2) loads into working memory. Both operations should be observable.
+        """
         from cortical.cognitive.graph import (
             CognitiveAgent as RealAgent,
             EventType,
         )
 
+        # GIVEN
         agent = RealAgent()
-        agent.graph.node("test")  # Use the real API
+        atom = agent.graph.node("test_concept")
+        all_events = []
+        agent.events.subscribe_all(lambda e: all_events.append(e))
 
-        events = []
-        agent.events.subscribe_all(lambda e: events.append(e))
+        # WHEN
+        agent.attend("test_concept")
 
-        agent.attend("test")
+        # THEN - both attention and memory events should fire
+        event_types = [e.event_type for e in all_events]
 
-        event_types = [e.event_type for e in events]
-        assert EventType.ATTENTION_FOCUSED in event_types
-        assert EventType.ATOM_LOADED in event_types
+        assert EventType.ATTENTION_FOCUSED in event_types, (
+            "attend() should emit ATTENTION_FOCUSED event. "
+            f"Got event types: {event_types}"
+        )
+        assert EventType.ATOM_LOADED in event_types, (
+            "attend() should emit ATOM_LOADED event (working memory). "
+            f"Got event types: {event_types}"
+        )
 
-    def test_agent_emits_eviction_event(self):
-        """When working memory is full, eviction emits ATOM_EVICTED."""
+        # Verify ATTENTION_FOCUSED contains expected data
+        attention_events = [e for e in all_events if e.event_type == EventType.ATTENTION_FOCUSED]
+        assert len(attention_events) == 1
+        attention_data = attention_events[0].data
+        assert attention_data["atom_name"] == "test_concept", (
+            f"Event should include atom name. Got: {attention_data}"
+        )
+
+    def test_working_memory_eviction_emits_event_with_evicted_atom_info(self):
+        """
+        GIVEN a CognitiveAgent with working_memory_size=2 and 4 atoms in graph
+        WHEN all 4 atoms are attended (exceeding capacity)
+        THEN exactly 2 ATOM_EVICTED events are emitted (capacity=2, attend=4).
+
+        Math: With capacity 2, attending atoms [0,1,2,3] in sequence:
+        - attend(0): [0] - no eviction
+        - attend(1): [0,1] - no eviction (at capacity)
+        - attend(2): [1,2] - evicts 0 (LRU)
+        - attend(3): [2,3] - evicts 1 (LRU)
+        Total evictions: 2
+        """
         from cortical.cognitive.graph import (
             CognitiveAgent as RealAgent,
             EventType,
         )
 
-        agent = RealAgent(working_memory_size=2)  # Correct param name
+        # GIVEN
+        working_memory_capacity = 2
+        num_atoms = 4
+        agent = RealAgent(working_memory_size=working_memory_capacity)
 
-        # Add atoms using the real API
-        for i in range(4):
+        for i in range(num_atoms):
             agent.graph.node(f"atom_{i}")
 
         eviction_events = []
         agent.events.subscribe(EventType.ATOM_EVICTED, lambda e: eviction_events.append(e))
 
-        # Attend to all 4 atoms - should cause evictions after capacity is exceeded
-        for i in range(4):
+        # WHEN - attend to all atoms in sequence
+        for i in range(num_atoms):
             agent.attend(f"atom_{i}")
 
-        # With capacity 2, attending to 4 atoms should cause 2 evictions
-        assert len(eviction_events) == 2
+        # THEN - calculate expected evictions
+        # Evictions happen when we try to load atom (capacity+1), (capacity+2), etc.
+        expected_evictions = num_atoms - working_memory_capacity
+        actual_evictions = len(eviction_events)
 
-    def test_handler_errors_dont_break_agent(self):
-        """Handler exceptions don't crash the agent."""
+        assert actual_evictions == expected_evictions, (
+            f"With capacity={working_memory_capacity} and {num_atoms} atoms attended, "
+            f"expected {expected_evictions} evictions but got {actual_evictions}"
+        )
+
+        # Verify eviction events contain useful data
+        for event in eviction_events:
+            assert "atom_id" in event.data, "Eviction event should include atom_id"
+            assert "atom_name" in event.data, "Eviction event should include atom_name"
+            assert event.data["reason"] == "lru_eviction", (
+                f"Eviction reason should be 'lru_eviction', got {event.data.get('reason')}"
+            )
+
+    def test_handler_exceptions_are_caught_and_do_not_propagate(self):
+        """
+        GIVEN a CognitiveAgent with a handler that raises an exception
+        WHEN the agent executes a step (which emits events)
+        THEN the agent continues normally (exception is swallowed).
+
+        This is a critical reliability property: external observers should
+        not be able to crash the cognitive agent. The EventBus catches and
+        silently ignores handler exceptions. This follows the principle that
+        observability should be non-intrusive.
+
+        Note: In production, you might want to log these errors, but the
+        key contract is that they don't propagate to the agent.
+        """
         from cortical.cognitive.graph import (
             CognitiveAgent as RealAgent,
             EventType,
         )
 
+        # GIVEN
         agent = RealAgent()
+        handler_was_called = []  # Use list to track mutable state in closure
 
-        def bad_handler(event):
-            raise RuntimeError("This should not crash the agent")
+        def faulty_handler(event):
+            handler_was_called.append(True)
+            raise RuntimeError("Intentional test exception - should be caught")
 
-        agent.events.subscribe(EventType.STEP_STARTED, bad_handler)
+        agent.events.subscribe(EventType.STEP_STARTED, faulty_handler)
 
-        # Should not raise
-        agent.step()
+        # WHEN - this should NOT raise, despite the faulty handler
+        result = agent.step()
+
+        # THEN - agent completed successfully
+        assert result is not None, "Agent should return metrics dict"
+        assert "step" in result, "Metrics should include step count"
+        assert result["step"] == 1, "Step count should be 1"
+
+        # Verify the handler was actually called (exception was raised and caught)
+        assert len(handler_was_called) > 0, (
+            "Faulty handler should have been called (and its exception caught)"
+        )
 
 
 # =============================================================================
