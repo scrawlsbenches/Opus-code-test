@@ -343,4 +343,4 @@ def create_default_persistence(base_dir: Optional[Path] = None) -> PersistenceBa
     Returns:
         FilePersistenceBackend configured for production use
     """
-    return FilePersistenceBackend(RealFileSystem(), base_dir=base_dir)
+    return FilePersistenceBackend(RealFileSystem(base_dir or Path.cwd()), base_dir=base_dir)
