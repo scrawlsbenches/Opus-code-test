@@ -228,6 +228,28 @@ class GoTManager:
         """
         return self.tx_manager.store.store_dir
 
+    @staticmethod
+    def _normalize_id(entity_or_id) -> str:
+        """
+        Normalize entity reference to string ID.
+
+        Accepts either an Entity object or a string ID.
+        Returns the string ID in either case.
+
+        This allows user-friendly API calls like:
+            manager.get_task(task)  # Task object
+            manager.get_task(task.id)  # String ID
+
+        Args:
+            entity_or_id: Entity object or string ID
+
+        Returns:
+            String ID
+        """
+        if hasattr(entity_or_id, 'id'):
+            return entity_or_id.id
+        return str(entity_or_id)
+
     @property
     def sync_manager(self) -> SyncManager:
         """Get sync manager (lazy initialization)."""
@@ -509,30 +531,31 @@ class GoTManager:
 
         return task
 
-    def get_task(self, task_id: str) -> Optional[Task]:
+    def get_task(self, task_id) -> Optional[Task]:
         """
         Get a task by ID (read-only).
 
         Caching is handled at the CDGStore layer.
 
         Args:
-            task_id: Task identifier
+            task_id: Task identifier (string ID or Task object)
 
         Returns:
             Task object or None if not found
         """
+        task_id = self._normalize_id(task_id)
         with self.transaction(read_only=True) as tx:
             entity = self.tx_manager.read(tx, task_id)
             if entity is None or not isinstance(entity, Task):
                 return None
             return entity
 
-    def update_task(self, task_id: str, **updates) -> Task:
+    def update_task(self, task_id, **updates) -> Task:
         """
         Update a task in a single-operation transaction.
 
         Args:
-            task_id: Task identifier
+            task_id: Task identifier (string ID or Task object)
             **updates: Fields to update (status, priority, title, etc.)
 
         Returns:
@@ -541,6 +564,7 @@ class GoTManager:
         Raises:
             TransactionError: If commit fails or task not found
         """
+        task_id = self._normalize_id(task_id)
         with self.transaction() as tx:
             entity = self.tx_manager.read(tx, task_id)
             if entity is None or not isinstance(entity, Task):
@@ -616,17 +640,18 @@ class GoTManager:
                 logger.warning(f"Skipping corrupted handoff file {handoff_file}: {e}")
                 continue
 
-    def complete_task(self, task_id: str, retrospective: str = "") -> bool:
+    def complete_task(self, task_id, retrospective: str = "") -> bool:
         """
         Complete a task (set status to completed with timestamp).
 
         Args:
-            task_id: Task identifier
+            task_id: Task identifier (string ID or Task object)
             retrospective: Optional retrospective notes
 
         Returns:
             True if completed successfully, False if task not found
         """
+        task_id = self._normalize_id(task_id)
         task = self.get_task(task_id)
         if not task:
             return False
@@ -828,13 +853,13 @@ class GoTManager:
             self.tx_manager.write(tx, edge)
         return edge
 
-    def add_dependency(self, task_id: str, depends_on_id: str) -> Edge:
+    def add_dependency(self, task_id, depends_on_id) -> Edge:
         """
         Add a dependency edge between tasks.
 
         Args:
-            task_id: Task that depends on another
-            depends_on_id: Task that is depended on
+            task_id: Task that depends on another (string ID or Task object)
+            depends_on_id: Task that is depended on (string ID or Task object)
 
         Returns:
             Created Edge object
@@ -842,15 +867,17 @@ class GoTManager:
         Raises:
             TransactionError: If commit fails
         """
+        task_id = self._normalize_id(task_id)
+        depends_on_id = self._normalize_id(depends_on_id)
         return self.add_edge(task_id, depends_on_id, EdgeTypes.DEPENDS_ON)
 
-    def add_blocks(self, blocker_id: str, blocked_id: str) -> Edge:
+    def add_blocks(self, blocker_id, blocked_id) -> Edge:
         """
         Add a blocking edge between tasks.
 
         Args:
-            blocker_id: Task that blocks another
-            blocked_id: Task that is blocked
+            blocker_id: Task that blocks another (string ID or Task object)
+            blocked_id: Task that is blocked (string ID or Task object)
 
         Returns:
             Created Edge object
@@ -858,6 +885,8 @@ class GoTManager:
         Raises:
             TransactionError: If commit fails
         """
+        blocker_id = self._normalize_id(blocker_id)
+        blocked_id = self._normalize_id(blocked_id)
         return self.add_edge(blocker_id, blocked_id, EdgeTypes.BLOCKS)
 
     def delete_task(self, task_id: str, force: bool = False) -> None:
@@ -2481,8 +2510,9 @@ class GoTManager:
     # TODO: Review and consolidate with existing methods
     # =========================================================================
 
-    def start_task(self, task_id: str) -> bool:
+    def start_task(self, task_id) -> bool:
         """Start a task (set status to in_progress)."""
+        task_id = self._normalize_id(task_id)
         try:
             task = self.get_task(task_id)
             if not task:
@@ -2494,8 +2524,10 @@ class GoTManager:
             logger.error(f"Failed to start task {task_id}: {e}")
             return False
 
-    def block_task(self, task_id: str, reason: str = "", blocked_by: Optional[str] = None) -> bool:
+    def block_task(self, task_id, reason: str = "", blocked_by=None) -> bool:
         """Block a task."""
+        task_id = self._normalize_id(task_id)
+        blocked_by = self._normalize_id(blocked_by) if blocked_by else None
         try:
             task = self.get_task(task_id)
             if not task:
@@ -2520,8 +2552,9 @@ class GoTManager:
                     return {'id': sprint.id, 'name': sprint.title}
         return None
 
-    def get_task_dependencies(self, task_id: str) -> List[Task]:
+    def get_task_dependencies(self, task_id) -> List[Task]:
         """Get tasks this task depends on."""
+        task_id = self._normalize_id(task_id)
         outgoing, _ = self.get_edges_for_task(task_id)
         deps = []
         for edge in outgoing:
@@ -2531,12 +2564,14 @@ class GoTManager:
                     deps.append(task)
         return deps
 
-    def what_blocks(self, task_id: str) -> List[Task]:
+    def what_blocks(self, task_id) -> List[Task]:
         """Get tasks blocking this task."""
+        task_id = self._normalize_id(task_id)
         return self.get_blockers(task_id)
 
-    def what_depends_on(self, task_id: str) -> List[Task]:
+    def what_depends_on(self, task_id) -> List[Task]:
         """Get tasks that depend on this task."""
+        task_id = self._normalize_id(task_id)
         return self.get_dependents(task_id)
 
     def get_active_tasks(self) -> List[Task]:
