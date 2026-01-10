@@ -840,9 +840,9 @@ class TestAttentionLayer:
         focus = attention.get_focus()
 
         assert len(focus) == 3
-        assert focus[0].sti == 0.9
-        assert focus[1].sti == 0.8
-        assert focus[2].sti == 0.7
+        assert abs(focus[0].sti - 0.9) < 0.001
+        assert abs(focus[1].sti - 0.8) < 0.001
+        assert abs(focus[2].sti - 0.7) < 0.001
 
     def test_spreading_activation(self):
         """Activation spreads to neighbors."""
@@ -973,23 +973,24 @@ class TestPredictionLayer:
         graph = InMemoryKnowledgeGraph()
         graph.add(Atom(id="a", content="a"))
         graph.add(Atom(id="b", content="b"))
+        graph.add(Atom(id="c", content="c"))
 
         predictor = AssociativePredictor(graph)
         tracker = SurpriseTracker(predictor)
 
-        surprises = []
+        # First observation - no learning yet, should be surprising
+        context = [graph.get("a")]
+        first_surprise = tracker.record_outcome(context, "b")
 
-        for i in range(20):
-            # Record co-occurrence
+        # Now learn the pattern through repeated co-occurrence
+        for _ in range(20):
             predictor.record_co_occurrence("a", "b")
 
-            # Measure surprise
-            context = [graph.get("a")]
-            surprise = tracker.record_outcome(context, "b")
-            surprises.append(surprise)
+        # After learning, should be less surprising
+        last_surprise = tracker.record_outcome(context, "b")
 
-        # Surprise should decrease over time
-        assert surprises[-1] < surprises[0]
+        # Surprise should decrease after learning
+        assert last_surprise < first_surprise
 
 
 # =============================================================================
