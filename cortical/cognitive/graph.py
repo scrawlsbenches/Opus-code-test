@@ -869,32 +869,109 @@ class AssociativePredictor:
     This is a minimal predictor that predicts based on what we tell it.
     The predictor learns from recorded co-occurrences only.
 
+    Features:
+        - Decay: Old co-occurrences fade over time (prevents memory leak)
+        - Pruning: Zero-weight associations are removed
+
     TODO: Swap for neural model (e.g., transformer, RNN)
     TODO: Add context window for temporal patterns
-    TODO: Add decay for old co-occurrences
     """
 
-    def __init__(self, graph: 'CognitiveGraph'):
+    def __init__(
+        self,
+        graph: 'CognitiveGraph',
+        decay_rate: float = 0.01,
+        max_associations: int = 10000,
+    ):
         """
         Initialize predictor.
 
         Args:
             graph: The cognitive graph to make predictions about
+            decay_rate: How much to decay co-occurrences each step (default 0.01)
+            max_associations: Maximum total associations to keep (prevents unbounded growth)
         """
         self.graph = graph
-        self._co_occurrences: Dict[str, Dict[str, int]] = {}  # a -> b -> count
+        self.decay_rate = decay_rate
+        self.max_associations = max_associations
+        self._co_occurrences: Dict[str, Dict[str, float]] = {}  # a -> b -> weight (float for decay)
+        self._total_associations: int = 0
 
-    def record_co_occurrence(self, atom_a_id: str, atom_b_id: str) -> None:
+    def record_co_occurrence(self, atom_a_id: str, atom_b_id: str, weight: float = 1.0) -> None:
         """
         Record that these atoms were active together.
 
         This is how the predictor learns: you tell it what co-occurs.
+
+        Args:
+            atom_a_id: First atom ID
+            atom_b_id: Second atom ID
+            weight: Strength of association (default 1.0)
         """
         if atom_a_id not in self._co_occurrences:
             self._co_occurrences[atom_a_id] = {}
         if atom_b_id not in self._co_occurrences[atom_a_id]:
-            self._co_occurrences[atom_a_id][atom_b_id] = 0
-        self._co_occurrences[atom_a_id][atom_b_id] += 1
+            self._co_occurrences[atom_a_id][atom_b_id] = 0.0
+            self._total_associations += 1
+        self._co_occurrences[atom_a_id][atom_b_id] += weight
+
+        # Prune if over limit
+        if self._total_associations > self.max_associations:
+            self._prune_weakest()
+
+    def decay_all(self) -> int:
+        """
+        Apply decay to all co-occurrences and prune zeros.
+
+        Call this periodically (e.g., each agent step) to prevent memory leak.
+
+        Returns:
+            Number of associations pruned
+        """
+        pruned = 0
+        to_remove_outer = []
+
+        for a_id, targets in self._co_occurrences.items():
+            to_remove_inner = []
+            for b_id, weight in targets.items():
+                new_weight = weight * (1.0 - self.decay_rate)
+                if new_weight < 0.1:  # Threshold for removal
+                    to_remove_inner.append(b_id)
+                    pruned += 1
+                else:
+                    targets[b_id] = new_weight
+
+            for b_id in to_remove_inner:
+                del targets[b_id]
+                self._total_associations -= 1
+
+            if not targets:
+                to_remove_outer.append(a_id)
+
+        for a_id in to_remove_outer:
+            del self._co_occurrences[a_id]
+
+        return pruned
+
+    def _prune_weakest(self) -> None:
+        """Remove weakest associations to stay under max_associations."""
+        # Collect all associations with weights
+        all_assocs = []
+        for a_id, targets in self._co_occurrences.items():
+            for b_id, weight in targets.items():
+                all_assocs.append((a_id, b_id, weight))
+
+        # Sort by weight ascending (weakest first)
+        all_assocs.sort(key=lambda x: x[2])
+
+        # Remove weakest 10%
+        to_remove = len(all_assocs) // 10
+        for a_id, b_id, _ in all_assocs[:to_remove]:
+            if a_id in self._co_occurrences and b_id in self._co_occurrences[a_id]:
+                del self._co_occurrences[a_id][b_id]
+                self._total_associations -= 1
+                if not self._co_occurrences[a_id]:
+                    del self._co_occurrences[a_id]
 
     def predict(self, context: List[Atom]) -> List[Tuple[str, float]]:
         """
@@ -1158,9 +1235,11 @@ class CognitiveAgent:
     Each layer is independently testable.
     The integration is also testable.
 
-    TODO: Add persistence/serialization for agent state
+    Implemented:
+        - Persistence via save()/load() JSON serialization
+        - GoT integration via GoTBridge class
+
     TODO: Add event hooks for layer interactions
-    TODO: Connect to GoT for task/entity integration
     TODO: Add episodic memory for experience replay
     """
 
@@ -1199,20 +1278,23 @@ class CognitiveAgent:
         # 1. Apply attention decay (delegates to graph)
         self.graph.step()
 
-        # 2. Get current focus
+        # 2. Apply predictor decay (prevents memory leak)
+        self.predictor.decay_all()
+
+        # 3. Get current focus
         focus = self.graph.get_attention_focus(top_k=self._attention_focus_size)
 
-        # 3. Record co-occurrences for learning
+        # 4. Record co-occurrences for learning
         focus_ids = [a.id for a in focus]
         for i, a_id in enumerate(focus_ids):
             for b_id in focus_ids[i+1:]:
                 self.predictor.record_co_occurrence(a_id, b_id)
                 self.predictor.record_co_occurrence(b_id, a_id)
 
-        # 4. Check goal progress
+        # 5. Check goal progress
         top_goal = self.goals.get_top_goal()
 
-        # 5. Decide explore vs exploit
+        # 6. Decide explore vs exploit
         exploring = self.exploration.should_explore()
 
         return {
@@ -1405,6 +1487,10 @@ class CognitiveAgent:
 
         # Restore co-occurrences
         agent.predictor._co_occurrences = data.get("co_occurrences", {})
+        # Restore total count
+        agent.predictor._total_associations = sum(
+            len(targets) for targets in agent.predictor._co_occurrences.values()
+        )
 
         # Restore exploration state
         exp_data = data.get("exploration", {})
