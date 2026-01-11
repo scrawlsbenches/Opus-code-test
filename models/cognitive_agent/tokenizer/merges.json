@@ -8,17 +8,17 @@
   ],
   [
     [
-      "in",
-      "the"
-    ],
-    "in_the"
-  ],
-  [
-    [
       "of",
       "the"
     ],
     "of_the"
+  ],
+  [
+    [
+      "in",
+      "the"
+    ],
+    "in_the"
   ],
   [
     [
@@ -29,10 +29,10 @@
   ],
   [
     [
-      "and",
-      "the"
+      "world",
+      "models"
     ],
-    "and_the"
+    "world_models"
   ],
   [
     [
@@ -43,6 +43,13 @@
   ],
   [
     [
+      "and",
+      "the"
+    ],
+    "and_the"
+  ],
+  [
+    [
       "can",
       "be"
     ],
@@ -50,24 +57,10 @@
   ],
   [
     [
-      "world",
-      "models"
+      "the",
+      "ball"
     ],
-    "world_models"
-  ],
-  [
-    [
-      "type",
-      "of"
-    ],
-    "type_of"
-  ],
-  [
-    [
-      "machine",
-      "learning"
-    ],
-    "machine_learning"
+    "the_ball"
   ],
   [
     [
@@ -78,13 +71,6 @@
   ],
   [
     [
-      "decision",
-      "making"
-    ],
-    "decision_making"
-  ],
-  [
-    [
       "the",
       "same"
     ],
@@ -92,10 +78,10 @@
   ],
   [
     [
-      "working",
-      "memory"
+      "with",
+      "the"
     ],
-    "working_memory"
+    "with_the"
   ],
   [
     [
@@ -113,24 +99,10 @@
   ],
   [
     [
-      "with",
-      "the"
+      "decision",
+      "making"
     ],
-    "with_the"
-  ],
-  [
-    [
-      "the",
-      "ball"
-    ],
-    "the_ball"
-  ],
-  [
-    [
-      "is",
-      "type"
-    ],
-    "is_type"
+    "decision_making"
   ],
   [
     [
@@ -138,97 +110,6 @@
       "the"
     ],
     "is_the"
-  ],
-  [
-    [
-      "depends",
-      "on"
-    ],
-    "depends_on"
-  ],
-  [
-    [
-      "the",
-      "system"
-    ],
-    "the_system"
-  ],
-  [
-    [
-      "such",
-      "as"
-    ],
-    "such_as"
-  ],
-  [
-    [
-      "must",
-      "be"
-    ],
-    "must_be"
-  ],
-  [
-    [
-      "while",
-      "maintaining"
-    ],
-    "while_maintaining"
-  ],
-  [
-    [
-      "real",
-      "time"
-    ],
-    "real_time"
-  ],
-  [
-    [
-      "relationship",
-      "between"
-    ],
-    "relationship_between"
-  ],
-  [
-    [
-      "cognitive",
-      "load"
-    ],
-    "cognitive_load"
-  ],
-  [
-    [
-      "as",
-      "the"
-    ],
-    "as_the"
-  ],
-  [
-    [
-      "long",
-      "term"
-    ],
-    "long_term"
-  ],
-  [
-    [
-      "at",
-      "the"
-    ],
-    "at_the"
-  ],
-  [
-    [
-      "essential",
-      "for"
-    ],
-    "essential_for"
-  ],
-  [
-    [
-      "for",
-      "the"
-    ],
-    "for_the"
   ],
   [
     [
@@ -240,37 +121,30 @@
   [
     [
       "the",
-      "world"
+      "system"
     ],
-    "the_world"
+    "the_system"
   ],
   [
     [
-      "the",
-      "relationship"
+      "while",
+      "maintaining"
     ],
-    "the_relationship"
+    "while_maintaining"
   ],
   [
     [
-      "the",
-      "most"
+      "depends",
+      "on"
     ],
-    "the_most"
+    "depends_on"
   ],
   [
     [
-      "this",
-      "approach"
+      "for",
+      "the"
     ],
-    "this_approach"
-  ],
-  [
-    [
-      "may",
-      "be"
-    ],
-    "may_be"
+    "for_the"
   ],
   [
     [
@@ -281,10 +155,52 @@
   ],
   [
     [
-      "through",
+      "must",
+      "be"
+    ],
+    "must_be"
+  ],
+  [
+    [
+      "the",
+      "world"
+    ],
+    "the_world"
+  ],
+  [
+    [
+      "at",
       "the"
     ],
-    "through_the"
+    "at_the"
+  ],
+  [
+    [
+      "as",
+      "the"
+    ],
+    "as_the"
+  ],
+  [
+    [
+      "prospective",
+      "memory"
+    ],
+    "prospective_memory"
+  ],
+  [
+    [
+      "relationship",
+      "between"
+    ],
+    "relationship_between"
+  ],
+  [
+    [
+      "the",
+      "most"
+    ],
+    "the_most"
   ],
   [
     [
@@ -295,10 +211,45 @@
   ],
   [
     [
-      "neural",
-      "networks"
+      "the",
+      "relationship"
     ],
-    "neural_networks"
+    "the_relationship"
+  ],
+  [
+    [
+      "temporal",
+      "reasoning"
+    ],
+    "temporal_reasoning"
+  ],
+  [
+    [
+      "may",
+      "be"
+    ],
+    "may_be"
+  ],
+  [
+    [
+      "type",
+      "of"
+    ],
+    "type_of"
+  ],
+  [
+    [
+      "long",
+      "term"
+    ],
+    "long_term"
+  ],
+  [
+    [
+      "essential",
+      "for"
+    ],
+    "essential_for"
   ],
   [
     [
@@ -316,45 +267,17 @@
   ],
   [
     [
-      "that",
-      "can"
+      "this",
+      "approach"
     ],
-    "that_can"
+    "this_approach"
   ],
   [
     [
-      "types",
-      "of"
-    ],
-    "types_of"
-  ],
-  [
-    [
-      "and",
-      "social"
-    ],
-    "and_social"
-  ],
-  [
-    [
-      "prospective",
-      "memory"
-    ],
-    "prospective_memory"
-  ],
-  [
-    [
-      "reinforcement",
-      "learning"
-    ],
-    "reinforcement_learning"
-  ],
-  [
-    [
-      "that",
+      "through",
       "the"
     ],
-    "that_the"
+    "through_the"
   ],
   [
     [
@@ -365,13 +288,6 @@
   ],
   [
     [
-      "is",
-      "not"
-    ],
-    "is_not"
-  ],
-  [
-    [
       "due",
       "to"
     ],
@@ -379,178 +295,17 @@
   ],
   [
     [
-      "market",
-      "conditions"
-    ],
-    "market_conditions"
-  ],
-  [
-    [
-      "does",
-      "not"
-    ],
-    "does_not"
-  ],
-  [
-    [
-      "temporal",
-      "reasoning"
-    ],
-    "temporal_reasoning"
-  ],
-  [
-    [
-      "patterns",
-      "and"
-    ],
-    "patterns_and"
-  ],
-  [
-    [
-      "and",
-      "other"
-    ],
-    "and_other"
-  ],
-  [
-    [
-      "to",
-      "create"
-    ],
-    "to_create"
-  ],
-  [
-    [
-      "focus",
-      "on"
-    ],
-    "focus_on"
-  ],
-  [
-    [
-      "when",
+      "that",
       "the"
     ],
-    "when_the"
+    "that_the"
   ],
   [
     [
-      "ability",
-      "to"
+      "working",
+      "memory"
     ],
-    "ability_to"
-  ],
-  [
-    [
-      "nature",
-      "of"
-    ],
-    "nature_of"
-  ],
-  [
-    [
-      "understanding",
-      "of"
-    ],
-    "understanding_of"
-  ],
-  [
-    [
-      "counterfactual",
-      "reasoning"
-    ],
-    "counterfactual_reasoning"
-  ],
-  [
-    [
-      "and",
-      "how"
-    ],
-    "and_how"
-  ],
-  [
-    [
-      "is",
-      "essential"
-    ],
-    "is_essential"
-  ],
-  [
-    [
-      "model",
-      "based"
-    ],
-    "model_based"
-  ],
-  [
-    [
-      "reasoning",
-      "about"
-    ],
-    "reasoning_about"
-  ],
-  [
-    [
-      "of",
-      "mind"
-    ],
-    "of_mind"
-  ],
-  [
-    [
-      "across",
-      "multiple"
-    ],
-    "across_multiple"
-  ],
-  [
-    [
-      "to",
-      "understand"
-    ],
-    "to_understand"
-  ],
-  [
-    [
-      "if",
-      "the"
-    ],
-    "if_the"
-  ],
-  [
-    [
-      "to",
-      "identify"
-    ],
-    "to_identify"
-  ],
-  [
-    [
-      "represents",
-      "the"
-    ],
-    "represents_the"
-  ],
-  [
-    [
-      "theory",
-      "of"
-    ],
-    "theory_of"
-  ],
-  [
-    [
-      "the",
-      "brain"
-    ],
-    "the_brain"
-  ],
-  [
-    [
-      "about",
-      "the"
-    ],
-    "about_the"
+    "working_memory"
   ],
   [
     [
@@ -561,17 +316,52 @@
   ],
   [
     [
-      "more",
-      "than"
+      "is",
+      "not"
     ],
-    "more_than"
+    "is_not"
   ],
   [
     [
-      "depend",
-      "on"
+      "does",
+      "not"
     ],
-    "depend_on"
+    "does_not"
+  ],
+  [
+    [
+      "counterfactual",
+      "reasoning"
+    ],
+    "counterfactual_reasoning"
+  ],
+  [
+    [
+      "cognitive",
+      "load"
+    ],
+    "cognitive_load"
+  ],
+  [
+    [
+      "real",
+      "time"
+    ],
+    "real_time"
+  ],
+  [
+    [
+      "if",
+      "the"
+    ],
+    "if_the"
+  ],
+  [
+    [
+      "model",
+      "based"
+    ],
+    "model_based"
   ],
   [
     [
@@ -582,24 +372,52 @@
   ],
   [
     [
-      "cannot",
-      "be"
+      "if",
+      "you"
     ],
-    "cannot_be"
+    "if_you"
+  ],
+  [
+    [
+      "such",
+      "as"
+    ],
+    "such_as"
+  ],
+  [
+    [
+      "when",
+      "the"
+    ],
+    "when_the"
   ],
   [
     [
       "to",
-      "prevent"
+      "identify"
     ],
-    "to_prevent"
+    "to_identify"
+  ],
+  [
+    [
+      "philosophy",
+      "of"
+    ],
+    "philosophy_of"
+  ],
+  [
+    [
+      "that",
+      "can"
+    ],
+    "that_can"
   ],
   [
     [
       "the",
-      "future"
+      "right"
     ],
-    "the_future"
+    "the_right"
   ],
   [
     [
@@ -610,73 +428,17 @@
   ],
   [
     [
-      "are",
-      "type"
+      "scenario",
+      "planning"
     ],
-    "are_type"
+    "scenario_planning"
   ],
   [
     [
-      "consists",
-      "of"
+      "temporal",
+      "discounting"
     ],
-    "consists_of"
-  ],
-  [
-    [
-      "key",
-      "concepts"
-    ],
-    "key_concepts"
-  ],
-  [
-    [
-      "and",
-      "cultural"
-    ],
-    "and_cultural"
-  ],
-  [
-    [
-      "even",
-      "when"
-    ],
-    "even_when"
-  ],
-  [
-    [
-      "if",
-      "you"
-    ],
-    "if_you"
-  ],
-  [
-    [
-      "learning",
-      "from"
-    ],
-    "learning_from"
-  ],
-  [
-    [
-      "market",
-      "data"
-    ],
-    "market_data"
-  ],
-  [
-    [
-      "the",
-      "model"
-    ],
-    "the_model"
-  ],
-  [
-    [
-      "where",
-      "the"
-    ],
-    "where_the"
+    "temporal_discounting"
   ],
   [
     [
@@ -687,6 +449,132 @@
   ],
   [
     [
+      "about",
+      "the"
+    ],
+    "about_the"
+  ],
+  [
+    [
+      "the",
+      "model"
+    ],
+    "the_model"
+  ],
+  [
+    [
+      "to",
+      "create"
+    ],
+    "to_create"
+  ],
+  [
+    [
+      "more",
+      "than"
+    ],
+    "more_than"
+  ],
+  [
+    [
+      "and",
+      "how"
+    ],
+    "and_how"
+  ],
+  [
+    [
+      "consists",
+      "of"
+    ],
+    "consists_of"
+  ],
+  [
+    [
+      "to",
+      "prevent"
+    ],
+    "to_prevent"
+  ],
+  [
+    [
+      "nature",
+      "of"
+    ],
+    "nature_of"
+  ],
+  [
+    [
+      "depend",
+      "on"
+    ],
+    "depend_on"
+  ],
+  [
+    [
+      "represents",
+      "the"
+    ],
+    "represents_the"
+  ],
+  [
+    [
+      "machine",
+      "learning"
+    ],
+    "machine_learning"
+  ],
+  [
+    [
+      "reasoning",
+      "about"
+    ],
+    "reasoning_about"
+  ],
+  [
+    [
+      "while",
+      "the"
+    ],
+    "while_the"
+  ],
+  [
+    [
+      "key",
+      "concepts"
+    ],
+    "key_concepts"
+  ],
+  [
+    [
+      "where",
+      "the"
+    ],
+    "where_the"
+  ],
+  [
+    [
+      "cannot",
+      "be"
+    ],
+    "cannot_be"
+  ],
+  [
+    [
+      "the",
+      "future"
+    ],
+    "the_future"
+  ],
+  [
+    [
+      "your",
+      "account"
+    ],
+    "your_account"
+  ],
+  [
+    [
       "time",
       "and"
     ],
@@ -694,9 +582,121 @@
   ],
   [
     [
-      "prefrontal",
-      "cortex"
+      "for",
+      "each"
     ],
-    "prefrontal_cortex"
+    "for_each"
+  ],
+  [
+    [
+      "toward",
+      "the"
+    ],
+    "toward_the"
+  ],
+  [
+    [
+      "patterns",
+      "and"
+    ],
+    "patterns_and"
+  ],
+  [
+    [
+      "neural",
+      "networks"
+    ],
+    "neural_networks"
+  ],
+  [
+    [
+      "not",
+      "just"
+    ],
+    "not_just"
+  ],
+  [
+    [
+      "knowledge",
+      "graphs"
+    ],
+    "knowledge_graphs"
+  ],
+  [
+    [
+      "the",
+      "defendant"
+    ],
+    "the_defendant"
+  ],
+  [
+    [
+      "even",
+      "when"
+    ],
+    "even_when"
+  ],
+  [
+    [
+      "and",
+      "social"
+    ],
+    "and_social"
+  ],
+  [
+    [
+      "continuous",
+      "improvement"
+    ],
+    "continuous_improvement"
+  ],
+  [
+    [
+      "the",
+      "goal"
+    ],
+    "the_goal"
+  ],
+  [
+    [
+      "provides",
+      "the"
+    ],
+    "provides_the"
+  ],
+  [
+    [
+      "is",
+      "type"
+    ],
+    "is_type"
+  ],
+  [
+    [
+      "argue",
+      "that"
+    ],
+    "argue_that"
+  ],
+  [
+    [
+      "practice",
+      "of"
+    ],
+    "practice_of"
+  ],
+  [
+    [
+      "across",
+      "multiple"
+    ],
+    "across_multiple"
+  ],
+  [
+    [
+      "understanding",
+      "these"
+    ],
+    "understanding_these"
   ]
 ]

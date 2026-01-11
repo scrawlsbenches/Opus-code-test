@@ -1,7 +1,7 @@
 {
   "model_version": "1.0",
-  "last_training": "2026-01-11T13:42:40.950002",
-  "total_documents": 150,
+  "last_training": "2026-01-11T13:51:12.615450",
+  "total_documents": 200,
   "vocabulary_size": 10000,
   "documents": {
     "accordion_repair.txt": {
@@ -903,6 +903,306 @@
       "content_hash": "f7b92a15414f29e1",
       "trained_at": "2026-01-11T13:42:40.949821",
       "word_count": 627
+    },
+    "computer_vision/image_segmentation_methods.txt": {
+      "path": "computer_vision/image_segmentation_methods.txt",
+      "content_hash": "157f138a9675eae7",
+      "trained_at": "2026-01-11T13:50:38.334530",
+      "word_count": 662
+    },
+    "computer_vision/object_detection_deep_learning.txt": {
+      "path": "computer_vision/object_detection_deep_learning.txt",
+      "content_hash": "f86a043a3d2cdb27",
+      "trained_at": "2026-01-11T13:50:38.429764",
+      "word_count": 679
+    },
+    "concept_cluster_evaluation.txt": {
+      "path": "concept_cluster_evaluation.txt",
+      "content_hash": "76faeaf369ab1b62",
+      "trained_at": "2026-01-11T13:50:38.555279",
+      "word_count": 583
+    },
+    "conceptnet_overview.txt": {
+      "path": "conceptnet_overview.txt",
+      "content_hash": "bedf7ab975266919",
+      "trained_at": "2026-01-11T13:50:38.688209",
+      "word_count": 256
+    },
+    "configuration_management.txt": {
+      "path": "configuration_management.txt",
+      "content_hash": "32bc504f9a25c79e",
+      "trained_at": "2026-01-11T13:50:38.858557",
+      "word_count": 280
+    },
+    "consumer_driven_contracts.txt": {
+      "path": "consumer_driven_contracts.txt",
+      "content_hash": "a3ff48e4506cb304",
+      "trained_at": "2026-01-11T13:50:39.077123",
+      "word_count": 769
+    },
+    "container_orchestration.txt": {
+      "path": "container_orchestration.txt",
+      "content_hash": "3177ea521442df29",
+      "trained_at": "2026-01-11T13:50:39.301079",
+      "word_count": 197
+    },
+    "content_addressable_memory_systems.txt": {
+      "path": "content_addressable_memory_systems.txt",
+      "content_hash": "7bfa584c1d9aee11",
+      "trained_at": "2026-01-11T13:50:39.568714",
+      "word_count": 774
+    },
+    "contract_law.txt": {
+      "path": "contract_law.txt",
+      "content_hash": "2ed16ef8e4606760",
+      "trained_at": "2026-01-11T13:50:39.850022",
+      "word_count": 359
+    },
+    "contract_testing_fundamentals.txt": {
+      "path": "contract_testing_fundamentals.txt",
+      "content_hash": "7a83a969b11aa9c6",
+      "trained_at": "2026-01-11T13:50:40.148217",
+      "word_count": 679
+    },
+    "corpus_indexing_procedures.txt": {
+      "path": "corpus_indexing_procedures.txt",
+      "content_hash": "c223d538dde64cee",
+      "trained_at": "2026-01-11T13:50:40.466737",
+      "word_count": 499
+    },
+    "corpus_maintenance_workflow.txt": {
+      "path": "corpus_maintenance_workflow.txt",
+      "content_hash": "19cb0f258bd7201f",
+      "trained_at": "2026-01-11T13:50:40.808724",
+      "word_count": 467
+    },
+    "cortical_columns.txt": {
+      "path": "cortical_columns.txt",
+      "content_hash": "e2c252cd7a195771",
+      "trained_at": "2026-01-11T13:50:41.154893",
+      "word_count": 99
+    },
+    "cortical_semantic_networks.txt": {
+      "path": "cortical_semantic_networks.txt",
+      "content_hash": "af4003ce013bafd7",
+      "trained_at": "2026-01-11T13:50:41.540235",
+      "word_count": 542
+    },
+    "cortical_text_processor_dictionary.txt": {
+      "path": "cortical_text_processor_dictionary.txt",
+      "content_hash": "c210f697835d28e4",
+      "trained_at": "2026-01-11T13:50:42.027017",
+      "word_count": 3516
+    },
+    "counter_strategy_modeling.txt": {
+      "path": "counter_strategy_modeling.txt",
+      "content_hash": "42186c9079a18ef6",
+      "trained_at": "2026-01-11T13:50:42.475102",
+      "word_count": 712
+    },
+    "counterfactual_reasoning_finance.txt": {
+      "path": "counterfactual_reasoning_finance.txt",
+      "content_hash": "0bcf83f1a098b2ed",
+      "trained_at": "2026-01-11T13:50:42.965110",
+      "word_count": 619
+    },
+    "coupling_and_cohesion.txt": {
+      "path": "coupling_and_cohesion.txt",
+      "content_hash": "838c307398f0024e",
+      "trained_at": "2026-01-11T13:50:43.461372",
+      "word_count": 901
+    },
+    "cricket_bat_making.txt": {
+      "path": "cricket_bat_making.txt",
+      "content_hash": "675d0a5b9502bbea",
+      "trained_at": "2026-01-11T13:50:43.986825",
+      "word_count": 323
+    },
+    "criminal_law/constitutional_protections.txt": {
+      "path": "criminal_law/constitutional_protections.txt",
+      "content_hash": "850afe067c248c0f",
+      "trained_at": "2026-01-11T13:50:44.579967",
+      "word_count": 1237
+    },
+    "criminal_law/criminal_procedure_overview.txt": {
+      "path": "criminal_law/criminal_procedure_overview.txt",
+      "content_hash": "86838956f66d9754",
+      "trained_at": "2026-01-11T13:50:45.143274",
+      "word_count": 708
+    },
+    "criminal_law/defenses_criminal_law.txt": {
+      "path": "criminal_law/defenses_criminal_law.txt",
+      "content_hash": "1b30006d76cb6824",
+      "trained_at": "2026-01-11T13:50:45.741611",
+      "word_count": 1015
+    },
+    "criminal_law/elements_of_crimes.txt": {
+      "path": "criminal_law/elements_of_crimes.txt",
+      "content_hash": "ad3160889e0e2af1",
+      "trained_at": "2026-01-11T13:50:46.345428",
+      "word_count": 853
+    },
+    "criminal_law/sentencing_principles.txt": {
+      "path": "criminal_law/sentencing_principles.txt",
+      "content_hash": "5a03f8d10cab1ec0",
+      "trained_at": "2026-01-11T13:50:46.975646",
+      "word_count": 1074
+    },
+    "cross_domain/attention_allocation_systems.txt": {
+      "path": "cross_domain/attention_allocation_systems.txt",
+      "content_hash": "7a311cb364a402c4",
+      "trained_at": "2026-01-11T13:50:47.621298",
+      "word_count": 813
+    },
+    "cross_domain/belief_updating_markets.txt": {
+      "path": "cross_domain/belief_updating_markets.txt",
+      "content_hash": "3bc4a55601822a90",
+      "trained_at": "2026-01-11T13:50:48.360705",
+      "word_count": 846
+    },
+    "cross_domain/cognitive_market_models.txt": {
+      "path": "cross_domain/cognitive_market_models.txt",
+      "content_hash": "0ff8ec42fd17e47d",
+      "trained_at": "2026-01-11T13:50:49.061537",
+      "word_count": 672
+    },
+    "cross_domain/collaborative_forecasting.txt": {
+      "path": "cross_domain/collaborative_forecasting.txt",
+      "content_hash": "2e79f8156b413cc8",
+      "trained_at": "2026-01-11T13:50:49.778481",
+      "word_count": 749
+    },
+    "cross_domain/distributed_intelligence_systems.txt": {
+      "path": "cross_domain/distributed_intelligence_systems.txt",
+      "content_hash": "80ff680a78791e91",
+      "trained_at": "2026-01-11T13:50:50.521936",
+      "word_count": 962
+    },
+    "cross_domain/embodied_decision_making.txt": {
+      "path": "cross_domain/embodied_decision_making.txt",
+      "content_hash": "adbc792b4e90526d",
+      "trained_at": "2026-01-11T13:50:51.328847",
+      "word_count": 883
+    },
+    "cross_domain/future_oriented_cognition.txt": {
+      "path": "cross_domain/future_oriented_cognition.txt",
+      "content_hash": "0c4655f75da1a9ea",
+      "trained_at": "2026-01-11T13:50:52.186426",
+      "word_count": 875
+    },
+    "cross_domain/influence_and_prediction.txt": {
+      "path": "cross_domain/influence_and_prediction.txt",
+      "content_hash": "7247a4d4aa8a4687",
+      "trained_at": "2026-01-11T13:50:53.045953",
+      "word_count": 720
+    },
+    "cross_domain/metacognition_in_ai.txt": {
+      "path": "cross_domain/metacognition_in_ai.txt",
+      "content_hash": "ea04808a03c2f6dd",
+      "trained_at": "2026-01-11T13:50:53.944179",
+      "word_count": 816
+    },
+    "cross_domain/narrative_market_influence.txt": {
+      "path": "cross_domain/narrative_market_influence.txt",
+      "content_hash": "8a00823b2a8f2ca9",
+      "trained_at": "2026-01-11T13:50:54.872514",
+      "word_count": 858
+    },
+    "cross_domain/social_dynamics_prediction.txt": {
+      "path": "cross_domain/social_dynamics_prediction.txt",
+      "content_hash": "1ada223610b45e24",
+      "trained_at": "2026-01-11T13:50:55.821807",
+      "word_count": 836
+    },
+    "cross_domain/world_models_for_trading.txt": {
+      "path": "cross_domain/world_models_for_trading.txt",
+      "content_hash": "0f7a3eb67bc6d39f",
+      "trained_at": "2026-01-11T13:50:56.791929",
+      "word_count": 800
+    },
+    "cryptocurrency_mining.txt": {
+      "path": "cryptocurrency_mining.txt",
+      "content_hash": "ed01575a709c12a3",
+      "trained_at": "2026-01-11T13:50:57.829799",
+      "word_count": 211
+    },
+    "customer_retention_strategies.txt": {
+      "path": "customer_retention_strategies.txt",
+      "content_hash": "da8485a771b31641",
+      "trained_at": "2026-01-11T13:50:58.884035",
+      "word_count": 234
+    },
+    "customer_satisfaction_metrics.txt": {
+      "path": "customer_satisfaction_metrics.txt",
+      "content_hash": "e9d6b7abe4cd80b1",
+      "trained_at": "2026-01-11T13:50:59.897014",
+      "word_count": 234
+    },
+    "customer_service/account_management_faq.txt": {
+      "path": "customer_service/account_management_faq.txt",
+      "content_hash": "61fa62c6eaaeed35",
+      "trained_at": "2026-01-11T13:51:00.950091",
+      "word_count": 659
+    },
+    "customer_service/complaint_escalation_procedures.txt": {
+      "path": "customer_service/complaint_escalation_procedures.txt",
+      "content_hash": "1444431d16298407",
+      "trained_at": "2026-01-11T13:51:01.969486",
+      "word_count": 1056
+    },
+    "customer_service/connectivity_network_troubleshooting.txt": {
+      "path": "customer_service/connectivity_network_troubleshooting.txt",
+      "content_hash": "978497cc15e77bb9",
+      "trained_at": "2026-01-11T13:51:03.058785",
+      "word_count": 984
+    },
+    "customer_service/customer_feedback_survey_guide.txt": {
+      "path": "customer_service/customer_feedback_survey_guide.txt",
+      "content_hash": "0226dde192d5dc08",
+      "trained_at": "2026-01-11T13:51:04.169558",
+      "word_count": 1480
+    },
+    "customer_service/electronics_product_faq.txt": {
+      "path": "customer_service/electronics_product_faq.txt",
+      "content_hash": "971caff92efb2545",
+      "trained_at": "2026-01-11T13:51:05.257766",
+      "word_count": 488
+    },
+    "customer_service/email_response_templates.txt": {
+      "path": "customer_service/email_response_templates.txt",
+      "content_hash": "d5c584708124e720",
+      "trained_at": "2026-01-11T13:51:06.407685",
+      "word_count": 1303
+    },
+    "customer_service/empathy_and_active_listening.txt": {
+      "path": "customer_service/empathy_and_active_listening.txt",
+      "content_hash": "0255f015d57db63a",
+      "trained_at": "2026-01-11T13:51:07.596821",
+      "word_count": 1010
+    },
+    "customer_service/login_access_troubleshooting.txt": {
+      "path": "customer_service/login_access_troubleshooting.txt",
+      "content_hash": "4bf24a850d26d97c",
+      "trained_at": "2026-01-11T13:51:08.869516",
+      "word_count": 1231
+    },
+    "customer_service/payment_billing_troubleshooting.txt": {
+      "path": "customer_service/payment_billing_troubleshooting.txt",
+      "content_hash": "4eb606ab57fcd4b2",
+      "trained_at": "2026-01-11T13:51:10.100772",
+      "word_count": 1246
+    },
+    "customer_service/privacy_data_security_policy.txt": {
+      "path": "customer_service/privacy_data_security_policy.txt",
+      "content_hash": "2e15f18c73b8330b",
+      "trained_at": "2026-01-11T13:51:11.356286",
+      "word_count": 1732
+    },
+    "customer_service/refund_request_handling.txt": {
+      "path": "customer_service/refund_request_handling.txt",
+      "content_hash": "ee52110cd3bde62c",
+      "trained_at": "2026-01-11T13:51:12.615335",
+      "word_count": 930
     }
   }
 }
