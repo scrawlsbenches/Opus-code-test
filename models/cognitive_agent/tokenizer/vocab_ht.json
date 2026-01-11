@@ -1,5 +1,9 @@
 {
-  "html": 7066,
-  "http": 7067,
-  "https": 7068
+  "htfs": 8983,
+  "html": 8984,
+  "htp": 8985,
+  "htri": 8986,
+  "http": 8987,
+  "httponly": 8988,
+  "https": 8989
 }
