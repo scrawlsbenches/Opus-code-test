@@ -893,6 +893,8 @@ def run_cli(args, container: 'Optional[Container]' = None) -> None:
     """
     from cortical.common import Container
     from cortical.core.modules import CognitiveModule
+    # Import from canonical module to avoid __main__ class identity issues with -m
+    import cortical.cognitive.training as training_module
 
     # Use provided container or create one
     if container is None:
@@ -900,7 +902,7 @@ def run_cli(args, container: 'Optional[Container]' = None) -> None:
         container = Container()
         container.apply_module(CognitiveModule(model_dir=model_dir, use_memory=False))
 
-    trainer = container.resolve(IncrementalTrainer)
+    trainer = container.resolve(training_module.IncrementalTrainer)
 
     if args.status:
         status = trainer.status()

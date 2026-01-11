@@ -3,6 +3,8 @@
   "last_training": "2026-01-11T15:12:02.489130",
   "total_documents": 525,
   "vocabulary_size": 16770,
+  "last_reindex_doc_count": 525,
+  "idf_epoch": 1,
   "documents": {
     "accordion_repair.txt": {
       "path": "accordion_repair.txt",
