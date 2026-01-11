@@ -723,6 +723,12 @@ Examples:
   # Train on all .txt files in samples/
   python -m cortical.cognitive.training samples/
 
+  # Train next 5 documents only (safe batch)
+  python -m cortical.cognitive.training --batch-size 5
+
+  # Train with custom checkpoint interval
+  python -m cortical.cognitive.training --batch-size 25 --checkpoint 10
+
   # Train on specific files only
   python -m cortical.cognitive.training --files samples/doc1.txt samples/doc2.txt
 
@@ -778,6 +784,18 @@ Examples:
         action="store_true",
         help="Suppress progress output",
     )
+    parser.add_argument(
+        "--batch-size", "-n",
+        type=int,
+        default=None,
+        help="Limit training to N documents (for controlled batch training)",
+    )
+    parser.add_argument(
+        "--checkpoint", "-c",
+        type=int,
+        default=None,
+        help="Checkpoint interval (save every N documents)",
+    )
 
     args = parser.parse_args()
 
@@ -812,12 +830,43 @@ Examples:
             base_dir=args.directory,
             show_progress=not args.quiet,
         )
+    elif args.batch_size is not None:
+        # Batch mode: train only N untrained documents
+        all_files = list(trainer.scan_directory(
+            args.directory, args.pattern, recursive=True
+        ))
+        untrained = trainer.manifest.get_untrained(all_files)
+
+        if not untrained:
+            print("All documents are already trained. Nothing to do.")
+            return
+
+        # Select batch
+        batch = untrained[:args.batch_size]
+        paths = [path for path, _ in batch]
+
+        if not args.quiet:
+            print(f"Batch training: {len(batch)} of {len(untrained)} remaining documents")
+            for i, path in enumerate(paths, 1):
+                print(f"  {i}. {path}")
+            print()
+
+        # Build full paths and train
+        base_dir = Path(args.directory)
+        full_paths = [base_dir / path for path in paths]
+
+        stats = trainer.train_files(
+            file_paths=full_paths,
+            base_dir=base_dir,
+            show_progress=not args.quiet,
+        )
     else:
         stats = trainer.train_directory(
             args.directory,
             pattern=args.pattern,
             show_progress=not args.quiet,
             force_retrain=args.force,
+            checkpoint_interval=args.checkpoint,
         )
 
     # Print final status
