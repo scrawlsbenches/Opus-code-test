@@ -1,3 +1,5 @@
 {
-  "nslookup": 5981
+  "nsca": 6739,
+  "nservicebus": 6740,
+  "nslookup": 6741
 }

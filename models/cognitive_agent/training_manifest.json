@@ -1,8 +1,8 @@
 {
   "model_version": "1.0",
-  "last_training": "2026-01-11T15:00:51.299068",
-  "total_documents": 205,
-  "vocabulary_size": 10080,
+  "last_training": "2026-01-11T15:08:50.704201",
+  "total_documents": 300,
+  "vocabulary_size": 11344,
   "documents": {
     "accordion_repair.txt": {
       "path": "accordion_repair.txt",
@@ -1233,6 +1233,576 @@
       "content_hash": "9cad3bb550f32785",
       "trained_at": "2026-01-11T15:00:51.299042",
       "word_count": 399
+    },
+    "customer_service/subscription_service_faq.txt": {
+      "path": "customer_service/subscription_service_faq.txt",
+      "content_hash": "b851c65f0ab9b1f5",
+      "trained_at": "2026-01-11T15:02:59.955108",
+      "word_count": 579
+    },
+    "customer_support_fundamentals.txt": {
+      "path": "customer_support_fundamentals.txt",
+      "content_hash": "875e0448ecc14848",
+      "trained_at": "2026-01-11T15:03:01.303183",
+      "word_count": 206
+    },
+    "data_structures.txt": {
+      "path": "data_structures.txt",
+      "content_hash": "d473f4a850fab515",
+      "trained_at": "2026-01-11T15:03:02.816709",
+      "word_count": 234
+    },
+    "database_design_patterns.txt": {
+      "path": "database_design_patterns.txt",
+      "content_hash": "0e7fc95e3945262b",
+      "trained_at": "2026-01-11T15:03:04.284493",
+      "word_count": 389
+    },
+    "debugging_strategies.txt": {
+      "path": "debugging_strategies.txt",
+      "content_hash": "c5624d6101310a0c",
+      "trained_at": "2026-01-11T15:03:05.798141",
+      "word_count": 684
+    },
+    "deep_learning_revolution.txt": {
+      "path": "deep_learning_revolution.txt",
+      "content_hash": "292064720f8d1587",
+      "trained_at": "2026-01-11T15:03:30.184606",
+      "word_count": 111
+    },
+    "dependency_injection.txt": {
+      "path": "dependency_injection.txt",
+      "content_hash": "b7e3cdf8b6aede01",
+      "trained_at": "2026-01-11T15:03:31.640099",
+      "word_count": 763
+    },
+    "dependency_injection_testing.txt": {
+      "path": "dependency_injection_testing.txt",
+      "content_hash": "7fbf479f6a3310b2",
+      "trained_at": "2026-01-11T15:03:33.219097",
+      "word_count": 279
+    },
+    "dependency_management_practices.txt": {
+      "path": "dependency_management_practices.txt",
+      "content_hash": "9cbfe9989e0b849d",
+      "trained_at": "2026-01-11T15:03:34.749308",
+      "word_count": 282
+    },
+    "design_patterns_when_and_how.txt": {
+      "path": "design_patterns_when_and_how.txt",
+      "content_hash": "69c6b7abd5674a73",
+      "trained_at": "2026-01-11T15:03:36.296699",
+      "word_count": 976
+    },
+    "design_principles_overview.txt": {
+      "path": "design_principles_overview.txt",
+      "content_hash": "42705993e2df0ffd",
+      "trained_at": "2026-01-11T15:03:47.638619",
+      "word_count": 359
+    },
+    "devsecops_practices.txt": {
+      "path": "devsecops_practices.txt",
+      "content_hash": "702c71b337505c49",
+      "trained_at": "2026-01-11T15:03:49.517253",
+      "word_count": 260
+    },
+    "distributed_systems.txt": {
+      "path": "distributed_systems.txt",
+      "content_hash": "45c98f7f029dc10b",
+      "trained_at": "2026-01-11T15:03:51.413355",
+      "word_count": 211
+    },
+    "distributed_systems_market_data.txt": {
+      "path": "distributed_systems_market_data.txt",
+      "content_hash": "8d3c0cde75b9fdba",
+      "trained_at": "2026-01-11T15:03:53.388730",
+      "word_count": 935
+    },
+    "document_relevance_tuning.txt": {
+      "path": "document_relevance_tuning.txt",
+      "content_hash": "22cce3d7d3bc5ffd",
+      "trained_at": "2026-01-11T15:03:55.327756",
+      "word_count": 558
+    },
+    "domain_driven_design.txt": {
+      "path": "domain_driven_design.txt",
+      "content_hash": "1305a751e87369fa",
+      "trained_at": "2026-01-11T15:03:57.149392",
+      "word_count": 336
+    },
+    "dotnet_enterprise.txt": {
+      "path": "dotnet_enterprise.txt",
+      "content_hash": "fcdd6ad2b0a2f482",
+      "trained_at": "2026-01-11T15:03:59.132648",
+      "word_count": 232
+    },
+    "elliot_wave_theory.txt": {
+      "path": "elliot_wave_theory.txt",
+      "content_hash": "201ba10c027c1de0",
+      "trained_at": "2026-01-11T15:04:01.106917",
+      "word_count": 233
+    },
+    "episodic_memory_experience_replay.txt": {
+      "path": "episodic_memory_experience_replay.txt",
+      "content_hash": "54dd1f92847c8690",
+      "trained_at": "2026-01-11T15:04:03.048092",
+      "word_count": 702
+    },
+    "espresso_basics.txt": {
+      "path": "espresso_basics.txt",
+      "content_hash": "9197ed8afbe88d51",
+      "trained_at": "2026-01-11T15:04:05.167271",
+      "word_count": 143
+    },
+    "event_driven_cognitive_architectures.txt": {
+      "path": "event_driven_cognitive_architectures.txt",
+      "content_hash": "38b87939c0b7b702",
+      "trained_at": "2026-01-11T15:04:16.677643",
+      "word_count": 511
+    },
+    "event_sourcing_patterns.txt": {
+      "path": "event_sourcing_patterns.txt",
+      "content_hash": "7a7104cf08b60717",
+      "trained_at": "2026-01-11T15:04:18.534412",
+      "word_count": 392
+    },
+    "expert_systems/knowledge_representation_ontologies.txt": {
+      "path": "expert_systems/knowledge_representation_ontologies.txt",
+      "content_hash": "5911ae5cc5b7d0ae",
+      "trained_at": "2026-01-11T15:04:20.442737",
+      "word_count": 688
+    },
+    "expert_systems/rule_based_systems_design.txt": {
+      "path": "expert_systems/rule_based_systems_design.txt",
+      "content_hash": "fb16ac94b599a9a7",
+      "trained_at": "2026-01-11T15:04:22.259806",
+      "word_count": 799
+    },
+    "exploration_exploitation_balance.txt": {
+      "path": "exploration_exploitation_balance.txt",
+      "content_hash": "851416c069ccfe85",
+      "trained_at": "2026-01-11T15:04:24.118373",
+      "word_count": 324
+    },
+    "extreme_sports/mountain_biking_downhill.txt": {
+      "path": "extreme_sports/mountain_biking_downhill.txt",
+      "content_hash": "9e9d6872ba028d5b",
+      "trained_at": "2026-01-11T15:04:26.046844",
+      "word_count": 665
+    },
+    "extreme_sports/skydiving_training.txt": {
+      "path": "extreme_sports/skydiving_training.txt",
+      "content_hash": "3f0a8af813aa17d7",
+      "trained_at": "2026-01-11T15:04:28.020241",
+      "word_count": 740
+    },
+    "factor_models_systematic_investing.txt": {
+      "path": "factor_models_systematic_investing.txt",
+      "content_hash": "262f706de4c6bc4d",
+      "trained_at": "2026-01-11T15:04:30.152121",
+      "word_count": 683
+    },
+    "failure_mode_taxonomy.txt": {
+      "path": "failure_mode_taxonomy.txt",
+      "content_hash": "db24b0921e3dd0ab",
+      "trained_at": "2026-01-11T15:04:32.233874",
+      "word_count": 710
+    },
+    "fermentation_biochemistry_patterns.txt": {
+      "path": "fermentation_biochemistry_patterns.txt",
+      "content_hash": "caa1058945ea0f50",
+      "trained_at": "2026-01-11T15:04:34.475856",
+      "word_count": 400
+    },
+    "fermentation_science.txt": {
+      "path": "fermentation_science.txt",
+      "content_hash": "0b222670f5e69b01",
+      "trained_at": "2026-01-11T15:04:36.622973",
+      "word_count": 327
+    },
+    "financial_analysis.txt": {
+      "path": "financial_analysis.txt",
+      "content_hash": "191054dcfbfcb294",
+      "trained_at": "2026-01-11T15:04:38.831717",
+      "word_count": 248
+    },
+    "fitness_training/endurance_training_physiology.txt": {
+      "path": "fitness_training/endurance_training_physiology.txt",
+      "content_hash": "21b3d263f89cd2e4",
+      "trained_at": "2026-01-11T15:04:41.036000",
+      "word_count": 728
+    },
+    "fitness_training/strength_training_principles.txt": {
+      "path": "fitness_training/strength_training_principles.txt",
+      "content_hash": "22caf95af5404df9",
+      "trained_at": "2026-01-11T15:04:43.244563",
+      "word_count": 735
+    },
+    "formal_reasoning.txt": {
+      "path": "formal_reasoning.txt",
+      "content_hash": "f73931a110bf0152",
+      "trained_at": "2026-01-11T15:04:45.444183",
+      "word_count": 764
+    },
+    "fractal_market_analysis.txt": {
+      "path": "fractal_market_analysis.txt",
+      "content_hash": "676a6a27ebe47a01",
+      "trained_at": "2026-01-11T15:04:47.892095",
+      "word_count": 662
+    },
+    "future_thinking/anticipatory_cognition.txt": {
+      "path": "future_thinking/anticipatory_cognition.txt",
+      "content_hash": "6cf9c04c49bf3e81",
+      "trained_at": "2026-01-11T15:04:50.611311",
+      "word_count": 1488
+    },
+    "future_thinking/counterfactual_reasoning.txt": {
+      "path": "future_thinking/counterfactual_reasoning.txt",
+      "content_hash": "828c47e6f065ed9f",
+      "trained_at": "2026-01-11T15:04:52.987981",
+      "word_count": 1505
+    },
+    "future_thinking/forecasting_methods.txt": {
+      "path": "future_thinking/forecasting_methods.txt",
+      "content_hash": "45b3ac7c30ecfe84",
+      "trained_at": "2026-01-11T15:04:55.538675",
+      "word_count": 1497
+    },
+    "future_thinking/future_discounting.txt": {
+      "path": "future_thinking/future_discounting.txt",
+      "content_hash": "640031b3ec475666",
+      "trained_at": "2026-01-11T15:04:58.266038",
+      "word_count": 1524
+    },
+    "future_thinking/planning_under_uncertainty.txt": {
+      "path": "future_thinking/planning_under_uncertainty.txt",
+      "content_hash": "fc5595792981e0c6",
+      "trained_at": "2026-01-11T15:05:00.858500",
+      "word_count": 1481
+    },
+    "future_thinking/prospective_memory.txt": {
+      "path": "future_thinking/prospective_memory.txt",
+      "content_hash": "53e90133247387f4",
+      "trained_at": "2026-01-11T15:05:03.513219",
+      "word_count": 1437
+    },
+    "future_thinking/scenario_planning.txt": {
+      "path": "future_thinking/scenario_planning.txt",
+      "content_hash": "83c9ab4633b0c476",
+      "trained_at": "2026-01-11T15:05:06.098353",
+      "word_count": 1153
+    },
+    "future_thinking/strategic_foresight.txt": {
+      "path": "future_thinking/strategic_foresight.txt",
+      "content_hash": "d3db266d60d771f1",
+      "trained_at": "2026-01-11T15:05:08.607021",
+      "word_count": 1448
+    },
+    "future_thinking/temporal_reasoning.txt": {
+      "path": "future_thinking/temporal_reasoning.txt",
+      "content_hash": "146e562a06fef9bf",
+      "trained_at": "2026-01-11T15:05:11.374046",
+      "word_count": 1632
+    },
+    "future_thinking/uncertainty_quantification.txt": {
+      "path": "future_thinking/uncertainty_quantification.txt",
+      "content_hash": "897a0a3fc197587c",
+      "trained_at": "2026-01-11T15:05:32.818718",
+      "word_count": 1471
+    },
+    "gestalt_pattern_recognition.txt": {
+      "path": "gestalt_pattern_recognition.txt",
+      "content_hash": "20163b949b129fcb",
+      "trained_at": "2026-01-11T15:05:35.697053",
+      "word_count": 689
+    },
+    "goal_directed_cognition.txt": {
+      "path": "goal_directed_cognition.txt",
+      "content_hash": "3613e718a13a276d",
+      "trained_at": "2026-01-11T15:05:38.707051",
+      "word_count": 341
+    },
+    "graph_neural_networks.txt": {
+      "path": "graph_neural_networks.txt",
+      "content_hash": "3cfeda4ecfa8f0f3",
+      "trained_at": "2026-01-11T15:05:41.297661",
+      "word_count": 101
+    },
+    "graph_neural_networks_code_analysis.txt": {
+      "path": "graph_neural_networks_code_analysis.txt",
+      "content_hash": "d0c584ca9dc7ed20",
+      "trained_at": "2026-01-11T15:05:44.138573",
+      "word_count": 772
+    },
+    "graph_of_thought_architecture.txt": {
+      "path": "graph_of_thought_architecture.txt",
+      "content_hash": "ca29c8fe9a74f4aa",
+      "trained_at": "2026-01-11T15:05:47.341022",
+      "word_count": 453
+    },
+    "graph_structure_optimization.txt": {
+      "path": "graph_structure_optimization.txt",
+      "content_hash": "6b9234579af2b3ff",
+      "trained_at": "2026-01-11T15:05:50.411031",
+      "word_count": 466
+    },
+    "graph_traversal_strategies.txt": {
+      "path": "graph_traversal_strategies.txt",
+      "content_hash": "5a50af1e7b6d2256",
+      "trained_at": "2026-01-11T15:05:53.726266",
+      "word_count": 287
+    },
+    "graphql_schema_design.txt": {
+      "path": "graphql_schema_design.txt",
+      "content_hash": "cbf35f073377a98c",
+      "trained_at": "2026-01-11T15:05:56.922506",
+      "word_count": 381
+    },
+    "grounded_cognitive_design_principles.txt": {
+      "path": "grounded_cognitive_design_principles.txt",
+      "content_hash": "2b0ce50b509e0f5d",
+      "trained_at": "2026-01-11T15:06:00.446266",
+      "word_count": 703
+    },
+    "haiku_structure.txt": {
+      "path": "haiku_structure.txt",
+      "content_hash": "29ee334d51899c21",
+      "trained_at": "2026-01-11T15:06:04.025928",
+      "word_count": 133
+    },
+    "hardware_requirements_trading_systems.txt": {
+      "path": "hardware_requirements_trading_systems.txt",
+      "content_hash": "8229646f3b6096c0",
+      "trained_at": "2026-01-11T15:06:07.526332",
+      "word_count": 937
+    },
+    "history_of_computing.txt": {
+      "path": "history_of_computing.txt",
+      "content_hash": "5c9f48f0e50e8d6a",
+      "trained_at": "2026-01-11T15:06:10.996814",
+      "word_count": 583
+    },
+    "homelab_infrastructure.txt": {
+      "path": "homelab_infrastructure.txt",
+      "content_hash": "3addbd176a2d48c7",
+      "trained_at": "2026-01-11T15:06:14.307208",
+      "word_count": 202
+    },
+    "hot_springs_geology.txt": {
+      "path": "hot_springs_geology.txt",
+      "content_hash": "47515f0fc725da9a",
+      "trained_at": "2026-01-11T15:06:17.871512",
+      "word_count": 294
+    },
+    "hvac_engineering/chiller_design_operation.txt": {
+      "path": "hvac_engineering/chiller_design_operation.txt",
+      "content_hash": "1508048107a40a58",
+      "trained_at": "2026-01-11T15:06:21.240711",
+      "word_count": 728
+    },
+    "hvac_engineering/heat_pump_fundamentals.txt": {
+      "path": "hvac_engineering/heat_pump_fundamentals.txt",
+      "content_hash": "e751e03eb45aad2d",
+      "trained_at": "2026-01-11T15:06:24.730619",
+      "word_count": 733
+    },
+    "hvac_engineering/heat_pump_installation_best_practices.txt": {
+      "path": "hvac_engineering/heat_pump_installation_best_practices.txt",
+      "content_hash": "03930ee133a51442",
+      "trained_at": "2026-01-11T15:06:28.698244",
+      "word_count": 775
+    },
+    "hvac_engineering/hvac_business_operations.txt": {
+      "path": "hvac_engineering/hvac_business_operations.txt",
+      "content_hash": "9f19543c8e782bef",
+      "trained_at": "2026-01-11T15:06:32.372235",
+      "word_count": 755
+    },
+    "hvac_engineering/residential_hvac_systems.txt": {
+      "path": "hvac_engineering/residential_hvac_systems.txt",
+      "content_hash": "2c50800c4e136df6",
+      "trained_at": "2026-01-11T15:06:36.047489",
+      "word_count": 794
+    },
+    "incident_response_procedures.txt": {
+      "path": "incident_response_procedures.txt",
+      "content_hash": "7d6d8710cbcb4c38",
+      "trained_at": "2026-01-11T15:06:39.562604",
+      "word_count": 309
+    },
+    "incremental_development.txt": {
+      "path": "incremental_development.txt",
+      "content_hash": "2a80d4e945785fa7",
+      "trained_at": "2026-01-11T15:06:43.195581",
+      "word_count": 688
+    },
+    "incremental_indexing_workflow.txt": {
+      "path": "incremental_indexing_workflow.txt",
+      "content_hash": "300ec5523c955b96",
+      "trained_at": "2026-01-11T15:06:46.737921",
+      "word_count": 556
+    },
+    "industrial_design/design_thinking_process.txt": {
+      "path": "industrial_design/design_thinking_process.txt",
+      "content_hash": "e87b811cf28a5d2a",
+      "trained_at": "2026-01-11T15:06:50.274923",
+      "word_count": 709
+    },
+    "industrial_design/ergonomics_human_factors.txt": {
+      "path": "industrial_design/ergonomics_human_factors.txt",
+      "content_hash": "560cef9f3b6098b7",
+      "trained_at": "2026-01-11T15:06:53.849908",
+      "word_count": 719
+    },
+    "industrial_design/materials_selection_products.txt": {
+      "path": "industrial_design/materials_selection_products.txt",
+      "content_hash": "56052691545a49d5",
+      "trained_at": "2026-01-11T15:07:07.809762",
+      "word_count": 712
+    },
+    "information_theory_markets.txt": {
+      "path": "information_theory_markets.txt",
+      "content_hash": "8bcd1257279881b7",
+      "trained_at": "2026-01-11T15:07:11.703459",
+      "word_count": 655
+    },
+    "input_validation_patterns.txt": {
+      "path": "input_validation_patterns.txt",
+      "content_hash": "e5c0c97bd128f480",
+      "trained_at": "2026-01-11T15:07:15.386751",
+      "word_count": 309
+    },
+    "integration_patterns.txt": {
+      "path": "integration_patterns.txt",
+      "content_hash": "2b236bb95312f5d4",
+      "trained_at": "2026-01-11T15:07:19.063900",
+      "word_count": 628
+    },
+    "invariance_discovery_markets.txt": {
+      "path": "invariance_discovery_markets.txt",
+      "content_hash": "fa10f9fc5de0a701",
+      "trained_at": "2026-01-11T15:07:22.773243",
+      "word_count": 649
+    },
+    "inversion_of_control.txt": {
+      "path": "inversion_of_control.txt",
+      "content_hash": "a96422a1cd8cd832",
+      "trained_at": "2026-01-11T15:07:26.570659",
+      "word_count": 828
+    },
+    "investment_banking.txt": {
+      "path": "investment_banking.txt",
+      "content_hash": "af5747fe8a43f196",
+      "trained_at": "2026-01-11T15:07:30.422687",
+      "word_count": 309
+    },
+    "iterative_refinement_systems.txt": {
+      "path": "iterative_refinement_systems.txt",
+      "content_hash": "bcbb314c86ae4c32",
+      "trained_at": "2026-01-11T15:07:34.444641",
+      "word_count": 438
+    },
+    "japanese_aesthetic_systems.txt": {
+      "path": "japanese_aesthetic_systems.txt",
+      "content_hash": "3bae779bf08767ee",
+      "trained_at": "2026-01-11T15:07:38.478603",
+      "word_count": 395
+    },
+    "kintsugi_pottery.txt": {
+      "path": "kintsugi_pottery.txt",
+      "content_hash": "14333d1f6d76bdc5",
+      "trained_at": "2026-01-11T15:07:42.843251",
+      "word_count": 157
+    },
+    "knowledge_enhanced_nlp.txt": {
+      "path": "knowledge_enhanced_nlp.txt",
+      "content_hash": "f0fdaa0fe48e386d",
+      "trained_at": "2026-01-11T15:07:47.199155",
+      "word_count": 279
+    },
+    "knowledge_gap_analysis_process.txt": {
+      "path": "knowledge_gap_analysis_process.txt",
+      "content_hash": "1dce02f616022625",
+      "trained_at": "2026-01-11T15:07:51.313032",
+      "word_count": 569
+    },
+    "knowledge_graph_ranking.txt": {
+      "path": "knowledge_graph_ranking.txt",
+      "content_hash": "7bc49622497c7e50",
+      "trained_at": "2026-01-11T15:07:55.443838",
+      "word_count": 484
+    },
+    "knowledge_graphs.txt": {
+      "path": "knowledge_graphs.txt",
+      "content_hash": "24d4b835f8602e5f",
+      "trained_at": "2026-01-11T15:07:59.415782",
+      "word_count": 271
+    },
+    "knowledge_graphs_financial_intelligence.txt": {
+      "path": "knowledge_graphs_financial_intelligence.txt",
+      "content_hash": "0fed6edc09199677",
+      "trained_at": "2026-01-11T15:08:03.833300",
+      "word_count": 971
+    },
+    "knowledge_transfer.txt": {
+      "path": "knowledge_transfer.txt",
+      "content_hash": "25130995bb99b417",
+      "trained_at": "2026-01-11T15:08:08.226484",
+      "word_count": 771
+    },
+    "knowledge_transfer_handoffs.txt": {
+      "path": "knowledge_transfer_handoffs.txt",
+      "content_hash": "6e82372a3155cef9",
+      "trained_at": "2026-01-11T15:08:12.730024",
+      "word_count": 270
+    },
+    "language_model_evaluation.txt": {
+      "path": "language_model_evaluation.txt",
+      "content_hash": "1ebef959a1083adc",
+      "trained_at": "2026-01-11T15:08:17.279758",
+      "word_count": 572
+    },
+    "letterpress_printing.txt": {
+      "path": "letterpress_printing.txt",
+      "content_hash": "4ebdde3c3a419041",
+      "trained_at": "2026-01-11T15:08:22.046666",
+      "word_count": 161
+    },
+    "liquidity_analysis_trading.txt": {
+      "path": "liquidity_analysis_trading.txt",
+      "content_hash": "e575644fbbcb791e",
+      "trained_at": "2026-01-11T15:08:26.871446",
+      "word_count": 712
+    },
+    "marine_navigation.txt": {
+      "path": "marine_navigation.txt",
+      "content_hash": "a42a421ee0975917",
+      "trained_at": "2026-01-11T15:08:31.638985",
+      "word_count": 322
+    },
+    "market_microstructure_analysis.txt": {
+      "path": "market_microstructure_analysis.txt",
+      "content_hash": "0c226103132343c8",
+      "trained_at": "2026-01-11T15:08:36.175981",
+      "word_count": 671
+    },
+    "market_ontology_learning.txt": {
+      "path": "market_ontology_learning.txt",
+      "content_hash": "c282e6c6ddeef317",
+      "trained_at": "2026-01-11T15:08:40.874655",
+      "word_count": 699
+    },
+    "materials_science.txt": {
+      "path": "materials_science.txt",
+      "content_hash": "e9182f52a2b5d029",
+      "trained_at": "2026-01-11T15:08:45.762143",
+      "word_count": 293
+    },
+    "mechanical_springs.txt": {
+      "path": "mechanical_springs.txt",
+      "content_hash": "0e05f01f40fec63d",
+      "trained_at": "2026-01-11T15:08:50.704162",
+      "word_count": 323
     }
   }
 }
