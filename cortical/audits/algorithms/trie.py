@@ -391,5 +391,6 @@ def run_tests():
     print("\n" + "=" * 70)
 
 
+# Demo/test cases - this module doesn't use DI so standalone execution is safe
 if __name__ == "__main__":
     run_tests()

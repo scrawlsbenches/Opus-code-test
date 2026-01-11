@@ -728,5 +728,18 @@ def main():
     return handle_doc_command(args, manager)
 
 
+# =============================================================================
+# STANDALONE EXECUTION NOTE
+#
+# This module can be run standalone for testing: python -m cortical.got.cli.doc
+# However, the PREFERRED entry point is: python -m cortical.got doc <command>
+#
+# The standalone mode works because GoTManager is NOT exported from
+# cortical.got.cli.__init__.py (we import it directly from bootstrap).
+# If class identity issues occur with DI resolution, use the main entry point.
+#
+# See cortical/cognitive/training.py for detailed explanation of why
+# __main__.py entry points are preferred for DI-enabled CLI modules.
+# =============================================================================
 if __name__ == "__main__":
     sys.exit(main())

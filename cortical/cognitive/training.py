@@ -976,5 +976,125 @@ def run_cli(args, container: 'Optional[Container]' = None) -> None:
         print(f"\nModel saved to: {trainer.model_dir}")
 
 
-if __name__ == "__main__":
-    main()
+def run_cli_command(command: str, args, container: 'Optional[Container]' = None) -> int:
+    """
+    Execute a CLI command from __main__.py.
+
+    This is the proper entry point for CLI execution, called from
+    cortical/cognitive/__main__.py. It avoids class identity issues
+    by being called after all imports are complete.
+
+    Args:
+        command: Command name ('train', 'status', 'list', 'reindex')
+        args: Parsed command line arguments
+        container: Optional DI container for testing
+
+    Returns:
+        Exit code (0 for success)
+    """
+    import json
+    from cortical.common import Container
+    from cortical.core.modules import CognitiveModule
+
+    # Create container if not provided
+    if container is None:
+        model_dir = Path(args.model_dir)
+        container = Container()
+        container.apply_module(CognitiveModule(model_dir=model_dir, use_memory=False))
+
+    trainer = container.resolve(IncrementalTrainer)
+
+    if command == "status":
+        status = trainer.status()
+        print(json.dumps(status, indent=2))
+        return 0
+
+    if command == "list":
+        trained = trainer.list_trained()
+        if trained:
+            print(f"Trained documents ({len(trained)}):")
+            for doc in trained:
+                print(f"  {doc}")
+        else:
+            print("No documents trained yet.")
+        return 0
+
+    if command == "reindex":
+        trainer.reindex(show_progress=not args.quiet)
+        if not args.quiet:
+            staleness = trainer.manifest.get_staleness()
+            print(f"Staleness after reindex: {staleness:.1%}")
+        return 0
+
+    if command == "train":
+        if args.files:
+            trainer.train_files(
+                args.files,
+                base_dir=args.directory,
+                show_progress=not args.quiet,
+            )
+        elif args.batch_size is not None:
+            # Batch mode: train only N untrained documents
+            all_files = list(trainer.scan_directory(
+                args.directory, args.pattern, recursive=True
+            ))
+            untrained = trainer.manifest.get_untrained(all_files)
+
+            if not untrained:
+                print("All documents are already trained. Nothing to do.")
+                return 0
+
+            batch = untrained[:args.batch_size]
+            paths = [path for path, _ in batch]
+
+            if not args.quiet:
+                print(f"Batch training: {len(batch)} of {len(untrained)} remaining documents")
+                for i, path in enumerate(paths, 1):
+                    print(f"  {i}. {path}")
+                print()
+
+            base_dir = Path(args.directory)
+            full_paths = [base_dir / path for path in paths]
+
+            trainer.train_files(
+                file_paths=full_paths,
+                base_dir=base_dir,
+                show_progress=not args.quiet,
+            )
+        else:
+            trainer.train_directory(
+                args.directory,
+                pattern=args.pattern,
+                show_progress=not args.quiet,
+                force_retrain=args.force,
+                checkpoint_interval=args.checkpoint,
+            )
+
+        if not args.quiet:
+            print(f"\nModel saved to: {trainer.model_dir}")
+        return 0
+
+    print(f"Unknown command: {command}")
+    return 1
+
+
+# =============================================================================
+# IMPORTANT: Do NOT add `if __name__ == "__main__"` here!
+#
+# This module should be run via: python -m cortical.cognitive
+# which uses cortical/cognitive/__main__.py as the entry point.
+#
+# Why? When Python runs `python -m cortical.cognitive.training`:
+#   1. It imports cortical.cognitive package first (__init__.py)
+#   2. If __init__.py imports from this module, classes are created
+#   3. Then this module runs as __main__, creating DIFFERENT class objects
+#   4. DI containers use class objects as dict keys, so lookup fails
+#
+# The __main__.py pattern avoids this by being a separate file that:
+#   - Is never imported by __init__.py
+#   - Imports this module's classes only when needed for CLI
+#   - Preserves class identity throughout the application
+#
+# For backward compatibility, main() and run_cli() are still available
+# for direct programmatic use, but CLI should use __main__.py.
+# =============================================================================

@@ -218,7 +218,7 @@ class SimilarCommentFinder:
         return intersection / union
 
 
-# Test cases
+# Demo/test cases - this module doesn't use DI so standalone execution is safe
 if __name__ == "__main__":
     print("Running test cases...")
 
