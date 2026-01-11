@@ -12,20 +12,32 @@ Run this script to see:
     4. Agent processing the learned knowledge
 
 Usage:
+    # Quick demo (fast defaults)
     python examples/load_samples_demo.py
 
-    # Load specific number of files
-    python examples/load_samples_demo.py --max-files 5
+    # Load existing model and add more documents incrementally
+    python examples/load_samples_demo.py --incremental --max-files 10
 
-    # Show more details
-    python examples/load_samples_demo.py --verbose
+    # Train fresh and save
+    python examples/load_samples_demo.py --max-files 20 --save
+
+    # Custom performance tuning
+    python examples/load_samples_demo.py --max-links 50 --window-size 2
+
+    # Full training (slower)
+    python examples/load_samples_demo.py --max-files 100 --max-links 500 --save
+
+Defaults (optimized for speed):
+    --max-files 5      Only process 5 files
+    --max-links 100    Limit links per document (vs 500 default)
+    --window-size 3    Smaller co-occurrence window (vs 5 default)
 
 Design Philosophy:
-    Start small, expand as needed. This demo uses a minimal subset
-    of samples to show the concept clearly.
+    Start small, expand as needed. Fast iteration by default.
 """
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -34,17 +46,22 @@ PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from cortical.cognitive.graph import (
+    Atom,
     AtomType,
     CognitiveAgent,
     CognitiveGraph,
     EventBus,
     EventType,
+    TruthValue,
 )
 from cortical.cognitive.text_bridge import (
     BPETokenizer,
     TextToAtomsBridge,
     load_directory_to_bridge,
 )
+
+# Default model path
+DEFAULT_MODEL_DIR = PROJECT_ROOT / "trained_model"
 
 
 # =============================================================================
@@ -81,6 +98,113 @@ def print_subheader(text: str) -> None:
 def print_stat(label: str, value, color: str = Colors.GREEN) -> None:
     """Print a statistic."""
     print(f"  {Colors.DIM}{label}:{Colors.RESET} {color}{value}{Colors.RESET}")
+
+
+# =============================================================================
+# Model Loading/Saving
+# =============================================================================
+
+
+def load_model(model_dir: Path) -> tuple:
+    """
+    Load agent and tokenizer from model directory.
+
+    Args:
+        model_dir: Directory containing graph.json and tokenizer.json
+
+    Returns:
+        Tuple of (CognitiveAgent, BPETokenizer)
+    """
+    graph_path = model_dir / "graph.json"
+    tokenizer_path = model_dir / "tokenizer.json"
+
+    if not graph_path.exists():
+        raise FileNotFoundError(f"Model not found: {graph_path}")
+
+    print(f"{Colors.YELLOW}Loading model from {model_dir}...{Colors.RESET}")
+
+    # Load graph
+    with open(graph_path) as f:
+        data = json.load(f)
+
+    agent = CognitiveAgent()
+    atom_count = 0
+
+    for atom_data in data.get("atoms", []):
+        atom = Atom(
+            id=atom_data["id"],
+            atom_type=AtomType[atom_data["atom_type"]],
+            name=atom_data.get("name", ""),
+            outgoing=atom_data.get("outgoing", []),
+            tv=TruthValue(
+                atom_data.get("tv_strength", 1.0),
+                atom_data.get("tv_confidence", 0.0),
+            ),
+            sti=atom_data.get("sti", 0.0),
+            lti=atom_data.get("lti", 0.0),
+        )
+        agent.graph._storage.save(atom)
+        atom_count += 1
+
+    # Load tokenizer if exists
+    tokenizer = BPETokenizer()
+    if tokenizer_path.exists():
+        tokenizer = BPETokenizer.load(tokenizer_path)
+        print(f"  {Colors.GREEN}Loaded tokenizer with {len(tokenizer.vocab)} words{Colors.RESET}")
+
+    print(f"  {Colors.GREEN}Loaded {atom_count} atoms{Colors.RESET}")
+
+    stats = data.get("stats", {})
+    if stats:
+        print(f"  {Colors.DIM}Previous training: {stats.get('documents_fed', 0)} documents{Colors.RESET}")
+
+    return agent, tokenizer
+
+
+def save_model(agent: CognitiveAgent, tokenizer: BPETokenizer, bridge: TextToAtomsBridge, model_dir: Path) -> None:
+    """
+    Save agent and tokenizer to model directory.
+
+    Args:
+        agent: The CognitiveAgent to save
+        tokenizer: The BPETokenizer to save
+        bridge: The TextToAtomsBridge (for statistics)
+        model_dir: Directory to save to
+    """
+    model_dir.mkdir(parents=True, exist_ok=True)
+
+    graph_path = model_dir / "graph.json"
+    tokenizer_path = model_dir / "tokenizer.json"
+
+    print(f"{Colors.YELLOW}Saving model to {model_dir}...{Colors.RESET}")
+
+    # Save graph with flat format (compatible with load_model)
+    atoms_data = []
+    for atom in agent.graph._storage.all_atoms():
+        atoms_data.append({
+            "id": atom.id,
+            "name": atom.name,
+            "atom_type": atom.atom_type.name,
+            "tv_strength": atom.tv.strength,
+            "tv_confidence": atom.tv.confidence,
+            "sti": atom.sti,
+            "lti": atom.lti,
+            "outgoing": atom.outgoing,
+        })
+
+    graph_data = {
+        "atoms": atoms_data,
+        "stats": bridge.get_statistics(),
+    }
+
+    with open(graph_path, "w") as f:
+        json.dump(graph_data, f, indent=2)
+
+    # Save tokenizer
+    tokenizer.save(tokenizer_path)
+
+    print(f"  {Colors.GREEN}Saved {len(atoms_data)} atoms to graph.json{Colors.RESET}")
+    print(f"  {Colors.GREEN}Saved tokenizer with {len(tokenizer.vocab)} words{Colors.RESET}")
 
 
 # =============================================================================
@@ -141,7 +265,16 @@ def demo_tokenizer_learning(samples_dir: Path, max_files: int = 5, verbose: bool
     return tokenizer
 
 
-def demo_text_to_atoms(agent: CognitiveAgent, samples_dir: Path, max_files: int = 3, verbose: bool = False):
+def demo_text_to_atoms(
+    agent: CognitiveAgent,
+    samples_dir: Path,
+    max_files: int = 3,
+    max_links: int = 100,
+    window_size: int = 3,
+    verbose: bool = False,
+    existing_tokenizer: BPETokenizer = None,
+    incremental: bool = False,
+):
     """
     Demonstrate converting text to cognitive graph atoms.
 
@@ -149,10 +282,33 @@ def demo_text_to_atoms(agent: CognitiveAgent, samples_dir: Path, max_files: int 
         - Text being fed into the agent
         - WORD atoms created
         - SIMILARITY links between co-occurring words
+
+    Args:
+        agent: The CognitiveAgent to populate
+        samples_dir: Directory with .txt files
+        max_files: Maximum files to process
+        max_links: Max links per document (lower = faster)
+        window_size: Co-occurrence window (lower = faster)
+        verbose: Show detailed output
+        existing_tokenizer: Use existing tokenizer for incremental learning
+        incremental: If True, add to existing vocabulary
     """
     print_header("Phase 2: Text-to-Atoms Conversion")
 
-    bridge = TextToAtomsBridge(agent.graph)
+    # Use existing tokenizer or create new one
+    tokenizer = existing_tokenizer if existing_tokenizer else BPETokenizer()
+
+    # Create bridge with performance settings
+    bridge = TextToAtomsBridge(
+        graph=agent.graph,
+        tokenizer=tokenizer,
+        window_size=window_size,
+        max_links_per_doc=max_links,
+    )
+
+    print(f"  {Colors.DIM}Window size: {window_size}, Max links/doc: {max_links}{Colors.RESET}")
+    if incremental:
+        print(f"  {Colors.CYAN}Incremental mode: adding to existing vocabulary{Colors.RESET}")
 
     # Load sample files
     txt_files = sorted(samples_dir.glob("*.txt"))[:max_files]
@@ -165,8 +321,9 @@ def demo_text_to_atoms(agent: CognitiveAgent, samples_dir: Path, max_files: int 
         except Exception:
             pass
 
-    print(f"{Colors.YELLOW}Learning vocabulary from {len(texts)} files...{Colors.RESET}")
-    bridge.learn_vocabulary(texts)
+    mode_str = "incrementally" if incremental else "from scratch"
+    print(f"{Colors.YELLOW}Learning vocabulary {mode_str} from {len(texts)} files...{Colors.RESET}")
+    bridge.learn_vocabulary(texts, incremental=incremental)
 
     # Now feed each file
     print_subheader("Feeding Documents")
@@ -229,32 +386,28 @@ def demo_agent_exploration(agent: CognitiveAgent, verbose: bool = False):
     print(f"  Seed word: {Colors.CYAN}{seed.name}{Colors.RESET} (LTI: {seed.lti:.2f})")
 
     # Boost attention on seed
-    agent.boost_attention(seed.id, amount=0.5)
+    agent.graph.stimulate(seed.id, amount=0.5)
 
     # Run a few steps
     print_subheader("Agent Steps")
     for step in range(5):
         agent.step()
 
-        # Show working memory
-        wm_ids = list(agent.working_memory._items.keys())
-        wm_names = []
-        for atom_id in wm_ids[:5]:
-            atom = agent.graph.get_atom(atom_id)
-            if atom and atom.name:
-                wm_names.append(atom.name)
+        # Show working memory (uses contents() method)
+        wm_atoms = agent.working_memory.contents()
+        wm_names = [a.name for a in wm_atoms if a.name][:5]
 
         print(f"\n  {Colors.BOLD}Step {step + 1}{Colors.RESET}")
         print(f"    Working memory: {Colors.YELLOW}{', '.join(wm_names) or '(empty)'}{Colors.RESET}")
-        print(f"    Exploration epsilon: {Colors.DIM}{agent.epsilon:.3f}{Colors.RESET}")
+        print(f"    Exploration epsilon: {Colors.DIM}{agent.exploration.epsilon:.3f}{Colors.RESET}")
 
         if verbose:
             # Show top attention atoms
-            top_atoms = agent.get_top_attention(n=3)
+            top_atoms = agent.graph.get_attention_focus(top_k=3)
             print(f"    Top attention:")
-            for atom, sti in top_atoms:
+            for atom in top_atoms:
                 name = atom.name or f"[link:{atom.id[:4]}]"
-                print(f"      - {name}: {Colors.GREEN}{sti:.3f}{Colors.RESET}")
+                print(f"      - {name}: {Colors.GREEN}{atom.sti:.3f}{Colors.RESET}")
 
 
 def demo_query_connections(agent: CognitiveAgent, query_word: str = None):
@@ -320,18 +473,52 @@ def demo_query_connections(agent: CognitiveAgent, query_word: str = None):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Load samples into CognitiveAgent")
+    parser = argparse.ArgumentParser(
+        description="Load samples into CognitiveAgent with incremental training support",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  Quick demo:           python examples/load_samples_demo.py
+  Incremental:          python examples/load_samples_demo.py -i --max-files 10
+  Train and save:       python examples/load_samples_demo.py --max-files 20 -s
+  Fast iteration:       python examples/load_samples_demo.py --max-links 50 --window-size 2
+        """,
+    )
+
+    # Basic options
     parser.add_argument("--max-files", type=int, default=5,
-                        help="Maximum number of files to process")
+                        help="Maximum number of files to process (default: 5)")
     parser.add_argument("--verbose", "-v", action="store_true",
                         help="Show more details")
     parser.add_argument("--samples-dir", type=str, default=None,
                         help="Path to samples directory")
     parser.add_argument("--query", type=str, default=None,
                         help="Word to query connections for")
+
+    # Incremental training options
+    parser.add_argument("--incremental", "-i", action="store_true",
+                        help="Load existing model and add new documents incrementally")
+    parser.add_argument("--model-path", type=str, default=None,
+                        help=f"Model directory (default: {DEFAULT_MODEL_DIR})")
+    parser.add_argument("--save", "-s", action="store_true",
+                        help="Save model after training")
+
+    # Performance tuning (defaults optimized for speed)
+    parser.add_argument("--max-links", type=int, default=100,
+                        help="Max links per document (default: 100, lower=faster)")
+    parser.add_argument("--window-size", type=int, default=3,
+                        help="Co-occurrence window size (default: 3, lower=faster)")
+
+    # Skip phases
+    parser.add_argument("--skip-explore", action="store_true",
+                        help="Skip agent exploration phase")
+    parser.add_argument("--skip-query", action="store_true",
+                        help="Skip query phase")
+
     args = parser.parse_args()
 
-    # Find samples directory
+    # Resolve paths
+    model_dir = Path(args.model_path) if args.model_path else DEFAULT_MODEL_DIR
     if args.samples_dir:
         samples_dir = Path(args.samples_dir)
     else:
@@ -344,23 +531,53 @@ def main():
     print_header("CognitiveAgent Text Loading Demo")
     print(f"{Colors.DIM}Samples directory: {samples_dir}{Colors.RESET}")
     print(f"{Colors.DIM}Max files: {args.max_files}{Colors.RESET}")
+    print(f"{Colors.DIM}Max links/doc: {args.max_links}, Window: {args.window_size}{Colors.RESET}")
 
-    # Phase 1: Demonstrate tokenizer learning
-    tokenizer = demo_tokenizer_learning(samples_dir, args.max_files, args.verbose)
+    # Load or create agent
+    existing_tokenizer = None
+    if args.incremental and model_dir.exists() and (model_dir / "graph.json").exists():
+        print_subheader("Loading Existing Model (Incremental Mode)")
+        try:
+            agent, existing_tokenizer = load_model(model_dir)
+            print(f"  {Colors.GREEN}Existing model loaded, will add new documents{Colors.RESET}")
+        except Exception as e:
+            print(f"  {Colors.RED}Failed to load model: {e}{Colors.RESET}")
+            print(f"  {Colors.YELLOW}Starting fresh instead{Colors.RESET}")
+            agent = CognitiveAgent()
+    else:
+        if args.incremental:
+            print(f"{Colors.YELLOW}No existing model found, starting fresh{Colors.RESET}")
+        print_subheader("Creating CognitiveAgent")
+        agent = CognitiveAgent()
+        print(f"  {Colors.GREEN}Agent created with empty graph{Colors.RESET}")
 
-    # Create agent
-    print_subheader("Creating CognitiveAgent")
-    agent = CognitiveAgent()
-    print(f"  {Colors.GREEN}Agent created with empty graph{Colors.RESET}")
+    # Phase 1: Tokenizer learning (skip if incremental with existing tokenizer)
+    if existing_tokenizer and args.incremental:
+        print_subheader("Using Existing Tokenizer")
+        print(f"  {Colors.DIM}Vocabulary: {len(existing_tokenizer.vocab)} words{Colors.RESET}")
+        tokenizer = existing_tokenizer
+    else:
+        tokenizer = demo_tokenizer_learning(samples_dir, args.max_files, args.verbose)
 
     # Phase 2: Text to atoms
-    bridge = demo_text_to_atoms(agent, samples_dir, args.max_files, args.verbose)
+    bridge = demo_text_to_atoms(
+        agent,
+        samples_dir,
+        max_files=args.max_files,
+        max_links=args.max_links,
+        window_size=args.window_size,
+        verbose=args.verbose,
+        existing_tokenizer=tokenizer,
+        incremental=args.incremental,
+    )
 
-    # Phase 3: Agent exploration
-    demo_agent_exploration(agent, args.verbose)
+    # Phase 3: Agent exploration (optional)
+    if not args.skip_explore:
+        demo_agent_exploration(agent, args.verbose)
 
-    # Phase 4: Query connections
-    demo_query_connections(agent, args.query)
+    # Phase 4: Query connections (optional)
+    if not args.skip_query:
+        demo_query_connections(agent, args.query)
 
     # Summary
     print_header("Summary")
@@ -368,11 +585,20 @@ def main():
     print(f"    - {len(agent.graph._storage.all_atoms())} atoms in knowledge graph")
     print(f"    - {len(agent.graph.find_by_type(AtomType.WORD))} WORD atoms")
     print(f"    - {len(agent.graph.find_by_type(AtomType.SIMILARITY))} SIMILARITY links")
+
+    # Save if requested
+    if args.save:
+        print_subheader("Saving Model")
+        save_model(agent, tokenizer, bridge, model_dir)
+
     print(f"\n  {Colors.DIM}The agent can now:{Colors.RESET}")
     print(f"    - Navigate between related concepts")
     print(f"    - Learn from surprise (prediction errors)")
     print(f"    - Build working memory of active concepts")
     print(f"    - Explore when stuck on a goal")
+
+    if not args.save:
+        print(f"\n  {Colors.DIM}Tip: Use --save to persist the trained model{Colors.RESET}")
 
     print(f"\n{Colors.GREEN}Demo complete!{Colors.RESET}")
 
