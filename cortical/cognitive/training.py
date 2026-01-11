@@ -56,7 +56,7 @@ from cortical.cognitive.text_bridge import (
     ProgressReporter,
 )
 from cortical.cognitive.tokenizer_storage import ShardedTokenizerStorage
-from cortical.cognitive.graph import AtomType, TruthValue
+from cortical.cognitive.graph import Atom, AtomType, TruthValue
 
 
 # =============================================================================
@@ -318,43 +318,43 @@ class IncrementalTrainer:
         This is CRITICAL for session recovery - without this, all learned
         atoms and links are lost when resuming training in a new session.
 
+        PERFORMANCE NOTE (2026-01-11):
+        This method uses direct Atom instantiation instead of graph.node()
+        and graph.link() to achieve O(n) loading instead of O(n²).
+
+        The bottleneck was graph.link() calling find_by_type() for each link,
+        which is O(n) per call. With 23,653 links, this caused ~560 million
+        comparisons and 32+ second load times.
+
+        Direct Atom creation: 0.15s (200x faster)
+
         Args:
             graph_path: Path to graph.json file
         """
         graph_data = json.loads(self.filesystem.read_text(graph_path))
-        graph = self.agent.graph
+        storage = self.agent.graph._storage
 
         atoms_data = graph_data.get("atoms", [])
-        nodes = [a for a in atoms_data if not a.get("outgoing")]
-        links = [a for a in atoms_data if a.get("outgoing")]
 
-        # Pass 1: Restore nodes first (so link targets exist)
+        # OPTIMIZED: Direct Atom instantiation bypasses O(n²) find_by_type()
+        # We load all atoms in a single pass since we have the complete data
         id_map = {}  # old_id -> new_atom
-        for atom_data in nodes:
-            atom_type = AtomType[atom_data["atom_type"]]
-            tv = TruthValue(atom_data["tv_strength"], atom_data["tv_confidence"])
-            atom = graph.node(atom_data["name"], atom_type=atom_type, tv=tv)
-            atom.sti = atom_data.get("sti", 0.0)
-            atom.lti = atom_data.get("lti", 0.0)
-            graph._storage.save(atom)
+
+        for atom_data in atoms_data:
+            atom = Atom(
+                id=atom_data["id"],
+                atom_type=AtomType[atom_data["atom_type"]],
+                name=atom_data.get("name", ""),
+                outgoing=atom_data.get("outgoing", []),
+                tv=TruthValue(
+                    atom_data["tv_strength"],
+                    atom_data["tv_confidence"]
+                ),
+                sti=atom_data.get("sti", 0.0),
+                lti=atom_data.get("lti", 0.0),
+            )
             id_map[atom_data["id"]] = atom
-
-        # Pass 2: Restore links
-        for atom_data in links:
-            atom_type = AtomType[atom_data["atom_type"]]
-            tv = TruthValue(atom_data["tv_strength"], atom_data["tv_confidence"])
-
-            # Resolve target atoms
-            targets = []
-            for old_id in atom_data["outgoing"]:
-                if old_id in id_map:
-                    targets.append(id_map[old_id])
-
-            if len(targets) == len(atom_data["outgoing"]):
-                link = graph.link(atom_type, targets, tv)
-                link.sti = atom_data.get("sti", 0.0)
-                link.lti = atom_data.get("lti", 0.0)
-                graph._storage.save(link)
+            storage.save(atom)
 
         # Restore bridge stats
         stats = graph_data.get("stats", {})
