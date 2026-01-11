@@ -663,6 +663,75 @@ class TextToAtomsBridge:
         from cortical.cognitive.graph import AtomType
         return self.graph.find_by_type(AtomType.SIMILARITY)
 
+    def reindex_idf(self) -> Dict[str, Any]:
+        """
+        Recalculate idf_strength for all SIMILARITY links using current IDF values.
+
+        This should be called after incremental training to update stale link
+        weights. Links created before vocabulary updates will have idf_strength
+        computed with old IDF values - this method fixes that.
+
+        Performance: O(L) where L = number of SIMILARITY links.
+        Each link requires 2 atom lookups (O(1) with hash storage) and
+        2 IDF lookups (O(1) dict access).
+
+        Returns:
+            Dict with reindex statistics:
+                - links_updated: Number of links processed
+                - time_ms: Time taken in milliseconds
+                - new_epoch: The new IDF epoch number
+        """
+        import time
+        from cortical.cognitive.graph import AtomType
+
+        start = time.perf_counter()
+
+        # Increment epoch counter
+        if not hasattr(self, '_idf_epoch'):
+            self._idf_epoch = 0
+        self._idf_epoch += 1
+        new_epoch = self._idf_epoch
+
+        storage = self.graph._storage
+        links = storage.find_by_type(AtomType.SIMILARITY)
+        links_updated = 0
+
+        for link in links:
+            # Get the two connected word atoms
+            if len(link.outgoing) != 2:
+                continue
+
+            atom1 = storage.load(link.outgoing[0])
+            atom2 = storage.load(link.outgoing[1])
+
+            if not atom1 or not atom2:
+                continue
+
+            # Get current IDF values
+            idf1 = self.tokenizer.get_idf(atom1.name) if atom1.name else 0.0
+            idf2 = self.tokenizer.get_idf(atom2.name) if atom2.name else 0.0
+
+            # Recalculate idf_strength using raw_strength from metadata or tv.strength
+            raw = link.metadata.get('raw_strength', link.tv.strength)
+            link.metadata['idf_strength'] = raw * min(idf1, idf2)
+            link.metadata['idf_epoch'] = new_epoch
+
+            # Persist updated link
+            storage.save(link)
+            links_updated += 1
+
+        elapsed_ms = (time.perf_counter() - start) * 1000
+
+        return {
+            'links_updated': links_updated,
+            'time_ms': round(elapsed_ms, 2),
+            'new_epoch': new_epoch,
+        }
+
+    def get_idf_epoch(self) -> int:
+        """Return current IDF epoch number."""
+        return getattr(self, '_idf_epoch', 0)
+
     def add_documents(
         self,
         texts: List[str],
