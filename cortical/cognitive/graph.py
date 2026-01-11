@@ -2102,9 +2102,17 @@ class CognitiveAgent:
 
             associations.append(Association(word=other_atom.name, weight=weight))
 
-        # Sort by weight descending
-        associations.sort(key=lambda a: a.weight, reverse=True)
-        return associations[:top_k]
+        # Deduplicate by word, keeping highest weight
+        # (Multiple links to same word can exist from bidirectional creation)
+        best_by_word: Dict[str, float] = {}
+        for assoc in associations:
+            if assoc.word not in best_by_word or assoc.weight > best_by_word[assoc.word]:
+                best_by_word[assoc.word] = assoc.weight
+
+        # Convert back to sorted list
+        deduped = [Association(word=w, weight=wt) for w, wt in best_by_word.items()]
+        deduped.sort(key=lambda a: a.weight, reverse=True)
+        return deduped[:top_k]
 
     # =========================================================================
     # Persistence (JSON-based for security and git-friendliness)
