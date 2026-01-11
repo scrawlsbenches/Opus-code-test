@@ -580,7 +580,7 @@ class IncrementalTrainer:
         cls,
         model_dir: str | Path,
         filesystem: FileSystem,
-        agent: Optional['CognitiveAgent'] = None,
+        agent: 'CognitiveAgent',
     ) -> 'IncrementalTrainer':
         """
         Load a previously trained model.
@@ -588,17 +588,12 @@ class IncrementalTrainer:
         Args:
             model_dir: Directory containing saved model
             filesystem: FileSystem for I/O operations
-            agent: CognitiveAgent to load into (creates new if None)
+            agent: CognitiveAgent to load into
 
         Returns:
             IncrementalTrainer with loaded state
         """
-        from cortical.cognitive.graph import CognitiveAgent
-
         model_dir = Path(model_dir)
-
-        if agent is None:
-            agent = CognitiveAgent()
 
         trainer = cls(agent, model_dir, filesystem)
 

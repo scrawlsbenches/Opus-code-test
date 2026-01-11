@@ -1,11 +1,33 @@
 """
-Developer Trains Cognitive Agent Incrementally
+=============================================================================
+SPECIFICATION: Developer Trains Cognitive Agent Incrementally
+=============================================================================
 
-Epic: Incremental Learning for Cognitive Systems
+OVERVIEW
+--------
+This specification defines how developers train CognitiveAgents on text
+documents. The training system supports incremental updates, detecting new
+and modified files automatically.
 
-As a developer training a CognitiveAgent,
-I want to incrementally train on new documents without reprocessing existing ones,
-So that I can efficiently update the agent's knowledge as new content becomes available.
+CORE REQUIREMENTS
+-----------------
+1. FileSystem is REQUIRED - enables testability and abstraction
+2. CognitiveAgent is REQUIRED - the agent being trained
+3. Training is incremental - only new/modified documents are processed
+4. Content-hash based detection - file modification time is irrelevant
+
+DEPENDENCIES
+------------
+- CognitiveAgent: The agent to train (must be provided by caller)
+- FileSystem: I/O abstraction (RealFileSystem for disk, InMemoryFileSystem for tests)
+- IncrementalTrainer: Orchestrates training with manifest tracking
+
+USAGE EXAMPLE
+-------------
+    fs = RealFileSystem(base_path)
+    agent = CognitiveAgent(filesystem=fs)
+    trainer = IncrementalTrainer(agent, model_dir, fs)
+    stats = trainer.train_directory("samples/")
 """
 
 import pytest
@@ -14,13 +36,24 @@ from pathlib import Path
 from cortical.common.filesystem import RealFileSystem
 
 
+# =============================================================================
+# EPIC: Initial Training and Knowledge Acquisition
+# =============================================================================
+
 class TestDeveloperTrainsOnNewDocuments:
     """
-    Epic: Initial Training and Knowledge Acquisition
+    EPIC: Initial Training and Knowledge Acquisition
+    ================================================
 
-    As a developer with a corpus of training documents,
-    I want to train my CognitiveAgent on text files,
-    So that it learns vocabulary and word associations from the content.
+    PERSONA: Developer with a corpus of training documents
+    GOAL: Train CognitiveAgent on text files
+    VALUE: Agent learns vocabulary and word associations from content
+
+    ACCEPTANCE CRITERIA:
+    - Training creates atoms for vocabulary words
+    - Training creates links for co-occurring words
+    - Statistics accurately reflect what was learned
+    - Specific files can be selected for training
     """
 
     def test_scenario_training_on_documents_creates_knowledge(self, tmp_path):
@@ -107,13 +140,23 @@ class TestDeveloperTrainsOnNewDocuments:
         assert "skip_me.txt" not in trained_docs
 
 
+# =============================================================================
+# EPIC: Efficient Incremental Updates
+# =============================================================================
+
 class TestDeveloperSkipsAlreadyTrainedDocuments:
     """
-    Epic: Efficient Incremental Updates
+    EPIC: Efficient Incremental Updates
+    ====================================
 
-    As a developer updating an agent's knowledge,
-    I want already-trained documents to be skipped,
-    So that I don't waste time reprocessing unchanged content.
+    PERSONA: Developer updating an agent's knowledge
+    GOAL: Skip already-trained documents automatically
+    VALUE: No wasted time reprocessing unchanged content
+
+    ACCEPTANCE CRITERIA:
+    - Unchanged documents are skipped on retrain
+    - New documents added to directory are detected
+    - Statistics show skipped vs. processed counts
     """
 
     def test_scenario_retraining_skips_unchanged_documents(self, tmp_path):
@@ -188,13 +231,22 @@ class TestDeveloperSkipsAlreadyTrainedDocuments:
         assert stats.skipped_documents == 1
 
 
+# =============================================================================
+# EPIC: Change Detection for Updated Content
+# =============================================================================
+
 class TestDeveloperHandlesModifiedDocuments:
     """
-    Epic: Change Detection for Updated Content
+    EPIC: Change Detection for Updated Content
+    ==========================================
 
-    As a developer maintaining training content,
-    I want modified documents to be retrained,
-    So that the agent learns from updated information.
+    PERSONA: Developer maintaining training content
+    GOAL: Modified documents are automatically retrained
+    VALUE: Agent learns from updated information without manual tracking
+
+    IMPLEMENTATION NOTE:
+    Detection uses content SHA256 hash, NOT file modification time.
+    This means touching a file without changing content will NOT retrain.
     """
 
     def test_scenario_modified_document_is_retrained(self, tmp_path):
@@ -271,13 +323,23 @@ class TestDeveloperHandlesModifiedDocuments:
         assert stats.modified_documents == 0
 
 
+# =============================================================================
+# EPIC: Training State Persistence
+# =============================================================================
+
 class TestDeveloperPersistsTrainingState:
     """
-    Epic: Training State Persistence
+    EPIC: Training State Persistence
+    =================================
 
-    As a developer with long-running training processes,
-    I want training state to persist across sessions,
-    So that I can resume training without starting over.
+    PERSONA: Developer with long-running training processes
+    GOAL: Training state persists across sessions
+    VALUE: Resume training without starting over
+
+    PERSISTED STATE:
+    - Training manifest (which documents trained, content hashes)
+    - Tokenizer vocabulary
+    - Training statistics and metadata
     """
 
     def test_scenario_training_state_persists_across_sessions(self, tmp_path):
@@ -354,13 +416,18 @@ class TestDeveloperPersistsTrainingState:
         assert status["last_training"] is not None
 
 
+# =============================================================================
+# EPIC: Manual Training Control
+# =============================================================================
+
 class TestDeveloperForcesRetraining:
     """
-    Epic: Manual Training Control
+    EPIC: Manual Training Control
+    ==============================
 
-    As a developer debugging training issues,
-    I want to force retraining of all documents,
-    So that I can rebuild knowledge from scratch when needed.
+    PERSONA: Developer debugging training issues
+    GOAL: Force retraining of all documents when needed
+    VALUE: Rebuild knowledge from scratch for debugging/recovery
     """
 
     def test_scenario_force_retrain_processes_all_documents(self, tmp_path):
@@ -397,13 +464,18 @@ class TestDeveloperForcesRetraining:
         assert stats.links_created > 0
 
 
+# =============================================================================
+# EPIC: Training Visibility and Auditing
+# =============================================================================
+
 class TestDeveloperListsTrainedDocuments:
     """
-    Epic: Training Visibility and Auditing
+    EPIC: Training Visibility and Auditing
+    =======================================
 
-    As a developer auditing training coverage,
-    I want to list all trained documents,
-    So that I can verify what knowledge the agent has acquired.
+    PERSONA: Developer auditing training coverage
+    GOAL: List all trained documents
+    VALUE: Verify what knowledge the agent has acquired
     """
 
     def test_scenario_listing_trained_documents(self, tmp_path):
@@ -443,13 +515,18 @@ class TestDeveloperListsTrainedDocuments:
         assert trained == sorted(trained)
 
 
+# =============================================================================
+# EPIC: Hierarchical Document Organization
+# =============================================================================
+
 class TestDeveloperHandlesSubdirectories:
     """
-    Epic: Hierarchical Document Organization
+    EPIC: Hierarchical Document Organization
+    =========================================
 
-    As a developer with organized document directories,
-    I want training to handle subdirectories,
-    So that I can organize training content hierarchically.
+    PERSONA: Developer with organized document directories
+    GOAL: Training handles subdirectories recursively
+    VALUE: Organize training content hierarchically
     """
 
     def test_scenario_recursive_training_finds_nested_documents(self, tmp_path):
@@ -494,13 +571,23 @@ class TestDeveloperHandlesSubdirectories:
         assert any("category2" in p for p in trained)
 
 
+# =============================================================================
+# EPIC: Graceful Error Handling
+# =============================================================================
+
 class TestDeveloperHandlesEmptyAndMissingCases:
     """
-    Epic: Graceful Error Handling
+    EPIC: Graceful Error Handling
+    ==============================
 
-    As a developer working with various directory states,
-    I want training to handle edge cases gracefully,
-    So that I don't encounter unexpected crashes.
+    PERSONA: Developer working with various directory states
+    GOAL: Training handles edge cases gracefully
+    VALUE: No unexpected crashes from unusual inputs
+
+    EDGE CASES HANDLED:
+    - Empty directories
+    - No matching files for pattern
+    - Missing directories (should error clearly)
     """
 
     def test_scenario_training_empty_directory_succeeds(self, tmp_path):
@@ -565,13 +652,24 @@ class TestDeveloperHandlesEmptyAndMissingCases:
         assert stats.total_files_scanned == 0
 
 
+# =============================================================================
+# EPIC: Fast In-Memory Testing
+# =============================================================================
+
 class TestDeveloperUsesInMemoryFileSystem:
     """
-    Epic: Fast In-Memory Testing
+    EPIC: Fast In-Memory Testing
+    =============================
 
-    As a developer writing tests for training workflows,
-    I want to use an in-memory filesystem,
-    So that tests run faster and I can assert on file operations.
+    PERSONA: Developer writing tests for training workflows
+    GOAL: Use in-memory filesystem for testing
+    VALUE: Tests run ~10x faster, can assert on file operations
+
+    TESTING BENEFITS:
+    - No disk I/O latency
+    - Isolated test environments
+    - Operation tracking for assertions
+    - No cleanup needed
     """
 
     def test_scenario_training_with_in_memory_filesystem_is_fast(self):
@@ -708,13 +806,24 @@ class TestDeveloperUsesInMemoryFileSystem:
         assert stats.new_documents == 0
 
 
+# =============================================================================
+# EPIC: Autonomous File System Access
+# =============================================================================
+
 class TestCognitiveAgentWithFileSystem:
     """
-    Epic: Autonomous File System Access
+    EPIC: Autonomous File System Access
+    ====================================
 
-    As a developer building autonomous cognitive agents,
-    I want the CognitiveAgent to have its own FileSystem,
-    So that it can persist state and discover new documents to learn from.
+    PERSONA: Developer building autonomous cognitive agents
+    GOAL: CognitiveAgent owns its FileSystem
+    VALUE: Agent can persist state and discover new documents to learn
+
+    DESIGN PRINCIPLE:
+    The FileSystem is injected through the constructor, enabling:
+    - Autonomous file discovery for learning
+    - State persistence without external coordination
+    - Testability with InMemoryFileSystem
     """
 
     def test_scenario_agent_created_with_filesystem(self):
