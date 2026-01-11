@@ -1162,8 +1162,108 @@ def run_cli_command(command: str, args, container: 'Optional[Container]' = None)
 
         return 0
 
+    if command == "demo":
+        _run_demo(trainer)
+        return 0
+
     print(f"Unknown command: {command}")
     return 1
+
+
+def _run_demo(trainer: IncrementalTrainer) -> None:
+    """
+    Interactive demo showcasing CognitiveAgent capabilities.
+
+    Demonstrates:
+    - Model statistics
+    - Word associations with IDF weighting
+    - Comparison of IDF vs raw weights
+    - Semantic discovery examples
+    """
+    agent = trainer.agent
+    tok = trainer.bridge.tokenizer
+
+    # Header
+    print()
+    print("=" * 70)
+    print("        COGNITIVE AGENT DEMO - Semantic Knowledge Graph")
+    print("=" * 70)
+    print()
+
+    # Model statistics
+    print("MODEL STATISTICS")
+    print("-" * 40)
+    status = trainer.status()
+    print(f"  Documents trained:  {status['total_documents_trained']}")
+    print(f"  Vocabulary size:    {status['vocabulary_size']}")
+    print(f"  Total docs (IDF):   {tok._total_docs}")
+    print(f"  Last training:      {status['last_training'][:10] if status['last_training'] else 'Never'}")
+    print()
+
+    # Demo queries
+    demo_words = ["neural", "machine", "data", "algorithm", "learning"]
+
+    print("WORD ASSOCIATIONS (IDF-weighted)")
+    print("-" * 40)
+    print("IDF (Inverse Document Frequency) down-weights common words,")
+    print("highlighting semantically meaningful associations.")
+    print()
+
+    for word in demo_words:
+        associations = agent.get_associations(word, weight_type="idf", top_k=5)
+        if associations:
+            top_assocs = ", ".join(f"{a.word}({a.weight:.2f})" for a in associations[:3])
+            print(f"  {word:<12} -> {top_assocs}")
+        else:
+            print(f"  {word:<12} -> (not in vocabulary)")
+    print()
+
+    # IDF vs Raw comparison
+    print("IDF vs RAW WEIGHT COMPARISON")
+    print("-" * 40)
+    print("Raw weights reflect co-occurrence frequency.")
+    print("IDF weights penalize common terms, surfacing rare connections.")
+    print()
+
+    comparison_word = "neural"
+    idf_assocs = agent.get_associations(comparison_word, weight_type="idf", top_k=5)
+    raw_assocs = agent.get_associations(comparison_word, weight_type="raw", top_k=5)
+
+    if idf_assocs and raw_assocs:
+        print(f"  Associations for '{comparison_word}':")
+        print()
+        print(f"  {'IDF-weighted':<25} {'Raw co-occurrence':<25}")
+        print(f"  {'-'*23:<25} {'-'*23:<25}")
+        for i in range(min(5, len(idf_assocs), len(raw_assocs))):
+            idf_item = f"{idf_assocs[i].word} ({idf_assocs[i].weight:.3f})"
+            raw_item = f"{raw_assocs[i].word} ({raw_assocs[i].weight:.3f})"
+            print(f"  {idf_item:<25} {raw_item:<25}")
+    print()
+
+    # Interesting discoveries
+    print("SEMANTIC DISCOVERIES")
+    print("-" * 40)
+    print("Words that bridge different domains (high connectivity):")
+    print()
+
+    # Find words with many strong associations
+    bridge_words = []
+    for word in list(tok.vocab)[:500]:  # Sample vocabulary
+        assocs = agent.get_associations(word, weight_type="idf", top_k=10)
+        if assocs:
+            avg_weight = sum(a.weight for a in assocs) / len(assocs)
+            if avg_weight > 0.3 and len(assocs) >= 5:
+                bridge_words.append((word, len(assocs), avg_weight))
+
+    bridge_words.sort(key=lambda x: -x[2])
+    for word, num_assocs, avg_weight in bridge_words[:8]:
+        print(f"  {word:<15} {num_assocs:>3} associations, avg weight: {avg_weight:.3f}")
+
+    print()
+    print("=" * 70)
+    print("Try: python -m cortical.cognitive query <word> --top-k 10")
+    print("=" * 70)
+    print()
 
 
 # =============================================================================

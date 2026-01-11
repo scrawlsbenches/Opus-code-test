@@ -159,6 +159,17 @@ def main() -> int:
         help="Output as JSON",
     )
 
+    # Demo command
+    demo_parser = subparsers.add_parser(
+        "demo",
+        help="Interactive demo of CognitiveAgent capabilities"
+    )
+    demo_parser.add_argument(
+        "--model-dir",
+        default="models/cognitive_agent",
+        help="Directory for model storage",
+    )
+
     args = parser.parse_args()
 
     if args.command is None:
