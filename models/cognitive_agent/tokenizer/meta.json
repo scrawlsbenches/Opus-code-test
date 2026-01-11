@@ -413,5 +413,6 @@
     "vocab_zo.json"
   ],
   "min_frequency": 2,
-  "max_vocab_size": 10000
+  "max_vocab_size": 10000,
+  "total_docs": 525
 }
