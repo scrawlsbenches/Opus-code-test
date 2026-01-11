@@ -152,7 +152,7 @@ class TrainingManifest:
                 untrained.append((path, content))
         return untrained
 
-    def save(self, path: Path, filesystem: Optional[FileSystem] = None) -> None:
+    def save(self, path: Path, filesystem: FileSystem) -> None:
         """Save manifest to JSON file."""
         data = {
             "model_version": self.model_version,
@@ -164,22 +164,14 @@ class TrainingManifest:
             },
         }
         content = json.dumps(data, indent=2)
-        if filesystem:
-            filesystem.write_text(path, content)
-        else:
-            path.write_text(content)
+        filesystem.write_text(path, content)
 
     @classmethod
-    def load(cls, path: Path, filesystem: Optional[FileSystem] = None) -> 'TrainingManifest':
+    def load(cls, path: Path, filesystem: FileSystem) -> 'TrainingManifest':
         """Load manifest from JSON file."""
-        if filesystem:
-            if not filesystem.exists(path):
-                return cls()
-            data = json.loads(filesystem.read_text(path))
-        else:
-            if not path.exists():
-                return cls()
-            data = json.loads(path.read_text())
+        if not filesystem.exists(path):
+            return cls()
+        data = json.loads(filesystem.read_text(path))
 
         manifest = cls(
             last_training=data.get("last_training"),
@@ -276,8 +268,8 @@ class IncrementalTrainer:
     def __init__(
         self,
         agent: 'CognitiveAgent',
-        model_dir: str | Path = "models/cognitive_agent",
-        filesystem: Optional[FileSystem] = None,
+        model_dir: str | Path,
+        filesystem: FileSystem,
     ):
         """
         Initialize trainer.
@@ -285,16 +277,11 @@ class IncrementalTrainer:
         Args:
             agent: CognitiveAgent to train
             model_dir: Directory for model persistence
-            filesystem: Optional FileSystem for I/O (defaults to RealFileSystem)
+            filesystem: FileSystem for I/O operations
         """
         self.agent = agent
         self.model_dir = Path(model_dir)
-
-        # Use provided filesystem or create real one
-        if filesystem is None:
-            self.filesystem: FileSystem = RealFileSystem(self.model_dir)
-        else:
-            self.filesystem = filesystem
+        self.filesystem = filesystem
 
         # Create model directory
         self.filesystem.mkdir(self.model_dir, parents=True, exist_ok=True)
@@ -592,16 +579,16 @@ class IncrementalTrainer:
     def load(
         cls,
         model_dir: str | Path,
+        filesystem: FileSystem,
         agent: Optional['CognitiveAgent'] = None,
-        filesystem: Optional[FileSystem] = None,
     ) -> 'IncrementalTrainer':
         """
         Load a previously trained model.
 
         Args:
             model_dir: Directory containing saved model
+            filesystem: FileSystem for I/O operations
             agent: CognitiveAgent to load into (creates new if None)
-            filesystem: Optional FileSystem for I/O
 
         Returns:
             IncrementalTrainer with loaded state
@@ -613,14 +600,14 @@ class IncrementalTrainer:
         if agent is None:
             agent = CognitiveAgent()
 
-        trainer = cls(agent, model_dir, filesystem=filesystem)
+        trainer = cls(agent, model_dir, filesystem)
 
         # Load bridge with graph if exists
         bridge_dir = model_dir / "bridge"
         if trainer.filesystem.exists(bridge_dir):
             graph_path = bridge_dir / "graph.json"
             if trainer.filesystem.exists(graph_path):
-                trainer.bridge = TextToAtomsBridge.load(bridge_dir, agent.graph)
+                trainer.bridge = TextToAtomsBridge.load(bridge_dir, agent.graph, filesystem)
 
         return trainer
 
@@ -717,8 +704,12 @@ Examples:
     # Import here to avoid circular imports at module level
     from cortical.cognitive.graph import CognitiveAgent
 
-    agent = CognitiveAgent()
-    trainer = IncrementalTrainer(agent, args.model_dir)
+    # Create filesystem for real I/O
+    model_dir = Path(args.model_dir)
+    filesystem = RealFileSystem(model_dir)
+
+    agent = CognitiveAgent(filesystem=filesystem)
+    trainer = IncrementalTrainer(agent, model_dir, filesystem)
 
     if args.status:
         status = trainer.status()

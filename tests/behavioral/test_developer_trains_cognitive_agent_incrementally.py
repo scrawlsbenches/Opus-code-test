@@ -11,6 +11,8 @@ So that I can efficiently update the agent's knowledge as new content becomes av
 import pytest
 from pathlib import Path
 
+from cortical.common.filesystem import RealFileSystem
+
 
 class TestDeveloperTrainsOnNewDocuments:
     """
@@ -36,8 +38,9 @@ class TestDeveloperTrainsOnNewDocuments:
         from cortical.cognitive import CognitiveAgent, IncrementalTrainer
 
         # Given I have a CognitiveAgent with no prior training
-        agent = CognitiveAgent()
-        trainer = IncrementalTrainer(agent, model_dir=tmp_path / "model")
+        fs = RealFileSystem(tmp_path)
+        agent = CognitiveAgent(filesystem=fs)
+        trainer = IncrementalTrainer(agent, model_dir=tmp_path / "model", filesystem=fs)
 
         # And I have text documents to train on
         docs_dir = tmp_path / "docs"
@@ -83,8 +86,9 @@ class TestDeveloperTrainsOnNewDocuments:
         (docs_dir / "also_important.txt").write_text("More critical system knowledge.")
 
         # And I only want to train on some of them
-        agent = CognitiveAgent()
-        trainer = IncrementalTrainer(agent, model_dir=tmp_path / "model")
+        fs = RealFileSystem(tmp_path)
+        agent = CognitiveAgent(filesystem=fs)
+        trainer = IncrementalTrainer(agent, model_dir=tmp_path / "model", filesystem=fs)
 
         # When I train on specific files
         stats = trainer.train_files(
@@ -130,8 +134,9 @@ class TestDeveloperSkipsAlreadyTrainedDocuments:
         (docs_dir / "doc1.txt").write_text("Cognitive systems process information.")
         (docs_dir / "doc2.txt").write_text("Information processing enables learning.")
 
-        agent = CognitiveAgent()
-        trainer = IncrementalTrainer(agent, model_dir=tmp_path / "model")
+        fs = RealFileSystem(tmp_path)
+        agent = CognitiveAgent(filesystem=fs)
+        trainer = IncrementalTrainer(agent, model_dir=tmp_path / "model", filesystem=fs)
         first_stats = trainer.train_directory(docs_dir, show_progress=False)
 
         # When I run training again on the same directory
@@ -163,8 +168,9 @@ class TestDeveloperSkipsAlreadyTrainedDocuments:
         docs_dir.mkdir()
         (docs_dir / "original.txt").write_text("Original content for training.")
 
-        agent = CognitiveAgent()
-        trainer = IncrementalTrainer(agent, model_dir=tmp_path / "model")
+        fs = RealFileSystem(tmp_path)
+        agent = CognitiveAgent(filesystem=fs)
+        trainer = IncrementalTrainer(agent, model_dir=tmp_path / "model", filesystem=fs)
         trainer.train_directory(docs_dir, show_progress=False)
 
         # And I add new documents to the directory
@@ -210,8 +216,9 @@ class TestDeveloperHandlesModifiedDocuments:
         doc_path = docs_dir / "evolving.txt"
         doc_path.write_text("Initial content about machine learning.")
 
-        agent = CognitiveAgent()
-        trainer = IncrementalTrainer(agent, model_dir=tmp_path / "model")
+        fs = RealFileSystem(tmp_path)
+        agent = CognitiveAgent(filesystem=fs)
+        trainer = IncrementalTrainer(agent, model_dir=tmp_path / "model", filesystem=fs)
         trainer.train_directory(docs_dir, show_progress=False)
 
         # And I modify the content of that document
@@ -247,8 +254,9 @@ class TestDeveloperHandlesModifiedDocuments:
         original_content = "This content will remain unchanged."
         doc_path.write_text(original_content)
 
-        agent = CognitiveAgent()
-        trainer = IncrementalTrainer(agent, model_dir=tmp_path / "model")
+        fs = RealFileSystem(tmp_path)
+        agent = CognitiveAgent(filesystem=fs)
+        trainer = IncrementalTrainer(agent, model_dir=tmp_path / "model", filesystem=fs)
         trainer.train_directory(docs_dir, show_progress=False)
 
         # And I touch the file without changing its content
@@ -291,15 +299,16 @@ class TestDeveloperPersistsTrainingState:
         (docs_dir / "persistent.txt").write_text("Content that persists across sessions.")
 
         model_dir = tmp_path / "model"
-        agent1 = CognitiveAgent()
-        trainer1 = IncrementalTrainer(agent1, model_dir=model_dir)
+        fs = RealFileSystem(tmp_path)
+        agent1 = CognitiveAgent(filesystem=fs)
+        trainer1 = IncrementalTrainer(agent1, model_dir=model_dir, filesystem=fs)
         trainer1.train_directory(docs_dir, show_progress=False)
 
         # And I start a new session with a fresh agent
-        agent2 = CognitiveAgent()
+        agent2 = CognitiveAgent(filesystem=fs)
 
         # When I load the trainer from the saved state
-        trainer2 = IncrementalTrainer(agent2, model_dir=model_dir)
+        trainer2 = IncrementalTrainer(agent2, model_dir=model_dir, filesystem=fs)
 
         # And I run training on the same directory
         stats = trainer2.train_directory(docs_dir, show_progress=False)
@@ -327,8 +336,9 @@ class TestDeveloperPersistsTrainingState:
         (docs_dir / "doc1.txt").write_text("First document for training.")
         (docs_dir / "doc2.txt").write_text("Second document for training.")
 
-        agent = CognitiveAgent()
-        trainer = IncrementalTrainer(agent, model_dir=tmp_path / "model")
+        fs = RealFileSystem(tmp_path)
+        agent = CognitiveAgent(filesystem=fs)
+        trainer = IncrementalTrainer(agent, model_dir=tmp_path / "model", filesystem=fs)
         trainer.train_directory(docs_dir, show_progress=False)
 
         # When I check the training status
@@ -371,8 +381,9 @@ class TestDeveloperForcesRetraining:
         (docs_dir / "doc1.txt").write_text("Content to be retrained.")
         (docs_dir / "doc2.txt").write_text("More content to be retrained.")
 
-        agent = CognitiveAgent()
-        trainer = IncrementalTrainer(agent, model_dir=tmp_path / "model")
+        fs = RealFileSystem(tmp_path)
+        agent = CognitiveAgent(filesystem=fs)
+        trainer = IncrementalTrainer(agent, model_dir=tmp_path / "model", filesystem=fs)
         trainer.train_directory(docs_dir, show_progress=False)
 
         # When I run training with force_retrain=True
@@ -414,8 +425,9 @@ class TestDeveloperListsTrainedDocuments:
         (docs_dir / "alpha.txt").write_text("Alpha content.")
         (docs_dir / "middle.txt").write_text("Middle content.")
 
-        agent = CognitiveAgent()
-        trainer = IncrementalTrainer(agent, model_dir=tmp_path / "model")
+        fs = RealFileSystem(tmp_path)
+        agent = CognitiveAgent(filesystem=fs)
+        trainer = IncrementalTrainer(agent, model_dir=tmp_path / "model", filesystem=fs)
         trainer.train_directory(docs_dir, show_progress=False)
 
         # When I list the trained documents
@@ -465,8 +477,9 @@ class TestDeveloperHandlesSubdirectories:
         sub2.mkdir()
         (sub2 / "nested2.txt").write_text("Nested in category2.")
 
-        agent = CognitiveAgent()
-        trainer = IncrementalTrainer(agent, model_dir=tmp_path / "model")
+        fs = RealFileSystem(tmp_path)
+        agent = CognitiveAgent(filesystem=fs)
+        trainer = IncrementalTrainer(agent, model_dir=tmp_path / "model", filesystem=fs)
 
         # When I train with recursive=True (default)
         stats = trainer.train_directory(docs_dir, show_progress=False)
@@ -506,8 +519,9 @@ class TestDeveloperHandlesEmptyAndMissingCases:
         docs_dir = tmp_path / "empty"
         docs_dir.mkdir()
 
-        agent = CognitiveAgent()
-        trainer = IncrementalTrainer(agent, model_dir=tmp_path / "model")
+        fs = RealFileSystem(tmp_path)
+        agent = CognitiveAgent(filesystem=fs)
+        trainer = IncrementalTrainer(agent, model_dir=tmp_path / "model", filesystem=fs)
 
         # When I run training on it
         stats = trainer.train_directory(docs_dir, show_progress=False)
@@ -537,8 +551,9 @@ class TestDeveloperHandlesEmptyAndMissingCases:
         (docs_dir / "data.json").write_text('{"key": "value"}')
         (docs_dir / "config.yaml").write_text("key: value")
 
-        agent = CognitiveAgent()
-        trainer = IncrementalTrainer(agent, model_dir=tmp_path / "model")
+        fs = RealFileSystem(tmp_path)
+        agent = CognitiveAgent(filesystem=fs)
+        trainer = IncrementalTrainer(agent, model_dir=tmp_path / "model", filesystem=fs)
 
         # When I train with a pattern that matches nothing
         stats = trainer.train_directory(docs_dir, pattern="*.txt", show_progress=False)
