@@ -712,7 +712,7 @@ class TestDeveloperUsesInMemoryFileSystem:
         # And all file operations happen in memory
         # (We can verify by checking the filesystem's internal state)
         assert fs.exists(model_dir / "training_manifest.json")
-        assert fs.exists(model_dir / "tokenizer.json")
+        assert fs.exists(model_dir / "tokenizer" / "meta.json")  # Sharded format
 
     def test_scenario_filesystem_tracks_operations_for_assertions(self):
         """
@@ -755,7 +755,7 @@ class TestDeveloperUsesInMemoryFileSystem:
         # And I can see which files were written
         assert len(fs.files_written) > 0
         fs.assert_file_was_written(model_dir / "training_manifest.json")
-        fs.assert_file_was_written(model_dir / "tokenizer.json")
+        fs.assert_file_was_written(model_dir / "tokenizer" / "meta.json")  # Sharded format
 
         # And I can assert on the operation sequence
         # (The filesystem tracked all operations)

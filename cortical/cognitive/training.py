@@ -55,6 +55,7 @@ from cortical.cognitive.text_bridge import (
     TextToAtomsBridge,
     ProgressReporter,
 )
+from cortical.cognitive.tokenizer_storage import ShardedTokenizerStorage
 
 
 # =============================================================================
@@ -296,12 +297,13 @@ class IncrementalTrainer:
         # Initialize bridge
         self.bridge = TextToAtomsBridge(agent.graph)
 
-        # Load existing tokenizer if available
-        tokenizer_path = self.model_dir / "tokenizer.json"
-        if self.filesystem.exists(tokenizer_path):
-            from cortical.cognitive.text_bridge import BPETokenizer
-            content = self.filesystem.read_text(tokenizer_path)
-            self.bridge.tokenizer = BPETokenizer.from_dict(json.loads(content))
+        # Initialize tokenizer storage
+        self.tokenizer_storage = ShardedTokenizerStorage(self.filesystem)
+
+        # Load existing tokenizer if available (from sharded directory)
+        tokenizer_dir = self.model_dir / "tokenizer"
+        if self.filesystem.exists(tokenizer_dir / "meta.json"):
+            self.bridge.tokenizer = self.tokenizer_storage.load(tokenizer_dir)
 
     def scan_directory(
         self,
@@ -567,10 +569,9 @@ class IncrementalTrainer:
 
     def save(self) -> None:
         """Save model, tokenizer, and manifest."""
-        # Save tokenizer using filesystem
-        tokenizer_path = self.model_dir / "tokenizer.json"
-        tokenizer_content = json.dumps(self.bridge.tokenizer.to_dict(), indent=2)
-        self.filesystem.write_text(tokenizer_path, tokenizer_content)
+        # Save tokenizer to sharded directory (merge-conflict-free)
+        tokenizer_dir = self.model_dir / "tokenizer"
+        self.tokenizer_storage.save_incremental(self.bridge.tokenizer, tokenizer_dir)
 
         # Save bridge graph data
         bridge_dir = self.model_dir / "bridge"
