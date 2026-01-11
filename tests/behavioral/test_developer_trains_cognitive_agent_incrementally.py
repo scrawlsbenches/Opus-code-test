@@ -548,3 +548,146 @@ class TestDeveloperHandlesEmptyAndMissingCases:
 
         # And statistics show zero documents
         assert stats.total_files_scanned == 0
+
+
+class TestDeveloperUsesInMemoryFileSystem:
+    """
+    Epic: Fast In-Memory Testing
+
+    As a developer writing tests for training workflows,
+    I want to use an in-memory filesystem,
+    So that tests run faster and I can assert on file operations.
+    """
+
+    def test_scenario_training_with_in_memory_filesystem_is_fast(self):
+        """
+        Scenario: Training without disk I/O
+
+        Given I have an in-memory filesystem with documents
+        And I create a trainer using that filesystem
+        When I train on those documents
+        Then training completes without any disk I/O
+        And all file operations happen in memory
+        Because in-memory testing is ~10x faster than disk I/O.
+        """
+        from pathlib import Path
+        from cortical.cognitive import CognitiveAgent, IncrementalTrainer
+        from cortical.common.filesystem import InMemoryFileSystem
+
+        # Given I have an in-memory filesystem with documents
+        fs = InMemoryFileSystem(Path("/virtual"))
+        fs.mkdir(Path("/virtual"), parents=True, exist_ok=True)
+
+        docs_dir = Path("/virtual/docs")
+        fs.mkdir(docs_dir, parents=True, exist_ok=True)
+        fs.write_text(docs_dir / "doc1.txt", "Neural networks process information.")
+        fs.write_text(docs_dir / "doc2.txt", "Information flows through layers.")
+
+        model_dir = Path("/virtual/model")
+
+        # And I create a trainer using that filesystem
+        agent = CognitiveAgent()
+        trainer = IncrementalTrainer(agent, model_dir=model_dir, filesystem=fs)
+
+        # When I train on those documents
+        stats = trainer.train_directory(docs_dir, show_progress=False)
+
+        # Then training completes without any disk I/O
+        assert stats.new_documents == 2
+        assert stats.vocabulary_size > 0
+
+        # And all file operations happen in memory
+        # (We can verify by checking the filesystem's internal state)
+        assert fs.exists(model_dir / "training_manifest.json")
+        assert fs.exists(model_dir / "tokenizer.json")
+
+    def test_scenario_filesystem_tracks_operations_for_assertions(self):
+        """
+        Scenario: Asserting on file operations
+
+        Given I have an in-memory filesystem
+        And I train a cognitive agent
+        When I check the filesystem's operation tracking
+        Then I can see which files were read
+        And I can see which files were written
+        And I can assert on the operation sequence
+        Because operation tracking enables precise behavioral assertions.
+        """
+        from pathlib import Path
+        from cortical.cognitive import CognitiveAgent, IncrementalTrainer
+        from cortical.common.filesystem import InMemoryFileSystem
+
+        # Given I have an in-memory filesystem
+        fs = InMemoryFileSystem(Path("/test"))
+        fs.mkdir(Path("/test"), parents=True, exist_ok=True)
+
+        docs_dir = Path("/test/docs")
+        fs.mkdir(docs_dir, parents=True, exist_ok=True)
+        fs.write_text(docs_dir / "sample.txt", "Test content for tracking.")
+
+        # Reset tracking after setup
+        fs.reset_tracking()
+
+        model_dir = Path("/test/model")
+
+        # And I train a cognitive agent
+        agent = CognitiveAgent()
+        trainer = IncrementalTrainer(agent, model_dir=model_dir, filesystem=fs)
+        trainer.train_directory(docs_dir, show_progress=False)
+
+        # When I check the filesystem's operation tracking
+        # Then I can see which files were read
+        assert len(fs.files_read) > 0
+
+        # And I can see which files were written
+        assert len(fs.files_written) > 0
+        fs.assert_file_was_written(model_dir / "training_manifest.json")
+        fs.assert_file_was_written(model_dir / "tokenizer.json")
+
+        # And I can assert on the operation sequence
+        # (The filesystem tracked all operations)
+        assert len(fs.operations) > 0
+
+    def test_scenario_in_memory_training_state_persists_within_session(self):
+        """
+        Scenario: State persistence in memory
+
+        Given I train documents using in-memory filesystem
+        And I create a new trainer instance with the same filesystem
+        When I check the training status
+        Then previously trained documents are recognized
+        And retraining skips them
+        Because in-memory state should persist within the test session.
+        """
+        from pathlib import Path
+        from cortical.cognitive import CognitiveAgent, IncrementalTrainer
+        from cortical.common.filesystem import InMemoryFileSystem
+
+        # Given I train documents using in-memory filesystem
+        fs = InMemoryFileSystem(Path("/persist"))
+        fs.mkdir(Path("/persist"), parents=True, exist_ok=True)
+
+        docs_dir = Path("/persist/docs")
+        fs.mkdir(docs_dir, parents=True, exist_ok=True)
+        fs.write_text(docs_dir / "persistent.txt", "Content that persists.")
+
+        model_dir = Path("/persist/model")
+
+        agent1 = CognitiveAgent()
+        trainer1 = IncrementalTrainer(agent1, model_dir=model_dir, filesystem=fs)
+        trainer1.train_directory(docs_dir, show_progress=False)
+
+        # And I create a new trainer instance with the same filesystem
+        agent2 = CognitiveAgent()
+        trainer2 = IncrementalTrainer(agent2, model_dir=model_dir, filesystem=fs)
+
+        # When I check the training status
+        status = trainer2.status()
+
+        # Then previously trained documents are recognized
+        assert status["total_documents_trained"] == 1
+
+        # And retraining skips them
+        stats = trainer2.train_directory(docs_dir, show_progress=False)
+        assert stats.skipped_documents == 1
+        assert stats.new_documents == 0

@@ -45,15 +45,15 @@ import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Set, Tuple, TYPE_CHECKING
+from typing import Any, Dict, Iterator, List, Optional, Set, Tuple, TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from cortical.cognitive.graph import CognitiveAgent
 
+from cortical.common.filesystem import FileSystem, RealFileSystem, InMemoryFileSystem
 from cortical.cognitive.text_bridge import (
     TextToAtomsBridge,
     ProgressReporter,
-    load_text_file,
 )
 
 
@@ -152,7 +152,7 @@ class TrainingManifest:
                 untrained.append((path, content))
         return untrained
 
-    def save(self, path: Path) -> None:
+    def save(self, path: Path, filesystem: Optional[FileSystem] = None) -> None:
         """Save manifest to JSON file."""
         data = {
             "model_version": self.model_version,
@@ -163,15 +163,24 @@ class TrainingManifest:
                 k: v.to_dict() for k, v in self.documents.items()
             },
         }
-        path.write_text(json.dumps(data, indent=2))
+        content = json.dumps(data, indent=2)
+        if filesystem:
+            filesystem.write_text(path, content)
+        else:
+            path.write_text(content)
 
     @classmethod
-    def load(cls, path: Path) -> 'TrainingManifest':
+    def load(cls, path: Path, filesystem: Optional[FileSystem] = None) -> 'TrainingManifest':
         """Load manifest from JSON file."""
-        if not path.exists():
-            return cls()
+        if filesystem:
+            if not filesystem.exists(path):
+                return cls()
+            data = json.loads(filesystem.read_text(path))
+        else:
+            if not path.exists():
+                return cls()
+            data = json.loads(path.read_text())
 
-        data = json.loads(path.read_text())
         manifest = cls(
             last_training=data.get("last_training"),
             total_documents=data.get("total_documents", 0),
@@ -248,6 +257,7 @@ class IncrementalTrainer:
         model_dir: Directory for persisting model and manifest
         bridge: TextToAtomsBridge for text processing
         manifest: TrainingManifest tracking trained documents
+        filesystem: FileSystem abstraction for I/O (enables in-memory testing)
 
     Usage:
         >>> trainer = IncrementalTrainer(agent, "models/cognitive")
@@ -257,12 +267,17 @@ class IncrementalTrainer:
           Scanned: 100 files
           New: 10, Modified: 2, Skipped: 88
           ...
+
+        # For testing with in-memory filesystem:
+        >>> fs = InMemoryFileSystem(Path("/test"))
+        >>> trainer = IncrementalTrainer(agent, "/test/model", filesystem=fs)
     """
 
     def __init__(
         self,
         agent: 'CognitiveAgent',
         model_dir: str | Path = "models/cognitive_agent",
+        filesystem: Optional[FileSystem] = None,
     ):
         """
         Initialize trainer.
@@ -270,23 +285,33 @@ class IncrementalTrainer:
         Args:
             agent: CognitiveAgent to train
             model_dir: Directory for model persistence
+            filesystem: Optional FileSystem for I/O (defaults to RealFileSystem)
         """
         self.agent = agent
         self.model_dir = Path(model_dir)
-        self.model_dir.mkdir(parents=True, exist_ok=True)
+
+        # Use provided filesystem or create real one
+        if filesystem is None:
+            self.filesystem: FileSystem = RealFileSystem(self.model_dir)
+        else:
+            self.filesystem = filesystem
+
+        # Create model directory
+        self.filesystem.mkdir(self.model_dir, parents=True, exist_ok=True)
 
         # Load or create manifest
         self.manifest_path = self.model_dir / "training_manifest.json"
-        self.manifest = TrainingManifest.load(self.manifest_path)
+        self.manifest = TrainingManifest.load(self.manifest_path, self.filesystem)
 
         # Initialize bridge
         self.bridge = TextToAtomsBridge(agent.graph)
 
         # Load existing tokenizer if available
         tokenizer_path = self.model_dir / "tokenizer.json"
-        if tokenizer_path.exists():
+        if self.filesystem.exists(tokenizer_path):
             from cortical.cognitive.text_bridge import BPETokenizer
-            self.bridge.tokenizer = BPETokenizer.load(tokenizer_path)
+            content = self.filesystem.read_text(tokenizer_path)
+            self.bridge.tokenizer = BPETokenizer.from_dict(json.loads(content))
 
     def scan_directory(
         self,
@@ -302,22 +327,31 @@ class IncrementalTrainer:
         """
         directory = Path(directory)
 
-        if recursive:
-            files = directory.rglob(pattern)
-        else:
-            files = directory.glob(pattern)
+        # Use filesystem glob for pattern matching
+        glob_pattern = f"**/{pattern}" if recursive else pattern
+        files = self.filesystem.glob(directory, glob_pattern)
 
         for file_path in sorted(files):
-            if not file_path.is_file():
+            if self.filesystem.is_dir(file_path):
                 continue
 
             try:
-                content = load_text_file(file_path)
+                content = self._read_text_file(file_path)
                 relative_path = str(file_path.relative_to(directory))
                 content_hash = compute_content_hash(content)
                 yield relative_path, content, content_hash
             except Exception as e:
                 print(f"Warning: Could not read {file_path}: {e}", file=sys.stderr)
+
+    def _read_text_file(self, path: Path) -> str:
+        """Read text file with encoding fallback."""
+        try:
+            return self.filesystem.read_text(path)
+        except UnicodeDecodeError:
+            # For real filesystem, try latin-1 fallback
+            if isinstance(self.filesystem, RealFileSystem):
+                return path.read_text(encoding='latin-1')
+            raise
 
     def train_directory(
         self,
@@ -457,12 +491,12 @@ class IncrementalTrainer:
         files_data = []
         for fp in file_paths:
             fp = Path(fp)
-            if not fp.exists():
+            if not self.filesystem.exists(fp):
                 print(f"Warning: File not found: {fp}", file=sys.stderr)
                 continue
 
             try:
-                content = load_text_file(fp)
+                content = self._read_text_file(fp)
                 content_hash = compute_content_hash(content)
 
                 # Compute relative path
@@ -519,20 +553,47 @@ class IncrementalTrainer:
 
     def save(self) -> None:
         """Save model, tokenizer, and manifest."""
-        # Save tokenizer
-        self.bridge.tokenizer.save(self.model_dir / "tokenizer.json")
+        # Save tokenizer using filesystem
+        tokenizer_path = self.model_dir / "tokenizer.json"
+        tokenizer_content = json.dumps(self.bridge.tokenizer.to_dict(), indent=2)
+        self.filesystem.write_text(tokenizer_path, tokenizer_content)
 
-        # Save bridge (includes graph)
-        self.bridge.save(self.model_dir / "bridge")
+        # Save bridge graph data
+        bridge_dir = self.model_dir / "bridge"
+        self.filesystem.mkdir(bridge_dir, parents=True, exist_ok=True)
+
+        # Serialize graph to bridge directory
+        graph_data = {
+            "atoms": [],
+            "stats": self.bridge.get_statistics(),
+        }
+        for atom in self.bridge.graph._storage.all_atoms():
+            atom_data = {
+                "id": atom.id,
+                "name": atom.name,
+                "atom_type": atom.atom_type.name,
+                "tv_strength": atom.tv.strength,
+                "tv_confidence": atom.tv.confidence,
+                "sti": atom.sti,
+                "lti": atom.lti,
+                "outgoing": atom.outgoing,
+            }
+            graph_data["atoms"].append(atom_data)
+
+        self.filesystem.write_text(
+            bridge_dir / "graph.json",
+            json.dumps(graph_data, indent=2)
+        )
 
         # Save manifest
-        self.manifest.save(self.manifest_path)
+        self.manifest.save(self.manifest_path, self.filesystem)
 
     @classmethod
     def load(
         cls,
         model_dir: str | Path,
         agent: Optional['CognitiveAgent'] = None,
+        filesystem: Optional[FileSystem] = None,
     ) -> 'IncrementalTrainer':
         """
         Load a previously trained model.
@@ -540,6 +601,7 @@ class IncrementalTrainer:
         Args:
             model_dir: Directory containing saved model
             agent: CognitiveAgent to load into (creates new if None)
+            filesystem: Optional FileSystem for I/O
 
         Returns:
             IncrementalTrainer with loaded state
@@ -551,12 +613,14 @@ class IncrementalTrainer:
         if agent is None:
             agent = CognitiveAgent()
 
-        trainer = cls(agent, model_dir)
+        trainer = cls(agent, model_dir, filesystem=filesystem)
 
-        # Load bridge with graph
+        # Load bridge with graph if exists
         bridge_dir = model_dir / "bridge"
-        if bridge_dir.exists():
-            trainer.bridge = TextToAtomsBridge.load(bridge_dir, agent.graph)
+        if trainer.filesystem.exists(bridge_dir):
+            graph_path = bridge_dir / "graph.json"
+            if trainer.filesystem.exists(graph_path):
+                trainer.bridge = TextToAtomsBridge.load(bridge_dir, agent.graph)
 
         return trainer
 
