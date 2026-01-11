@@ -1074,6 +1074,94 @@ def run_cli_command(command: str, args, container: 'Optional[Container]' = None)
             print(f"\nModel saved to: {trainer.model_dir}")
         return 0
 
+    if command == "rebuild-df":
+        # Rebuild document frequency from trained documents
+        trained_docs = trainer.list_trained()
+        if not trained_docs:
+            print("No trained documents found.")
+            return 0
+
+        if not args.quiet:
+            print(f"Rebuilding document frequency from {len(trained_docs)} documents...")
+
+        # Reset doc frequency
+        tok = trainer.bridge.tokenizer
+        tok._doc_frequency = {}
+        tok._total_docs = 0
+
+        # Re-read each document and count word frequencies
+        base_dir = Path("samples/")  # Default training directory
+        processed = 0
+        for doc_path in trained_docs:
+            full_path = base_dir / doc_path
+            if not full_path.exists():
+                if not args.quiet:
+                    print(f"  Skipping (not found): {doc_path}", file=sys.stderr)
+                continue
+
+            try:
+                text = full_path.read_text(encoding='utf-8')
+                tokens = tok.tokenize(text)
+                unique_words = set(tokens)
+                for word in unique_words:
+                    tok._doc_frequency[word] = tok._doc_frequency.get(word, 0) + 1
+                tok._total_docs += 1
+                processed += 1
+            except Exception as e:
+                if not args.quiet:
+                    print(f"  Error reading {doc_path}: {e}", file=sys.stderr)
+
+        # Save updated tokenizer
+        trainer.save()
+
+        if not args.quiet:
+            print(f"Rebuilt document frequency:")
+            print(f"  Documents processed: {processed}")
+            print(f"  Unique words with DF: {len(tok._doc_frequency)}")
+            print(f"  Sample IDF(data): {tok.get_idf('data'):.4f}")
+
+        # Also reindex IDF weights on links
+        if not args.quiet:
+            print("Reindexing IDF weights on links...")
+        trainer.reindex(show_progress=not args.quiet)
+
+        return 0
+
+    if command == "query":
+        # Query requires the agent, not just the trainer
+        agent = trainer.agent
+        word = args.word.lower()
+
+        associations = agent.get_associations(
+            word,
+            weight_type=args.weight_type,
+            top_k=args.top_k,
+        )
+
+        if not associations:
+            print(f"No associations found for '{word}'")
+            print("(Word may not exist in vocabulary or have no similarity links)")
+            return 0
+
+        if args.json:
+            import json
+            result = {
+                "word": word,
+                "weight_type": args.weight_type,
+                "associations": [
+                    {"word": a.word, "weight": a.weight}
+                    for a in associations
+                ]
+            }
+            print(json.dumps(result, indent=2))
+        else:
+            print(f"Associations for '{word}' ({args.weight_type} weights):")
+            print("-" * 40)
+            for i, assoc in enumerate(associations, 1):
+                print(f"  {i:2}. {assoc.word:<20} {assoc.weight:.4f}")
+
+        return 0
+
     print(f"Unknown command: {command}")
     return 1
 

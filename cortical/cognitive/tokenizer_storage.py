@@ -277,6 +277,17 @@ class ShardedTokenizerStorage:
         tokenizer.merges = merges
         tokenizer._word_counts = word_counts
 
+        # Load document frequency data for IDF calculation
+        doc_freq_path = tokenizer_dir / "doc_frequency.json"
+        if self.filesystem.exists(doc_freq_path):
+            tokenizer._doc_frequency = json.loads(
+                self.filesystem.read_text(doc_freq_path)
+            )
+        else:
+            tokenizer._doc_frequency = {}
+
+        tokenizer._total_docs = meta.get("total_docs", 0)
+
         # Cache loaded shards for dirty tracking
         self._loaded_shards = self._group_vocab_by_prefix(vocab)
 
@@ -416,19 +427,17 @@ class ShardedTokenizerStorage:
         Save only the shards that have changed.
 
         More efficient than full save when only a few words were added.
+        Always updates meta.json and doc_frequency.json even if vocab unchanged.
 
         Args:
             tokenizer: BPETokenizer to save
             tokenizer_dir: Directory to save to
         """
-        # Get dirty prefixes
-        dirty_prefixes = self.get_dirty_prefixes(tokenizer, tokenizer_dir)
-
-        if not dirty_prefixes:
-            return  # Nothing to save
-
         # Ensure directory exists
         self.filesystem.mkdir(tokenizer_dir, parents=True, exist_ok=True)
+
+        # Get dirty prefixes for vocab shards
+        dirty_prefixes = self.get_dirty_prefixes(tokenizer, tokenizer_dir)
 
         # Convert vocab to dict
         if isinstance(tokenizer.vocab, set):
@@ -439,7 +448,7 @@ class ShardedTokenizerStorage:
         # Group by prefix
         all_shards = self._group_vocab_by_prefix(vocab_dict)
 
-        # Only write dirty shards
+        # Only write dirty vocab shards (if any)
         for prefix in dirty_prefixes:
             if prefix in all_shards:
                 shard_filename = self._get_shard_filename(prefix)
@@ -468,11 +477,20 @@ class ShardedTokenizerStorage:
             "shards": shard_files,
             "min_frequency": getattr(tokenizer, 'min_frequency', 2),
             "max_vocab_size": getattr(tokenizer, 'max_vocab_size', 10000),
+            "total_docs": getattr(tokenizer, '_total_docs', 0),
         }
         self.filesystem.write_text(
             tokenizer_dir / "meta.json",
             json.dumps(meta, indent=2)
         )
+
+        # Save document frequency data for IDF calculation
+        doc_freq = getattr(tokenizer, '_doc_frequency', {})
+        if doc_freq:
+            self.filesystem.write_text(
+                tokenizer_dir / "doc_frequency.json",
+                json.dumps(doc_freq, indent=2)
+            )
 
         # Update cache
         self._loaded_shards = all_shards

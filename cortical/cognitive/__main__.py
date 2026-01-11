@@ -114,6 +114,51 @@ def main() -> int:
         help="Suppress progress output",
     )
 
+    # Rebuild-df command (rebuild document frequency for IDF)
+    rebuild_parser = subparsers.add_parser(
+        "rebuild-df",
+        help="Rebuild document frequency from trained documents (fixes IDF)"
+    )
+    rebuild_parser.add_argument(
+        "--model-dir",
+        default="models/cognitive_agent",
+        help="Directory for model storage",
+    )
+    rebuild_parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress progress output",
+    )
+
+    # Query command
+    query_parser = subparsers.add_parser("query", help="Query word associations")
+    query_parser.add_argument(
+        "word",
+        help="Word to query associations for",
+    )
+    query_parser.add_argument(
+        "--model-dir",
+        default="models/cognitive_agent",
+        help="Directory for model storage",
+    )
+    query_parser.add_argument(
+        "--top-k", "-k",
+        type=int,
+        default=20,
+        help="Number of associations to return (default: 20)",
+    )
+    query_parser.add_argument(
+        "--weight-type", "-w",
+        choices=["idf", "raw"],
+        default="idf",
+        help="Weight type: 'idf' (IDF-weighted) or 'raw' (co-occurrence count)",
+    )
+    query_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output as JSON",
+    )
+
     args = parser.parse_args()
 
     if args.command is None:
