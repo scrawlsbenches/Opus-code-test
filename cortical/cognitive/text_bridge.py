@@ -31,17 +31,105 @@ Grounding: BPE algorithm (Sennrich et al., 2016) adapted for cognitive graphs.
 
 from __future__ import annotations
 
+import json
 import re
+import sys
+import time
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Iterator, List, Optional, Set, Tuple, TYPE_CHECKING
+from typing import Any, Callable, Dict, Iterator, List, Optional, Set, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from cortical.cognitive.graph import CognitiveAgent, CognitiveGraph, Atom
 
 # Import at runtime to avoid circular imports
 from cortical.cognitive.graph import AtomType, TruthValue
+
+
+# =============================================================================
+# Progress Reporter
+# =============================================================================
+
+
+class ProgressReporter:
+    """
+    Reports progress with ETA for long-running operations.
+
+    Usage:
+        with ProgressReporter(total=100, desc="Loading") as progress:
+            for i in range(100):
+                do_work()
+                progress.update(1)
+    """
+
+    def __init__(
+        self,
+        total: int,
+        desc: str = "Processing",
+        file=None,
+        min_update_interval: float = 0.5,
+    ):
+        self.total = total
+        self.desc = desc
+        self.file = file or sys.stderr
+        self.min_update_interval = min_update_interval
+        self.current = 0
+        self.start_time: Optional[float] = None
+        self.last_update_time: float = 0
+
+    def __enter__(self):
+        self.start_time = time.time()
+        self.last_update_time = 0
+        self._print_progress()
+        return self
+
+    def __exit__(self, *args):
+        self.current = self.total
+        self._print_progress(force=True)
+        print(file=self.file)  # Newline at end
+
+    def update(self, n: int = 1):
+        """Update progress by n items."""
+        self.current += n
+        now = time.time()
+        if now - self.last_update_time >= self.min_update_interval:
+            self._print_progress()
+            self.last_update_time = now
+
+    def _print_progress(self, force: bool = False):
+        """Print progress bar with ETA."""
+        if self.total == 0:
+            return
+
+        elapsed = time.time() - (self.start_time or time.time())
+        pct = min(100, self.current * 100 // self.total)
+
+        # Calculate ETA
+        if self.current > 0 and elapsed > 0:
+            rate = self.current / elapsed
+            remaining = (self.total - self.current) / rate if rate > 0 else 0
+            eta_str = self._format_time(remaining)
+        else:
+            eta_str = "calculating..."
+
+        # Progress bar
+        bar_width = 30
+        filled = bar_width * self.current // self.total
+        bar = "█" * filled + "░" * (bar_width - filled)
+
+        # Print (carriage return to overwrite)
+        status = f"\r{self.desc}: [{bar}] {pct:3d}% ({self.current}/{self.total}) ETA: {eta_str}  "
+        print(status, end="", file=self.file, flush=True)
+
+    def _format_time(self, seconds: float) -> str:
+        """Format seconds as human-readable time."""
+        if seconds < 60:
+            return f"{seconds:.0f}s"
+        elif seconds < 3600:
+            return f"{seconds/60:.1f}m"
+        else:
+            return f"{seconds/3600:.1f}h"
 
 
 # =============================================================================
@@ -221,6 +309,45 @@ class BPETokenizer:
         """Get most frequent word pairs."""
         return self._pair_counts.most_common(n)
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize tokenizer state to dictionary."""
+        return {
+            "vocab": list(self.vocab),
+            "merges": [[[p[0], p[1]], m] for p, m in self.merges],
+            "min_frequency": self.min_frequency,
+            "max_vocab_size": self.max_vocab_size,
+            "word_counts": dict(self._word_counts),
+            "pair_counts": {f"{k[0]}|{k[1]}": v for k, v in self._pair_counts.items()},
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'BPETokenizer':
+        """Deserialize tokenizer from dictionary."""
+        tok = cls(
+            min_frequency=data.get("min_frequency", 2),
+            max_vocab_size=data.get("max_vocab_size", 10000),
+        )
+        tok.vocab = set(data.get("vocab", []))
+        tok.merges = [(tuple(p), m) for p, m in data.get("merges", [])]
+        tok._word_counts = Counter(data.get("word_counts", {}))
+        tok._pair_counts = Counter({
+            tuple(k.split("|")): v
+            for k, v in data.get("pair_counts", {}).items()
+        })
+        return tok
+
+    def save(self, path: Path) -> None:
+        """Save tokenizer to JSON file."""
+        path = Path(path)
+        path.write_text(json.dumps(self.to_dict(), indent=2))
+
+    @classmethod
+    def load(cls, path: Path) -> 'BPETokenizer':
+        """Load tokenizer from JSON file."""
+        path = Path(path)
+        data = json.loads(path.read_text())
+        return cls.from_dict(data)
+
 
 # =============================================================================
 # Text-to-Atoms Bridge
@@ -262,6 +389,7 @@ class TextToAtomsBridge:
     tokenizer: BPETokenizer = field(default_factory=BPETokenizer)
     window_size: int = 5  # Words within this window are "co-occurring"
     min_link_strength: float = 0.1
+    max_links_per_doc: int = 500  # Limit links per document for performance
 
     # Statistics tracking
     _documents_fed: int = 0
@@ -325,11 +453,19 @@ class TextToAtomsBridge:
         # Step 2: Create SIMILARITY links based on co-occurrence
         # Track pairs we've already linked in this document
         linked_pairs: Set[Tuple[str, str]] = set()
+        links_created_this_doc = 0
 
         for i, token in enumerate(tokens):
+            # Respect max links limit for performance
+            if links_created_this_doc >= self.max_links_per_doc:
+                break
+
             # Look at window of following words
             window_end = min(i + self.window_size + 1, len(tokens))
             for j in range(i + 1, window_end):
+                if links_created_this_doc >= self.max_links_per_doc:
+                    break
+
                 other_token = tokens[j]
                 if token == other_token:
                     continue
@@ -345,6 +481,7 @@ class TextToAtomsBridge:
                     token_atoms[token],
                     token_atoms[other_token],
                 )
+                links_created_this_doc += 1
 
         self._documents_fed += 1
         return created_atoms
@@ -440,6 +577,95 @@ class TextToAtomsBridge:
             "learned_merges": len(self.tokenizer.merges),
         }
 
+    def save(self, path: Path) -> None:
+        """
+        Save bridge state (tokenizer + graph) to directory.
+
+        Creates:
+            path/tokenizer.json - Tokenizer vocabulary and stats
+            path/graph.json - CognitiveGraph state
+
+        Args:
+            path: Directory to save to (created if doesn't exist)
+        """
+        path = Path(path)
+        path.mkdir(parents=True, exist_ok=True)
+
+        # Save tokenizer
+        self.tokenizer.save(path / "tokenizer.json")
+
+        # Save graph (uses its own save method)
+        # The CognitiveGraph should have a save method
+        graph_data = {
+            "atoms": [],
+            "stats": self.get_statistics(),
+        }
+
+        # Serialize atoms
+        for atom in self.graph._storage.all_atoms():
+            atom_data = {
+                "id": atom.id,
+                "name": atom.name,
+                "atom_type": atom.atom_type.name,
+                "tv_strength": atom.tv.strength,
+                "tv_confidence": atom.tv.confidence,
+                "sti": atom.sti,
+                "lti": atom.lti,
+                "outgoing": atom.outgoing,
+            }
+            graph_data["atoms"].append(atom_data)
+
+        (path / "graph.json").write_text(json.dumps(graph_data, indent=2))
+
+        print(f"Saved bridge to {path}/")
+
+    @classmethod
+    def load(cls, path: Path, graph: 'CognitiveGraph') -> 'TextToAtomsBridge':
+        """
+        Load bridge state from directory.
+
+        Args:
+            path: Directory containing saved state
+            graph: CognitiveGraph to populate
+
+        Returns:
+            Loaded TextToAtomsBridge
+        """
+        path = Path(path)
+
+        # Load tokenizer
+        tokenizer = BPETokenizer.load(path / "tokenizer.json")
+
+        # Create bridge with loaded tokenizer
+        bridge = cls(graph=graph, tokenizer=tokenizer)
+
+        # Load graph data
+        graph_data = json.loads((path / "graph.json").read_text())
+
+        # Restore atoms
+        for atom_data in graph_data.get("atoms", []):
+            atom_type = AtomType[atom_data["atom_type"]]
+            tv = TruthValue(atom_data["tv_strength"], atom_data["tv_confidence"])
+
+            if atom_data.get("outgoing"):
+                # It's a link - skip for now, will be recreated
+                pass
+            else:
+                # It's a node
+                atom = graph.node(atom_data["name"], atom_type=atom_type, tv=tv)
+                atom.sti = atom_data.get("sti", 0.0)
+                atom.lti = atom_data.get("lti", 0.0)
+                graph._storage.save(atom)
+
+        # Restore stats
+        stats = graph_data.get("stats", {})
+        bridge._documents_fed = stats.get("documents_fed", 0)
+        bridge._atoms_created = stats.get("atoms_created", 0)
+        bridge._links_created = stats.get("links_created", 0)
+
+        print(f"Loaded bridge from {path}/")
+        return bridge
+
 
 # =============================================================================
 # File/Directory Loading Utilities
@@ -499,6 +725,7 @@ def load_directory_to_bridge(
     pattern: str = "*.txt",
     max_files: Optional[int] = None,
     learn_first: bool = True,
+    show_progress: bool = True,
 ) -> Dict[str, int]:
     """
     Load all text files from a directory into the bridge.
@@ -513,6 +740,7 @@ def load_directory_to_bridge(
         pattern: Glob pattern for files
         max_files: Maximum files to process (None = all)
         learn_first: Whether to learn vocabulary first
+        show_progress: Whether to show progress bar with ETA
 
     Returns:
         Statistics dictionary
@@ -534,13 +762,24 @@ def load_directory_to_bridge(
 
     # Pass 1: Learn vocabulary (optional but recommended)
     if learn_first:
+        if show_progress:
+            print(f"Learning vocabulary from {len(files)} files...", file=sys.stderr)
         texts = [content for _, content in files]
         bridge.learn_vocabulary(texts)
+        if show_progress:
+            print(f"  Vocabulary: {len(bridge.tokenizer.vocab)} words", file=sys.stderr)
 
     # Pass 2: Feed texts to create atoms
-    for path, content in files:
-        doc_id = path.stem  # Use filename without extension as ID
-        bridge.feed_text(content, doc_id=doc_id)
+    if show_progress:
+        with ProgressReporter(len(files), desc="Feeding documents") as progress:
+            for path, content in files:
+                doc_id = path.stem
+                bridge.feed_text(content, doc_id=doc_id)
+                progress.update(1)
+    else:
+        for path, content in files:
+            doc_id = path.stem
+            bridge.feed_text(content, doc_id=doc_id)
 
     stats = bridge.get_statistics()
     stats["files_processed"] = len(files)
