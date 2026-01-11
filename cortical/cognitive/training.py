@@ -1178,6 +1178,10 @@ def run_cli_command(command: str, args, container: 'Optional[Container]' = None)
         _run_generate(trainer, args)
         return 0
 
+    if command == "index-code":
+        _run_index_code(trainer, args)
+        return 0
+
     print(f"Unknown command: {command}")
     return 1
 
@@ -1405,6 +1409,84 @@ def _run_demo(trainer: IncrementalTrainer) -> None:
     print("Try: python -m cortical.cognitive query <word> --top-k 10")
     print("=" * 70)
     print()
+
+
+def _run_index_code(trainer: 'IncrementalTrainer', args) -> None:
+    """
+    Index Python code structure into the cognitive graph.
+
+    Creates atoms for FILE, CLASS, FUNCTION entities and links for
+    DEFINES, CONTAINS, CALLS, INHERITANCE relationships.
+
+    Args:
+        trainer: The IncrementalTrainer with loaded model
+        args: CLI arguments with path, exclude, quiet, json options
+    """
+    import json as json_module
+
+    from cortical.cognitive.code_bridge import CodeBridge
+
+    # Use the trainer's agent's graph
+    graph = trainer.agent.graph
+    bridge = CodeBridge(graph)
+
+    path = Path(args.path)
+    if not path.exists():
+        print(f"Error: Path does not exist: {path}")
+        return
+
+    if not args.quiet:
+        print(f"Indexing Python code in: {path}")
+        if args.exclude:
+            print(f"Excluding: {', '.join(args.exclude)}")
+        print()
+
+    # Progress callback
+    def progress(current: int, total: int) -> None:
+        if not args.quiet and total > 0:
+            pct = current * 100 // total
+            if current % 50 == 0 or current == total:
+                print(f"  Indexed {current}/{total} files ({pct}%)")
+
+    # Index
+    if path.is_file():
+        stats = bridge.index_file(path)
+    else:
+        stats = bridge.index_directory(
+            path,
+            exclude=args.exclude,
+            progress_callback=progress
+        )
+
+    # Save the updated graph
+    trainer.save()
+
+    # Output results
+    if args.json:
+        result = {
+            "path": str(path),
+            "files": stats.files,
+            "classes": stats.classes,
+            "functions": stats.functions,
+            "calls_links": stats.calls_links,
+            "inheritance_links": stats.inheritance_links,
+            "defines_links": stats.defines_links,
+            "contains_links": stats.contains_links,
+            "parse_errors": stats.parse_errors,
+            "elapsed_seconds": round(stats.elapsed_seconds, 2),
+        }
+        print(json_module.dumps(result, indent=2))
+    else:
+        if not args.quiet:
+            print()
+        print("Code indexing complete:")
+        print(f"  Files indexed:    {stats.files}")
+        print(f"  Classes:          {stats.classes}")
+        print(f"  Functions:        {stats.functions}")
+        print(f"  CALLS links:      {stats.calls_links}")
+        print(f"  INHERITANCE:      {stats.inheritance_links}")
+        print(f"  Parse errors:     {stats.parse_errors}")
+        print(f"  Elapsed time:     {stats.elapsed_seconds:.2f}s")
 
 
 # =============================================================================

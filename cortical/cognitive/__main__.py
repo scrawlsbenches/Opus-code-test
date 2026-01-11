@@ -215,6 +215,39 @@ def main() -> int:
         help="Output as JSON with full prediction details",
     )
 
+    # Index-code command
+    index_code_parser = subparsers.add_parser(
+        "index-code",
+        help="Index Python code structure into cognitive graph"
+    )
+    index_code_parser.add_argument(
+        "path",
+        nargs="?",
+        default=".",
+        help="Directory to index (default: current directory)",
+    )
+    index_code_parser.add_argument(
+        "--model-dir",
+        default="models/cognitive_agent",
+        help="Directory for model storage",
+    )
+    index_code_parser.add_argument(
+        "--exclude",
+        nargs="*",
+        default=["__pycache__", ".git", "node_modules", "venv", ".venv", ".tox"],
+        help="Directories to exclude",
+    )
+    index_code_parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress progress output",
+    )
+    index_code_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output stats as JSON",
+    )
+
     args = parser.parse_args()
 
     if args.command is None:
