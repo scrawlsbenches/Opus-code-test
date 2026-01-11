@@ -187,3 +187,6 @@ docs/audits/audit_index.pkl
 # Trained model artifacts
 trained_model/
 trained_model_v2/
+
+# Trained model output
+models/
