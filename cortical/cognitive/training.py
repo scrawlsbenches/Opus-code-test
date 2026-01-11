@@ -65,6 +65,12 @@ from cortical.cognitive.graph import Atom, AtomType, TruthValue
 
 
 @dataclass
+class TrainingConfig:
+    """Configuration for training behavior."""
+    staleness_warning_threshold: float = 0.2  # 20% growth triggers warning
+
+
+@dataclass
 class TrainedDocument:
     """Record of a trained document."""
 
@@ -113,6 +119,8 @@ class TrainingManifest:
     total_documents: int = 0
     vocabulary_size: int = 0
     model_version: str = "1.0"
+    last_reindex_doc_count: int = 0  # corpus size at last IDF reindex
+    idf_epoch: int = 0  # increments each time IDF is recalculated
 
     def add_document(
         self,
@@ -161,6 +169,8 @@ class TrainingManifest:
             "last_training": self.last_training,
             "total_documents": self.total_documents,
             "vocabulary_size": self.vocabulary_size,
+            "last_reindex_doc_count": self.last_reindex_doc_count,
+            "idf_epoch": self.idf_epoch,
             "documents": {
                 k: v.to_dict() for k, v in self.documents.items()
             },
@@ -180,12 +190,20 @@ class TrainingManifest:
             total_documents=data.get("total_documents", 0),
             vocabulary_size=data.get("vocabulary_size", 0),
             model_version=data.get("model_version", "1.0"),
+            last_reindex_doc_count=data.get("last_reindex_doc_count", 0),
+            idf_epoch=data.get("idf_epoch", 0),
         )
 
         for path_key, doc_data in data.get("documents", {}).items():
             manifest.documents[path_key] = TrainedDocument.from_dict(doc_data)
 
         return manifest
+
+    def get_staleness(self) -> float:
+        """Calculate IDF staleness as fraction of corpus growth since last reindex."""
+        if self.last_reindex_doc_count == 0:
+            return 0.0
+        return (self.total_documents - self.last_reindex_doc_count) / self.last_reindex_doc_count
 
 
 def compute_content_hash(content: str) -> str:

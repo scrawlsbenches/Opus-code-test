@@ -192,6 +192,7 @@ class Atom:
         lti: Long-term importance (persistent significance) [0, 1]
         created_at: Timestamp of creation
         accessed_at: Last access timestamp (for LRU tracking)
+        metadata: Extensible dictionary for additional attributes (e.g., raw_strength, idf_strength)
 
     Grounding: Standard graph theory + probabilistic databases.
     """
@@ -205,6 +206,7 @@ class Atom:
     lti: float = 0.0  # Long-term importance
     created_at: float = 0.0  # Timestamp of creation
     accessed_at: float = 0.0  # Last access timestamp
+    metadata: Dict[str, Any] = field(default_factory=dict)  # Extensible metadata
 
     def is_link(self) -> bool:
         """True if this atom is a link (has outgoing connections)."""
@@ -2054,6 +2056,7 @@ class CognitiveAgent:
                 "lti": atom.lti,
                 "created_at": atom.created_at,
                 "accessed_at": atom.accessed_at,
+                "metadata": atom.metadata,
             })
 
         # Serialize goals
@@ -2147,6 +2150,7 @@ class CognitiveAgent:
                 lti=atom_data.get("lti", 0.0),
                 created_at=atom_data.get("created_at", 0.0),
                 accessed_at=atom_data.get("accessed_at", 0.0),
+                metadata=atom_data.get("metadata", {}),
             )
             agent.graph._storage.save(atom)
             atom_lookup[atom.id] = atom

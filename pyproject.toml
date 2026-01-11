@@ -117,6 +117,8 @@ markers = [
     "velocity: Tests for velocity prediction and trend analysis",
     "consolidation: Tests for learning consolidation (Hive→Cortex transfer)",
     "escalation: Tests for complete escalation action execution",
+    "idf: Tests for IDF-weighted similarity links",
+    "performance: Performance contract tests",
 ]
 
 # Default: skip optional, slow, and ci_only tests during development

@@ -32,6 +32,7 @@ Grounding: BPE algorithm (Sennrich et al., 2016) adapted for cognitive graphs.
 from __future__ import annotations
 
 import json
+import math
 import re
 import sys
 import time
@@ -171,12 +172,20 @@ class BPETokenizer:
     _pair_counts: Counter = field(default_factory=Counter)
     _word_counts: Counter = field(default_factory=Counter)
 
+    # IDF tracking
+    _doc_frequency: Dict[str, int] = field(default_factory=dict)
+    _total_docs: int = 0
+
     def __post_init__(self):
         """Initialize counters if not provided."""
         if not hasattr(self, '_pair_counts') or self._pair_counts is None:
             self._pair_counts = Counter()
         if not hasattr(self, '_word_counts') or self._word_counts is None:
             self._word_counts = Counter()
+        if not hasattr(self, '_doc_frequency') or self._doc_frequency is None:
+            self._doc_frequency = {}
+        if not hasattr(self, '_total_docs') or self._total_docs is None:
+            self._total_docs = 0
 
     def tokenize(self, text: str) -> List[str]:
         """
@@ -269,11 +278,19 @@ class BPETokenizer:
         if not incremental:
             self._word_counts = Counter()
             self._pair_counts = Counter()
+            self._doc_frequency = {}
+            self._total_docs = 0
 
         # Count words and pairs
         for text in texts:
             tokens = self.tokenize(text)
             self._word_counts.update(tokens)
+
+            # Track document frequency (count of docs containing each word)
+            unique_words = set(tokens)
+            for word in unique_words:
+                self._doc_frequency[word] = self._doc_frequency.get(word, 0) + 1
+            self._total_docs += 1
 
             # Count adjacent pairs
             for i in range(len(tokens) - 1):
@@ -302,6 +319,10 @@ class BPETokenizer:
             top_words = [w for w, _ in self._word_counts.most_common(self.max_vocab_size)]
             self.vocab = set(top_words)
 
+    def learn_vocabulary(self, texts: List[str], n_merges: int = 100, incremental: bool = False) -> None:
+        """Alias for learn_from_texts - trains tokenizer on corpus."""
+        self.learn_from_texts(texts, n_merges, incremental)
+
     def get_vocabulary(self) -> List[str]:
         """Get sorted vocabulary list."""
         return sorted(self.vocab)
@@ -318,6 +339,24 @@ class BPETokenizer:
         """Get most frequent word pairs."""
         return self._pair_counts.most_common(n)
 
+    def get_idf(self, word: str) -> float:
+        """
+        Get IDF (Inverse Document Frequency) for a word.
+
+        Uses smoothed IDF formula: log((N + 1) / (df + 1))
+        where N = total documents, df = documents containing the word.
+
+        Args:
+            word: The word to get IDF for
+
+        Returns:
+            IDF value, or 0.0 if word not in vocabulary
+        """
+        if word not in self.vocab:
+            return 0.0
+        df = self._doc_frequency.get(word, 0)
+        return math.log((self._total_docs + 1) / (df + 1))
+
     def to_dict(self) -> Dict[str, Any]:
         """Serialize tokenizer state to dictionary."""
         return {
@@ -327,6 +366,8 @@ class BPETokenizer:
             "max_vocab_size": self.max_vocab_size,
             "word_counts": dict(self._word_counts),
             "pair_counts": {f"{k[0]}|{k[1]}": v for k, v in self._pair_counts.items()},
+            "doc_frequency": dict(self._doc_frequency),
+            "total_docs": self._total_docs,
         }
 
     @classmethod
@@ -343,6 +384,9 @@ class BPETokenizer:
             tuple(k.split("|")): v
             for k, v in data.get("pair_counts", {}).items()
         })
+        # Restore IDF data (backward compatible - defaults to empty/0 if missing)
+        tok._doc_frequency = dict(data.get("doc_frequency", {}))
+        tok._total_docs = data.get("total_docs", 0)
         return tok
 
     def save(self, path: Path, filesystem: FileSystem) -> None:
@@ -551,6 +595,11 @@ class TextToAtomsBridge:
         Link strength is based on co-occurrence frequency.
         If link already exists, merge evidence (strength increases).
 
+        The link stores dual strength values in metadata:
+            - raw_strength: Co-occurrence based strength (backward compatible)
+            - idf_strength: raw_strength * min(idf_word1, idf_word2)
+            - idf_epoch: Training epoch when IDF was computed
+
         Args:
             atom1: First atom
             atom2: Second atom
@@ -565,14 +614,35 @@ class TextToAtomsBridge:
 
         # Strength scales with frequency (capped)
         import math
-        strength = min(0.9, base_strength + math.log1p(pair_freq) * 0.1)
+        raw_strength = min(0.9, base_strength + math.log1p(pair_freq) * 0.1)
 
-        if strength < self.min_link_strength:
+        if raw_strength < self.min_link_strength:
             return None
 
-        # Create link with computed strength
-        tv = TruthValue(strength=strength, confidence=0.3)
+        # Get IDF values for both words (fallback to 1.0 if not available)
+        idf1 = self.tokenizer.get_idf(atom1.name) if atom1.name else 1.0
+        idf2 = self.tokenizer.get_idf(atom2.name) if atom2.name else 1.0
+
+        # Handle case where get_idf returns 0.0 for unknown words
+        if idf1 <= 0:
+            idf1 = 1.0
+        if idf2 <= 0:
+            idf2 = 1.0
+
+        # Calculate IDF-weighted strength using minimum IDF of the pair
+        idf_strength = raw_strength * min(idf1, idf2)
+
+        # Create link with raw_strength for backward compatibility
+        tv = TruthValue(strength=raw_strength, confidence=0.3)
         link = self.graph.link(AtomType.SIMILARITY, [atom1, atom2], tv)
+
+        # Store dual values in metadata
+        link.metadata['raw_strength'] = raw_strength
+        link.metadata['idf_strength'] = idf_strength
+        link.metadata['idf_epoch'] = getattr(self, '_current_epoch', 0)
+
+        # Save the updated link with metadata
+        self.graph._storage.save(link)
 
         self._links_created += 1
         return link
@@ -586,6 +656,16 @@ class TextToAtomsBridge:
             "vocabulary_size": len(self.tokenizer.vocab),
             "learned_merges": len(self.tokenizer.merges),
         }
+
+    def get_similarity_links(self) -> List['Atom']:
+        """
+        Get all SIMILARITY links in the graph.
+
+        Returns:
+            List of SIMILARITY link atoms with their metadata.
+        """
+        from cortical.cognitive.graph import AtomType
+        return self.graph.find_by_type(AtomType.SIMILARITY)
 
     def add_documents(
         self,
@@ -688,6 +768,7 @@ class TextToAtomsBridge:
                 "sti": atom.sti,
                 "lti": atom.lti,
                 "outgoing": atom.outgoing,
+                "metadata": atom.metadata,
             }
             graph_data["atoms"].append(atom_data)
 
@@ -731,6 +812,7 @@ class TextToAtomsBridge:
             atom = graph.node(atom_data["name"], atom_type=atom_type, tv=tv)
             atom.sti = atom_data.get("sti", 0.0)
             atom.lti = atom_data.get("lti", 0.0)
+            atom.metadata = atom_data.get("metadata", {})
             graph._storage.save(atom)
             id_map[atom_data["id"]] = atom
 
@@ -749,6 +831,7 @@ class TextToAtomsBridge:
                 link = graph.link(atom_type, targets, tv)
                 link.sti = atom_data.get("sti", 0.0)
                 link.lti = atom_data.get("lti", 0.0)
+                link.metadata = atom_data.get("metadata", {})
                 graph._storage.save(link)
 
         # Restore stats

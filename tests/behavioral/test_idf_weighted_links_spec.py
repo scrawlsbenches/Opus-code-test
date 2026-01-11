@@ -22,7 +22,8 @@ Design Decisions:
    - Enables query flexibility and historical comparison
 
 2. IDF COMPUTATION AT TRAINING TIME
-   - IDF = log(N / df) where N=total docs, df=docs containing term
+   - IDF = log((N + 1) / (df + 1)) where N=total docs, df=docs containing term
+   - Smoothed formula avoids division by zero and log(0)
    - Computed once per word during vocabulary learning
    - Stored with tokenizer for O(1) lookup at query time
 
@@ -55,19 +56,25 @@ from pathlib import Path
 @pytest.fixture
 def idf_tokenizer():
     """Tokenizer with IDF tracking capability."""
-    pytest.skip("IDF tokenizer not yet implemented")
+    from cortical.cognitive.text_bridge import BPETokenizer
+    return BPETokenizer()
 
 
 @pytest.fixture
-def idf_bridge(idf_tokenizer):
+def idf_bridge(tmp_path):
     """TextToAtomsBridge with IDF weighting enabled."""
-    pytest.skip("IDF bridge not yet implemented")
+    from cortical.cognitive.text_bridge import TextToAtomsBridge
+    from cortical.cognitive.graph import CognitiveGraph
+
+    graph = CognitiveGraph()  # Uses InMemoryStorage by default
+    bridge = TextToAtomsBridge(graph=graph)
+    return bridge
 
 
 @pytest.fixture
 def trained_agent_with_idf(tmp_path):
     """Pre-trained cognitive agent with IDF-weighted links."""
-    pytest.skip("IDF training not yet implemented")
+    pytest.skip("Full agent training not yet implemented - test individual components")
 
 
 # =============================================================================
@@ -121,13 +128,13 @@ class TestIDFComputation:
 
     def test_idf_formula_correctness(self, idf_tokenizer):
         """
-        Scenario: IDF follows standard formula
+        Scenario: IDF follows smoothed formula
 
         Given a word appearing in specific number of documents
         When computing IDF
-        Then IDF = log(N / df) where N=total docs, df=doc frequency
+        Then IDF = log((N + 1) / (df + 1)) where N=total docs, df=doc frequency
 
-        Because standard IDF ensures comparable weights.
+        Because smoothed IDF avoids division by zero and ensures comparable weights.
         """
         import math
 
@@ -142,17 +149,17 @@ class TestIDFComputation:
         # When: Learn vocabulary
         idf_tokenizer.learn_vocabulary(docs)
 
-        # Then: IDF follows formula
-        # "apple" in 3/4 docs: IDF = log(4/3) ≈ 0.288
-        # "grape" in 1/4 docs: IDF = log(4/1) ≈ 1.386
+        # Then: IDF follows smoothed formula
+        # "apple" in 3/4 docs: IDF = log((4+1)/(3+1)) = log(5/4) ≈ 0.223
+        # "grape" in 1/4 docs: IDF = log((4+1)/(1+1)) = log(5/2) ≈ 0.916
         N = 4
 
         idf_apple = idf_tokenizer.get_idf("apple")
-        expected_apple = math.log(N / 3)
+        expected_apple = math.log((N + 1) / (3 + 1))
         assert abs(idf_apple - expected_apple) < 0.01
 
         idf_grape = idf_tokenizer.get_idf("grape")
-        expected_grape = math.log(N / 1)
+        expected_grape = math.log((N + 1) / (1 + 1))
         assert abs(idf_grape - expected_grape) < 0.01
 
     def test_idf_persisted_with_tokenizer(self, idf_tokenizer, tmp_path):
@@ -165,6 +172,8 @@ class TestIDFComputation:
 
         Because IDF must persist across sessions.
         """
+        from cortical.common.filesystem import RealFileSystem
+
         # Given: Computed IDF
         docs = ["neural networks are powerful", "deep learning advances"]
         idf_tokenizer.learn_vocabulary(docs)
@@ -172,13 +181,13 @@ class TestIDFComputation:
         original_idf_neural = idf_tokenizer.get_idf("neural")
 
         # When: Save and reload
-        save_path = tmp_path / "tokenizer"
-        idf_tokenizer.save(save_path)
+        fs = RealFileSystem(tmp_path)
+        save_path = tmp_path / "tokenizer.json"
+        idf_tokenizer.save(save_path, fs)
 
         # Create new tokenizer and load
         from cortical.cognitive.text_bridge import BPETokenizer
-        loaded = BPETokenizer()
-        loaded.load(save_path)
+        loaded = BPETokenizer.load(save_path, fs)
 
         # Then: IDF restored
         loaded_idf_neural = loaded.get_idf("neural")
@@ -255,11 +264,20 @@ class TestDualValueStorage:
         # When: Get links
         links = idf_bridge.get_similarity_links()
 
+        # Helper to get word names from link's outgoing atoms
+        def get_link_words(link):
+            words = set()
+            for atom_id in link.outgoing:
+                atom = idf_bridge.graph._storage.load(atom_id)
+                if atom and atom.name:
+                    words.add(atom.name)
+            return words
+
         # Find specific links
         the_link = None
         neural_link = None
         for link in links:
-            words = {link.source.name, link.target.name}
+            words = get_link_words(link)
             if "the" in words and "neural" in words:
                 the_link = link
             if "neural" in words and "network" in words:
