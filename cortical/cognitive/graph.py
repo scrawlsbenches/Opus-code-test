@@ -270,6 +270,7 @@ class InMemoryStorage:
         self._atoms: Dict[str, Atom] = {}
         self._by_name: Dict[str, str] = {}  # name -> id
         self._incoming: Dict[str, Set[str]] = {}  # atom_id -> set of link_ids
+        self._by_link_key: Dict[tuple, str] = {}  # (type, outgoing_tuple) -> link_id
 
     def save(self, atom: Atom) -> None:
         """Persist an atom."""
@@ -284,6 +285,10 @@ class InMemoryStorage:
                 if target_id not in self._incoming:
                     self._incoming[target_id] = set()
                 self._incoming[target_id].add(atom.id)
+
+            # Update link key index for O(1) duplicate detection
+            link_key = (atom.atom_type, tuple(atom.outgoing))
+            self._by_link_key[link_key] = atom.id
 
     def load(self, atom_id: str) -> Optional[Atom]:
         """Load an atom by ID."""
@@ -306,6 +311,11 @@ class InMemoryStorage:
                 if target_id in self._incoming:
                     self._incoming[target_id].discard(atom_id)
 
+            # Remove from link key index
+            link_key = (atom.atom_type, tuple(atom.outgoing))
+            if link_key in self._by_link_key:
+                del self._by_link_key[link_key]
+
         del self._atoms[atom_id]
         return True
 
@@ -319,6 +329,14 @@ class InMemoryStorage:
     def find_by_type(self, atom_type: AtomType) -> List[Atom]:
         """Find all atoms of a given type."""
         return [a for a in self._atoms.values() if a.atom_type == atom_type]
+
+    def find_link_by_outgoing(self, atom_type: AtomType, outgoing: List[str]) -> Optional[Atom]:
+        """Find a link by type and outgoing targets (O(1) lookup)."""
+        link_key = (atom_type, tuple(outgoing))
+        atom_id = self._by_link_key.get(link_key)
+        if atom_id:
+            return self._atoms.get(atom_id)
+        return None
 
     def all_atoms(self) -> List[Atom]:
         """Get all atoms."""
@@ -448,14 +466,24 @@ class CognitiveGraph:
             else:
                 raise TypeError(f"Invalid target type: {type(t)}")
 
-        # Check for existing identical link
-        for atom in self._storage.find_by_type(link_type):
-            if atom.outgoing == target_ids:
-                # Merge truth values if new evidence provided
-                if tv and tv.confidence > 0:
-                    atom.tv = atom.tv.merge(tv)
-                    self._storage.save(atom)
-                return atom
+        # Check for existing identical link (O(1) with index, O(n) fallback)
+        existing = None
+        if hasattr(self._storage, 'find_link_by_outgoing'):
+            # O(1) lookup using index
+            existing = self._storage.find_link_by_outgoing(link_type, target_ids)
+        else:
+            # O(n) fallback for storage backends without index
+            for atom in self._storage.find_by_type(link_type):
+                if atom.outgoing == target_ids:
+                    existing = atom
+                    break
+
+        if existing:
+            # Merge truth values if new evidence provided
+            if tv and tv.confidence > 0:
+                existing.tv = existing.tv.merge(tv)
+                self._storage.save(existing)
+            return existing
 
         # Create new link
         atom = Atom(
