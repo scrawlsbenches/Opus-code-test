@@ -1,0 +1,21 @@
+Attention Mechanisms in Cognitive Systems
+
+Attention is the gating mechanism that determines what information gets processed. In biological systems, attention evolved because sensory input vastly exceeds processing capacity. Cognitive systems face the same constraint: they cannot process everything simultaneously and must select what matters.
+
+Short-term importance measures current relevance. An atom that was just activated has high short-term importance. This value decays exponentially over time unless refreshed by continued activation. The decay rate determines how quickly the system forgets recent activations.
+
+Long-term importance measures historical value. An atom that has frequently been useful accumulates long-term importance. This value changes slowly and represents consolidated knowledge. High long-term importance makes an atom resistant to forgetting during memory consolidation.
+
+Attention spreading follows link strengths. When an atom receives activation, it spreads attention to connected atoms proportionally to link strength. Strong links propagate more attention than weak links. This creates activation patterns that reflect the semantic structure of knowledge.
+
+The attention focus is the set of atoms with highest current importance. This set changes dynamically as activation spreads and decays. Algorithms that query the attention focus get the currently most salient atoms, enabling focus-driven processing.
+
+Stimulation is how external events inject attention. When the system perceives something or receives a query, it stimulates relevant atoms. This creates an initial activation pattern that then evolves through spreading and decay.
+
+Competition for attention is implicit in the decay mechanism. Atoms that receive sustained stimulation maintain high importance while unstimulated atoms fade. This creates a natural priority queue where important things stay active and unimportant things are forgotten.
+
+Focused versus diffuse attention modes serve different purposes. Focused attention concentrates on a narrow set of atoms for deep processing. Diffuse attention spreads broadly for creative association. Effective cognition oscillates between these modes.
+
+Attention fatigue accumulates with sustained focus. The system cannot maintain peak attention indefinitely. Fatigue reduces processing effectiveness and eventually forces a switch to diffuse mode or rest. This mirrors biological constraints on sustained concentration.
+
+Context switching has a cost. When attention shifts to a new focus, there is overhead in loading new atoms and evicting old ones. Frequent switching reduces overall throughput. Effective attention management minimizes unnecessary switches.

@@ -1,0 +1,21 @@
+Knowledge Transfer and Session Handoffs
+
+Knowledge transfer preserves learning across sessions. When a session ends, accumulated knowledge risks loss unless explicitly transferred. Effective knowledge transfer captures insights in retrievable form.
+
+Session handoffs pass context between agents. An outgoing agent documents current state, pending work, and key insights. An incoming agent loads this context and continues seamlessly. Good handoffs minimize repeated work.
+
+Structured handoffs beat unstructured notes. Explicit fields for branch, modified files, blockers, and instructions ensure nothing is missed. Structured data enables automated processing and verification.
+
+Task state continuity tracks work across sessions. A task started in one session should be completable in another. Task state includes progress, blockers, and next steps. Persisting this state enables resumption.
+
+Knowledge documents capture lasting insights. Unlike session handoffs focused on immediate continuity, knowledge documents preserve learnings for long-term reference. These become part of the knowledge base.
+
+Decision logs record rationale for choices. Future agents can understand not just what was decided but why. This prevents revisiting settled questions and enables informed revision when circumstances change.
+
+Git state is part of context. The current branch, uncommitted changes, and recent commits provide essential context. Handoffs should capture or reference this state explicitly.
+
+Blockers require explicit flagging. When work cannot proceed due to external dependencies or unresolved questions, blockers must be documented. This focuses incoming agent attention appropriately.
+
+Acceptance and completion close handoff loops. The incoming agent acknowledges receipt and accepts responsibility. Upon completion, results are documented. This explicit lifecycle prevents orphaned handoffs.
+
+Linked knowledge connects handoffs to documentation. A handoff can reference knowledge documents that provide deeper context. This layered approach keeps handoffs concise while enabling depth.

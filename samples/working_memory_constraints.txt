@@ -1,0 +1,21 @@
+Working Memory Constraints and Cognitive Architecture
+
+Working memory is the cognitive workspace where active information is held for immediate processing. Unlike long-term storage, working memory has severe capacity limits. Research consistently shows humans can maintain approximately four independent chunks simultaneously.
+
+The four-chunk limit shapes how we think. Complex problems must be decomposed into pieces that fit within working memory. Solutions emerge by cycling different chunks through the limited workspace, building up understanding incrementally.
+
+Chunking is the primary mechanism for overcoming capacity limits. By grouping related items into a single chunk, more information can be represented. Expert performance often reflects superior chunking ability developed through practice. A chess master sees board positions as chunks rather than individual pieces.
+
+Rehearsal refreshes working memory contents. Without active maintenance, items decay and are lost. The phonological loop in human cognition demonstrates this: we subvocally repeat information to keep it active. Cognitive systems implement similar refresh mechanisms.
+
+Load management is essential when working memory is full. Adding a new item requires evicting an existing one. Least-recently-used eviction prioritizes items that have been accessed recently. Importance-weighted eviction considers both recency and relevance.
+
+Working memory interacts with attention through loading. High-attention atoms are candidates for loading into working memory. Once loaded, atoms receive preferential processing. This creates a feedback loop where attended items become more accessible.
+
+The phonological loop and visuospatial sketchpad in human cognition suggest working memory has specialized subsystems. A visual item and a verbal item might occupy different buffers, enabling parallel maintenance. Cognitive architectures can implement similar specialization.
+
+Central executive functions coordinate working memory operations. Deciding what to load, when to evict, and how to integrate information requires executive control. This meta-level processing consumes working memory capacity itself, creating overhead.
+
+Cognitive load theory describes how task demands interact with working memory limits. Intrinsic load comes from task complexity. Extraneous load comes from poor presentation. Germane load supports learning. Effective cognitive systems minimize extraneous load to maximize useful processing.
+
+Working memory capacity correlates with general intelligence and reasoning ability. Systems with larger effective working memory can maintain more context, consider more alternatives, and solve more complex problems. Strategies that effectively extend working memory capacity improve performance.

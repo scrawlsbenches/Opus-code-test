@@ -1,0 +1,21 @@
+Prediction, Surprise, and Learning in Cognitive Systems
+
+Prediction is continuous anticipation of what comes next. A cognitive system constantly predicts upcoming inputs based on current context. These predictions enable proactive preparation and rapid response when predictions are confirmed.
+
+Prediction error is the difference between predicted and actual outcomes. Small prediction errors indicate accurate models. Large prediction errors signal model inadequacy. Tracking prediction error reveals how well the system understands its environment.
+
+Surprise is the subjective experience of prediction error. Surprising events capture attention automatically. This orienting response prioritizes processing of unexpected information, which may signal opportunity or threat.
+
+Learning is driven by prediction error. When predictions are accurate, little learning occurs because the model is already correct. When predictions fail, the model updates to reduce future error. This error-driven learning efficiently focuses on what needs improvement.
+
+Hebbian learning strengthens connections between co-active elements. Neurons that fire together wire together. In cognitive systems, atoms that are frequently activated together develop stronger links. This captures statistical regularities in experience.
+
+Associative learning builds expectations from patterns. When A reliably precedes B, the system learns to predict B given A. These learned associations enable anticipation and preparation.
+
+Temporal difference learning bridges immediate and delayed rewards. The system learns to predict not just the next outcome but the cumulative future value. This enables planning toward distant goals.
+
+Consolidation transfers learning from short-term to long-term storage. During consolidation, recent experiences are integrated with existing knowledge. Important patterns are strengthened while noise is filtered. Sleep in biological systems serves consolidation.
+
+Forgetting is adaptive, not merely decay. A system that remembers everything becomes cluttered with irrelevant detail. Selective forgetting keeps knowledge current and retrievable. Low-importance atoms are pruned during consolidation.
+
+Transfer learning applies knowledge from one domain to another. When domains share structure, learning in one accelerates learning in the other. Analogical reasoning identifies shared structure and maps knowledge across contexts.

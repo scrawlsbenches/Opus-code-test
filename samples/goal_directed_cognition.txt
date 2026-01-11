@@ -1,0 +1,21 @@
+Goal-Directed Cognition and Control Theory
+
+Goals provide direction for cognitive processing. Without goals, a system processes information reactively without purpose. Goals transform cognition from passive reception to active pursuit, focusing resources on achieving desired states.
+
+A goal consists of a target state and a current state. Progress is measured as the distance covered toward the target. Goals with high importance and low progress have high urgency, demanding immediate attention. Goals with high progress require less urgent processing.
+
+Control theory provides the mathematical foundation for goal pursuit. The error signal is the difference between target and current state. The controller adjusts behavior to minimize error. Feedback loops continuously compare actual outcomes to desired outcomes.
+
+Goal hierarchies organize complex objectives. High-level goals decompose into subgoals, which decompose further until reaching actionable steps. Completing subgoals contributes to parent goal progress. This hierarchical structure enables planning at multiple abstraction levels.
+
+Terminal goals are desired for their own sake. Instrumental goals are desired as means to other goals. Understanding this distinction prevents confusion between ends and means. A system might pursue an instrumental goal long after it stops serving the terminal goal.
+
+Goal conflict arises when pursuing one goal impedes another. Approach-approach conflict involves choosing between desirable options. Approach-avoidance conflict involves goals with both positive and negative aspects. Resolution requires prioritization or creative integration.
+
+Goal activation and deactivation manage the active goal set. Not all goals can be pursued simultaneously. The system activates goals based on urgency, opportunity, and resource availability. Inactive goals remain dormant until conditions change.
+
+Urgency combines importance with progress. A highly important goal near completion has lower urgency than a moderately important goal with no progress. This prevents important goals from dominating attention after they are nearly achieved.
+
+Goal completion triggers satisfaction and goal termination. The system stops pursuing completed goals and reallocates resources. Incomplete abandonment occurs when a goal becomes unachievable or the cost exceeds the benefit.
+
+Feedback from goal pursuit updates beliefs and strategies. Success reinforces the approach used. Failure triggers strategy revision or goal abandonment. This learning loop improves goal pursuit over time.
