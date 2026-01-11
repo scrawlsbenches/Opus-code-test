@@ -56,6 +56,7 @@ from cortical.cognitive.text_bridge import (
     ProgressReporter,
 )
 from cortical.cognitive.tokenizer_storage import ShardedTokenizerStorage
+from cortical.cognitive.graph import AtomType, TruthValue
 
 
 # =============================================================================
@@ -304,6 +305,62 @@ class IncrementalTrainer:
         tokenizer_dir = self.model_dir / "tokenizer"
         if self.filesystem.exists(tokenizer_dir / "meta.json"):
             self.bridge.tokenizer = self.tokenizer_storage.load(tokenizer_dir)
+
+        # Load existing graph state if available (CRITICAL for session recovery)
+        graph_path = self.model_dir / "bridge" / "graph.json"
+        if self.filesystem.exists(graph_path):
+            self._load_graph_state(graph_path)
+
+    def _load_graph_state(self, graph_path: Path) -> None:
+        """
+        Load graph state from a previously saved graph.json file.
+
+        This is CRITICAL for session recovery - without this, all learned
+        atoms and links are lost when resuming training in a new session.
+
+        Args:
+            graph_path: Path to graph.json file
+        """
+        graph_data = json.loads(self.filesystem.read_text(graph_path))
+        graph = self.agent.graph
+
+        atoms_data = graph_data.get("atoms", [])
+        nodes = [a for a in atoms_data if not a.get("outgoing")]
+        links = [a for a in atoms_data if a.get("outgoing")]
+
+        # Pass 1: Restore nodes first (so link targets exist)
+        id_map = {}  # old_id -> new_atom
+        for atom_data in nodes:
+            atom_type = AtomType[atom_data["atom_type"]]
+            tv = TruthValue(atom_data["tv_strength"], atom_data["tv_confidence"])
+            atom = graph.node(atom_data["name"], atom_type=atom_type, tv=tv)
+            atom.sti = atom_data.get("sti", 0.0)
+            atom.lti = atom_data.get("lti", 0.0)
+            graph._storage.save(atom)
+            id_map[atom_data["id"]] = atom
+
+        # Pass 2: Restore links
+        for atom_data in links:
+            atom_type = AtomType[atom_data["atom_type"]]
+            tv = TruthValue(atom_data["tv_strength"], atom_data["tv_confidence"])
+
+            # Resolve target atoms
+            targets = []
+            for old_id in atom_data["outgoing"]:
+                if old_id in id_map:
+                    targets.append(id_map[old_id])
+
+            if len(targets) == len(atom_data["outgoing"]):
+                link = graph.link(atom_type, targets, tv)
+                link.sti = atom_data.get("sti", 0.0)
+                link.lti = atom_data.get("lti", 0.0)
+                graph._storage.save(link)
+
+        # Restore bridge stats
+        stats = graph_data.get("stats", {})
+        self.bridge._documents_fed = stats.get("documents_fed", 0)
+        self.bridge._atoms_created = stats.get("atoms_created", 0)
+        self.bridge._links_created = stats.get("links_created", 0)
 
     def scan_directory(
         self,
