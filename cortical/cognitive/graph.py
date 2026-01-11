@@ -743,6 +743,8 @@ class EventType(Enum):
     GOAL_ADDED = auto()         # New goal added
     GOAL_COMPLETED = auto()     # Goal reached completion
     GOAL_PROGRESS = auto()      # Goal progress updated
+    GOAL_ACTIVATED = auto()     # Goal became top priority
+    GOAL_STALLED = auto()       # Goal progress stalled (stuck)
 
     # Exploration events
     EXPLORE_DECISION = auto()   # Explore vs exploit decision made
@@ -856,7 +858,7 @@ class EventBus:
 @dataclass
 class Goal:
     """
-    A target state with progress tracking.
+    A target state with progress tracking and goal-directed attention.
 
     Grounding: Control theory - goal = setpoint, progress = error signal.
 
@@ -866,12 +868,25 @@ class Goal:
         target_state: What we're trying to achieve
         current_state: Where we are now
         importance: How much this matters [0, 1]
+        relevant_atom_ids: Atom IDs that provide context for this goal
+        action_atom_ids: Atom IDs to boost attention on when pursuing this goal
+        stall_threshold: Steps without progress before considered stalled
     """
     id: str
     description: str
     target_state: Any
     current_state: Any = None
     importance: float = 0.5
+    relevant_atom_ids: List[str] = field(default_factory=list)
+    action_atom_ids: List[str] = field(default_factory=list)
+    stall_threshold: int = 5
+
+    def __post_init__(self):
+        """Initialize internal tracking state."""
+        # Initialize _last_progress to current progress to avoid false "progress" detection
+        self._last_progress: float = self.progress
+        self._steps_without_progress: int = 0
+        self._is_stalled: bool = False
 
     @property
     def progress(self) -> float:
@@ -892,6 +907,34 @@ class Goal:
     def urgency(self) -> float:
         """Priority for attention allocation = importance × (1 - progress)."""
         return self.importance * (1.0 - self.progress)
+
+    @property
+    def is_stalled(self) -> bool:
+        """Check if goal has stalled (no progress for stall_threshold steps)."""
+        return self._is_stalled
+
+    def record_step(self) -> bool:
+        """
+        Record that a step has passed. Returns True if goal just became stalled.
+
+        Call this each agent step to track stall detection.
+        """
+        current_progress = self.progress
+        became_stalled = False
+
+        if current_progress > self._last_progress + 0.001:
+            # Progress made - reset stall counter
+            self._steps_without_progress = 0
+            self._is_stalled = False
+        else:
+            # No progress
+            self._steps_without_progress += 1
+            if self._steps_without_progress >= self.stall_threshold and not self._is_stalled:
+                self._is_stalled = True
+                became_stalled = True
+
+        self._last_progress = current_progress
+        return became_stalled
 
     def is_complete(self) -> bool:
         """Check if goal has been achieved."""
@@ -1667,6 +1710,8 @@ class CognitiveAgent:
         self.episodic_memory = EpisodicMemory(capacity=episodic_memory_size)
         self.events = EventBus()  # Event system for observability
         self._step_count: int = 0
+        self._previous_top_goal_id: Optional[str] = None  # Track goal activation changes
+        self._goal_attention_boost: float = 0.3  # How much to boost goal-relevant atoms
 
     def _emit(self, event_type: EventType, data: Dict[str, Any]) -> None:
         """Emit an event with current step context."""
@@ -1708,8 +1753,45 @@ class CognitiveAgent:
                 self.predictor.record_co_occurrence(a_id, b_id)
                 self.predictor.record_co_occurrence(b_id, a_id)
 
-        # 5. Check goal progress
+        # 5. Goal integration
         top_goal = self.goals.get_top_goal()
+        stalled_goals = []
+
+        # 5a. Check for goal activation change
+        if top_goal:
+            if top_goal.id != self._previous_top_goal_id:
+                self._emit(EventType.GOAL_ACTIVATED, {
+                    "goal_id": top_goal.id,
+                    "importance": top_goal.importance,
+                    "urgency": top_goal.urgency,
+                    "previous_goal_id": self._previous_top_goal_id,
+                })
+                self._previous_top_goal_id = top_goal.id
+
+            # 5b. Boost attention on goal-relevant action atoms
+            for atom_id in top_goal.action_atom_ids:
+                atom = self.graph.get_atom(atom_id)
+                if atom is None:
+                    atom = self.graph.get_node(atom_id)
+                if atom:
+                    self.graph.stimulate(atom_id, self._goal_attention_boost)
+
+        # 5c. Record step for all active goals and detect stalling
+        for goal in self.goals.get_active_goals():
+            became_stalled = goal.record_step()
+            if became_stalled:
+                stalled_goals.append(goal)
+                self._emit(EventType.GOAL_STALLED, {
+                    "goal_id": goal.id,
+                    "steps_without_progress": goal._steps_without_progress,
+                    "current_progress": goal.progress,
+                })
+
+        # 5d. If any goal is stalled, increase exploration
+        any_stalled = any(g.is_stalled for g in self.goals.get_active_goals())
+        if any_stalled:
+            # Record a failure to increase exploration when stuck
+            self.exploration.record_failure()
 
         # 6. Decide explore vs exploit
         exploring = self.exploration.should_explore()
@@ -1727,6 +1809,7 @@ class CognitiveAgent:
             "goal_progress": self.goals.total_progress(),
             "epsilon": self.exploration.epsilon,
             "exploring": exploring,
+            "stalled_goals": [g.id for g in stalled_goals],
         }
 
         # Emit step completed with metrics

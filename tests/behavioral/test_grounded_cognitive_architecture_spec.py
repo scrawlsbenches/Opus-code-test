@@ -2211,6 +2211,270 @@ class TestEpisodicMemory:
             os.unlink(temp_path)
 
 
+class TestGoalIntegration:
+    """
+    LAYER 5 EXTENSION: Goal-Directed Behavior Integration Tests
+
+    These tests verify that goals influence agent behavior:
+    - Goals can specify relevant atoms for attention boosting
+    - Stalled goals trigger increased exploration
+    - Goal activation changes are tracked and emitted
+    """
+
+    def test_goal_with_action_atoms_boosts_attention(self):
+        """
+        GIVEN a goal with action_atom_ids specified
+        WHEN the agent runs a step with that goal as top priority
+        THEN attention is boosted on the action atoms.
+
+        Goals direct behavior by focusing attention on relevant concepts.
+        """
+        from cortical.cognitive.graph import CognitiveAgent, Goal
+
+        # GIVEN
+        agent = CognitiveAgent()
+
+        # Create atoms that the goal will direct attention to
+        target = agent.graph.node("target_concept")
+        initial_sti = target.sti
+
+        # Add goal with action atoms
+        goal = Goal(
+            id="focus_on_target",
+            description="Focus on the target concept",
+            target_state=1.0,
+            importance=0.9,
+            action_atom_ids=[target.id],  # Direct attention here
+        )
+        agent.goals.add_goal(goal)
+
+        # WHEN - run a step
+        agent.step()
+
+        # THEN - target should have boosted attention
+        updated_target = agent.graph.get_atom(target.id)
+        # Note: decay happens too, so we check that attention was stimulated
+        # by checking if the atom is higher than if only decay happened
+        expected_with_decay_only = initial_sti * agent.graph._attention_decay
+        actual_sti = updated_target.sti
+
+        assert actual_sti > expected_with_decay_only, (
+            f"Goal action atom should receive attention boost. "
+            f"Expected > {expected_with_decay_only:.3f} (decay only), "
+            f"got {actual_sti:.3f}"
+        )
+
+    def test_goal_stall_detection_after_threshold_steps(self):
+        """
+        GIVEN a goal that makes no progress
+        WHEN enough steps pass without progress (stall_threshold)
+        THEN the goal is marked as stalled.
+
+        Stall detection enables the agent to recognize when it's stuck.
+        """
+        from cortical.cognitive.graph import Goal
+
+        # GIVEN - a goal with stall_threshold=3
+        goal = Goal(
+            id="stuck_goal",
+            description="A goal that will stall",
+            target_state=1.0,
+            current_state=0.2,
+            importance=0.8,
+            stall_threshold=3,
+        )
+
+        # Initially not stalled
+        assert not goal.is_stalled, "Goal should not be stalled initially"
+
+        # WHEN - record steps without progress
+        goal.record_step()  # Step 1, no progress
+        goal.record_step()  # Step 2, no progress
+
+        assert not goal.is_stalled, "Goal should not be stalled after 2 steps"
+
+        # Third step triggers stall
+        became_stalled = goal.record_step()
+
+        # THEN
+        assert became_stalled, "record_step should return True when goal becomes stalled"
+        assert goal.is_stalled, "Goal should be stalled after stall_threshold steps"
+
+    def test_stalled_goal_increases_exploration(self):
+        """
+        GIVEN an agent with a stalled goal
+        WHEN step() is called
+        THEN exploration epsilon increases (more exploration).
+
+        When stuck on a goal, the agent should try new things.
+        """
+        from cortical.cognitive.graph import CognitiveAgent, Goal
+
+        # GIVEN
+        agent = CognitiveAgent()
+
+        # Add goal that will stall immediately (already stalled)
+        goal = Goal(
+            id="already_stuck",
+            description="Pre-stalled goal",
+            target_state=1.0,
+            current_state=0.0,
+            importance=0.9,
+            stall_threshold=1,  # Stall after just 1 step
+        )
+        agent.goals.add_goal(goal)
+
+        # Get initial epsilon
+        initial_epsilon = agent.exploration.epsilon
+
+        # WHEN - run steps to trigger stall and observe epsilon
+        agent.step()  # First step - not yet stalled
+        epsilon_after_first = agent.exploration.epsilon
+
+        agent.step()  # Second step - goal becomes stalled, epsilon should increase
+
+        # THEN - epsilon should increase due to stalled goal
+        final_epsilon = agent.exploration.epsilon
+
+        assert final_epsilon > initial_epsilon, (
+            f"Epsilon should increase when goal is stalled. "
+            f"Initial: {initial_epsilon:.3f}, Final: {final_epsilon:.3f}"
+        )
+
+    def test_goal_activation_event_emitted_on_top_goal_change(self):
+        """
+        GIVEN an agent with goals
+        WHEN the top goal changes (due to progress or new goal)
+        THEN GOAL_ACTIVATED event is emitted.
+
+        This enables monitoring goal switches for debugging.
+        """
+        from cortical.cognitive.graph import CognitiveAgent, Goal, EventType
+
+        # GIVEN
+        agent = CognitiveAgent()
+        activation_events = []
+
+        def capture_activation(event):
+            if event.event_type == EventType.GOAL_ACTIVATED:
+                activation_events.append(event)
+
+        agent.events.subscribe(EventType.GOAL_ACTIVATED, capture_activation)
+
+        # Add first goal
+        goal1 = Goal(
+            id="goal_1",
+            description="First goal",
+            target_state=1.0,
+            importance=0.5,
+        )
+        agent.goals.add_goal(goal1)
+
+        # WHEN - run step (first goal should be activated)
+        agent.step()
+
+        # THEN - should have received activation event
+        assert len(activation_events) == 1, (
+            f"Expected 1 GOAL_ACTIVATED event, got {len(activation_events)}"
+        )
+        assert activation_events[0].data["goal_id"] == "goal_1"
+
+        # WHEN - add higher priority goal
+        goal2 = Goal(
+            id="goal_2",
+            description="Higher priority goal",
+            target_state=1.0,
+            importance=0.9,  # Higher importance
+        )
+        agent.goals.add_goal(goal2)
+        agent.step()
+
+        # THEN - should have another activation event for new top goal
+        assert len(activation_events) == 2, (
+            f"Expected 2 GOAL_ACTIVATED events, got {len(activation_events)}"
+        )
+        assert activation_events[1].data["goal_id"] == "goal_2"
+        assert activation_events[1].data["previous_goal_id"] == "goal_1"
+
+    def test_goal_stalled_event_emitted_when_stall_detected(self):
+        """
+        GIVEN an agent with a goal that will stall
+        WHEN enough steps pass without progress
+        THEN GOAL_STALLED event is emitted.
+
+        This enables monitoring stuck states.
+        """
+        from cortical.cognitive.graph import CognitiveAgent, Goal, EventType
+
+        # GIVEN
+        agent = CognitiveAgent()
+        stalled_events = []
+
+        def capture_stalled(event):
+            if event.event_type == EventType.GOAL_STALLED:
+                stalled_events.append(event)
+
+        agent.events.subscribe(EventType.GOAL_STALLED, capture_stalled)
+
+        # Add goal with low stall threshold
+        goal = Goal(
+            id="will_stall",
+            description="Goal that will stall",
+            target_state=1.0,
+            current_state=0.0,
+            importance=0.8,
+            stall_threshold=2,
+        )
+        agent.goals.add_goal(goal)
+
+        # WHEN - run steps
+        agent.step()  # Step 1
+        agent.step()  # Step 2 - should stall
+
+        # THEN
+        assert len(stalled_events) == 1, (
+            f"Expected 1 GOAL_STALLED event, got {len(stalled_events)}"
+        )
+        assert stalled_events[0].data["goal_id"] == "will_stall"
+        assert stalled_events[0].data["steps_without_progress"] >= 2
+
+    def test_progress_resets_stall_detection(self):
+        """
+        GIVEN a goal that was approaching stall threshold
+        WHEN progress is made on the goal
+        THEN stall counter resets and goal doesn't stall.
+
+        Progress proves the current approach is working.
+        """
+        from cortical.cognitive.graph import Goal
+
+        # GIVEN - goal approaching stall
+        goal = Goal(
+            id="progressing_goal",
+            description="Goal that will make progress",
+            target_state=1.0,
+            current_state=0.0,
+            importance=0.8,
+            stall_threshold=3,
+        )
+
+        # Steps without progress
+        goal.record_step()
+        goal.record_step()
+
+        assert goal._steps_without_progress == 2
+
+        # WHEN - make progress
+        goal.current_state = 0.5  # Update progress
+        goal.record_step()
+
+        # THEN - stall counter should reset
+        assert goal._steps_without_progress == 0, (
+            f"Progress should reset stall counter, but got {goal._steps_without_progress}"
+        )
+        assert not goal.is_stalled, "Goal should not be stalled after progress"
+
+
 # =============================================================================
 # SUCCESS CRITERIA (The Contract)
 # =============================================================================

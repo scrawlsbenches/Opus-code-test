@@ -86,6 +86,8 @@ EVENT_COLORS = {
     EventType.GOAL_ADDED: Colors.GREEN,
     EventType.GOAL_PROGRESS: Colors.BLUE,
     EventType.GOAL_COMPLETED: Colors.GREEN + Colors.BOLD,
+    EventType.GOAL_ACTIVATED: Colors.CYAN + Colors.BOLD,
+    EventType.GOAL_STALLED: Colors.RED + Colors.BOLD,
     # Exploration events
     EventType.EXPLORE_DECISION: Colors.YELLOW,
     EventType.STRATEGY_ADAPTED: Colors.CYAN,
@@ -293,44 +295,66 @@ def demo_surprise_and_learning(agent: CognitiveAgent):
 
 
 def demo_goals_layer(agent: CognitiveAgent):
-    """Demonstrate goal tracking with urgency."""
-    print_subheader("Layer 5: Goals (Control Theory)")
-    print("Adding goals with importance and tracking progress...")
+    """Demonstrate goal tracking with urgency and goal-directed attention."""
+    print_subheader("Layer 5: Goals (Control Theory + Attention Direction)")
+    print("Goals now direct attention to relevant concepts...")
     print()
 
-    # Add goals using Goal objects
-    agent.goals.add_goal(Goal(
-        id="learn_animal_taxonomy",
-        description="Learn the animal taxonomy",
-        target_state=1.0,
-        importance=0.8
-    ))
-    agent.goals.add_goal(Goal(
-        id="find_pet_store",
-        description="Find a pet store",
-        target_state=1.0,
-        importance=0.5
-    ))
+    # Create an atom that will be focused by a goal
+    food_bowl = agent.graph.node("food_bowl")
+    cat_food = agent.graph.node("cat_food")
+    food_bowl_sti_before = food_bowl.sti
+
+    # Add goal with action_atom_ids to direct attention
     agent.goals.add_goal(Goal(
         id="feed_cat",
         description="Feed the cat",
         target_state=1.0,
-        importance=0.9
+        importance=0.9,
+        action_atom_ids=[food_bowl.id, cat_food.id],  # Focus attention here
+        stall_threshold=3,  # Stall after 3 steps without progress
+    ))
+    agent.goals.add_goal(Goal(
+        id="learn_taxonomy",
+        description="Learn animal taxonomy",
+        target_state=1.0,
+        importance=0.5,
     ))
 
-    # Show goals (sorted by urgency internally)
-    print("Current goals:")
+    # Show goals (sorted by urgency)
+    print("Current goals (with action atoms):")
     for goal in agent.goals.get_active_goals():
-        print(f"  {goal.id}: importance={goal.importance:.1f}, "
-              f"progress={goal.progress:.1f}, urgency={goal.urgency:.2f}")
+        action_info = f", actions={len(goal.action_atom_ids)}" if goal.action_atom_ids else ""
+        print(f"  {goal.id}: urgency={goal.urgency:.2f}{action_info}")
 
-    # Update progress (state goes from 0 towards target)
+    # Run step to show goal-directed attention
+    print()
+    print("Running step (goal directs attention to food_bowl)...")
+    agent.step()
+
+    food_bowl_sti_after = agent.graph.get_node("food_bowl").sti
+    print(f"  food_bowl STI: {food_bowl_sti_before:.2f} -> {food_bowl_sti_after:.2f}")
+    if food_bowl_sti_after > food_bowl_sti_before * agent.graph._attention_decay:
+        print(colorize("  Goal boosted attention!", Colors.GREEN))
+
+    # Show stall detection
+    print()
+    print("Demonstrating stall detection (goal makes no progress)...")
+    for i in range(4):
+        metrics = agent.step()
+        stalled = metrics.get("stalled_goals", [])
+        if stalled:
+            print(f"  Step {i+1}: GOAL STALLED - {stalled}")
+        else:
+            print(f"  Step {i+1}: goal not yet stalled")
+
+    # Update progress to show urgency recalculation
     print()
     print("Updating 'feed_cat' progress to 50%...")
     agent.goals.update_progress("feed_cat", current_state=0.5)
 
     print()
-    print("Goals after update:")
+    print("Goals after progress:")
     for goal in agent.goals.get_active_goals():
         print(f"  {goal.id}: progress={goal.progress:.1f}, urgency={goal.urgency:.2f}")
 
