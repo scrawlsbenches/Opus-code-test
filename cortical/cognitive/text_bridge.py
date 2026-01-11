@@ -619,20 +619,16 @@ class TextToAtomsBridge:
         if raw_strength < self.min_link_strength:
             return None
 
-        # Get IDF values for both words (fallback to 1.0 if not available)
-        idf1 = self.tokenizer.get_idf(atom1.name) if atom1.name else 1.0
-        idf2 = self.tokenizer.get_idf(atom2.name) if atom2.name else 1.0
-
-        # Handle case where get_idf returns 0.0 for unknown words
-        if idf1 <= 0:
-            idf1 = 1.0
-        if idf2 <= 0:
-            idf2 = 1.0
+        # Get IDF values for both words
+        # IDF=0 is valid: means word appears in all documents (no discriminative power)
+        idf1 = self.tokenizer.get_idf(atom1.name) if atom1.name else 0.0
+        idf2 = self.tokenizer.get_idf(atom2.name) if atom2.name else 0.0
 
         # Calculate IDF-weighted strength using minimum IDF of the pair
+        # If either word is ubiquitous (IDF=0), the link has low discriminative value
         idf_strength = raw_strength * min(idf1, idf2)
 
-        # Create link with raw_strength for backward compatibility
+        # Create link with raw_strength in truth value
         tv = TruthValue(strength=raw_strength, confidence=0.3)
         link = self.graph.link(AtomType.SIMILARITY, [atom1, atom2], tv)
 
