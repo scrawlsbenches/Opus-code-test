@@ -1,0 +1,19 @@
+Cognitive Graph Fundamentals: Hypergraphs for Knowledge Representation
+
+A cognitive graph differs from traditional graphs in one crucial way: links are first-class atoms. In a standard graph, edges connect nodes but cannot themselves be connected. In a cognitive hypergraph, a link is an atom that can be the target of other links.
+
+This enables meta-reasoning. Consider the statement "John believes that cats are animals." In a traditional graph, you might represent this awkwardly with intermediate nodes. In a cognitive graph, you create an inheritance link from cat to animal, then create a believes link from John to that inheritance link directly.
+
+Truth values in cognitive graphs are probabilistic. Each atom carries a strength value between zero and one representing the probability that the statement is true, and a confidence value representing how much evidence supports that estimate. A truth value of strength 0.9 and confidence 0.8 means we are fairly confident the statement is likely true. A truth value of strength 0.5 and confidence 0.1 means we have little evidence and are uncertain.
+
+Attention in cognitive graphs is managed through short-term importance and long-term importance values. Short-term importance represents current activation and decays over time. Long-term importance represents how frequently an atom has been useful and resists forgetting. Atoms compete for attention based on their importance values.
+
+Content addressing is fundamental. When you request a node with the same name twice, you get the same atom. When you create the same link twice, the system merges evidence rather than duplicating. This ensures the graph remains consistent and avoids redundancy.
+
+The cognitive graph supports several link types. Inheritance links represent is-a relationships. Similarity links represent bidirectional similarity. Evaluation links apply predicates to arguments. Higher-order links like believes, doubts, and implies connect to other links, enabling reasoning about reasoning.
+
+Graph traversal follows attention gradients. When exploring the graph, agents prefer paths through high-importance atoms. This mimics how human cognition follows salient associations rather than exhaustively searching all possibilities.
+
+Working memory in cognitive systems has limited capacity, typically around four chunks. The cognitive graph interacts with working memory by loading high-attention atoms and evicting low-attention ones. This creates a dynamic focus that shifts as the agent processes information.
+
+Spreading activation is how attention propagates through the graph. When an atom receives attention, it spreads a fraction of that attention to connected atoms. This creates ripples of activation that highlight relevant knowledge neighborhoods.

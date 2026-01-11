@@ -1,0 +1,21 @@
+Thought Spawning Patterns and Recursive Decomposition
+
+A thought is a unit of cognitive processing that takes a question and produces an answer. Thoughts can spawn other thoughts when they need information to proceed. This recursive decomposition breaks complex problems into manageable pieces.
+
+All thoughts are equal in capability. A spawned thought has the same permissions and resources as its parent. There is no privileged main thought that controls subordinate thoughts. This equality enables flexible delegation without artificial hierarchy.
+
+Thoughts are data that can be serialized and transferred. A thought's state includes its query, context, spawned sub-thoughts, and answer. Serializing thoughts enables persistence across sessions, transfer between agents, and analysis of reasoning processes.
+
+Dependency injection enables testable thoughts. Rather than hardcoding access to the knowledge graph or other resources, thoughts receive dependencies through their context. Mock dependencies enable unit testing without the full cognitive system.
+
+The thought context provides access to shared resources. Through the context, a thought can query the knowledge graph, spawn sub-thoughts, access working memory, and report progress. The context abstracts away implementation details.
+
+Static thought models return deterministic answers for testing. Given the same query and context, a static thought produces the same answer. This enables precise verification of thought behavior without stochastic variation.
+
+Dynamic depth allows thoughts to expand as needed. A thought starts with minimal resources and requests more if insufficient. This prevents over-allocation while ensuring complex problems get adequate processing.
+
+Work queues manage incomplete and failed thoughts. When a thought cannot complete, it enters a queue for later processing. When conditions change, queued thoughts can be retried. Both the system and human operators can adjust queue priorities.
+
+Gradual scaling starts with minimal resources and adds more as needed. One worker handles simple cases. Additional workers are spawned for complex cases. This efficiency prevents waste while maintaining capability.
+
+Thought chains form when one thought's answer becomes another's input. Long chains can develop as reasoning proceeds step by step. Chain length is limited by resource budgets to prevent infinite loops.

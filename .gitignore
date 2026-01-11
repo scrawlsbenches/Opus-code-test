@@ -183,3 +183,7 @@ docs/audits/audit_index.pkl
 # Ensure git-ml tracked directories are not ignored
 !.git-ml/tracked/
 !.git-ml/tracked/**
+
+# Trained model artifacts
+trained_model/
+trained_model_v2/

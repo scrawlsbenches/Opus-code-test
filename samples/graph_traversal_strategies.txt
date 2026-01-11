@@ -1,0 +1,23 @@
+Graph Traversal Strategies for Knowledge Navigation
+
+Graph traversal determines how a cognitive system explores its knowledge. Different strategies suit different goals. Choosing the right strategy significantly impacts efficiency and effectiveness.
+
+Depth-first traversal follows one path deeply before backtracking. This strategy finds distant connections but may miss nearby alternatives. It uses minimal memory by maintaining only the current path.
+
+Breadth-first traversal explores all neighbors before going deeper. This strategy finds shortest paths and nearby connections first. It requires more memory to track all frontier nodes.
+
+Best-first traversal prioritizes nodes by estimated value. An evaluation function scores each candidate. The highest-scoring node is explored next. This focuses effort on promising directions.
+
+Desire-gradient traversal follows paths toward goal satisfaction. Each node is scored by how much it contributes to active goals. The system descends the gradient toward satisfaction.
+
+Random walk traversal makes stochastic transitions. Each step randomly selects among neighbors, possibly weighted by link strength. This enables exploration of unexpected paths.
+
+Associative traversal follows strongest connections. From any node, the strongest outgoing link is followed. This traces the most prominent associations in the knowledge structure.
+
+Attention-guided traversal prioritizes high-importance nodes. Short-term and long-term importance values weight candidates. This follows the current focus of cognitive activity.
+
+Strategy blending combines multiple strategies. Rather than pure depth-first or pure breadth-first, a blend might be seventy percent depth-first and thirty percent associative. Blending adapts to mixed requirements.
+
+Backtracking enables recovery from dead ends. When a path fails to find relevant information, the system returns to earlier choice points. Efficient backtracking avoids redundant exploration.
+
+Path pruning cuts unpromising branches early. When a partial path scores poorly, further exploration is abandoned. This saves resources for more promising directions.
