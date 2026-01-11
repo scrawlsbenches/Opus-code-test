@@ -565,24 +565,35 @@ class TestReindexCommand:
         """
         import subprocess
         import sys
+        from cortical.cognitive.graph import CognitiveAgent
+        from cortical.cognitive.training import IncrementalTrainer
+        from cortical.common.filesystem import RealFileSystem
 
-        # This test would verify CLI functionality
-        # Skip if model doesn't exist
+        # Given: Set up a trained model on disk (CLI needs real filesystem)
         model_dir = tmp_path / "test_model"
-        if not model_dir.exists():
-            pytest.skip("Model not set up for CLI test")
+        docs_dir = tmp_path / "docs"
+        docs_dir.mkdir(parents=True)
 
-        # When: Run CLI
+        # Create sample documents
+        (docs_dir / "doc1.txt").write_text("Neural networks learn patterns.")
+        (docs_dir / "doc2.txt").write_text("Deep learning is powerful.")
+
+        # Train the model
+        filesystem = RealFileSystem(tmp_path)
+        agent = CognitiveAgent(filesystem=filesystem)
+        trainer = IncrementalTrainer(agent, model_dir, filesystem)
+        trainer.train_directory(docs_dir, show_progress=False)
+
+        # When: Run CLI with --reindex
         result = subprocess.run(
             [sys.executable, "-m", "cortical.cognitive.training",
-             "--model-dir", str(model_dir), "--reindex"],
+             "--model-dir", str(model_dir), "--reindex", "--quiet"],
             capture_output=True,
             text=True,
         )
 
-        # Then: Should succeed
-        assert result.returncode == 0
-        assert "reindex" in result.stdout.lower() or "complete" in result.stdout.lower()
+        # Then: Should succeed (quiet mode has minimal output)
+        assert result.returncode == 0, f"CLI failed: {result.stderr}"
 
 
 # =============================================================================
