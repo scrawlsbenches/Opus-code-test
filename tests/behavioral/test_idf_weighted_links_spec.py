@@ -597,6 +597,10 @@ class TestConcurrentQueryIndex:
     As a system that may query during reindexing,
     I want queries to see consistent snapshots,
     So that results are not corrupted by in-progress updates.
+
+    NOTE: Concurrency implementation is ON HOLD.
+    These tests are skipped until threading/locking strategy is finalized.
+    See: TestReindexCommand for core reindex functionality.
     """
 
     def test_query_during_reindex_sees_consistent_state(self, trained_agent_with_idf):
