@@ -124,11 +124,11 @@ def trained_agent_with_idf(tmp_path):
     """Pre-trained cognitive agent with IDF-weighted links."""
     from cortical.cognitive.graph import CognitiveAgent
     from cortical.cognitive.training import IncrementalTrainer
-    from cortical.common.filesystem import RealFileSystem
+    from cortical.common.filesystem import InMemoryFileSystem
 
-    # Create filesystem and agent
+    # Create in-memory filesystem for fast tests (no disk I/O)
     model_dir = tmp_path / "model"
-    filesystem = RealFileSystem(tmp_path)
+    filesystem = InMemoryFileSystem(tmp_path)
     agent = CognitiveAgent(filesystem=filesystem)
     trainer = IncrementalTrainer(agent, model_dir, filesystem)
 
@@ -252,7 +252,7 @@ class TestIDFComputation:
 
         Because IDF must persist across sessions.
         """
-        from cortical.common.filesystem import RealFileSystem
+        from cortical.common.filesystem import InMemoryFileSystem
 
         # Given: Computed IDF
         docs = ["neural networks are powerful", "deep learning advances"]
@@ -261,7 +261,8 @@ class TestIDFComputation:
         original_idf_neural = idf_tokenizer.get_idf("neural")
 
         # When: Save and reload
-        fs = RealFileSystem(tmp_path)
+        fs = InMemoryFileSystem(tmp_path)
+        fs.mkdir(tmp_path, parents=True, exist_ok=True)
         save_path = tmp_path / "tokenizer.json"
         idf_tokenizer.save(save_path, fs)
 
