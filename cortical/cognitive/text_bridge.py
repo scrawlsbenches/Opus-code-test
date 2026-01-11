@@ -876,48 +876,48 @@ class TextToAtomsBridge:
 
         Creates:
             path/tokenizer.json - Tokenizer vocabulary and stats
-            path/graph.json - CognitiveGraph state
+            path/meta.json - Graph metadata
+            path/atoms_*.json - Sharded graph atoms by type
+
+        Uses ShardedGraphStorage to keep files under 50MB for git.
 
         Args:
             path: Directory to save to (created if doesn't exist)
             filesystem: FileSystem for I/O operations
         """
+        from cortical.cognitive.graph_storage import ShardedGraphStorage
+
         path = Path(path)
         filesystem.mkdir(path, parents=True, exist_ok=True)
 
         # Save tokenizer
         self.tokenizer.save(path / "tokenizer.json", filesystem)
 
-        # Save graph (uses its own save method)
-        # The CognitiveGraph should have a save method
-        graph_data = {
-            "atoms": [],
-            "stats": self.get_statistics(),
-        }
+        # Save graph using sharded storage
+        storage = ShardedGraphStorage()
+        result = storage.save(self.graph, path)
 
-        # Serialize atoms
-        for atom in self.graph._storage.all_atoms():
-            atom_data = {
-                "id": atom.id,
-                "name": atom.name,
-                "atom_type": atom.atom_type.name,
-                "tv_strength": atom.tv.strength,
-                "tv_confidence": atom.tv.confidence,
-                "sti": atom.sti,
-                "lti": atom.lti,
-                "outgoing": atom.outgoing,
-                "metadata": atom.metadata,
-            }
-            graph_data["atoms"].append(atom_data)
+        # Also save stats in meta.json (append to existing)
+        meta_path = path / "meta.json"
+        if meta_path.exists():
+            with open(meta_path) as f:
+                meta = json.load(f)
+        else:
+            meta = {}
 
-        filesystem.write_text(path / "graph.json", json.dumps(graph_data, indent=2))
+        meta["bridge_stats"] = self.get_statistics()
+        with open(meta_path, 'w') as f:
+            json.dump(meta, f, indent=2)
 
         print(f"Saved bridge to {path}/")
+        print(f"  Shards: {result['shards_written']}, Atoms: {result['total_atoms']}")
 
     @classmethod
     def load(cls, path: Path, graph: 'CognitiveGraph', filesystem: FileSystem) -> 'TextToAtomsBridge':
         """
         Load bridge state from directory.
+
+        Supports both sharded format (atoms_*.json) and legacy format (graph.json).
 
         Args:
             path: Directory containing saved state
@@ -927,6 +927,8 @@ class TextToAtomsBridge:
         Returns:
             Loaded TextToAtomsBridge
         """
+        from cortical.cognitive.graph_storage import ShardedGraphStorage
+
         path = Path(path)
 
         # Load tokenizer
@@ -935,10 +937,11 @@ class TextToAtomsBridge:
         # Create bridge with loaded tokenizer
         bridge = cls(graph=graph, tokenizer=tokenizer)
 
-        # Load graph data
-        graph_data = json.loads(filesystem.read_text(path / "graph.json"))
+        # Load graph data using sharded storage (handles legacy format too)
+        storage = ShardedGraphStorage()
+        atoms_data = storage.load(path)
 
-        atoms_data = graph_data.get("atoms", [])
+        # Separate nodes and links
         nodes = [a for a in atoms_data if not a.get("outgoing")]
         links = [a for a in atoms_data if a.get("outgoing")]
 
@@ -946,7 +949,11 @@ class TextToAtomsBridge:
         id_map = {}  # old_id -> new_atom
         for atom_data in nodes:
             atom_type = AtomType[atom_data["atom_type"]]
-            tv = TruthValue(atom_data["tv_strength"], atom_data["tv_confidence"])
+            # Handle both old format (tv_strength) and new format (tv.strength)
+            if "tv" in atom_data:
+                tv = TruthValue(atom_data["tv"]["strength"], atom_data["tv"]["confidence"])
+            else:
+                tv = TruthValue(atom_data.get("tv_strength", 0.5), atom_data.get("tv_confidence", 0.5))
             atom = graph.node(atom_data["name"], atom_type=atom_type, tv=tv)
             atom.sti = atom_data.get("sti", 0.0)
             atom.lti = atom_data.get("lti", 0.0)
@@ -957,7 +964,11 @@ class TextToAtomsBridge:
         # Pass 2: Restore links
         for atom_data in links:
             atom_type = AtomType[atom_data["atom_type"]]
-            tv = TruthValue(atom_data["tv_strength"], atom_data["tv_confidence"])
+            # Handle both old format (tv_strength) and new format (tv.strength)
+            if "tv" in atom_data:
+                tv = TruthValue(atom_data["tv"]["strength"], atom_data["tv"]["confidence"])
+            else:
+                tv = TruthValue(atom_data.get("tv_strength", 0.5), atom_data.get("tv_confidence", 0.5))
 
             # Resolve target atoms
             targets = []
@@ -972,8 +983,15 @@ class TextToAtomsBridge:
                 link.metadata = atom_data.get("metadata", {})
                 graph._storage.save(link)
 
-        # Restore stats
-        stats = graph_data.get("stats", {})
+        # Restore stats from meta.json if available
+        meta_path = path / "meta.json"
+        if meta_path.exists():
+            with open(meta_path) as f:
+                meta = json.load(f)
+            stats = meta.get("bridge_stats", {})
+        else:
+            stats = {}
+
         bridge._documents_fed = stats.get("documents_fed", 0)
         bridge._atoms_created = stats.get("atoms_created", 0)
         bridge._links_created = stats.get("links_created", 0)

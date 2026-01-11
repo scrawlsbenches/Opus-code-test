@@ -328,13 +328,13 @@ class IncrementalTrainer:
             self.bridge.tokenizer = self.tokenizer_storage.load(tokenizer_dir)
 
         # Load existing graph state if available (CRITICAL for session recovery)
-        graph_path = self.model_dir / "bridge" / "graph.json"
-        if self.filesystem.exists(graph_path):
-            self._load_graph_state(graph_path)
+        bridge_dir = self.model_dir / "bridge"
+        if bridge_dir.exists():
+            self._load_graph_state(bridge_dir)
 
-    def _load_graph_state(self, graph_path: Path) -> None:
+    def _load_graph_state(self, bridge_dir: Path) -> None:
         """
-        Load graph state from a previously saved graph.json file.
+        Load graph state from sharded files or legacy graph.json.
 
         This is CRITICAL for session recovery - without this, all learned
         atoms and links are lost when resuming training in a new session.
@@ -350,27 +350,35 @@ class IncrementalTrainer:
         Direct Atom creation: 0.15s (200x faster)
 
         Args:
-            graph_path: Path to graph.json file
+            bridge_dir: Directory containing graph shards or graph.json
         """
-        graph_data = json.loads(self.filesystem.read_text(graph_path))
-        storage = self.agent.graph._storage
+        from cortical.cognitive.graph_storage import ShardedGraphStorage
 
-        atoms_data = graph_data.get("atoms", [])
+        storage_handler = ShardedGraphStorage()
+        atoms_data = storage_handler.load(bridge_dir)
+
+        if not atoms_data:
+            return
+
+        storage = self.agent.graph._storage
 
         # OPTIMIZED: Direct Atom instantiation bypasses O(n²) find_by_type()
         # We load all atoms in a single pass since we have the complete data
         id_map = {}  # old_id -> new_atom
 
         for atom_data in atoms_data:
+            # Handle both old format (tv_strength) and new format (tv.strength)
+            if "tv" in atom_data:
+                tv = TruthValue(atom_data["tv"]["strength"], atom_data["tv"]["confidence"])
+            else:
+                tv = TruthValue(atom_data.get("tv_strength", 0.5), atom_data.get("tv_confidence", 0.5))
+
             atom = Atom(
                 id=atom_data["id"],
                 atom_type=AtomType[atom_data["atom_type"]],
                 name=atom_data.get("name", ""),
                 outgoing=atom_data.get("outgoing", []),
-                tv=TruthValue(
-                    atom_data["tv_strength"],
-                    atom_data["tv_confidence"]
-                ),
+                tv=tv,
                 sti=atom_data.get("sti", 0.0),
                 lti=atom_data.get("lti", 0.0),
                 metadata=atom_data.get("metadata", {}),  # Restore IDF weights
@@ -378,8 +386,15 @@ class IncrementalTrainer:
             id_map[atom_data["id"]] = atom
             storage.save(atom)
 
-        # Restore bridge stats
-        stats = graph_data.get("stats", {})
+        # Restore bridge stats from meta.json if available
+        meta_path = bridge_dir / "meta.json"
+        if meta_path.exists():
+            with open(meta_path) as f:
+                meta = json.load(f)
+            stats = meta.get("bridge_stats", {})
+        else:
+            stats = {}
+
         self.bridge._documents_fed = stats.get("documents_fed", 0)
         self.bridge._atoms_created = stats.get("atoms_created", 0)
         self.bridge._links_created = stats.get("links_created", 0)
@@ -665,37 +680,30 @@ class IncrementalTrainer:
 
     def save(self) -> None:
         """Save model, tokenizer, and manifest."""
+        from cortical.cognitive.graph_storage import ShardedGraphStorage
+
         # Save tokenizer to sharded directory (merge-conflict-free)
         tokenizer_dir = self.model_dir / "tokenizer"
         self.tokenizer_storage.save_incremental(self.bridge.tokenizer, tokenizer_dir)
 
-        # Save bridge graph data
+        # Save bridge graph data using sharded storage (git-friendly)
         bridge_dir = self.model_dir / "bridge"
         self.filesystem.mkdir(bridge_dir, parents=True, exist_ok=True)
 
-        # Serialize graph to bridge directory
-        graph_data = {
-            "atoms": [],
-            "stats": self.bridge.get_statistics(),
-        }
-        for atom in self.bridge.graph._storage.all_atoms():
-            atom_data = {
-                "id": atom.id,
-                "name": atom.name,
-                "atom_type": atom.atom_type.name,
-                "tv_strength": atom.tv.strength,
-                "tv_confidence": atom.tv.confidence,
-                "sti": atom.sti,
-                "lti": atom.lti,
-                "outgoing": atom.outgoing,
-                "metadata": atom.metadata,  # Preserve IDF weights
-            }
-            graph_data["atoms"].append(atom_data)
+        storage = ShardedGraphStorage()
+        result = storage.save(self.bridge.graph, bridge_dir)
 
-        self.filesystem.write_text(
-            bridge_dir / "graph.json",
-            json.dumps(graph_data, indent=2)
-        )
+        # Save stats in meta.json
+        meta_path = bridge_dir / "meta.json"
+        if meta_path.exists():
+            with open(meta_path) as f:
+                meta = json.load(f)
+        else:
+            meta = {}
+
+        meta["bridge_stats"] = self.bridge.get_statistics()
+        with open(meta_path, 'w') as f:
+            json.dump(meta, f, indent=2)
 
         # Save manifest
         self.manifest.save(self.manifest_path, self.filesystem)
