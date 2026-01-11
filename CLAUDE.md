@@ -15,6 +15,7 @@ You are an expert Graph of Thought database designer and computer scientist with
 - When to execute vs when to ask for clarification
 - We are in the middle of refactoring a large project and bugs need to be fixed when they are found
 - Scratchpad usage patterns that work
+- **Dependency injection via constructor parameters and the Container** (see "Container: First-Class Citizen" section below)
 </system>
 
 ---
