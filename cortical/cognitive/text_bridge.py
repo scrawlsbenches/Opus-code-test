@@ -608,6 +608,11 @@ class TextToAtomsBridge:
         Returns:
             The SIMILARITY link atom
         """
+        # Canonicalize atom order for SIMILARITY (bidirectional) links
+        # This ensures [A,B] and [B,A] map to the same link
+        if atom1.name > atom2.name:
+            atom1, atom2 = atom2, atom1
+
         # Calculate strength based on co-occurrence frequency
         pair_freq = self.tokenizer.get_pair_frequency(atom1.name, atom2.name)
         pair_freq += self.tokenizer.get_pair_frequency(atom2.name, atom1.name)
