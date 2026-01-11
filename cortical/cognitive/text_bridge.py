@@ -537,6 +537,21 @@ class TextToAtomsBridge:
                 )
                 links_created_this_doc += 1
 
+        # Step 3: Create FOLLOWS links for adjacent words (for prediction)
+        # FOLLOWS is directional: A -> B means B follows A
+        for i in range(len(tokens) - 1):
+            current_token = tokens[i]
+            next_token = tokens[i + 1]
+
+            if current_token == next_token:
+                continue
+
+            # Create directional FOLLOWS link (not canonicalized)
+            self._create_follows_link(
+                token_atoms[current_token],
+                token_atoms[next_token],
+            )
+
         self._documents_fed += 1
         return created_atoms
 
@@ -645,6 +660,59 @@ class TextToAtomsBridge:
         # Save the updated link with metadata
         self.graph._storage.save(link)
 
+        self._links_created += 1
+        return link
+
+    def _create_follows_link(
+        self,
+        from_atom: 'Atom',
+        to_atom: 'Atom',
+    ) -> Optional['Atom']:
+        """
+        Create or strengthen a directional FOLLOWS link.
+
+        FOLLOWS links are directional: from_atom → to_atom means
+        to_atom follows from_atom in text sequences.
+
+        Unlike SIMILARITY links:
+        - FOLLOWS is directional (order matters)
+        - No IDF weighting (we care about transition frequency)
+        - Strength represents transition probability
+
+        Args:
+            from_atom: The preceding word atom
+            to_atom: The following word atom
+
+        Returns:
+            The FOLLOWS link atom, or None if below threshold
+        """
+        # Check for existing FOLLOWS link (directional - order matters)
+        # Use find_link_by_outgoing with [from_id, to_id] - order matters
+        existing = self.graph._storage.find_link_by_outgoing(
+            AtomType.FOLLOWS,
+            [from_atom.id, to_atom.id],
+        )
+
+        if existing:
+            # Strengthen existing link
+            link = existing
+            link.metadata['count'] = link.metadata.get('count', 1) + 1
+            # Increase strength with each observation (diminishing returns)
+            import math
+            count = link.metadata['count']
+            link.tv.strength = min(0.95, 0.3 + math.log1p(count) * 0.1)
+            self.graph._storage.save(link)
+            return link
+
+        # Create new FOLLOWS link
+        tv = TruthValue(strength=0.3, confidence=0.2)  # Start uncertain
+        link = self.graph.link(AtomType.FOLLOWS, [from_atom, to_atom], tv)
+
+        # Initialize metadata
+        link.metadata['count'] = 1
+        link.metadata['direction'] = 'forward'  # Explicit direction marker
+
+        self.graph._storage.save(link)
         self._links_created += 1
         return link
 

@@ -66,12 +66,24 @@ class AtomType(Enum):
     NUMBER = auto()       # Numeric value
     WORD = auto()         # Lexical item
 
+    # Code entity types (for unified knowledge queries)
+    FILE = auto()         # Source file: "auth/handler.py"
+    CLASS = auto()        # Class definition: "AuthHandler"
+    FUNCTION = auto()     # Function/method: "authenticate"
+    MODULE = auto()       # Package/module: "cortical.cognitive"
+
     # Link types (first-order: typically connect nodes)
     INHERITANCE = auto()  # IS-A relationship
-    SIMILARITY = auto()   # Bidirectional similarity
+    SIMILARITY = auto()   # Bidirectional similarity (co-occurrence)
     EVALUATION = auto()   # Predicate application
     MEMBER = auto()       # Set membership
     LIST = auto()         # Ordered collection
+    FOLLOWS = auto()      # Directional: B follows A (for prediction)
+    REFERS_TO = auto()    # WORD refers to CODE entity (semantic bridge)
+    DEFINES = auto()      # FILE defines CLASS/FUNCTION
+    CONTAINS = auto()     # CLASS contains METHOD
+    CALLS = auto()        # FUNCTION calls FUNCTION
+    IMPORTS = auto()      # FILE imports MODULE
 
     # Link types (higher-order: can connect to links)
     BELIEVES = auto()     # Agent believes a statement
@@ -187,6 +199,43 @@ class Association:
 
     def __repr__(self) -> str:
         return f"Association({self.word!r}, {self.weight:.4f})"
+
+
+@dataclass
+class Prediction:
+    """
+    Result of predicting the next atom.
+
+    Used as return type for predict_next() queries.
+
+    Attributes:
+        candidates: List of (word, probability) pairs, sorted by probability desc
+        confidence: 0.0-1.0, how certain the prediction is
+        is_boundary: True if this is a natural stopping point
+        is_unknown: True if the input word was not in vocabulary
+    """
+    candidates: List[Tuple[str, float]]
+    confidence: float
+    is_boundary: bool
+    is_unknown: bool
+
+    @property
+    def top(self) -> Optional[str]:
+        """Get top prediction, or None if unknown/boundary."""
+        if self.is_unknown or not self.candidates:
+            return None
+        return self.candidates[0][0]
+
+    @property
+    def top_probability(self) -> float:
+        """Get probability of top prediction."""
+        if not self.candidates:
+            return 0.0
+        return self.candidates[0][1]
+
+    def __repr__(self) -> str:
+        top_str = f"{self.top}@{self.top_probability:.2f}" if self.top else "?"
+        return f"Prediction({top_str}, conf={self.confidence:.2f}, boundary={self.is_boundary})"
 
 
 @dataclass
@@ -2105,6 +2154,137 @@ class CognitiveAgent:
         # Sort by weight descending and return top_k
         associations.sort(key=lambda a: a.weight, reverse=True)
         return associations[:top_k]
+
+    def predict_next(
+        self,
+        word: str,
+        top_k: int = 5,
+        boundary_threshold: float = 0.1,
+    ) -> Prediction:
+        """
+        Predict the next word using FOLLOWS links.
+
+        Unlike get_associations() which finds semantically related words,
+        predict_next() uses directional transitions to predict what word
+        typically follows the input.
+
+        Args:
+            word: The current word to predict from
+            top_k: Maximum candidates to return
+            boundary_threshold: If total FOLLOWS strength is below this,
+                                consider it a natural boundary
+
+        Returns:
+            Prediction with candidates, confidence, and flags
+
+        Design Notes:
+            - is_unknown: Word not in vocabulary (honest "never seen this")
+            - is_boundary: Word has few/weak outgoing transitions
+            - confidence: How peaked is the distribution? (entropy-based)
+            - Small corpus -> sparse transitions -> honest uncertainty
+        """
+        # Find the word's atom
+        atom = self.graph.get_node(word)
+        if not atom:
+            # Unknown word - honest admission
+            # is_boundary=False because we don't know if it's a boundary
+            # (boundary means known word with no outgoing transitions)
+            return Prediction(
+                candidates=[],
+                confidence=0.0,
+                is_boundary=False,
+                is_unknown=True,
+            )
+
+        # Get all FOLLOWS links originating from this atom
+        # FOLLOWS links have [from_atom, to_atom] structure
+        all_links = self.graph._storage.find_by_type(AtomType.FOLLOWS)
+        follows_links = [
+            link for link in all_links
+            if len(link.outgoing) == 2 and link.outgoing[0] == atom.id
+        ]
+
+        if not follows_links:
+            # Known word but no transitions - natural boundary
+            return Prediction(
+                candidates=[],
+                confidence=0.0,
+                is_boundary=True,
+                is_unknown=False,
+            )
+
+        # Calculate transition probabilities
+        candidates = []
+        total_count = 0
+
+        for link in follows_links:
+            target_id = link.outgoing[1]
+            target_atom = self.graph.get_atom(target_id)
+            if not target_atom or not target_atom.name:
+                continue
+
+            count = link.metadata.get('count', 1)
+            total_count += count
+            candidates.append((target_atom.name, count))
+
+        if not candidates:
+            return Prediction(
+                candidates=[],
+                confidence=0.0,
+                is_boundary=True,
+                is_unknown=False,
+            )
+
+        # Convert counts to probabilities
+        candidates = [
+            (word, count / total_count)
+            for word, count in candidates
+        ]
+
+        # Sort by probability descending
+        candidates.sort(key=lambda x: x[1], reverse=True)
+        candidates = candidates[:top_k]
+
+        # Calculate confidence based on:
+        # 1. Entropy (distribution sharpness)
+        # 2. Sample size (more observations = more confident)
+        import math
+
+        # Entropy-based confidence
+        # High entropy = flat distribution = low confidence
+        entropy = 0.0
+        for _, prob in candidates:
+            if prob > 0:
+                entropy -= prob * math.log2(prob)
+
+        # Normalize: max entropy for k items is log2(k)
+        max_entropy = math.log2(len(candidates)) if len(candidates) > 1 else 1.0
+        normalized_entropy = entropy / max_entropy if max_entropy > 0 else 0.0
+
+        # Entropy-based confidence (inverse of normalized entropy)
+        entropy_confidence = 1.0 - normalized_entropy
+
+        # Sample-size factor: few observations = low confidence
+        # Uses log scale: 1 obs -> 0.0, 2 obs -> 0.5, 5 obs -> 0.7, 10+ obs -> ~0.9
+        sample_factor = min(1.0, math.log1p(total_count) / math.log1p(10))
+
+        # Combined confidence: geometric mean of entropy and sample factors
+        # This ensures both distribution AND sample size matter
+        confidence = math.sqrt(entropy_confidence * sample_factor)
+
+        # Check if this is a boundary
+        # Low total strength means weak outgoing connections
+        total_strength = sum(
+            link.tv.strength for link in follows_links
+        )
+        is_boundary = total_strength < boundary_threshold * len(follows_links)
+
+        return Prediction(
+            candidates=candidates,
+            confidence=confidence,
+            is_boundary=is_boundary,
+            is_unknown=False,
+        )
 
     # =========================================================================
     # Persistence (JSON-based for security and git-friendliness)
