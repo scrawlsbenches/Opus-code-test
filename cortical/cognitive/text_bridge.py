@@ -642,20 +642,37 @@ class TextToAtomsBridge:
         # Load graph data
         graph_data = json.loads((path / "graph.json").read_text())
 
-        # Restore atoms
-        for atom_data in graph_data.get("atoms", []):
+        atoms_data = graph_data.get("atoms", [])
+        nodes = [a for a in atoms_data if not a.get("outgoing")]
+        links = [a for a in atoms_data if a.get("outgoing")]
+
+        # Pass 1: Restore nodes first (so link targets exist)
+        id_map = {}  # old_id -> new_atom
+        for atom_data in nodes:
+            atom_type = AtomType[atom_data["atom_type"]]
+            tv = TruthValue(atom_data["tv_strength"], atom_data["tv_confidence"])
+            atom = graph.node(atom_data["name"], atom_type=atom_type, tv=tv)
+            atom.sti = atom_data.get("sti", 0.0)
+            atom.lti = atom_data.get("lti", 0.0)
+            graph._storage.save(atom)
+            id_map[atom_data["id"]] = atom
+
+        # Pass 2: Restore links
+        for atom_data in links:
             atom_type = AtomType[atom_data["atom_type"]]
             tv = TruthValue(atom_data["tv_strength"], atom_data["tv_confidence"])
 
-            if atom_data.get("outgoing"):
-                # It's a link - skip for now, will be recreated
-                pass
-            else:
-                # It's a node
-                atom = graph.node(atom_data["name"], atom_type=atom_type, tv=tv)
-                atom.sti = atom_data.get("sti", 0.0)
-                atom.lti = atom_data.get("lti", 0.0)
-                graph._storage.save(atom)
+            # Resolve target atoms
+            targets = []
+            for old_id in atom_data["outgoing"]:
+                if old_id in id_map:
+                    targets.append(id_map[old_id])
+
+            if len(targets) == len(atom_data["outgoing"]):
+                link = graph.link(atom_type, targets, tv)
+                link.sti = atom_data.get("sti", 0.0)
+                link.lti = atom_data.get("lti", 0.0)
+                graph._storage.save(link)
 
         # Restore stats
         stats = graph_data.get("stats", {})
@@ -664,6 +681,7 @@ class TextToAtomsBridge:
         bridge._links_created = stats.get("links_created", 0)
 
         print(f"Loaded bridge from {path}/")
+        print(f"  Nodes: {len(nodes)}, Links: {len(links)}")
         return bridge
 
 
