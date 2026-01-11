@@ -1,8 +1,8 @@
 {
   "model_version": "1.0",
-  "last_training": "2026-01-11T13:51:12.615450",
-  "total_documents": 200,
-  "vocabulary_size": 10000,
+  "last_training": "2026-01-11T15:00:51.299068",
+  "total_documents": 205,
+  "vocabulary_size": 10080,
   "documents": {
     "accordion_repair.txt": {
       "path": "accordion_repair.txt",
@@ -1203,6 +1203,36 @@
       "content_hash": "ee52110cd3bde62c",
       "trained_at": "2026-01-11T13:51:12.615335",
       "word_count": 930
+    },
+    "customer_service/return_refund_policy.txt": {
+      "path": "customer_service/return_refund_policy.txt",
+      "content_hash": "4fefd879f17ffe9f",
+      "trained_at": "2026-01-11T15:00:46.010180",
+      "word_count": 1399
+    },
+    "customer_service/service_level_agreement.txt": {
+      "path": "customer_service/service_level_agreement.txt",
+      "content_hash": "2d71c1d3f6f1226c",
+      "trained_at": "2026-01-11T15:00:47.336139",
+      "word_count": 1240
+    },
+    "customer_service/shipping_delivery_policy.txt": {
+      "path": "customer_service/shipping_delivery_policy.txt",
+      "content_hash": "38377a82dbf1d4d2",
+      "trained_at": "2026-01-11T15:00:48.626412",
+      "word_count": 1677
+    },
+    "customer_service/software_installation_troubleshooting.txt": {
+      "path": "customer_service/software_installation_troubleshooting.txt",
+      "content_hash": "0b59f584b2456783",
+      "trained_at": "2026-01-11T15:00:49.950885",
+      "word_count": 733
+    },
+    "customer_service/software_product_faq.txt": {
+      "path": "customer_service/software_product_faq.txt",
+      "content_hash": "9cad3bb550f32785",
+      "trained_at": "2026-01-11T15:00:51.299042",
+      "word_count": 399
     }
   }
 }
