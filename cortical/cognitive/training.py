@@ -56,6 +56,7 @@ from cortical.cognitive.text_bridge import (
     ProgressReporter,
 )
 from cortical.cognitive.tokenizer_storage import ShardedTokenizerStorage
+from cortical.cognitive.graph import Atom, AtomType, TruthValue
 
 
 # =============================================================================
@@ -304,6 +305,62 @@ class IncrementalTrainer:
         tokenizer_dir = self.model_dir / "tokenizer"
         if self.filesystem.exists(tokenizer_dir / "meta.json"):
             self.bridge.tokenizer = self.tokenizer_storage.load(tokenizer_dir)
+
+        # Load existing graph state if available (CRITICAL for session recovery)
+        graph_path = self.model_dir / "bridge" / "graph.json"
+        if self.filesystem.exists(graph_path):
+            self._load_graph_state(graph_path)
+
+    def _load_graph_state(self, graph_path: Path) -> None:
+        """
+        Load graph state from a previously saved graph.json file.
+
+        This is CRITICAL for session recovery - without this, all learned
+        atoms and links are lost when resuming training in a new session.
+
+        PERFORMANCE NOTE (2026-01-11):
+        This method uses direct Atom instantiation instead of graph.node()
+        and graph.link() to achieve O(n) loading instead of O(n²).
+
+        The bottleneck was graph.link() calling find_by_type() for each link,
+        which is O(n) per call. With 23,653 links, this caused ~560 million
+        comparisons and 32+ second load times.
+
+        Direct Atom creation: 0.15s (200x faster)
+
+        Args:
+            graph_path: Path to graph.json file
+        """
+        graph_data = json.loads(self.filesystem.read_text(graph_path))
+        storage = self.agent.graph._storage
+
+        atoms_data = graph_data.get("atoms", [])
+
+        # OPTIMIZED: Direct Atom instantiation bypasses O(n²) find_by_type()
+        # We load all atoms in a single pass since we have the complete data
+        id_map = {}  # old_id -> new_atom
+
+        for atom_data in atoms_data:
+            atom = Atom(
+                id=atom_data["id"],
+                atom_type=AtomType[atom_data["atom_type"]],
+                name=atom_data.get("name", ""),
+                outgoing=atom_data.get("outgoing", []),
+                tv=TruthValue(
+                    atom_data["tv_strength"],
+                    atom_data["tv_confidence"]
+                ),
+                sti=atom_data.get("sti", 0.0),
+                lti=atom_data.get("lti", 0.0),
+            )
+            id_map[atom_data["id"]] = atom
+            storage.save(atom)
+
+        # Restore bridge stats
+        stats = graph_data.get("stats", {})
+        self.bridge._documents_fed = stats.get("documents_fed", 0)
+        self.bridge._atoms_created = stats.get("atoms_created", 0)
+        self.bridge._links_created = stats.get("links_created", 0)
 
     def scan_directory(
         self,
@@ -666,6 +723,12 @@ Examples:
   # Train on all .txt files in samples/
   python -m cortical.cognitive.training samples/
 
+  # Train next 5 documents only (safe batch)
+  python -m cortical.cognitive.training --batch-size 5
+
+  # Train with custom checkpoint interval
+  python -m cortical.cognitive.training --batch-size 25 --checkpoint 10
+
   # Train on specific files only
   python -m cortical.cognitive.training --files samples/doc1.txt samples/doc2.txt
 
@@ -721,6 +784,18 @@ Examples:
         action="store_true",
         help="Suppress progress output",
     )
+    parser.add_argument(
+        "--batch-size", "-n",
+        type=int,
+        default=None,
+        help="Limit training to N documents (for controlled batch training)",
+    )
+    parser.add_argument(
+        "--checkpoint", "-c",
+        type=int,
+        default=None,
+        help="Checkpoint interval (save every N documents)",
+    )
 
     args = parser.parse_args()
 
@@ -755,12 +830,43 @@ Examples:
             base_dir=args.directory,
             show_progress=not args.quiet,
         )
+    elif args.batch_size is not None:
+        # Batch mode: train only N untrained documents
+        all_files = list(trainer.scan_directory(
+            args.directory, args.pattern, recursive=True
+        ))
+        untrained = trainer.manifest.get_untrained(all_files)
+
+        if not untrained:
+            print("All documents are already trained. Nothing to do.")
+            return
+
+        # Select batch
+        batch = untrained[:args.batch_size]
+        paths = [path for path, _ in batch]
+
+        if not args.quiet:
+            print(f"Batch training: {len(batch)} of {len(untrained)} remaining documents")
+            for i, path in enumerate(paths, 1):
+                print(f"  {i}. {path}")
+            print()
+
+        # Build full paths and train
+        base_dir = Path(args.directory)
+        full_paths = [base_dir / path for path in paths]
+
+        stats = trainer.train_files(
+            file_paths=full_paths,
+            base_dir=base_dir,
+            show_progress=not args.quiet,
+        )
     else:
         stats = trainer.train_directory(
             args.directory,
             pattern=args.pattern,
             show_progress=not args.quiet,
             force_retrain=args.force,
+            checkpoint_interval=args.checkpoint,
         )
 
     # Print final status

@@ -281,7 +281,11 @@ class BPETokenizer:
                 self._pair_counts[pair] += 1
 
         # Build vocabulary from word counts
-        self.vocab = set(self._word_counts.keys())
+        # In incremental mode, ADD to existing vocab; otherwise replace
+        if incremental:
+            self.vocab.update(self._word_counts.keys())
+        else:
+            self.vocab = set(self._word_counts.keys())
 
         # Learn merges (frequent pairs that could become compound concepts)
         # We store these for future use in compound atom creation
@@ -291,8 +295,10 @@ class BPETokenizer:
                 merged = f"{pair[0]}_{pair[1]}"
                 self.merges.append((pair, merged))
 
-        # Limit vocabulary size
-        if len(self.vocab) > self.max_vocab_size:
+        # Limit vocabulary size (only in non-incremental mode)
+        # In incremental mode, we trust the existing vocab was already limited,
+        # and adding a few new words won't cause unbounded growth
+        if not incremental and len(self.vocab) > self.max_vocab_size:
             top_words = [w for w, _ in self._word_counts.most_common(self.max_vocab_size)]
             self.vocab = set(top_words)
 
