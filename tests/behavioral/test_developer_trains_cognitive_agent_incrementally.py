@@ -691,3 +691,182 @@ class TestDeveloperUsesInMemoryFileSystem:
         stats = trainer2.train_directory(docs_dir, show_progress=False)
         assert stats.skipped_documents == 1
         assert stats.new_documents == 0
+
+
+class TestCognitiveAgentWithFileSystem:
+    """
+    Epic: Autonomous File System Access
+
+    As a developer building autonomous cognitive agents,
+    I want the CognitiveAgent to have its own FileSystem,
+    So that it can persist state and discover new documents to learn from.
+    """
+
+    def test_scenario_agent_created_with_filesystem(self):
+        """
+        Scenario: Creating agent with filesystem enables persistence
+
+        Given I create a CognitiveAgent with a filesystem
+        When I save the agent state
+        Then the agent uses its internal filesystem
+        And no external filesystem parameter is needed
+        Because the agent should own its persistence mechanism.
+        """
+        from pathlib import Path
+        from cortical.cognitive import CognitiveAgent
+        from cortical.common.filesystem import InMemoryFileSystem
+
+        # Given I create a CognitiveAgent with a filesystem
+        fs = InMemoryFileSystem(Path("/agent"))
+        fs.mkdir(Path("/agent"), parents=True, exist_ok=True)
+        agent = CognitiveAgent(filesystem=fs)
+
+        # Add some knowledge to make it worth saving
+        agent.graph.node("test_concept")
+        agent.attend("test_concept", amount=1.0)
+
+        # When I save the agent state
+        save_path = Path("/agent/state.json")
+        agent.save(save_path)
+
+        # Then the agent uses its internal filesystem
+        assert fs.exists(save_path)
+
+        # And no external filesystem parameter is needed
+        # (The save() call above didn't require a filesystem argument)
+
+    def test_scenario_agent_loaded_with_filesystem(self):
+        """
+        Scenario: Loading agent preserves filesystem reference
+
+        Given I have a saved agent state
+        And I load the agent with a filesystem
+        When I check the loaded agent
+        Then it has the filesystem available
+        And it can save again using that filesystem
+        Because loaded agents should be fully functional.
+        """
+        from pathlib import Path
+        from cortical.cognitive import CognitiveAgent
+        from cortical.common.filesystem import InMemoryFileSystem
+
+        # Given I have a saved agent state
+        fs = InMemoryFileSystem(Path("/load"))
+        fs.mkdir(Path("/load"), parents=True, exist_ok=True)
+
+        original_agent = CognitiveAgent(filesystem=fs)
+        original_agent.graph.node("persisted_knowledge")
+        save_path = Path("/load/agent.json")
+        original_agent.save(save_path)
+
+        # And I load the agent with a filesystem
+        loaded_agent = CognitiveAgent.load(save_path, filesystem=fs)
+
+        # When I check the loaded agent
+        # Then it has the filesystem available
+        assert loaded_agent.filesystem is fs
+
+        # And it can save again using that filesystem
+        new_save_path = Path("/load/agent_v2.json")
+        loaded_agent.save(new_save_path)
+        assert fs.exists(new_save_path)
+
+    def test_scenario_agent_can_access_files_for_learning(self):
+        """
+        Scenario: Agent with filesystem can read documents
+
+        Given I have a CognitiveAgent with a filesystem
+        And the filesystem contains documents
+        When the agent reads a document
+        Then it can access the content
+        Because agents need file access to discover new learning material.
+        """
+        from pathlib import Path
+        from cortical.cognitive import CognitiveAgent
+        from cortical.common.filesystem import InMemoryFileSystem
+
+        # Given I have a CognitiveAgent with a filesystem
+        fs = InMemoryFileSystem(Path("/learning"))
+        fs.mkdir(Path("/learning"), parents=True, exist_ok=True)
+        agent = CognitiveAgent(filesystem=fs)
+
+        # And the filesystem contains documents
+        docs_dir = Path("/learning/docs")
+        fs.mkdir(docs_dir, parents=True, exist_ok=True)
+        fs.write_text(docs_dir / "knowledge.txt", "Important information to learn.")
+
+        # When the agent reads a document
+        content = agent.filesystem.read_text(docs_dir / "knowledge.txt")
+
+        # Then it can access the content
+        assert "Important information" in content
+
+    def test_scenario_agent_without_filesystem_raises_on_save(self):
+        """
+        Scenario: Agent without filesystem cannot persist
+
+        Given I create a CognitiveAgent without a filesystem
+        When I try to save the agent
+        Then an error is raised
+        Because persistence requires a filesystem.
+        """
+        from pathlib import Path
+        from cortical.cognitive import CognitiveAgent
+
+        # Given I create a CognitiveAgent without a filesystem
+        agent = CognitiveAgent()
+
+        # When I try to save the agent
+        # Then an error is raised
+        with pytest.raises((TypeError, AttributeError, ValueError)):
+            agent.save(Path("/some/path.json"))
+
+    def test_scenario_in_memory_agent_state_roundtrip(self):
+        """
+        Scenario: Agent state survives save/load cycle in memory
+
+        Given I create an agent with in-memory filesystem
+        And I add knowledge and goals to the agent
+        When I save and reload the agent
+        Then all state is preserved
+        And the agent continues functioning
+        Because in-memory persistence should be lossless.
+        """
+        from pathlib import Path
+        from cortical.cognitive import CognitiveAgent, Goal
+        from cortical.common.filesystem import InMemoryFileSystem
+
+        # Given I create an agent with in-memory filesystem
+        fs = InMemoryFileSystem(Path("/roundtrip"))
+        fs.mkdir(Path("/roundtrip"), parents=True, exist_ok=True)
+        agent = CognitiveAgent(filesystem=fs)
+
+        # And I add knowledge and goals to the agent
+        agent.graph.node("concept_a")
+        agent.graph.node("concept_b")
+        agent.graph.link(
+            agent.graph._storage.find_by_type(agent.graph._storage.all_atoms()[0].atom_type)[0].atom_type,
+            [agent.graph.get_node("concept_a"), agent.graph.get_node("concept_b")]
+        )
+        agent.goals.add_goal(Goal(
+            id="goal-1",
+            description="Learn new concepts",
+            target_state=10,
+            current_state=2,
+            importance=0.8,
+        ))
+
+        # When I save and reload the agent
+        save_path = Path("/roundtrip/agent.json")
+        agent.save(save_path)
+        loaded = CognitiveAgent.load(save_path, filesystem=fs)
+
+        # Then all state is preserved
+        assert loaded.graph.get_node("concept_a") is not None
+        assert loaded.graph.get_node("concept_b") is not None
+        assert len(loaded.goals.get_active_goals()) == 1
+        assert loaded.goals.get_active_goals()[0].description == "Learn new concepts"
+
+        # And the agent continues functioning
+        loaded.step()  # Should not raise
+        assert loaded._step_count == 1
