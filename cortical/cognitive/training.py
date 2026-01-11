@@ -1458,6 +1458,14 @@ def _run_index_code(trainer: 'IncrementalTrainer', args) -> None:
             progress_callback=progress
         )
 
+    # Create REFERS_TO links if requested
+    refers_to_stats = None
+    if getattr(args, 'link_text', False):
+        if not args.quiet:
+            print("\nCreating REFERS_TO links (bridging code to text)...")
+        refers_to_stats = bridge.create_refers_to_links()
+        stats.refers_to_links = refers_to_stats.refers_to_links
+
     # Save the updated graph
     trainer.save()
 
@@ -1472,6 +1480,7 @@ def _run_index_code(trainer: 'IncrementalTrainer', args) -> None:
             "inheritance_links": stats.inheritance_links,
             "defines_links": stats.defines_links,
             "contains_links": stats.contains_links,
+            "refers_to_links": stats.refers_to_links,
             "parse_errors": stats.parse_errors,
             "elapsed_seconds": round(stats.elapsed_seconds, 2),
         }
@@ -1485,6 +1494,8 @@ def _run_index_code(trainer: 'IncrementalTrainer', args) -> None:
         print(f"  Functions:        {stats.functions}")
         print(f"  CALLS links:      {stats.calls_links}")
         print(f"  INHERITANCE:      {stats.inheritance_links}")
+        if stats.refers_to_links > 0:
+            print(f"  REFERS_TO links:  {stats.refers_to_links}")
         print(f"  Parse errors:     {stats.parse_errors}")
         print(f"  Elapsed time:     {stats.elapsed_seconds:.2f}s")
 

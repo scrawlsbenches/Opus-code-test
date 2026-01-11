@@ -33,6 +33,7 @@ class IndexStats:
     inheritance_links: int = 0
     defines_links: int = 0
     contains_links: int = 0
+    refers_to_links: int = 0
     parse_errors: int = 0
     elapsed_seconds: float = 0.0
 
@@ -40,8 +41,8 @@ class IndexStats:
         return (
             f"IndexStats(files={self.files}, classes={self.classes}, "
             f"functions={self.functions}, calls={self.calls_links}, "
-            f"inheritance={self.inheritance_links}, errors={self.parse_errors}, "
-            f"elapsed={self.elapsed_seconds:.2f}s)"
+            f"inheritance={self.inheritance_links}, refers_to={self.refers_to_links}, "
+            f"errors={self.parse_errors}, elapsed={self.elapsed_seconds:.2f}s)"
         )
 
 
@@ -415,3 +416,207 @@ class CodeBridge:
                             entities.append(entity)
 
         return entities
+
+    # =========================================================================
+    # REFERS_TO Semantic Bridge
+    # =========================================================================
+
+    def create_refers_to_links(self, min_word_length: int = 3) -> IndexStats:
+        """
+        Create REFERS_TO links between WORD atoms and CODE atoms.
+
+        This bridges natural language vocabulary to code entities:
+        - "pagerank" WORD -> "compute_pagerank" FUNCTION
+        - "storage" WORD -> "StorageBackend" CLASS
+
+        Matching rules:
+        - Case-insensitive substring match
+        - Skip words shorter than min_word_length (avoid noise)
+        - Match quality affects link strength
+
+        Args:
+            min_word_length: Minimum word length to consider (default: 3)
+
+        Returns:
+            IndexStats with refers_to_links count
+        """
+        stats = IndexStats()
+        start_time = time.time()
+
+        # Get all WORD atoms
+        word_atoms = self.graph.find_by_type(AtomType.WORD)
+
+        # Get all CODE atoms (CLASS, FUNCTION, FILE, MODULE)
+        code_types = [AtomType.CLASS, AtomType.FUNCTION, AtomType.FILE, AtomType.MODULE]
+        code_atoms: List[Atom] = []
+        for code_type in code_types:
+            code_atoms.extend(self.graph.find_by_type(code_type))
+
+        # Build index of code names for faster matching
+        # Map lowercase name -> (atom, original_name)
+        code_index: Dict[str, List[Atom]] = {}
+        for atom in code_atoms:
+            if not atom.name:
+                continue
+            # Extract meaningful parts from name
+            # e.g., "MyClass.process" -> ["myclass", "process"]
+            name_parts = self._extract_name_parts(atom.name)
+            for part in name_parts:
+                if part not in code_index:
+                    code_index[part] = []
+                code_index[part].append(atom)
+
+        # Create REFERS_TO links
+        for word_atom in word_atoms:
+            word = word_atom.name.lower()
+
+            # Skip short words
+            if len(word) < min_word_length:
+                continue
+
+            # Find matching code entities
+            matched_atoms: Set[str] = set()  # Track by ID to avoid duplicates
+
+            # Direct match: word is a name part
+            if word in code_index:
+                for code_atom in code_index[word]:
+                    if code_atom.id not in matched_atoms:
+                        self._create_refers_to_link(word_atom, code_atom, match_type="exact")
+                        matched_atoms.add(code_atom.id)
+                        stats.refers_to_links += 1
+
+            # Substring match: word appears in name
+            for name_part, atoms in code_index.items():
+                if word in name_part and word != name_part:
+                    for code_atom in atoms:
+                        if code_atom.id not in matched_atoms:
+                            self._create_refers_to_link(word_atom, code_atom, match_type="substring")
+                            matched_atoms.add(code_atom.id)
+                            stats.refers_to_links += 1
+
+        stats.elapsed_seconds = time.time() - start_time
+        return stats
+
+    def _extract_name_parts(self, name: str) -> List[str]:
+        """
+        Extract meaningful parts from a code entity name.
+
+        Examples:
+            "MyClass.process_data" -> ["myclass", "my", "class", "process", "data"]
+            "compute_pagerank" -> ["compute", "pagerank"]
+            "cortical/got/api.py" -> ["cortical", "got", "api"]
+        """
+        import re
+
+        # Split on non-alphanumeric characters
+        parts = re.split(r'[^a-zA-Z0-9]+', name)
+
+        # Also split camelCase, but keep the full word too
+        expanded = []
+        for part in parts:
+            if part:
+                # Add full part as-is (lowercased)
+                expanded.append(part.lower())
+
+                # Split camelCase: "MyClass" -> ["My", "Class"]
+                camel_parts = re.findall(r'[A-Z]?[a-z]+|[A-Z]+(?=[A-Z]|$)', part)
+                if camel_parts and len(camel_parts) > 1:
+                    # Only add individual parts if there's more than one
+                    expanded.extend(p.lower() for p in camel_parts)
+
+        return [p for p in expanded if len(p) >= 2]  # Filter very short parts
+
+    def _create_refers_to_link(
+        self,
+        word_atom: Atom,
+        code_atom: Atom,
+        match_type: str = "exact"
+    ) -> Atom:
+        """
+        Create a REFERS_TO link from WORD to CODE atom.
+
+        Args:
+            word_atom: Source WORD atom
+            code_atom: Target CODE atom
+            match_type: "exact" or "substring" (affects strength)
+
+        Returns:
+            The created link atom
+        """
+        # Strength based on match quality
+        strength = 0.9 if match_type == "exact" else 0.7
+        confidence = 0.8 if match_type == "exact" else 0.6
+
+        return self.graph.link(
+            AtomType.REFERS_TO,
+            [word_atom, code_atom],
+            TruthValue(strength=strength, confidence=confidence)
+        )
+
+    def query_code_for_word(self, word: str) -> List[Atom]:
+        """
+        Find code entities that a word refers to.
+
+        Args:
+            word: The vocabulary word
+
+        Returns:
+            List of CODE atoms (CLASS, FUNCTION, etc.) the word refers to
+        """
+        word_atom = self.graph.get_node(word.lower())
+        if not word_atom:
+            return []
+
+        # Find REFERS_TO links from this word
+        code_entities = []
+        refers_to_links = self.graph.find_by_type(AtomType.REFERS_TO)
+        for link in refers_to_links:
+            if word_atom.id in link.outgoing:
+                for atom_id in link.outgoing:
+                    if atom_id != word_atom.id:
+                        target = self.graph.get_atom(atom_id)
+                        if target and target.atom_type in [
+                            AtomType.CLASS, AtomType.FUNCTION,
+                            AtomType.FILE, AtomType.MODULE
+                        ]:
+                            code_entities.append(target)
+
+        return code_entities
+
+    def query_words_for_code(self, code_name: str) -> List[Atom]:
+        """
+        Find vocabulary words that refer to a code entity.
+
+        Args:
+            code_name: Name of the code entity
+
+        Returns:
+            List of WORD atoms that refer to the code entity
+        """
+        # Find the code atom
+        code_atom = None
+        for atom in self.graph.find_by_type(AtomType.CLASS):
+            if code_name in atom.name:
+                code_atom = atom
+                break
+        if not code_atom:
+            for atom in self.graph.find_by_type(AtomType.FUNCTION):
+                if code_name in atom.name:
+                    code_atom = atom
+                    break
+
+        if not code_atom:
+            return []
+
+        # Find REFERS_TO links pointing to this code
+        words = []
+        refers_to_links = self.graph.find_by_type(AtomType.REFERS_TO)
+        for link in refers_to_links:
+            if code_atom.id in link.outgoing:
+                for atom_id in link.outgoing:
+                    if atom_id != code_atom.id:
+                        word = self.graph.get_atom(atom_id)
+                        if word and word.atom_type == AtomType.WORD:
+                            words.append(word)
+
+        return words

@@ -247,6 +247,11 @@ def main() -> int:
         action="store_true",
         help="Output stats as JSON",
     )
+    index_code_parser.add_argument(
+        "--link-text",
+        action="store_true",
+        help="Create REFERS_TO links to existing WORD atoms (bridges code to text)",
+    )
 
     args = parser.parse_args()
 

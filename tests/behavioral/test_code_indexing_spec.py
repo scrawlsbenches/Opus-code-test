@@ -458,3 +458,201 @@ class TestIndexStats:
 
         assert hasattr(stats, 'elapsed_seconds')
         assert stats.elapsed_seconds >= 0
+
+
+# =============================================================================
+# Test: REFERS_TO Semantic Bridge
+# =============================================================================
+
+
+class TestRefersToLinks:
+    """Verify REFERS_TO links bridge text vocabulary to code entities."""
+
+    @pytest.fixture
+    def graph_with_words(self, graph):
+        """Graph pre-populated with some WORD atoms."""
+        # Simulate words from text training
+        graph.node("process", atom_type=AtomType.WORD)
+        graph.node("data", atom_type=AtomType.WORD)
+        graph.node("helper", atom_type=AtomType.WORD)
+        graph.node("class", atom_type=AtomType.WORD)
+        graph.node("standalone", atom_type=AtomType.WORD)
+        graph.node("unrelated", atom_type=AtomType.WORD)
+        return graph
+
+    @pytest.fixture
+    def bridge_with_words(self, graph_with_words):
+        """CodeBridge with pre-existing WORD atoms."""
+        from cortical.cognitive.code_bridge import CodeBridge
+        return CodeBridge(graph_with_words)
+
+    def test_word_refers_to_matching_function(self, bridge_with_words, simple_python_file):
+        """WORD 'process' should REFERS_TO function containing 'process'."""
+        bridge_with_words.index_file(simple_python_file)
+        stats = bridge_with_words.create_refers_to_links()
+
+        # Find REFERS_TO links
+        refers_to_links = bridge_with_words.graph.find_by_type(AtomType.REFERS_TO)
+
+        # 'process' word should link to 'MyClass.process' function
+        process_word = bridge_with_words.graph.get_node("process")
+        linked_targets = []
+        for link in refers_to_links:
+            if process_word.id in link.outgoing:
+                for target_id in link.outgoing:
+                    if target_id != process_word.id:
+                        target = bridge_with_words.graph.get_atom(target_id)
+                        if target:
+                            linked_targets.append(target.name)
+
+        assert any("process" in name for name in linked_targets)
+
+    def test_word_refers_to_matching_class(self, bridge_with_words, simple_python_file):
+        """WORD 'class' should REFERS_TO class containing 'class' in name."""
+        bridge_with_words.index_file(simple_python_file)
+        bridge_with_words.create_refers_to_links()
+
+        refers_to_links = bridge_with_words.graph.find_by_type(AtomType.REFERS_TO)
+
+        # 'class' word should link to 'MyClass'
+        class_word = bridge_with_words.graph.get_node("class")
+        linked_targets = []
+        for link in refers_to_links:
+            if class_word.id in link.outgoing:
+                for target_id in link.outgoing:
+                    if target_id != class_word.id:
+                        target = bridge_with_words.graph.get_atom(target_id)
+                        if target:
+                            linked_targets.append(target.name)
+
+        assert any("Class" in name for name in linked_targets)
+
+    def test_unmatched_word_has_no_refers_to(self, bridge_with_words, simple_python_file):
+        """WORD with no matching code entity should have no REFERS_TO links."""
+        bridge_with_words.index_file(simple_python_file)
+        bridge_with_words.create_refers_to_links()
+
+        refers_to_links = bridge_with_words.graph.find_by_type(AtomType.REFERS_TO)
+
+        # 'unrelated' word should not link to anything
+        unrelated_word = bridge_with_words.graph.get_node("unrelated")
+        links_from_unrelated = [
+            link for link in refers_to_links
+            if unrelated_word.id in link.outgoing
+        ]
+
+        assert len(links_from_unrelated) == 0
+
+    def test_refers_to_stats_returned(self, bridge_with_words, simple_python_file):
+        """create_refers_to_links should return statistics."""
+        bridge_with_words.index_file(simple_python_file)
+        stats = bridge_with_words.create_refers_to_links()
+
+        assert hasattr(stats, 'refers_to_links')
+        assert stats.refers_to_links > 0  # Should have some matches
+
+    def test_short_words_skipped(self, graph):
+        """Very short words (< 3 chars) should be skipped to avoid noise."""
+        from cortical.cognitive.code_bridge import CodeBridge
+
+        # Add short words
+        graph.node("a", atom_type=AtomType.WORD)
+        graph.node("do", atom_type=AtomType.WORD)
+        graph.node("if", atom_type=AtomType.WORD)
+
+        bridge = CodeBridge(graph)
+
+        # Create a file with function named 'a'
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write("def a(): pass\ndef do_something(): pass")
+            f.flush()
+            bridge.index_file(Path(f.name))
+            Path(f.name).unlink()
+
+        stats = bridge.create_refers_to_links()
+
+        # Short words should not create links
+        a_word = graph.get_node("a")
+        refers_to_links = graph.find_by_type(AtomType.REFERS_TO)
+        links_from_a = [
+            link for link in refers_to_links
+            if a_word and a_word.id in link.outgoing
+        ]
+
+        assert len(links_from_a) == 0
+
+    def test_case_insensitive_matching(self, graph):
+        """Matching should be case-insensitive."""
+        from cortical.cognitive.code_bridge import CodeBridge
+
+        # Word in lowercase
+        graph.node("myclass", atom_type=AtomType.WORD)
+
+        bridge = CodeBridge(graph)
+
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write("class MyClass: pass")
+            f.flush()
+            bridge.index_file(Path(f.name))
+            Path(f.name).unlink()
+
+        stats = bridge.create_refers_to_links()
+
+        # Should match despite case difference
+        myclass_word = graph.get_node("myclass")
+        refers_to_links = graph.find_by_type(AtomType.REFERS_TO)
+        links_from_myclass = [
+            link for link in refers_to_links
+            if myclass_word.id in link.outgoing
+        ]
+
+        assert len(links_from_myclass) > 0
+
+
+class TestQueryWithRefersTo:
+    """Test queries that use REFERS_TO links."""
+
+    @pytest.fixture
+    def indexed_with_refs(self, graph):
+        """Graph with both text and code, linked via REFERS_TO."""
+        from cortical.cognitive.code_bridge import CodeBridge
+
+        # Add vocabulary
+        graph.node("compute", atom_type=AtomType.WORD)
+        graph.node("pagerank", atom_type=AtomType.WORD)
+        graph.node("storage", atom_type=AtomType.WORD)
+
+        bridge = CodeBridge(graph)
+
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write('''
+class StorageBackend:
+    def save(self): pass
+
+def compute_pagerank(graph):
+    """Compute PageRank scores."""
+    pass
+''')
+            f.flush()
+            bridge.index_file(Path(f.name))
+            Path(f.name).unlink()
+
+        bridge.create_refers_to_links()
+        return bridge
+
+    def test_find_code_for_word(self, indexed_with_refs):
+        """Should find code entities that a word refers to."""
+        results = indexed_with_refs.query_code_for_word("pagerank")
+
+        result_names = [a.name for a in results]
+        assert any("pagerank" in name.lower() for name in result_names)
+
+    def test_find_words_for_code(self, indexed_with_refs):
+        """Should find words that refer to a code entity."""
+        results = indexed_with_refs.query_words_for_code("StorageBackend")
+
+        result_names = [a.name for a in results]
+        assert "storage" in result_names
