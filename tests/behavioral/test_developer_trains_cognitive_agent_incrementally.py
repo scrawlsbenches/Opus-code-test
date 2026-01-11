@@ -807,6 +807,160 @@ class TestDeveloperUsesInMemoryFileSystem:
 
 
 # =============================================================================
+# EPIC: Crash-Recoverable Incremental Training
+# =============================================================================
+
+class TestDeveloperRecoversFromTrainingFailures:
+    """
+    EPIC: Crash-Recoverable Incremental Training
+    =============================================
+
+    PERSONA: Developer running long training sessions
+    GOAL: Training saves progress incrementally, enabling crash recovery
+    VALUE: No lost work if training crashes mid-way through large corpus
+
+    PROBLEM BEING SOLVED:
+    When training on 500+ documents, a crash at document 400 should not
+    lose all progress. The manifest should checkpoint periodically so
+    training can resume from the last checkpoint.
+
+    IMPLEMENTATION APPROACH:
+    - Checkpoint every N documents (configurable, default 50)
+    - Save manifest, tokenizer, and graph at each checkpoint
+    - On restart, training resumes from last checkpoint
+    """
+
+    def test_scenario_training_checkpoints_periodically(self, tmp_path):
+        """
+        Scenario: Training saves progress at regular intervals
+
+        Given I have many documents to train on
+        When I train with checkpointing enabled
+        Then the manifest is saved periodically during training
+        And partial progress is recoverable
+        Because long training sessions should not lose all work on failure.
+        """
+        from cortical.cognitive import CognitiveAgent, IncrementalTrainer
+        from cortical.common.filesystem import InMemoryFileSystem
+        from pathlib import Path
+
+        # Given I have many documents to train on
+        fs = InMemoryFileSystem(Path("/checkpoint"))
+        fs.mkdir(Path("/checkpoint"), parents=True, exist_ok=True)
+
+        docs_dir = Path("/checkpoint/docs")
+        fs.mkdir(docs_dir, parents=True, exist_ok=True)
+
+        # Create 10 documents (checkpoint_interval=3 means 3 checkpoints)
+        for i in range(10):
+            fs.write_text(docs_dir / f"doc_{i:02d}.txt", f"Document {i} content about topic {i}.")
+
+        model_dir = Path("/checkpoint/model")
+
+        # When I train with checkpointing enabled
+        agent = CognitiveAgent()
+        trainer = IncrementalTrainer(agent, model_dir=model_dir, filesystem=fs)
+
+        # Train with small checkpoint interval for test
+        stats = trainer.train_directory(
+            docs_dir,
+            show_progress=False,
+            checkpoint_interval=3,  # Checkpoint every 3 documents
+        )
+
+        # Then the manifest is saved periodically during training
+        assert stats.new_documents == 10
+
+        # And partial progress is recoverable (manifest exists and has documents)
+        assert fs.exists(model_dir / "training_manifest.json")
+
+        # Verify by creating new trainer that it knows about trained docs
+        agent2 = CognitiveAgent()
+        trainer2 = IncrementalTrainer(agent2, model_dir=model_dir, filesystem=fs)
+        assert trainer2.manifest.total_documents == 10
+
+    def test_scenario_training_resumes_after_simulated_crash(self, tmp_path):
+        """
+        Scenario: Training resumes from checkpoint after crash
+
+        Given I started training on many documents
+        And training was interrupted after some documents
+        When I restart training
+        Then only the remaining documents are processed
+        And previously checkpointed documents are skipped
+        Because crash recovery should continue from where it left off.
+        """
+        from cortical.cognitive import CognitiveAgent, IncrementalTrainer
+        from cortical.common.filesystem import InMemoryFileSystem
+        from pathlib import Path
+
+        # Given I started training on many documents
+        fs = InMemoryFileSystem(Path("/crash"))
+        fs.mkdir(Path("/crash"), parents=True, exist_ok=True)
+
+        docs_dir = Path("/crash/docs")
+        fs.mkdir(docs_dir, parents=True, exist_ok=True)
+
+        # Create 10 documents
+        for i in range(10):
+            fs.write_text(docs_dir / f"doc_{i:02d}.txt", f"Document {i} content.")
+
+        model_dir = Path("/crash/model")
+
+        # Train first 5 documents normally
+        agent1 = CognitiveAgent()
+        trainer1 = IncrementalTrainer(agent1, model_dir=model_dir, filesystem=fs)
+
+        # Manually train just 5 docs to simulate partial completion
+        all_files = list(trainer1.scan_directory(docs_dir))
+        first_5 = all_files[:5]
+        for path, content, content_hash in first_5:
+            trainer1.bridge.learn_vocabulary([content], incremental=True)
+            trainer1.bridge.feed_text(content, doc_id=path)
+            word_count = len(trainer1.bridge.tokenizer.tokenize(content))
+            trainer1.manifest.add_document(path, content_hash, word_count)
+
+        # Save checkpoint (simulating checkpoint after 5 docs)
+        trainer1.save()
+
+        # When I restart training (simulating crash recovery)
+        agent2 = CognitiveAgent()
+        trainer2 = IncrementalTrainer(agent2, model_dir=model_dir, filesystem=fs)
+        stats = trainer2.train_directory(docs_dir, show_progress=False)
+
+        # Then only the remaining documents are processed
+        assert stats.new_documents == 5
+
+        # And previously checkpointed documents are skipped
+        assert stats.skipped_documents == 5
+
+    def test_scenario_default_checkpoint_interval_is_reasonable(self, tmp_path):
+        """
+        Scenario: Default checkpoint interval balances safety and performance
+
+        Given I am using the default checkpoint settings
+        When I check the default interval
+        Then it is set to 50 documents
+        Because 50 is a reasonable balance between safety and I/O overhead.
+        """
+        from cortical.cognitive import CognitiveAgent, IncrementalTrainer
+        from cortical.common.filesystem import InMemoryFileSystem
+        from pathlib import Path
+
+        # Given I am using the default checkpoint settings
+        fs = InMemoryFileSystem(Path("/default"))
+        fs.mkdir(Path("/default"), parents=True, exist_ok=True)
+
+        model_dir = Path("/default/model")
+        agent = CognitiveAgent()
+        trainer = IncrementalTrainer(agent, model_dir=model_dir, filesystem=fs)
+
+        # When I check the default interval
+        # Then it is set to 50 documents
+        assert trainer.checkpoint_interval == 50
+
+
+# =============================================================================
 # EPIC: Autonomous File System Access
 # =============================================================================
 

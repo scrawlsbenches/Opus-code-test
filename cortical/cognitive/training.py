@@ -270,6 +270,7 @@ class IncrementalTrainer:
         agent: 'CognitiveAgent',
         model_dir: str | Path,
         filesystem: FileSystem,
+        checkpoint_interval: int = 50,
     ):
         """
         Initialize trainer.
@@ -278,10 +279,12 @@ class IncrementalTrainer:
             agent: CognitiveAgent to train
             model_dir: Directory for model persistence
             filesystem: FileSystem for I/O operations
+            checkpoint_interval: Save progress every N documents (default 50)
         """
         self.agent = agent
         self.model_dir = Path(model_dir)
         self.filesystem = filesystem
+        self.checkpoint_interval = checkpoint_interval
 
         # Create model directory
         self.filesystem.mkdir(self.model_dir, parents=True, exist_ok=True)
@@ -347,11 +350,13 @@ class IncrementalTrainer:
         recursive: bool = True,
         show_progress: bool = True,
         force_retrain: bool = False,
+        checkpoint_interval: Optional[int] = None,
     ) -> TrainingStats:
         """
         Train on documents in a directory (incrementally).
 
         Only processes documents that are new or modified since last training.
+        Checkpoints progress periodically for crash recovery.
 
         Args:
             directory: Directory containing text files
@@ -359,6 +364,7 @@ class IncrementalTrainer:
             recursive: Search subdirectories (default: True)
             show_progress: Show progress bar (default: True)
             force_retrain: Ignore manifest and retrain all (default: False)
+            checkpoint_interval: Override checkpoint interval for this run
 
         Returns:
             TrainingStats with details of what was trained
@@ -416,6 +422,10 @@ class IncrementalTrainer:
         atoms_before = self.bridge._atoms_created
         links_before = self.bridge._links_created
 
+        # Determine checkpoint interval for this run
+        interval = checkpoint_interval if checkpoint_interval is not None else self.checkpoint_interval
+        docs_since_checkpoint = 0
+
         if show_progress:
             with ProgressReporter(len(texts), desc="Training") as progress:
                 for path, text in zip(paths, texts):
@@ -426,13 +436,30 @@ class IncrementalTrainer:
                     word_count = len(self.bridge.tokenizer.tokenize(text))
                     self.manifest.add_document(path, content_hash, word_count)
 
+                    docs_since_checkpoint += 1
                     progress.update(1)
+
+                    # Checkpoint periodically for crash recovery
+                    if interval > 0 and docs_since_checkpoint >= interval:
+                        self.manifest.last_training = datetime.now().isoformat()
+                        self.manifest.vocabulary_size = len(self.bridge.tokenizer.vocab)
+                        self.save()
+                        docs_since_checkpoint = 0
         else:
             for path, text in zip(paths, texts):
                 self.bridge.feed_text(text, doc_id=path)
                 content_hash = compute_content_hash(text)
                 word_count = len(self.bridge.tokenizer.tokenize(text))
                 self.manifest.add_document(path, content_hash, word_count)
+
+                docs_since_checkpoint += 1
+
+                # Checkpoint periodically for crash recovery
+                if interval > 0 and docs_since_checkpoint >= interval:
+                    self.manifest.last_training = datetime.now().isoformat()
+                    self.manifest.vocabulary_size = len(self.bridge.tokenizer.vocab)
+                    self.save()
+                    docs_since_checkpoint = 0
 
         # Update stats
         stats.atoms_created = self.bridge._atoms_created - atoms_before
