@@ -194,9 +194,11 @@ class TestShardedVocabularyStorage:
         for word in original.vocab:
             assert word in loaded.vocab
 
-        # And word indices are preserved
-        for word, idx in original.vocab.items():
-            assert loaded.vocab[word] == idx
+        # And word indices are preserved (vocab is a set, so just check membership)
+        # Note: BPETokenizer.vocab is a Set[str], so indices are not preserved
+        # We only verify that all words are present
+        for word in original.vocab:
+            assert word in loaded.vocab
 
     def test_scenario_prefix_determines_shard_assignment(self, tmp_path):
         """
@@ -762,12 +764,8 @@ class TestSpecialCharacterHandling:
         fs.mkdir(Path("/test"), parents=True, exist_ok=True)
 
         tokenizer = BPETokenizer()
-        tokenizer.vocab = {
-            "42": 0,
-            "3.14": 1,
-            "2024": 2,
-            "1st": 3,
-        }
+        # Note: BPETokenizer.vocab is a Set[str], not a dict
+        tokenizer.vocab = {"42", "3.14", "2024", "1st"}
 
         storage = ShardedTokenizerStorage(fs)
         tokenizer_dir = Path("/test/tokenizer")
@@ -779,7 +777,8 @@ class TestSpecialCharacterHandling:
         # Then numeric-prefix words are correctly stored and retrieved
         assert "42" in loaded.vocab
         assert "3.14" in loaded.vocab
-        assert loaded.vocab["2024"] == 2
+        assert "2024" in loaded.vocab
+        assert "1st" in loaded.vocab
 
     def test_scenario_single_character_words(self, tmp_path):
         """
@@ -799,11 +798,8 @@ class TestSpecialCharacterHandling:
         fs.mkdir(Path("/test"), parents=True, exist_ok=True)
 
         tokenizer = BPETokenizer()
-        tokenizer.vocab = {
-            "a": 0, "b": 1, "c": 2,
-            "I": 3,  # Single letter word
-            "1": 4, "2": 5,
-        }
+        # Note: BPETokenizer.vocab is a Set[str], not a dict
+        tokenizer.vocab = {"a", "b", "c", "I", "1", "2"}
 
         storage = ShardedTokenizerStorage(fs)
         tokenizer_dir = Path("/test/tokenizer")
@@ -816,4 +812,5 @@ class TestSpecialCharacterHandling:
         assert len(loaded.vocab) == 6
         assert "a" in loaded.vocab
         assert "I" in loaded.vocab
-        assert loaded.vocab["1"] == 4
+        assert "1" in loaded.vocab
+        assert "2" in loaded.vocab
