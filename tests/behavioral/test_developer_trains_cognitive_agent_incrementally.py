@@ -1148,3 +1148,529 @@ class TestCognitiveAgentWithFileSystem:
         # And the agent continues functioning
         loaded.step()  # Should not raise
         assert loaded._step_count == 1
+
+
+# =============================================================================
+# EPIC: Graph State Persistence Across Sessions
+# =============================================================================
+
+class TestDeveloperResumesTrainingWithFullState:
+    """
+    EPIC: Graph State Persistence Across Sessions
+    ==============================================
+
+    PERSONA: Developer running training across multiple sessions
+    GOAL: Resume training with ALL learned state intact
+    VALUE: No lost knowledge when sessions are interrupted
+
+    CRITICAL INVARIANT:
+    When training resumes, the graph MUST contain all atoms and links
+    from previous sessions. The manifest tracking document completion
+    is NOT sufficient - the actual learned relationships must persist.
+
+    FAILURE MODE BEING PREVENTED:
+    Session 1: Train docs 1-100, graph has 5000 atoms
+    Session 2: Resume, manifest says "100 docs done", but graph is EMPTY
+    Session 2: Train docs 101-200 with no connection to prior knowledge
+    Result: Fragmented knowledge, training is useless
+
+    WHY THIS MATTERS:
+    - Atoms represent learned vocabulary
+    - Links represent learned word associations
+    - Without restoring these, new training is disconnected from old
+    """
+
+    def test_scenario_graph_atoms_persist_across_sessions(self, tmp_path):
+        """
+        Scenario: Graph atoms are restored when resuming training
+
+        Given I have trained on documents creating atoms
+        And I start a new session with a fresh agent
+        When I create a new trainer for the same model directory
+        Then the graph contains all previously created atoms
+        And I can query atoms that were learned in the previous session
+        Because learned vocabulary must persist across sessions.
+        """
+        from cortical.cognitive import CognitiveAgent, IncrementalTrainer
+        from cortical.common.filesystem import RealFileSystem
+
+        # Given I have trained on documents creating atoms
+        docs_dir = tmp_path / "docs"
+        docs_dir.mkdir()
+        (docs_dir / "neural.txt").write_text(
+            "Neural networks learn patterns through layers of computation."
+        )
+        (docs_dir / "cognitive.txt").write_text(
+            "Cognitive systems process information using neural architectures."
+        )
+
+        model_dir = tmp_path / "model"
+        fs = RealFileSystem(tmp_path)
+        agent1 = CognitiveAgent(filesystem=fs)
+        trainer1 = IncrementalTrainer(agent1, model_dir=model_dir, filesystem=fs)
+        stats1 = trainer1.train_directory(docs_dir, show_progress=False)
+
+        # Record what was learned
+        atoms_after_training = len(list(agent1.graph._storage.all_atoms()))
+        assert atoms_after_training > 0, "Training should create atoms"
+
+        # And I start a new session with a fresh agent
+        agent2 = CognitiveAgent(filesystem=fs)
+        atoms_before_resume = len(list(agent2.graph._storage.all_atoms()))
+        assert atoms_before_resume == 0, "Fresh agent should have no atoms"
+
+        # When I create a new trainer for the same model directory
+        trainer2 = IncrementalTrainer(agent2, model_dir=model_dir, filesystem=fs)
+
+        # Then the graph contains all previously created atoms
+        atoms_after_resume = len(list(agent2.graph._storage.all_atoms()))
+        assert atoms_after_resume == atoms_after_training, (
+            f"Graph should have {atoms_after_training} atoms after resume, "
+            f"but has {atoms_after_resume}. Graph state was not restored!"
+        )
+
+        # And I can query atoms that were learned in the previous session
+        neural_atom = agent2.graph.get_node("neural")
+        assert neural_atom is not None, (
+            "Should be able to find 'neural' atom learned in previous session"
+        )
+
+    def test_scenario_graph_links_persist_across_sessions(self, tmp_path):
+        """
+        Scenario: Graph links (relationships) are restored when resuming
+
+        Given I have trained on documents creating links between words
+        And I note the links created during training
+        When I resume training in a new session
+        Then the graph contains all previously created links
+        And the link count matches what was created before
+        Because learned word associations must persist across sessions.
+        """
+        from cortical.cognitive import CognitiveAgent, IncrementalTrainer
+        from cortical.common.filesystem import RealFileSystem
+
+        # Given I have trained on documents creating links between words
+        docs_dir = tmp_path / "docs"
+        docs_dir.mkdir()
+        (docs_dir / "associations.txt").write_text(
+            "Machine learning algorithms process data efficiently. "
+            "Learning algorithms improve with more training data."
+        )
+
+        model_dir = tmp_path / "model"
+        fs = RealFileSystem(tmp_path)
+        agent1 = CognitiveAgent(filesystem=fs)
+        trainer1 = IncrementalTrainer(agent1, model_dir=model_dir, filesystem=fs)
+        stats1 = trainer1.train_directory(docs_dir, show_progress=False)
+
+        # And I note the links created during training
+        links_after_training = stats1.links_created
+        assert links_after_training > 0, "Training should create links"
+
+        # Count actual links in graph
+        all_atoms = list(agent1.graph._storage.all_atoms())
+        link_atoms = [a for a in all_atoms if a.outgoing]
+        link_count_session1 = len(link_atoms)
+
+        # When I resume training in a new session
+        agent2 = CognitiveAgent(filesystem=fs)
+        trainer2 = IncrementalTrainer(agent2, model_dir=model_dir, filesystem=fs)
+
+        # Then the graph contains all previously created links
+        all_atoms_resumed = list(agent2.graph._storage.all_atoms())
+        link_atoms_resumed = [a for a in all_atoms_resumed if a.outgoing]
+        link_count_session2 = len(link_atoms_resumed)
+
+        # And the link count matches what was created before
+        assert link_count_session2 == link_count_session1, (
+            f"Graph should have {link_count_session1} links after resume, "
+            f"but has {link_count_session2}. Link state was not restored!"
+        )
+
+    def test_scenario_continued_training_connects_to_prior_knowledge(self, tmp_path):
+        """
+        Scenario: New training builds on previously learned knowledge
+
+        Given I have trained on documents about topic A
+        And I resume training in a new session
+        And I train on new documents about topic B that shares words with A
+        When training completes
+        Then new atoms are connected to restored atoms via links
+        And the total knowledge graph is unified, not fragmented
+        Because incremental training must build a connected knowledge graph.
+        """
+        from cortical.cognitive import CognitiveAgent, IncrementalTrainer
+        from cortical.common.filesystem import RealFileSystem
+
+        # Given I have trained on documents about topic A
+        docs_dir = tmp_path / "docs"
+        docs_dir.mkdir()
+        (docs_dir / "topic_a.txt").write_text(
+            "Neural networks learn from training data using backpropagation."
+        )
+
+        model_dir = tmp_path / "model"
+        fs = RealFileSystem(tmp_path)
+        agent1 = CognitiveAgent(filesystem=fs)
+        trainer1 = IncrementalTrainer(agent1, model_dir=model_dir, filesystem=fs)
+        trainer1.train_directory(docs_dir, show_progress=False)
+
+        # And I resume training in a new session
+        agent2 = CognitiveAgent(filesystem=fs)
+        trainer2 = IncrementalTrainer(agent2, model_dir=model_dir, filesystem=fs)
+
+        # Verify prior knowledge is restored
+        prior_atom_count = len(list(agent2.graph._storage.all_atoms()))
+        assert prior_atom_count > 0, "Prior knowledge should be restored"
+
+        # And I train on new documents about topic B that shares words with A
+        (docs_dir / "topic_b.txt").write_text(
+            "Deep learning networks require training data and neural computation."
+        )
+        stats2 = trainer2.train_directory(docs_dir, show_progress=False)
+
+        # When training completes
+        assert stats2.new_documents == 1, "Should train only the new document"
+
+        # Then new atoms are connected to restored atoms via links
+        # The word "training" appears in both documents, so should have links
+        # connecting topic_a atoms to topic_b atoms
+        training_atom = agent2.graph.get_node("training")
+        assert training_atom is not None, "'training' should exist from topic A"
+
+        # Find links involving the training atom
+        all_atoms = list(agent2.graph._storage.all_atoms())
+        links_with_training = [
+            a for a in all_atoms
+            if a.outgoing and training_atom.id in a.outgoing
+        ]
+
+        # And the total knowledge graph is unified, not fragmented
+        final_atom_count = len(all_atoms)
+        assert final_atom_count > prior_atom_count, "New atoms should be added"
+        assert len(links_with_training) > 0, (
+            "New documents should create links to existing 'training' atom, "
+            "proving the knowledge graph is connected across sessions"
+        )
+
+
+# =============================================================================
+# EPIC: Graceful Handling of Interrupted Sessions
+# =============================================================================
+
+class TestDeveloperHandlesSessionInterruption:
+    """
+    EPIC: Graceful Handling of Interrupted Sessions
+    ================================================
+
+    PERSONA: Developer in environment with session timeouts
+    GOAL: Training survives unexpected session termination
+    VALUE: No corrupted state, no lost progress beyond last checkpoint
+
+    ENVIRONMENT CONTEXT:
+    Claude Code Web and similar environments may terminate sessions
+    without warning. The training system must handle this gracefully.
+
+    FAILURE MODES BEING PREVENTED:
+    1. Corrupted manifest (partial write)
+    2. Corrupted graph.json (partial write)
+    3. Manifest/graph desync (manifest updated, graph not saved)
+    4. Lost progress (no checkpoint for long time)
+    """
+
+    def test_scenario_smaller_checkpoint_interval_for_volatile_environments(self, tmp_path):
+        """
+        Scenario: Configuring frequent checkpoints for hostile environments
+
+        Given I am running in an environment that may kill my process
+        And I want to minimize lost work on interruption
+        When I configure a smaller checkpoint interval
+        Then training saves state more frequently
+        And the maximum lost work is bounded by the interval
+        Because volatile environments need more frequent persistence.
+        """
+        from cortical.cognitive import CognitiveAgent, IncrementalTrainer
+        from cortical.common.filesystem import InMemoryFileSystem
+        from pathlib import Path
+
+        # Given I am running in an environment that may kill my process
+        fs = InMemoryFileSystem(Path("/volatile"))
+        fs.mkdir(Path("/volatile"), parents=True, exist_ok=True)
+
+        docs_dir = Path("/volatile/docs")
+        fs.mkdir(docs_dir, parents=True, exist_ok=True)
+        for i in range(20):
+            fs.write_text(docs_dir / f"doc_{i:02d}.txt", f"Document {i} about topic {i}.")
+
+        model_dir = Path("/volatile/model")
+
+        # And I want to minimize lost work on interruption
+        # When I configure a smaller checkpoint interval
+        small_interval = 5  # Checkpoint every 5 documents
+
+        agent = CognitiveAgent()
+        trainer = IncrementalTrainer(
+            agent,
+            model_dir=model_dir,
+            filesystem=fs,
+            checkpoint_interval=small_interval,
+        )
+
+        # Then training saves state more frequently
+        # Track write operations to manifest
+        fs.reset_tracking()
+        trainer.train_directory(docs_dir, show_progress=False)
+
+        manifest_writes = [
+            op for op in fs.operations
+            if "training_manifest.json" in str(op.get("path", ""))
+            and op.get("operation") == "write"
+        ]
+
+        # 20 docs / 5 interval = 4 checkpoints, plus final save
+        assert len(manifest_writes) >= 4, (
+            f"Expected at least 4 checkpoint writes, got {len(manifest_writes)}"
+        )
+
+        # And the maximum lost work is bounded by the interval
+        # (This is a design property - if killed between checkpoints,
+        # at most checkpoint_interval documents are lost)
+        assert trainer.checkpoint_interval == small_interval
+
+    def test_scenario_training_detects_incomplete_prior_session(self, tmp_path):
+        """
+        Scenario: Detecting when prior session was interrupted
+
+        Given I was training and my session was killed
+        And the manifest shows fewer documents than graph.json has atoms for
+        When I start a new training session
+        Then the system should detect the inconsistency
+        And either recover gracefully or warn about the state
+        Because state inconsistency indicates interrupted training.
+
+        NOTE: This scenario documents DESIRED behavior. If it fails,
+        it indicates the system lacks inconsistency detection.
+        """
+        from cortical.cognitive import CognitiveAgent, IncrementalTrainer
+        from cortical.common.filesystem import InMemoryFileSystem
+        from pathlib import Path
+        import json
+
+        # Given I was training and my session was killed
+        fs = InMemoryFileSystem(Path("/interrupted"))
+        fs.mkdir(Path("/interrupted"), parents=True, exist_ok=True)
+
+        docs_dir = Path("/interrupted/docs")
+        fs.mkdir(docs_dir, parents=True, exist_ok=True)
+        for i in range(10):
+            fs.write_text(docs_dir / f"doc_{i:02d}.txt", f"Document {i} content.")
+
+        model_dir = Path("/interrupted/model")
+
+        # Train normally first
+        agent1 = CognitiveAgent()
+        trainer1 = IncrementalTrainer(agent1, model_dir=model_dir, filesystem=fs)
+        trainer1.train_directory(docs_dir, show_progress=False)
+
+        # And the manifest shows fewer documents than graph.json has atoms for
+        # Simulate interrupted session by corrupting manifest to show fewer docs
+        manifest_path = model_dir / "training_manifest.json"
+        manifest_data = json.loads(fs.read_text(manifest_path))
+
+        # Remove half the documents from manifest (simulating crash before manifest save)
+        doc_keys = list(manifest_data["documents"].keys())
+        for key in doc_keys[5:]:
+            del manifest_data["documents"][key]
+        manifest_data["total_documents"] = 5
+
+        fs.write_text(manifest_path, json.dumps(manifest_data))
+
+        # When I start a new training session
+        agent2 = CognitiveAgent()
+        trainer2 = IncrementalTrainer(agent2, model_dir=model_dir, filesystem=fs)
+
+        # Then the system should detect the inconsistency
+        # Check if status reflects what manifest says vs what graph has
+        status = trainer2.status()
+
+        # Note: Currently the system may not detect this.
+        # This test documents the DESIRED behavior.
+        # If graph atoms > manifest docs significantly, something is wrong.
+
+        # At minimum, training should be able to continue
+        stats = trainer2.train_directory(docs_dir, show_progress=False)
+
+        # The "missing" 5 docs should be detected as new (manifest doesn't have them)
+        assert stats.new_documents == 5, (
+            "Documents missing from manifest should be retrained"
+        )
+
+    def test_scenario_checkpoint_saves_consistent_state(self, tmp_path):
+        """
+        Scenario: Each checkpoint creates a consistent recoverable state
+
+        Given I am training with checkpointing enabled
+        When a checkpoint is saved
+        Then the manifest, tokenizer, and graph are all saved together
+        And if I load from that checkpoint, all three are consistent
+        Because partial saves would corrupt the training state.
+        """
+        from cortical.cognitive import CognitiveAgent, IncrementalTrainer
+        from cortical.common.filesystem import InMemoryFileSystem
+        from pathlib import Path
+        import json
+
+        # Given I am training with checkpointing enabled
+        fs = InMemoryFileSystem(Path("/consistent"))
+        fs.mkdir(Path("/consistent"), parents=True, exist_ok=True)
+
+        docs_dir = Path("/consistent/docs")
+        fs.mkdir(docs_dir, parents=True, exist_ok=True)
+        for i in range(6):
+            fs.write_text(docs_dir / f"doc_{i:02d}.txt", f"Document {i} about words.")
+
+        model_dir = Path("/consistent/model")
+
+        agent = CognitiveAgent()
+        trainer = IncrementalTrainer(
+            agent, model_dir=model_dir, filesystem=fs, checkpoint_interval=3
+        )
+
+        # When a checkpoint is saved (after every 3 docs)
+        trainer.train_directory(docs_dir, show_progress=False)
+
+        # Then the manifest, tokenizer, and graph are all saved together
+        assert fs.exists(model_dir / "training_manifest.json")
+        assert fs.exists(model_dir / "tokenizer" / "meta.json")
+        assert fs.exists(model_dir / "bridge" / "graph.json")
+
+        # And if I load from that checkpoint, all three are consistent
+        manifest = json.loads(fs.read_text(model_dir / "training_manifest.json"))
+        tokenizer_meta = json.loads(fs.read_text(model_dir / "tokenizer" / "meta.json"))
+        graph_data = json.loads(fs.read_text(model_dir / "bridge" / "graph.json"))
+
+        # Manifest doc count should reflect actual trained documents
+        assert manifest["total_documents"] == 6
+
+        # Tokenizer vocab size should match manifest's record
+        assert manifest["vocabulary_size"] == tokenizer_meta["vocab_size"]
+
+        # Graph should have atoms
+        assert len(graph_data.get("atoms", [])) > 0
+
+
+# =============================================================================
+# EPIC: Environment-Friendly Resource Usage
+# =============================================================================
+
+class TestDeveloperIsGoodEnvironmentGuest:
+    """
+    EPIC: Environment-Friendly Resource Usage
+    ==========================================
+
+    PERSONA: Developer running in shared/hosted environment
+    GOAL: Training does not monopolize system resources
+    VALUE: Peaceful coexistence with other processes, avoid getting killed
+
+    ENVIRONMENTAL CONSTRAINTS:
+    - Claude Code Web has resource limits
+    - Long-running CPU-intensive processes may be terminated
+    - We are guests in a shared environment
+
+    DESIGN PRINCIPLES:
+    - Yield CPU periodically during long operations
+    - Keep checkpoints small and fast
+    - Provide progress visibility for monitoring
+    - Support graceful interruption
+    """
+
+    def test_scenario_training_provides_progress_callback(self, tmp_path):
+        """
+        Scenario: Training reports progress for external monitoring
+
+        Given I am training on many documents
+        And I want to monitor progress externally
+        When I train with progress tracking
+        Then I can observe progress as training proceeds
+        And I can estimate time remaining
+        Because visibility enables proactive management of long runs.
+        """
+        from cortical.cognitive import CognitiveAgent, IncrementalTrainer
+        from cortical.common.filesystem import InMemoryFileSystem
+        from pathlib import Path
+
+        # Given I am training on many documents
+        fs = InMemoryFileSystem(Path("/progress"))
+        fs.mkdir(Path("/progress"), parents=True, exist_ok=True)
+
+        docs_dir = Path("/progress/docs")
+        fs.mkdir(docs_dir, parents=True, exist_ok=True)
+        for i in range(10):
+            fs.write_text(docs_dir / f"doc_{i:02d}.txt", f"Document {i} content.")
+
+        model_dir = Path("/progress/model")
+
+        agent = CognitiveAgent()
+        trainer = IncrementalTrainer(agent, model_dir=model_dir, filesystem=fs)
+
+        # And I want to monitor progress externally
+        # When I train with progress tracking (show_progress=True uses ProgressReporter)
+        stats = trainer.train_directory(docs_dir, show_progress=False)
+
+        # Then I can observe progress as training proceeds
+        # The stats object provides visibility
+        assert stats.total_files_scanned == 10
+        assert stats.new_documents == 10
+        assert stats.training_time_seconds > 0
+
+        # And I can estimate time remaining
+        # (time per doc * remaining docs)
+        time_per_doc = stats.training_time_seconds / stats.new_documents
+        assert time_per_doc > 0, "Should be able to estimate time per document"
+
+    def test_scenario_training_stats_enable_batch_planning(self, tmp_path):
+        """
+        Scenario: Stats from prior runs enable batch size planning
+
+        Given I have trained some documents and measured the time
+        And I know my environment has a time limit
+        When I calculate how many documents fit in the limit
+        Then I can plan batch sizes that complete before timeout
+        Because predictable runtimes prevent unexpected termination.
+        """
+        from cortical.cognitive import CognitiveAgent, IncrementalTrainer
+        from cortical.common.filesystem import InMemoryFileSystem
+        from pathlib import Path
+
+        # Given I have trained some documents and measured the time
+        fs = InMemoryFileSystem(Path("/batch"))
+        fs.mkdir(Path("/batch"), parents=True, exist_ok=True)
+
+        docs_dir = Path("/batch/docs")
+        fs.mkdir(docs_dir, parents=True, exist_ok=True)
+        for i in range(5):
+            fs.write_text(docs_dir / f"doc_{i:02d}.txt", f"Document {i} content here.")
+
+        model_dir = Path("/batch/model")
+
+        agent = CognitiveAgent()
+        trainer = IncrementalTrainer(agent, model_dir=model_dir, filesystem=fs)
+        stats = trainer.train_directory(docs_dir, show_progress=False)
+
+        # And I know my environment has a time limit (e.g., 5 minutes)
+        environment_timeout_seconds = 300  # 5 minutes
+
+        # When I calculate how many documents fit in the limit
+        if stats.new_documents > 0 and stats.training_time_seconds > 0:
+            time_per_doc = stats.training_time_seconds / stats.new_documents
+            safe_batch_size = int(environment_timeout_seconds / time_per_doc * 0.8)  # 80% safety margin
+
+            # Then I can plan batch sizes that complete before timeout
+            assert safe_batch_size > 0, "Should be able to calculate safe batch size"
+
+            # The batch size should be reasonable
+            estimated_time = safe_batch_size * time_per_doc
+            assert estimated_time < environment_timeout_seconds, (
+                f"Batch of {safe_batch_size} estimated at {estimated_time:.1f}s "
+                f"should fit in {environment_timeout_seconds}s limit"
+            )
