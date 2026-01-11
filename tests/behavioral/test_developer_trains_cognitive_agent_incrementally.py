@@ -1424,7 +1424,7 @@ class TestDeveloperHandlesSessionInterruption:
         manifest_writes = [
             op for op in fs.operations
             if "training_manifest.json" in str(op.get("path", ""))
-            and op.get("operation") == "write"
+            and op.get("type") == "write"
         ]
 
         # 20 docs / 5 interval = 4 checkpoints, plus final save
