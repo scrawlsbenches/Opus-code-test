@@ -448,18 +448,20 @@ def demo_query_connections(agent: CognitiveAgent, query_word: str = None):
         print(f"  {Colors.DIM}No similarity links found.{Colors.RESET}")
         return
 
-    # Show connected words sorted by link strength
-    connections = []
+    # Show connected words sorted by link strength (deduplicated, keep max strength)
+    connections_dict = {}
     for link in similarity_links:
         # Find the other atom in the link
         for target_id in link.outgoing:
             if target_id != atom.id:
                 other = agent.graph.get_atom(target_id)
                 if other and other.name:
-                    connections.append((other.name, link.tv.strength))
+                    # Keep the strongest connection for each word
+                    if other.name not in connections_dict or link.tv.strength > connections_dict[other.name]:
+                        connections_dict[other.name] = link.tv.strength
 
     # Sort by strength
-    connections.sort(key=lambda x: x[1], reverse=True)
+    connections = sorted(connections_dict.items(), key=lambda x: x[1], reverse=True)
 
     for name, strength in connections[:10]:
         bar_len = int(strength * 20)
