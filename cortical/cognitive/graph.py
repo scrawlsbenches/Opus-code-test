@@ -42,6 +42,7 @@ from typing import (
 )
 
 from cortical.common import Container, ContainerModule, Lifecycle
+from cortical.common.filesystem import FileSystem
 
 
 # =============================================================================
@@ -2160,38 +2161,38 @@ class CognitiveAgent:
 
         return agent
 
-    def save(self, path: Union[str, Path]) -> None:
+    def save(self, path: Union[str, Path], filesystem: FileSystem) -> None:
         """
         Save agent state to JSON file.
 
         Args:
             path: File path (will add .json if not present)
+            filesystem: FileSystem for I/O operations
         """
         path = Path(path)
         if path.suffix != ".json":
             path = path.with_suffix(".json")
 
         data = self.to_dict()
-        with open(path, "w") as f:
-            json.dump(data, f, indent=2)
+        filesystem.write_text(path, json.dumps(data, indent=2))
 
     @classmethod
-    def load(cls, path: Union[str, Path]) -> 'CognitiveAgent':
+    def load(cls, path: Union[str, Path], filesystem: FileSystem) -> 'CognitiveAgent':
         """
         Load agent state from JSON file.
 
         Args:
             path: File path to load from
+            filesystem: FileSystem for I/O operations
 
         Returns:
             Reconstructed CognitiveAgent
         """
         path = Path(path)
-        if not path.exists() and path.with_suffix(".json").exists():
+        if not filesystem.exists(path) and filesystem.exists(path.with_suffix(".json")):
             path = path.with_suffix(".json")
 
-        with open(path, "r") as f:
-            data = json.load(f)
+        data = json.loads(filesystem.read_text(path))
 
         return cls.from_dict(data)
 

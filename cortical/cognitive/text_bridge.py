@@ -45,6 +45,7 @@ if TYPE_CHECKING:
 
 # Import at runtime to avoid circular imports
 from cortical.cognitive.graph import AtomType, TruthValue
+from cortical.common.filesystem import FileSystem
 
 
 # =============================================================================
@@ -338,16 +339,16 @@ class BPETokenizer:
         })
         return tok
 
-    def save(self, path: Path) -> None:
+    def save(self, path: Path, filesystem: FileSystem) -> None:
         """Save tokenizer to JSON file."""
         path = Path(path)
-        path.write_text(json.dumps(self.to_dict(), indent=2))
+        filesystem.write_text(path, json.dumps(self.to_dict(), indent=2))
 
     @classmethod
-    def load(cls, path: Path) -> 'BPETokenizer':
+    def load(cls, path: Path, filesystem: FileSystem) -> 'BPETokenizer':
         """Load tokenizer from JSON file."""
         path = Path(path)
-        data = json.loads(path.read_text())
+        data = json.loads(filesystem.read_text(path))
         return cls.from_dict(data)
 
 
@@ -645,7 +646,7 @@ class TextToAtomsBridge:
             "total_vocabulary": len(self.tokenizer.vocab),
         }
 
-    def save(self, path: Path) -> None:
+    def save(self, path: Path, filesystem: FileSystem) -> None:
         """
         Save bridge state (tokenizer + graph) to directory.
 
@@ -655,12 +656,13 @@ class TextToAtomsBridge:
 
         Args:
             path: Directory to save to (created if doesn't exist)
+            filesystem: FileSystem for I/O operations
         """
         path = Path(path)
-        path.mkdir(parents=True, exist_ok=True)
+        filesystem.mkdir(path, parents=True, exist_ok=True)
 
         # Save tokenizer
-        self.tokenizer.save(path / "tokenizer.json")
+        self.tokenizer.save(path / "tokenizer.json", filesystem)
 
         # Save graph (uses its own save method)
         # The CognitiveGraph should have a save method
@@ -683,18 +685,19 @@ class TextToAtomsBridge:
             }
             graph_data["atoms"].append(atom_data)
 
-        (path / "graph.json").write_text(json.dumps(graph_data, indent=2))
+        filesystem.write_text(path / "graph.json", json.dumps(graph_data, indent=2))
 
         print(f"Saved bridge to {path}/")
 
     @classmethod
-    def load(cls, path: Path, graph: 'CognitiveGraph') -> 'TextToAtomsBridge':
+    def load(cls, path: Path, graph: 'CognitiveGraph', filesystem: FileSystem) -> 'TextToAtomsBridge':
         """
         Load bridge state from directory.
 
         Args:
             path: Directory containing saved state
             graph: CognitiveGraph to populate
+            filesystem: FileSystem for I/O operations
 
         Returns:
             Loaded TextToAtomsBridge
@@ -702,13 +705,13 @@ class TextToAtomsBridge:
         path = Path(path)
 
         # Load tokenizer
-        tokenizer = BPETokenizer.load(path / "tokenizer.json")
+        tokenizer = BPETokenizer.load(path / "tokenizer.json", filesystem)
 
         # Create bridge with loaded tokenizer
         bridge = cls(graph=graph, tokenizer=tokenizer)
 
         # Load graph data
-        graph_data = json.loads((path / "graph.json").read_text())
+        graph_data = json.loads(filesystem.read_text(path / "graph.json"))
 
         atoms_data = graph_data.get("atoms", [])
         nodes = [a for a in atoms_data if not a.get("outgoing")]
@@ -758,20 +761,22 @@ class TextToAtomsBridge:
 # =============================================================================
 
 
-def load_text_file(path: Path) -> str:
+def load_text_file(path: Path, filesystem: FileSystem) -> str:
     """
     Load text from a file with encoding fallback.
 
-    Tries UTF-8 first, falls back to latin-1.
+    Tries UTF-8 first, falls back to latin-1 for real filesystems.
+
+    Args:
+        path: File path to read
+        filesystem: FileSystem for I/O operations
     """
-    try:
-        return path.read_text(encoding='utf-8')
-    except UnicodeDecodeError:
-        return path.read_text(encoding='latin-1')
+    return filesystem.read_text(path)
 
 
 def iter_text_files(
     directory: Path,
+    filesystem: FileSystem,
     pattern: str = "*.txt",
     recursive: bool = True,
 ) -> Iterator[Tuple[Path, str]]:
@@ -780,6 +785,7 @@ def iter_text_files(
 
     Args:
         directory: Directory to scan
+        filesystem: FileSystem for I/O operations
         pattern: Glob pattern for files
         recursive: Whether to search subdirectories
 
@@ -787,18 +793,16 @@ def iter_text_files(
         (path, content) tuples
 
     Example:
-        >>> for path, text in iter_text_files(Path("samples")):
+        >>> for path, text in iter_text_files(Path("samples"), filesystem):
         ...     print(f"Loaded {path.name}: {len(text)} chars")
     """
-    if recursive:
-        files = directory.rglob(pattern)
-    else:
-        files = directory.glob(pattern)
+    glob_pattern = f"**/{pattern}" if recursive else pattern
+    files = filesystem.glob(directory, glob_pattern)
 
     for path in sorted(files):
-        if path.is_file():
+        if not filesystem.is_dir(path):
             try:
-                content = load_text_file(path)
+                content = load_text_file(path, filesystem)
                 yield path, content
             except Exception as e:
                 # Skip files that can't be read
@@ -808,6 +812,7 @@ def iter_text_files(
 def load_directory_to_bridge(
     directory: Path,
     bridge: TextToAtomsBridge,
+    filesystem: FileSystem,
     pattern: str = "*.txt",
     max_files: Optional[int] = None,
     learn_first: bool = True,
@@ -823,6 +828,7 @@ def load_directory_to_bridge(
     Args:
         directory: Directory containing text files
         bridge: TextToAtomsBridge to use
+        filesystem: FileSystem for I/O operations
         pattern: Glob pattern for files
         max_files: Maximum files to process (None = all)
         learn_first: Whether to learn vocabulary first
@@ -833,13 +839,13 @@ def load_directory_to_bridge(
 
     Example:
         >>> bridge = TextToAtomsBridge(agent.graph)
-        >>> stats = load_directory_to_bridge(Path("samples"), bridge, max_files=10)
+        >>> stats = load_directory_to_bridge(Path("samples"), bridge, filesystem, max_files=10)
         >>> print(f"Loaded {stats['files_processed']} files")
     """
     directory = Path(directory)
 
     # Collect files
-    files = list(iter_text_files(directory, pattern))
+    files = list(iter_text_files(directory, filesystem, pattern))
     if max_files:
         files = files[:max_files]
 
