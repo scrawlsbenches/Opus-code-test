@@ -291,6 +291,7 @@ class IncrementalTrainer:
         model_dir: str | Path,
         filesystem: FileSystem,
         checkpoint_interval: int = 50,
+        config: Optional[TrainingConfig] = None,
     ):
         """
         Initialize trainer.
@@ -300,8 +301,10 @@ class IncrementalTrainer:
             model_dir: Directory for model persistence
             filesystem: FileSystem for I/O operations
             checkpoint_interval: Save progress every N documents (default 50)
+            config: Training configuration (default: TrainingConfig())
         """
         self.agent = agent
+        self.config = config or TrainingConfig()
         self.model_dir = Path(model_dir)
         self.filesystem = filesystem
         self.checkpoint_interval = checkpoint_interval
@@ -381,6 +384,17 @@ class IncrementalTrainer:
         self.bridge._atoms_created = stats.get("atoms_created", 0)
         self.bridge._links_created = stats.get("links_created", 0)
 
+    def _check_staleness_warning(self) -> None:
+        """Emit warning to stderr if IDF weights are stale."""
+        staleness = self.manifest.get_staleness()
+        if staleness > self.config.staleness_warning_threshold:
+            import sys
+            print(
+                f"Warning: IDF weights are {staleness:.0%} stale. "
+                f"Consider running --reindex to update link weights.",
+                file=sys.stderr,
+            )
+
     def scan_directory(
         self,
         directory: str | Path,
@@ -452,6 +466,9 @@ class IncrementalTrainer:
 
         stats = TrainingStats()
         directory = Path(directory)
+
+        # Check for stale IDF weights before training
+        self._check_staleness_warning()
 
         # Scan all files
         all_files = list(self.scan_directory(directory, pattern, recursive))
@@ -578,6 +595,9 @@ class IncrementalTrainer:
         start_time = time.time()
 
         stats = TrainingStats()
+
+        # Check for stale IDF weights before training
+        self._check_staleness_warning()
 
         # Resolve paths and load content
         files_data = []

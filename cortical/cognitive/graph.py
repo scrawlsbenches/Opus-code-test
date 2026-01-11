@@ -175,6 +175,21 @@ class TruthValue:
 
 
 @dataclass
+class Association:
+    """
+    A weighted association between words.
+
+    Used as return type for get_associations() queries.
+    """
+
+    word: str
+    weight: float
+
+    def __repr__(self) -> str:
+        return f"Association({self.word!r}, {self.weight:.4f})"
+
+
+@dataclass
 class Atom:
     """
     The universal unit of the cognitive graph.
@@ -2031,6 +2046,65 @@ class CognitiveAgent:
             })
 
         return episodes
+
+    def get_associations(
+        self,
+        word: str,
+        weight_type: str = "idf",
+        top_k: int = 20,
+    ) -> List[Association]:
+        """
+        Get weighted associations for a word.
+
+        Retrieves words connected by SIMILARITY links, sorted by weight.
+
+        Args:
+            word: The word to find associations for
+            weight_type: "idf" for IDF-weighted strength, "raw" for raw co-occurrence
+            top_k: Maximum associations to return
+
+        Returns:
+            List of Association(word, weight) sorted by weight descending
+        """
+        # Find the word's atom
+        atom = self.graph.get_node(word)
+        if not atom:
+            return []
+
+        # Get all SIMILARITY links pointing to this atom
+        incoming = self.graph.get_incoming(atom.id)
+        similarity_links = [
+            link for link in incoming
+            if link.atom_type == AtomType.SIMILARITY
+        ]
+
+        associations = []
+        for link in similarity_links:
+            # Find the other endpoint
+            other_id = None
+            for target_id in link.outgoing:
+                if target_id != atom.id:
+                    other_id = target_id
+                    break
+
+            if not other_id:
+                continue
+
+            other_atom = self.graph.get_atom(other_id)
+            if not other_atom or not other_atom.name:
+                continue
+
+            # Get the appropriate weight
+            if weight_type == "idf":
+                weight = link.metadata.get("idf_strength", link.tv.strength)
+            else:  # raw
+                weight = link.metadata.get("raw_strength", link.tv.strength)
+
+            associations.append(Association(word=other_atom.name, weight=weight))
+
+        # Sort by weight descending
+        associations.sort(key=lambda a: a.weight, reverse=True)
+        return associations[:top_k]
 
     # =========================================================================
     # Persistence (JSON-based for security and git-friendliness)
