@@ -170,6 +170,51 @@ def main() -> int:
         help="Directory for model storage",
     )
 
+    # Generate command
+    generate_parser = subparsers.add_parser(
+        "generate",
+        help="Generate text using FOLLOWS links (next-word prediction)"
+    )
+    generate_parser.add_argument(
+        "prompt",
+        nargs="?",
+        default=None,
+        help="Starting word or phrase (default: random word)",
+    )
+    generate_parser.add_argument(
+        "--model-dir",
+        default="models/cognitive_agent",
+        help="Directory for model storage",
+    )
+    generate_parser.add_argument(
+        "--max-tokens", "-n",
+        type=int,
+        default=20,
+        help="Maximum tokens to generate (default: 20)",
+    )
+    generate_parser.add_argument(
+        "--temperature", "-t",
+        type=float,
+        default=0.0,
+        help="Sampling temperature: 0=greedy, 1=random weighted (default: 0)",
+    )
+    generate_parser.add_argument(
+        "--min-confidence",
+        type=float,
+        default=0.0,
+        help="Stop if confidence drops below this (default: 0, never stop)",
+    )
+    generate_parser.add_argument(
+        "--show-confidence",
+        action="store_true",
+        help="Show confidence scores for each prediction",
+    )
+    generate_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output as JSON with full prediction details",
+    )
+
     args = parser.parse_args()
 
     if args.command is None:

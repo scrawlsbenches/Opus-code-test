@@ -1166,8 +1166,141 @@ def run_cli_command(command: str, args, container: 'Optional[Container]' = None)
         _run_demo(trainer)
         return 0
 
+    if command == "generate":
+        _run_generate(trainer, args)
+        return 0
+
     print(f"Unknown command: {command}")
     return 1
+
+
+def _run_generate(trainer: 'IncrementalTrainer', args) -> None:
+    """
+    Generate text using FOLLOWS links and predict_next().
+
+    Uses directional word transitions learned from training data
+    to generate text token by token.
+
+    Args:
+        trainer: The IncrementalTrainer with loaded model
+        args: CLI arguments with prompt, max_tokens, temperature, etc.
+    """
+    import random
+    import json as json_module
+
+    agent = trainer.agent
+    graph = agent.graph
+
+    # Get starting word(s)
+    if args.prompt:
+        # Tokenize the prompt
+        tokens = trainer.bridge.tokenizer.tokenize(args.prompt.lower())
+        if not tokens:
+            print(f"Could not tokenize prompt: {args.prompt}")
+            return
+        current_word = tokens[-1]  # Start prediction from last word
+        generated = list(tokens)
+    else:
+        # Pick a random word from vocabulary
+        word_atoms = [a for a in graph._storage.all_atoms()
+                      if a.atom_type.name == 'WORD' and a.name]
+        if not word_atoms:
+            print("No words in vocabulary. Train the model first.")
+            return
+        current_word = random.choice(word_atoms).name
+        generated = [current_word]
+
+    # Track predictions for JSON output
+    predictions = []
+
+    # Generate tokens
+    for i in range(args.max_tokens):
+        pred = agent.predict_next(current_word)
+
+        # Record prediction details
+        pred_record = {
+            "step": i + 1,
+            "from_word": current_word,
+            "is_unknown": pred.is_unknown,
+            "is_boundary": pred.is_boundary,
+            "confidence": pred.confidence,
+            "candidates": pred.candidates[:5],
+        }
+
+        if pred.is_unknown:
+            pred_record["result"] = "[UNKNOWN]"
+            predictions.append(pred_record)
+            break
+
+        if pred.is_boundary:
+            pred_record["result"] = "[BOUNDARY]"
+            predictions.append(pred_record)
+            break
+
+        if args.min_confidence > 0 and pred.confidence < args.min_confidence:
+            pred_record["result"] = "[LOW_CONFIDENCE]"
+            predictions.append(pred_record)
+            break
+
+        # Select next word
+        if args.temperature == 0 or len(pred.candidates) == 1:
+            # Greedy: pick top candidate
+            next_word = pred.top
+        else:
+            # Temperature-based sampling
+            import math
+            candidates = pred.candidates
+            # Apply temperature
+            if args.temperature != 1.0:
+                # Adjust probabilities with temperature
+                adjusted = []
+                for word, prob in candidates:
+                    # Temperature scaling in log space
+                    adjusted_prob = math.pow(prob, 1.0 / args.temperature)
+                    adjusted.append((word, adjusted_prob))
+                # Renormalize
+                total = sum(p for _, p in adjusted)
+                candidates = [(w, p / total) for w, p in adjusted]
+
+            # Weighted random selection
+            r = random.random()
+            cumulative = 0.0
+            next_word = candidates[0][0]  # fallback
+            for word, prob in candidates:
+                cumulative += prob
+                if r <= cumulative:
+                    next_word = word
+                    break
+
+        pred_record["selected"] = next_word
+        predictions.append(pred_record)
+
+        generated.append(next_word)
+        current_word = next_word
+
+    # Output results
+    if args.json:
+        result = {
+            "prompt": args.prompt,
+            "generated_text": " ".join(generated),
+            "token_count": len(generated),
+            "temperature": args.temperature,
+            "predictions": predictions,
+        }
+        print(json_module.dumps(result, indent=2))
+    elif args.show_confidence:
+        # Show text with confidence annotations
+        print(" ".join(generated))
+        print()
+        print("Prediction details:")
+        print("-" * 50)
+        for pred in predictions:
+            conf_str = f"{pred['confidence']:.2f}" if not pred.get('is_unknown') else "N/A"
+            result = pred.get('selected') or pred.get('result', '?')
+            print(f"  {pred['from_word']:15} -> {result:15} (conf={conf_str})")
+    else:
+        # Simple text output
+        print(" ".join(generated))
 
 
 def _run_demo(trainer: IncrementalTrainer) -> None:
