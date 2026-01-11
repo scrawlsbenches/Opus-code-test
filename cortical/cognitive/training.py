@@ -370,6 +370,7 @@ class IncrementalTrainer:
                 ),
                 sti=atom_data.get("sti", 0.0),
                 lti=atom_data.get("lti", 0.0),
+                metadata=atom_data.get("metadata", {}),  # Restore IDF weights
             )
             id_map[atom_data["id"]] = atom
             storage.save(atom)
@@ -667,6 +668,7 @@ class IncrementalTrainer:
                 "sti": atom.sti,
                 "lti": atom.lti,
                 "outgoing": atom.outgoing,
+                "metadata": atom.metadata,  # Preserve IDF weights
             }
             graph_data["atoms"].append(atom_data)
 
@@ -677,6 +679,40 @@ class IncrementalTrainer:
 
         # Save manifest
         self.manifest.save(self.manifest_path, self.filesystem)
+
+    def reindex(self, show_progress: bool = True) -> Dict[str, Any]:
+        """
+        Recalculate IDF weights for all similarity links.
+
+        This should be called after incremental training to update stale
+        link weights. Updates manifest with new reindex stats.
+
+        Args:
+            show_progress: Print progress info to stderr
+
+        Returns:
+            Dict with reindex statistics
+        """
+        import sys
+
+        if show_progress:
+            n_links = len(self.bridge.get_similarity_links())
+            print(f"Reindexing {n_links} links...", file=sys.stderr)
+
+        result = self.bridge.reindex_idf()
+
+        # Update manifest
+        self.manifest.last_reindex_doc_count = self.manifest.total_documents
+        self.manifest.idf_epoch = result['new_epoch']
+
+        # Save updated state
+        self.save()
+
+        if show_progress:
+            print(f"Reindex complete: {result['links_updated']} links updated in {result['time_ms']}ms", file=sys.stderr)
+            print(f"IDF epoch: {result['new_epoch']}", file=sys.stderr)
+
+        return result
 
     @classmethod
     def load(
@@ -798,6 +834,11 @@ Examples:
         help="List trained documents and exit",
     )
     parser.add_argument(
+        "--reindex",
+        action="store_true",
+        help="Recalculate IDF weights for all similarity links",
+    )
+    parser.add_argument(
         "--quiet",
         action="store_true",
         help="Suppress progress output",
@@ -840,6 +881,13 @@ Examples:
                 print(f"  {doc}")
         else:
             print("No documents trained yet.")
+        return
+
+    if args.reindex:
+        result = trainer.reindex(show_progress=not args.quiet)
+        if not args.quiet:
+            staleness = trainer.manifest.get_staleness()
+            print(f"Staleness after reindex: {staleness:.1%}")
         return
 
     if args.files:
