@@ -243,7 +243,7 @@ class BPETokenizer:
 
         return tokens
 
-    def learn_from_texts(self, texts: List[str], n_merges: int = 100) -> None:
+    def learn_from_texts(self, texts: List[str], n_merges: int = 100, incremental: bool = False) -> None:
         """
         Learn vocabulary and merges from a corpus.
 
@@ -256,6 +256,7 @@ class BPETokenizer:
         Args:
             texts: List of text documents
             n_merges: Maximum number of merge operations
+            incremental: If True, add to existing counts instead of resetting
 
         Note:
             This is a simplified version. Full BPE would:
@@ -263,9 +264,10 @@ class BPETokenizer:
             - Update counts after each merge
             We keep it simple for clarity and extensibility.
         """
-        # Reset counters
-        self._word_counts = Counter()
-        self._pair_counts = Counter()
+        # Reset counters only if not incremental
+        if not incremental:
+            self._word_counts = Counter()
+            self._pair_counts = Counter()
 
         # Count words and pairs
         for text in texts:
@@ -396,7 +398,7 @@ class TextToAtomsBridge:
     _atoms_created: int = 0
     _links_created: int = 0
 
-    def learn_vocabulary(self, texts: List[str], n_merges: int = 100) -> None:
+    def learn_vocabulary(self, texts: List[str], n_merges: int = 100, incremental: bool = False) -> None:
         """
         Train the tokenizer on a corpus of texts.
 
@@ -406,8 +408,9 @@ class TextToAtomsBridge:
         Args:
             texts: List of text documents
             n_merges: Number of merge operations for BPE
+            incremental: If True, add to existing vocabulary instead of replacing
         """
-        self.tokenizer.learn_from_texts(texts, n_merges)
+        self.tokenizer.learn_from_texts(texts, n_merges, incremental=incremental)
 
     def feed_text(
         self,
@@ -575,6 +578,71 @@ class TextToAtomsBridge:
             "links_created": self._links_created,
             "vocabulary_size": len(self.tokenizer.vocab),
             "learned_merges": len(self.tokenizer.merges),
+        }
+
+    def add_documents(
+        self,
+        texts: List[str],
+        doc_ids: Optional[List[str]] = None,
+        show_progress: bool = True,
+    ) -> Dict[str, int]:
+        """
+        Incrementally add documents to an already-trained bridge.
+
+        This is the recommended way to add more data after initial training
+        or after loading a saved model.
+
+        Args:
+            texts: List of text documents to add
+            doc_ids: Optional list of document IDs (defaults to "doc_N")
+            show_progress: Whether to show progress bar
+
+        Returns:
+            Statistics about what was added
+
+        Example:
+            >>> # Load existing model
+            >>> bridge = TextToAtomsBridge.load(path, graph)
+            >>> # Add more documents
+            >>> bridge.add_documents(new_texts)
+            >>> # Save updated model
+            >>> bridge.save(path)
+        """
+        if not texts:
+            return {"documents_added": 0}
+
+        # Generate doc_ids if not provided
+        if doc_ids is None:
+            start_idx = self._documents_fed
+            doc_ids = [f"doc_{start_idx + i}" for i in range(len(texts))]
+
+        # Track stats before
+        atoms_before = self._atoms_created
+        links_before = self._links_created
+
+        # Incrementally learn vocabulary from new texts
+        if show_progress:
+            print(f"Learning vocabulary from {len(texts)} new documents...", file=sys.stderr)
+        self.learn_vocabulary(texts, incremental=True)
+        if show_progress:
+            print(f"  Vocabulary now: {len(self.tokenizer.vocab)} words", file=sys.stderr)
+
+        # Feed documents
+        if show_progress:
+            with ProgressReporter(len(texts), desc="Adding documents") as progress:
+                for text, doc_id in zip(texts, doc_ids):
+                    self.feed_text(text, doc_id=doc_id)
+                    progress.update(1)
+        else:
+            for text, doc_id in zip(texts, doc_ids):
+                self.feed_text(text, doc_id=doc_id)
+
+        return {
+            "documents_added": len(texts),
+            "atoms_added": self._atoms_created - atoms_before,
+            "links_added": self._links_created - links_before,
+            "total_documents": self._documents_fed,
+            "total_vocabulary": len(self.tokenizer.vocab),
         }
 
     def save(self, path: Path) -> None:
