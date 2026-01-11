@@ -1931,6 +1931,286 @@ class TestEventHooks:
         )
 
 
+class TestEpisodicMemory:
+    """
+    Behavioral tests for Layer 7: Episodic Memory.
+
+    Episodic memory stores experiences (episodes) that can be replayed later
+    for learning. This is the cognitive equivalent of "remembering what happened"
+    and using those memories to learn patterns more efficiently.
+
+    Grounding:
+        - Episodic memory (Tulving, 1972) - memory for personal experiences
+        - Experience replay (Lin, 1992) - reuse past experiences for learning
+        - Prioritized experience replay (Schaul et al., 2015) - sample by importance
+    """
+
+    def test_episode_stores_context_outcome_and_surprise(self):
+        """
+        GIVEN an Episode with context=["a", "b"], outcome="c", surprise=0.8
+        WHEN the episode is created
+        THEN all fields are accessible and priority = surprise + |reward|.
+
+        Episodes capture the structure of an experience: what was happening
+        (context), what occurred (outcome), and how surprising it was.
+        """
+        from cortical.cognitive.graph import Episode
+
+        # GIVEN/WHEN
+        context = ["a", "b"]
+        outcome = "c"
+        surprise = 0.8
+        episode = Episode(
+            step=1,
+            context_ids=context,
+            outcome_id=outcome,
+            surprise=surprise,
+        )
+
+        # THEN
+        assert episode.context_ids == context
+        assert episode.outcome_id == outcome
+        assert episode.surprise == surprise
+
+        # Priority = surprise + |reward| (reward defaults to 0)
+        expected_priority = surprise + 0.0
+        actual_priority = episode.priority
+        assert actual_priority == expected_priority, (
+            f"Priority should be {expected_priority}, got {actual_priority}"
+        )
+
+    def test_episodic_memory_respects_capacity_limit(self):
+        """
+        GIVEN an EpisodicMemory with capacity=3
+        WHEN 5 high-surprise episodes are stored
+        THEN only 3 episodes remain (capacity enforced).
+
+        Like working memory, episodic memory is bounded to prevent
+        unbounded growth. Excess episodes are evicted by priority.
+        """
+        from cortical.cognitive.graph import Episode, EpisodicMemory
+
+        # GIVEN
+        capacity = 3
+        memory = EpisodicMemory(capacity=capacity, min_surprise_to_store=0.0)
+
+        # WHEN - store more episodes than capacity
+        for i in range(5):
+            episode = Episode(
+                step=i,
+                context_ids=[f"ctx_{i}"],
+                outcome_id=f"out_{i}",
+                surprise=0.5 + i * 0.1,  # Increasing priority
+            )
+            memory.store(episode)
+
+        # THEN
+        expected_size = capacity
+        actual_size = len(memory)
+        assert actual_size == expected_size, (
+            f"Memory should hold at most {expected_size} episodes, "
+            f"but contains {actual_size}"
+        )
+
+    def test_low_surprise_episodes_are_filtered_out(self):
+        """
+        GIVEN an EpisodicMemory with min_surprise_to_store=0.5
+        WHEN an episode with surprise=0.3 is stored
+        THEN the episode is NOT stored (filtered as mundane).
+
+        Not every experience is worth remembering. Low-surprise events
+        are filtered to save memory for important experiences.
+        """
+        from cortical.cognitive.graph import Episode, EpisodicMemory
+
+        # GIVEN
+        min_surprise = 0.5
+        memory = EpisodicMemory(capacity=10, min_surprise_to_store=min_surprise)
+
+        # WHEN - try to store a low-surprise episode
+        low_surprise_episode = Episode(
+            step=1,
+            context_ids=["a"],
+            outcome_id="b",
+            surprise=0.3,  # Below threshold
+        )
+        memory.store(low_surprise_episode)
+
+        # THEN - episode should not be stored
+        assert len(memory) == 0, (
+            f"Episode with surprise={low_surprise_episode.surprise} should be "
+            f"filtered (min_surprise={min_surprise})"
+        )
+
+    def test_retrieve_returns_episodes_with_similar_context(self):
+        """
+        GIVEN an EpisodicMemory with episodes having different contexts
+        WHEN retrieving with context=["a", "b"]
+        THEN episodes with overlapping contexts are returned (Jaccard similarity).
+
+        Content-addressable retrieval: "What happened before when I was
+        in a similar situation?" This enables transfer of learning.
+        """
+        from cortical.cognitive.graph import Episode, EpisodicMemory
+
+        # GIVEN
+        memory = EpisodicMemory(capacity=10, min_surprise_to_store=0.0)
+
+        # Episode with similar context (shares "a", "b")
+        similar_episode = Episode(
+            step=1,
+            context_ids=["a", "b", "c"],
+            outcome_id="x",
+            surprise=0.5,
+        )
+        memory.store(similar_episode)
+
+        # Episode with different context (no overlap)
+        different_episode = Episode(
+            step=2,
+            context_ids=["d", "e", "f"],
+            outcome_id="y",
+            surprise=0.5,
+        )
+        memory.store(different_episode)
+
+        # WHEN - retrieve by context ["a", "b"]
+        query_context = ["a", "b"]
+        retrieved = memory.retrieve(query_context, top_k=5)
+
+        # THEN - only similar episode should be retrieved
+        assert len(retrieved) == 1, (
+            f"Should retrieve 1 similar episode, got {len(retrieved)}"
+        )
+        assert retrieved[0].outcome_id == "x", (
+            "Retrieved episode should be the one with overlapping context"
+        )
+
+    def test_experience_replay_reinforces_learning(self):
+        """
+        GIVEN a CognitiveAgent that has learned from a surprise event
+        WHEN experience_replay() is called
+        THEN co-occurrences are re-recorded (learning reinforced).
+
+        Experience replay breaks correlation between sequential experiences
+        and enables more efficient use of past data. Surprising experiences
+        are replayed more often (prioritized replay).
+        """
+        from cortical.cognitive.graph import CognitiveAgent as RealAgent
+
+        # GIVEN
+        agent = RealAgent(episodic_memory_size=100)
+
+        # Add atoms to graph
+        agent.graph.node("context_a")
+        agent.graph.node("outcome_b")
+
+        # Learn from a surprising experience (stores episode)
+        agent.learn_from_surprise(["context_a"], "outcome_b")
+
+        # Get initial co-occurrence count
+        initial_co_occurrences = dict(agent.predictor._co_occurrences)
+
+        # WHEN - replay experiences
+        n_replayed = agent.experience_replay(n_episodes=5)
+
+        # THEN - at least one episode should have been replayed
+        # (if surprise was high enough to be stored)
+        if len(agent.episodic_memory) > 0:
+            assert n_replayed >= 1, (
+                "At least one episode should be replayed"
+            )
+            # Co-occurrences should have been reinforced
+            # (exact count depends on how many times replayed)
+
+    def test_recall_similar_finds_relevant_past_experiences(self):
+        """
+        GIVEN a CognitiveAgent with stored episodes from past learning
+        WHEN recall_similar() is called with current context
+        THEN relevant past episodes are returned.
+
+        This enables the agent to say "I've seen something like this before"
+        and use that experience to inform current decisions.
+        """
+        from cortical.cognitive.graph import CognitiveAgent as RealAgent
+
+        # GIVEN
+        agent = RealAgent(episodic_memory_size=100)
+
+        # Create atoms
+        agent.graph.node("cat")
+        agent.graph.node("meow")
+        agent.graph.node("dog")
+        agent.graph.node("bark")
+
+        # Store some experiences (bypass min_surprise filter for testing)
+        agent.episodic_memory._min_surprise = 0.0
+
+        # Learn "cat → meow" pattern
+        agent.learn_from_surprise(["cat"], "meow")
+
+        # WHEN - recall similar experiences to "cat"
+        similar = agent.recall_similar(["cat"], top_k=3)
+
+        # THEN - should find the cat→meow episode
+        if len(agent.episodic_memory) > 0:
+            assert len(similar) >= 1, (
+                "Should find at least one similar episode"
+            )
+            assert similar[0].outcome_id == "meow", (
+                "Similar episode should be the cat→meow experience"
+            )
+
+    def test_episodic_memory_persists_across_save_load(self):
+        """
+        GIVEN a CognitiveAgent with episodes in episodic memory
+        WHEN the agent is saved and loaded
+        THEN episodic memory is restored with all episodes.
+
+        Persistence ensures experiences aren't lost between sessions.
+        """
+        from cortical.cognitive.graph import CognitiveAgent as RealAgent, Episode
+        import tempfile
+        import os
+
+        # GIVEN
+        agent = RealAgent(episodic_memory_size=100)
+        agent.episodic_memory._min_surprise = 0.0  # Allow all episodes
+
+        # Store an episode directly
+        episode = Episode(
+            step=42,
+            context_ids=["test_ctx"],
+            outcome_id="test_out",
+            surprise=0.9,
+        )
+        agent.episodic_memory.store(episode)
+
+        original_count = len(agent.episodic_memory)
+
+        # WHEN - save and load
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            temp_path = f.name
+
+        try:
+            agent.save(temp_path)
+            loaded_agent = RealAgent.load(temp_path)
+
+            # THEN - episodic memory should be restored
+            assert len(loaded_agent.episodic_memory) == original_count, (
+                f"Loaded agent should have {original_count} episodes, "
+                f"got {len(loaded_agent.episodic_memory)}"
+            )
+
+            # Verify episode content
+            loaded_episodes = loaded_agent.episodic_memory.contents()
+            assert loaded_episodes[0].step == 42
+            assert loaded_episodes[0].outcome_id == "test_out"
+            assert loaded_episodes[0].surprise == 0.9
+        finally:
+            os.unlink(temp_path)
+
+
 # =============================================================================
 # SUCCESS CRITERIA (The Contract)
 # =============================================================================

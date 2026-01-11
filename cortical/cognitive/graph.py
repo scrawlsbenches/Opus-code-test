@@ -752,6 +752,12 @@ class EventType(Enum):
     STEP_STARTED = auto()       # Agent step began
     STEP_COMPLETED = auto()     # Agent step finished
 
+    # Episodic Memory events
+    EPISODE_STORED = auto()     # New episode stored in memory
+    EPISODE_EVICTED = auto()    # Old episode evicted from memory
+    EPISODE_RETRIEVED = auto()  # Episodes retrieved by context
+    EXPERIENCE_REPLAY = auto()  # Experience replay executed
+
 
 @dataclass
 class CognitiveEvent:
@@ -1334,9 +1340,277 @@ class ExplorationController:
         return self._consecutive_failures >= threshold
 
 
+# =============================================================================
+# Layer 7: Episodic Memory - Experience Storage and Replay
+# =============================================================================
+
+
+@dataclass
+class Episode:
+    """
+    A single experience stored in episodic memory.
+
+    Grounding: Episodic memory in cognitive science - memory for specific
+    events with temporal and contextual information. In RL terms, this is
+    a transition tuple (s, a, s', r) extended with surprise signal.
+
+    Attributes:
+        step: When this episode occurred (agent step count)
+        context_ids: Atom IDs that were active before the event
+        outcome_id: Atom ID that actually appeared
+        surprise: How surprising this outcome was [0, 1]
+        action_id: Optional - what action/attention was taken
+        reward: Optional - external reward signal
+    """
+    step: int
+    context_ids: List[str]
+    outcome_id: str
+    surprise: float
+    action_id: Optional[str] = None
+    reward: float = 0.0
+
+    @property
+    def priority(self) -> float:
+        """
+        Priority for retention and replay.
+
+        High-surprise and high-reward episodes are more valuable to remember.
+        Grounding: Prioritized experience replay (Schaul et al., 2015).
+        """
+        # Combine surprise and absolute reward for priority
+        return self.surprise + abs(self.reward)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize episode for persistence."""
+        return {
+            "step": self.step,
+            "context_ids": self.context_ids,
+            "outcome_id": self.outcome_id,
+            "surprise": self.surprise,
+            "action_id": self.action_id,
+            "reward": self.reward,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Episode":
+        """Deserialize episode from persistence."""
+        return cls(
+            step=data["step"],
+            context_ids=data["context_ids"],
+            outcome_id=data["outcome_id"],
+            surprise=data["surprise"],
+            action_id=data.get("action_id"),
+            reward=data.get("reward", 0.0),
+        )
+
+
+class EpisodicMemory:
+    """
+    Bounded storage for experiences with prioritized retention and replay.
+
+    Grounding:
+        - Episodic memory (Tulving, 1972) - memory for personal experiences
+        - Experience replay (Lin, 1992) - reuse past experiences for learning
+        - Prioritized experience replay (Schaul et al., 2015) - sample by TD-error
+
+    Key behaviors:
+        1. Store episodes as they occur
+        2. Retain high-priority episodes longer (surprise/reward)
+        3. Retrieve episodes similar to current context
+        4. Sample for experience replay (prioritized)
+
+    Design choices:
+        - Bounded capacity to prevent unbounded growth
+        - Priority-based eviction (low priority evicted first)
+        - Context-based retrieval using Jaccard similarity
+        - Importance sampling for replay
+    """
+
+    def __init__(
+        self,
+        capacity: int = 1000,
+        min_surprise_to_store: float = 0.1,
+    ):
+        """
+        Initialize episodic memory.
+
+        Args:
+            capacity: Maximum episodes to store
+            min_surprise_to_store: Only store episodes with surprise >= this
+                                   (filters out mundane experiences)
+        """
+        self._episodes: List[Episode] = []
+        self._capacity = capacity
+        self._min_surprise = min_surprise_to_store
+
+    def store(self, episode: Episode) -> Optional[Episode]:
+        """
+        Store an episode in memory.
+
+        If capacity is exceeded, the lowest-priority episode is evicted.
+        Episodes below min_surprise threshold are not stored.
+
+        Args:
+            episode: The episode to store
+
+        Returns:
+            The evicted episode if one was removed, None otherwise
+        """
+        # Filter mundane experiences
+        if episode.surprise < self._min_surprise:
+            return None
+
+        evicted = None
+
+        if len(self._episodes) >= self._capacity:
+            # Find lowest priority episode to evict
+            # Sort by priority ascending, evict the first (lowest)
+            self._episodes.sort(key=lambda e: e.priority)
+            evicted = self._episodes.pop(0)
+
+            # Only evict if new episode is higher priority
+            if episode.priority <= evicted.priority:
+                # Put the old one back, don't store new one
+                self._episodes.append(evicted)
+                return None
+
+        self._episodes.append(episode)
+        return evicted
+
+    def retrieve(
+        self,
+        context_ids: List[str],
+        top_k: int = 5,
+    ) -> List[Episode]:
+        """
+        Retrieve episodes similar to the given context.
+
+        Uses Jaccard similarity between context atom IDs.
+        Grounding: Content-addressable memory retrieval.
+
+        Args:
+            context_ids: Current context to match against
+            top_k: Maximum episodes to return
+
+        Returns:
+            List of most similar episodes, sorted by similarity descending
+        """
+        if not self._episodes or not context_ids:
+            return []
+
+        context_set = set(context_ids)
+
+        def jaccard_similarity(episode: Episode) -> float:
+            """Jaccard similarity between context sets."""
+            ep_context = set(episode.context_ids)
+            if not ep_context:
+                return 0.0
+            intersection = len(context_set & ep_context)
+            union = len(context_set | ep_context)
+            return intersection / union if union > 0 else 0.0
+
+        # Score all episodes by similarity
+        scored = [(jaccard_similarity(ep), ep) for ep in self._episodes]
+        # Filter to only similar episodes (score > 0)
+        scored = [(score, ep) for score, ep in scored if score > 0]
+        # Sort by similarity descending
+        scored.sort(key=lambda x: x[0], reverse=True)
+
+        return [ep for _, ep in scored[:top_k]]
+
+    def sample(self, n: int = 10, prioritized: bool = True) -> List[Episode]:
+        """
+        Sample episodes for experience replay.
+
+        Args:
+            n: Number of episodes to sample
+            prioritized: If True, sample proportional to priority
+                        If False, sample uniformly
+
+        Returns:
+            List of sampled episodes (may be fewer than n if memory is small)
+        """
+        import random
+
+        if not self._episodes:
+            return []
+
+        n = min(n, len(self._episodes))
+
+        if not prioritized:
+            return random.sample(self._episodes, n)
+
+        # Prioritized sampling: probability proportional to priority
+        total_priority = sum(ep.priority for ep in self._episodes)
+        if total_priority == 0:
+            return random.sample(self._episodes, n)
+
+        # Sample without replacement using weighted selection
+        sampled = []
+        available = list(self._episodes)
+
+        for _ in range(n):
+            if not available:
+                break
+
+            # Compute weights
+            weights = [ep.priority / total_priority for ep in available]
+
+            # Weighted random choice
+            r = random.random()
+            cumsum = 0.0
+            for i, w in enumerate(weights):
+                cumsum += w
+                if r <= cumsum:
+                    sampled.append(available.pop(i))
+                    # Update total for remaining
+                    total_priority = sum(ep.priority for ep in available)
+                    break
+
+        return sampled
+
+    def __len__(self) -> int:
+        """Number of episodes in memory."""
+        return len(self._episodes)
+
+    def contents(self) -> List[Episode]:
+        """Get all episodes (for inspection/debugging)."""
+        return list(self._episodes)
+
+    def clear(self) -> None:
+        """Remove all episodes."""
+        self._episodes.clear()
+
+    def mean_surprise(self) -> float:
+        """Average surprise across stored episodes."""
+        if not self._episodes:
+            return 0.0
+        return sum(ep.surprise for ep in self._episodes) / len(self._episodes)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize for persistence."""
+        return {
+            "capacity": self._capacity,
+            "min_surprise": self._min_surprise,
+            "episodes": [ep.to_dict() for ep in self._episodes],
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "EpisodicMemory":
+        """Deserialize from persistence."""
+        memory = cls(
+            capacity=data.get("capacity", 1000),
+            min_surprise_to_store=data.get("min_surprise", 0.1),
+        )
+        memory._episodes = [
+            Episode.from_dict(ep_data) for ep_data in data.get("episodes", [])
+        ]
+        return memory
+
+
 class CognitiveAgent:
     """
-    The complete minimal cognitive agent integrating all six layers.
+    The complete minimal cognitive agent integrating all seven layers.
 
     Layers:
         1. Knowledge (CognitiveGraph) - Hypergraph with truth values
@@ -1345,6 +1619,7 @@ class CognitiveAgent:
         4. Prediction - Co-occurrence based
         5. Goals - Control theory with urgency
         6. Exploration - ε-greedy adaptation
+        7. Episodic Memory - Experience storage and replay
 
     Each layer is independently testable.
     The integration is also testable.
@@ -1353,8 +1628,7 @@ class CognitiveAgent:
         - Persistence via save()/load() JSON serialization
         - GoT integration via GoTBridge class
         - Event hooks via EventBus for observability
-
-    TODO: Add episodic memory for experience replay
+        - Episodic memory for experience replay
 
     Event Hooks:
         Subscribe to events to observe agent internals:
@@ -1372,6 +1646,7 @@ class CognitiveAgent:
         graph: Optional[CognitiveGraph] = None,
         working_memory_size: int = 4,
         attention_focus_size: int = 7,
+        episodic_memory_size: int = 1000,
     ):
         """
         Initialize cognitive agent.
@@ -1380,6 +1655,7 @@ class CognitiveAgent:
             graph: Knowledge graph (creates new if None)
             working_memory_size: Capacity of working memory (default 4)
             attention_focus_size: Size of attention focus (default 7, Miller's 7±2)
+            episodic_memory_size: Capacity of episodic memory (default 1000)
         """
         self.graph = graph or CognitiveGraph()
         self._attention_focus_size = attention_focus_size
@@ -1388,6 +1664,7 @@ class CognitiveAgent:
         self.surprise_tracker = SurpriseTracker(self.predictor)
         self.goals = GoalTracker()
         self.exploration = ExplorationController()
+        self.episodic_memory = EpisodicMemory(capacity=episodic_memory_size)
         self.events = EventBus()  # Event system for observability
         self._step_count: int = 0
 
@@ -1531,7 +1808,112 @@ class CognitiveAgent:
             actual_atom.tv = actual_atom.tv.update(True, learning_rate=surprise * 0.2)
             self.graph._storage.save(actual_atom)
 
+        # Store episode in episodic memory
+        episode = Episode(
+            step=self._step_count,
+            context_ids=context_ids,
+            outcome_id=actual_id,
+            surprise=surprise,
+        )
+        evicted = self.episodic_memory.store(episode)
+
+        if evicted is None and len(self.episodic_memory) > 0:
+            # Episode was stored (not filtered out)
+            # Check if it was actually stored by comparing last episode
+            if self.episodic_memory._episodes and self.episodic_memory._episodes[-1] is episode:
+                self._emit(EventType.EPISODE_STORED, {
+                    "step": episode.step,
+                    "context_ids": episode.context_ids,
+                    "outcome_id": episode.outcome_id,
+                    "surprise": episode.surprise,
+                    "memory_size": len(self.episodic_memory),
+                })
+        elif evicted is not None:
+            # An old episode was evicted
+            self._emit(EventType.EPISODE_STORED, {
+                "step": episode.step,
+                "context_ids": episode.context_ids,
+                "outcome_id": episode.outcome_id,
+                "surprise": episode.surprise,
+                "memory_size": len(self.episodic_memory),
+            })
+            self._emit(EventType.EPISODE_EVICTED, {
+                "step": evicted.step,
+                "outcome_id": evicted.outcome_id,
+                "surprise": evicted.surprise,
+            })
+
         return surprise
+
+    def experience_replay(
+        self,
+        n_episodes: int = 5,
+        prioritized: bool = True,
+    ) -> int:
+        """
+        Replay past experiences to reinforce learning.
+
+        Samples episodes from episodic memory and re-runs co-occurrence
+        learning. High-priority (surprising/rewarding) episodes are more
+        likely to be sampled when prioritized=True.
+
+        Grounding: Experience replay (Lin, 1992) - breaks correlation between
+        sequential experiences and enables more efficient use of data.
+
+        Args:
+            n_episodes: Number of episodes to replay
+            prioritized: Sample by priority vs uniform
+
+        Returns:
+            Number of episodes actually replayed
+        """
+        episodes = self.episodic_memory.sample(n=n_episodes, prioritized=prioritized)
+
+        for episode in episodes:
+            # Re-learn co-occurrences from this episode
+            for context_id in episode.context_ids:
+                self.predictor.record_co_occurrence(context_id, episode.outcome_id)
+                self.predictor.record_co_occurrence(episode.outcome_id, context_id)
+
+        if episodes:
+            self._emit(EventType.EXPERIENCE_REPLAY, {
+                "n_requested": n_episodes,
+                "n_replayed": len(episodes),
+                "mean_surprise": sum(ep.surprise for ep in episodes) / len(episodes),
+                "prioritized": prioritized,
+            })
+
+        return len(episodes)
+
+    def recall_similar(
+        self,
+        context_ids: List[str],
+        top_k: int = 3,
+    ) -> List[Episode]:
+        """
+        Recall episodes similar to the current context.
+
+        Uses content-addressable retrieval based on Jaccard similarity
+        between context atom IDs. This enables the agent to leverage
+        past experience when facing similar situations.
+
+        Args:
+            context_ids: Current context atoms to match
+            top_k: Maximum episodes to return
+
+        Returns:
+            List of similar episodes from memory
+        """
+        episodes = self.episodic_memory.retrieve(context_ids, top_k=top_k)
+
+        if episodes:
+            self._emit(EventType.EPISODE_RETRIEVED, {
+                "context_ids": context_ids,
+                "n_retrieved": len(episodes),
+                "top_similarity": None,  # Could compute if needed
+            })
+
+        return episodes
 
     # =========================================================================
     # Persistence (JSON-based for security and git-friendliness)
@@ -1591,7 +1973,7 @@ class CognitiveAgent:
         }
 
         return {
-            "version": "3.0",
+            "version": "3.1",  # Updated for episodic memory
             "step_count": self._step_count,
             "attention_focus_size": self._attention_focus_size,
             "atoms": atoms_data,
@@ -1603,6 +1985,7 @@ class CognitiveAgent:
                 {"context": ctx, "actual": actual, "surprise": s}
                 for ctx, actual, s in self.surprise_tracker._prediction_history[-1000:]
             ],
+            "episodic_memory": self.episodic_memory.to_dict(),
         }
 
     @classmethod
@@ -1687,6 +2070,10 @@ class CognitiveAgent:
                 entry["actual"],
                 entry["surprise"],
             ))
+
+        # Restore episodic memory
+        if "episodic_memory" in data:
+            agent.episodic_memory = EpisodicMemory.from_dict(data["episodic_memory"])
 
         return agent
 

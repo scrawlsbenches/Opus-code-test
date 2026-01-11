@@ -47,6 +47,8 @@ from cortical.cognitive.graph import (
     SurpriseTracker,
     GoalTracker,
     ExplorationController,
+    Episode,
+    EpisodicMemory,
     # Integrated agent
     CognitiveAgent,
     CognitiveAgentModule,
@@ -75,6 +77,8 @@ __all__ = [
     "SurpriseTracker",
     "GoalTracker",
     "ExplorationController",
+    "Episode",
+    "EpisodicMemory",
     # Integrated agent
     "CognitiveAgent",
     "CognitiveAgentModule",
