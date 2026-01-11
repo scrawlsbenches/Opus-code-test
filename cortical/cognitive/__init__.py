@@ -60,6 +60,12 @@ from cortical.cognitive.graph import (
     EventBus,
 )
 
+from cortical.cognitive.training import (
+    IncrementalTrainer,
+    TrainingManifest,
+    TrainingStats,
+)
+
 __all__ = [
     # Core types
     "Atom",
@@ -88,4 +94,8 @@ __all__ = [
     "EventType",
     "CognitiveEvent",
     "EventBus",
+    # Training
+    "IncrementalTrainer",
+    "TrainingManifest",
+    "TrainingStats",
 ]

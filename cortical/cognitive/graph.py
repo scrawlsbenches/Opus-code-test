@@ -42,6 +42,7 @@ from typing import (
 )
 
 from cortical.common import Container, ContainerModule, Lifecycle
+from cortical.common.filesystem import FileSystem
 
 
 # =============================================================================
@@ -1687,6 +1688,7 @@ class CognitiveAgent:
     def __init__(
         self,
         graph: Optional[CognitiveGraph] = None,
+        filesystem: Optional[FileSystem] = None,
         working_memory_size: int = 4,
         attention_focus_size: int = 7,
         episodic_memory_size: int = 1000,
@@ -1696,11 +1698,13 @@ class CognitiveAgent:
 
         Args:
             graph: Knowledge graph (creates new if None)
+            filesystem: FileSystem for I/O operations (required for save/load)
             working_memory_size: Capacity of working memory (default 4)
             attention_focus_size: Size of attention focus (default 7, Miller's 7±2)
             episodic_memory_size: Capacity of episodic memory (default 1000)
         """
         self.graph = graph or CognitiveGraph()
+        self.filesystem = filesystem
         self._attention_focus_size = attention_focus_size
         self.working_memory = WorkingMemory(capacity=working_memory_size)
         self.predictor = AssociativePredictor(self.graph)
@@ -2072,12 +2076,17 @@ class CognitiveAgent:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'CognitiveAgent':
+    def from_dict(
+        cls,
+        data: Dict[str, Any],
+        filesystem: Optional[FileSystem] = None,
+    ) -> 'CognitiveAgent':
         """
         Deserialize agent from dictionary.
 
         Args:
             data: Dictionary from to_dict()
+            filesystem: FileSystem to assign to the agent
 
         Returns:
             Reconstructed CognitiveAgent
@@ -2086,6 +2095,7 @@ class CognitiveAgent:
         wm_capacity = data.get("working_memory", {}).get("capacity", 4)
         focus_size = data.get("attention_focus_size", 7)
         agent = cls(
+            filesystem=filesystem,
             working_memory_size=wm_capacity,
             attention_focus_size=focus_size,
         )
@@ -2166,34 +2176,42 @@ class CognitiveAgent:
 
         Args:
             path: File path (will add .json if not present)
+
+        Raises:
+            ValueError: If agent was created without a filesystem
         """
+        if self.filesystem is None:
+            raise ValueError(
+                "Cannot save: CognitiveAgent was created without a filesystem. "
+                "Pass filesystem to the constructor to enable persistence."
+            )
+
         path = Path(path)
         if path.suffix != ".json":
             path = path.with_suffix(".json")
 
         data = self.to_dict()
-        with open(path, "w") as f:
-            json.dump(data, f, indent=2)
+        self.filesystem.write_text(path, json.dumps(data, indent=2))
 
     @classmethod
-    def load(cls, path: Union[str, Path]) -> 'CognitiveAgent':
+    def load(cls, path: Union[str, Path], filesystem: FileSystem) -> 'CognitiveAgent':
         """
         Load agent state from JSON file.
 
         Args:
             path: File path to load from
+            filesystem: FileSystem for I/O operations (will be assigned to loaded agent)
 
         Returns:
-            Reconstructed CognitiveAgent
+            Reconstructed CognitiveAgent with filesystem attached
         """
         path = Path(path)
-        if not path.exists() and path.with_suffix(".json").exists():
+        if not filesystem.exists(path) and filesystem.exists(path.with_suffix(".json")):
             path = path.with_suffix(".json")
 
-        with open(path, "r") as f:
-            data = json.load(f)
+        data = json.loads(filesystem.read_text(path))
 
-        return cls.from_dict(data)
+        return cls.from_dict(data, filesystem=filesystem)
 
 
 # =============================================================================

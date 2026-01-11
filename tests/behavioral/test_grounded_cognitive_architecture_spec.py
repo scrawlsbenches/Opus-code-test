@@ -2170,11 +2170,14 @@ class TestEpisodicMemory:
         Persistence ensures experiences aren't lost between sessions.
         """
         from cortical.cognitive.graph import CognitiveAgent as RealAgent, Episode
-        import tempfile
-        import os
+        from cortical.common.filesystem import InMemoryFileSystem
+        from pathlib import Path
 
-        # GIVEN
-        agent = RealAgent(episodic_memory_size=100)
+        # GIVEN - use in-memory filesystem for testing
+        fs = InMemoryFileSystem(Path("/test"))
+        fs.mkdir(Path("/test"), parents=True, exist_ok=True)
+
+        agent = RealAgent(filesystem=fs, episodic_memory_size=100)
         agent.episodic_memory._min_surprise = 0.0  # Allow all episodes
 
         # Store an episode directly
@@ -2189,26 +2192,21 @@ class TestEpisodicMemory:
         original_count = len(agent.episodic_memory)
 
         # WHEN - save and load
-        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
-            temp_path = f.name
+        save_path = Path("/test/agent.json")
+        agent.save(save_path)
+        loaded_agent = RealAgent.load(save_path, filesystem=fs)
 
-        try:
-            agent.save(temp_path)
-            loaded_agent = RealAgent.load(temp_path)
+        # THEN - episodic memory should be restored
+        assert len(loaded_agent.episodic_memory) == original_count, (
+            f"Loaded agent should have {original_count} episodes, "
+            f"got {len(loaded_agent.episodic_memory)}"
+        )
 
-            # THEN - episodic memory should be restored
-            assert len(loaded_agent.episodic_memory) == original_count, (
-                f"Loaded agent should have {original_count} episodes, "
-                f"got {len(loaded_agent.episodic_memory)}"
-            )
-
-            # Verify episode content
-            loaded_episodes = loaded_agent.episodic_memory.contents()
-            assert loaded_episodes[0].step == 42
-            assert loaded_episodes[0].outcome_id == "test_out"
-            assert loaded_episodes[0].surprise == 0.9
-        finally:
-            os.unlink(temp_path)
+        # Verify episode content
+        loaded_episodes = loaded_agent.episodic_memory.contents()
+        assert loaded_episodes[0].step == 42
+        assert loaded_episodes[0].outcome_id == "test_out"
+        assert loaded_episodes[0].surprise == 0.9
 
 
 class TestGoalIntegration:

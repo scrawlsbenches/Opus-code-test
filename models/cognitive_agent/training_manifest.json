@@ -1,0 +1,1208 @@
+{
+  "model_version": "1.0",
+  "last_training": "2026-01-11T13:51:12.615450",
+  "total_documents": 200,
+  "vocabulary_size": 10000,
+  "documents": {
+    "accordion_repair.txt": {
+      "path": "accordion_repair.txt",
+      "content_hash": "9531cb7e0d2d3c63",
+      "trained_at": "2026-01-11T13:37:46.029674",
+      "word_count": 156
+    },
+    "adaptive_market_cognition_overview.txt": {
+      "path": "adaptive_market_cognition_overview.txt",
+      "content_hash": "ff85fb7be7265e94",
+      "trained_at": "2026-01-11T13:37:46.146245",
+      "word_count": 652
+    },
+    "adaptive_market_cognition_prd.txt": {
+      "path": "adaptive_market_cognition_prd.txt",
+      "content_hash": "d484320a0fa16325",
+      "trained_at": "2026-01-11T13:37:46.286176",
+      "word_count": 977
+    },
+    "agent_coordination_strategies.txt": {
+      "path": "agent_coordination_strategies.txt",
+      "content_hash": "d572399055bdabb0",
+      "trained_at": "2026-01-11T13:37:46.442142",
+      "word_count": 387
+    },
+    "ai_assisted_development.txt": {
+      "path": "ai_assisted_development.txt",
+      "content_hash": "3e60dc5f6161a913",
+      "trained_at": "2026-01-11T13:37:46.660664",
+      "word_count": 604
+    },
+    "ai_market_prediction/alternative_data_signals.txt": {
+      "path": "ai_market_prediction/alternative_data_signals.txt",
+      "content_hash": "946e6da5070b61cb",
+      "trained_at": "2026-01-11T13:37:46.909344",
+      "word_count": 1263
+    },
+    "ai_market_prediction/backtesting_validation.txt": {
+      "path": "ai_market_prediction/backtesting_validation.txt",
+      "content_hash": "4050b3807a7c05a3",
+      "trained_at": "2026-01-11T13:37:47.185113",
+      "word_count": 1591
+    },
+    "ai_market_prediction/ensemble_methods_trading.txt": {
+      "path": "ai_market_prediction/ensemble_methods_trading.txt",
+      "content_hash": "7ec6ba485c87b35c",
+      "trained_at": "2026-01-11T13:37:47.469390",
+      "word_count": 1281
+    },
+    "ai_market_prediction/explainable_ai_finance.txt": {
+      "path": "ai_market_prediction/explainable_ai_finance.txt",
+      "content_hash": "1ced3cae7068f739",
+      "trained_at": "2026-01-11T13:37:47.801227",
+      "word_count": 1539
+    },
+    "ai_market_prediction/feature_engineering_finance.txt": {
+      "path": "ai_market_prediction/feature_engineering_finance.txt",
+      "content_hash": "67ee9cdebab91c49",
+      "trained_at": "2026-01-11T13:37:48.151908",
+      "word_count": 1366
+    },
+    "ai_market_prediction/market_microstructure_ml.txt": {
+      "path": "ai_market_prediction/market_microstructure_ml.txt",
+      "content_hash": "7685675c233d424b",
+      "trained_at": "2026-01-11T13:37:48.532418",
+      "word_count": 1488
+    },
+    "ai_market_prediction/ml_price_prediction_models.txt": {
+      "path": "ai_market_prediction/ml_price_prediction_models.txt",
+      "content_hash": "bd0d774ee4fd84bc",
+      "trained_at": "2026-01-11T13:37:48.912381",
+      "word_count": 950
+    },
+    "ai_market_prediction/real_time_prediction_systems.txt": {
+      "path": "ai_market_prediction/real_time_prediction_systems.txt",
+      "content_hash": "a9f85040cf17d498",
+      "trained_at": "2026-01-11T13:37:49.291404",
+      "word_count": 1586
+    },
+    "ai_market_prediction/regime_detection_models.txt": {
+      "path": "ai_market_prediction/regime_detection_models.txt",
+      "content_hash": "93752dd6a296b3d5",
+      "trained_at": "2026-01-11T13:37:49.688386",
+      "word_count": 1247
+    },
+    "ai_market_prediction/reinforcement_learning_trading.txt": {
+      "path": "ai_market_prediction/reinforcement_learning_trading.txt",
+      "content_hash": "e08049d614b605aa",
+      "trained_at": "2026-01-11T13:37:50.108802",
+      "word_count": 1555
+    },
+    "ai_market_prediction/risk_model_calibration.txt": {
+      "path": "ai_market_prediction/risk_model_calibration.txt",
+      "content_hash": "06f6c09e995e4a54",
+      "trained_at": "2026-01-11T13:37:50.573797",
+      "word_count": 1521
+    },
+    "ai_market_prediction/sentiment_analysis_trading.txt": {
+      "path": "ai_market_prediction/sentiment_analysis_trading.txt",
+      "content_hash": "6b0e05b7c5671e56",
+      "trained_at": "2026-01-11T13:37:51.029916",
+      "word_count": 1173
+    },
+    "algorithmic_trading.txt": {
+      "path": "algorithmic_trading.txt",
+      "content_hash": "ce2bf70846f36518",
+      "trained_at": "2026-01-11T13:37:51.500840",
+      "word_count": 215
+    },
+    "alternative_data_integration.txt": {
+      "path": "alternative_data_integration.txt",
+      "content_hash": "e95bd3f809d8a470",
+      "trained_at": "2026-01-11T13:37:52.006058",
+      "word_count": 696
+    },
+    "animal_behavior_pattern_recognition.txt": {
+      "path": "animal_behavior_pattern_recognition.txt",
+      "content_hash": "0f05cd96e276fe8b",
+      "trained_at": "2026-01-11T13:37:52.581962",
+      "word_count": 384
+    },
+    "api_contract_testing.txt": {
+      "path": "api_contract_testing.txt",
+      "content_hash": "60bd81c6aa3f0184",
+      "trained_at": "2026-01-11T13:37:53.162628",
+      "word_count": 703
+    },
+    "api_design_security.txt": {
+      "path": "api_design_security.txt",
+      "content_hash": "0069c9217813be2a",
+      "trained_at": "2026-01-11T13:37:53.777942",
+      "word_count": 274
+    },
+    "application_security_fundamentals.txt": {
+      "path": "application_security_fundamentals.txt",
+      "content_hash": "4bb47eef3de07bca",
+      "trained_at": "2026-01-11T13:37:54.385408",
+      "word_count": 253
+    },
+    "archaeology/ancient_metallurgy.txt": {
+      "path": "archaeology/ancient_metallurgy.txt",
+      "content_hash": "46767ce640fb2e66",
+      "trained_at": "2026-01-11T13:37:55.073031",
+      "word_count": 736
+    },
+    "archaeology/archaeological_ethics.txt": {
+      "path": "archaeology/archaeological_ethics.txt",
+      "content_hash": "8fe892047a5b17a9",
+      "trained_at": "2026-01-11T13:37:55.750671",
+      "word_count": 725
+    },
+    "archaeology/archaeological_heritage_management.txt": {
+      "path": "archaeology/archaeological_heritage_management.txt",
+      "content_hash": "98720d388d4a921e",
+      "trained_at": "2026-01-11T13:37:56.447920",
+      "word_count": 695
+    },
+    "archaeology/archaeological_survey_methods.txt": {
+      "path": "archaeology/archaeological_survey_methods.txt",
+      "content_hash": "0ad89e8d2bd4bd69",
+      "trained_at": "2026-01-11T13:37:57.165742",
+      "word_count": 814
+    },
+    "archaeology/archaeological_theory.txt": {
+      "path": "archaeology/archaeological_theory.txt",
+      "content_hash": "e719628e06b88d18",
+      "trained_at": "2026-01-11T13:37:57.971317",
+      "word_count": 707
+    },
+    "archaeology/artifact_analysis.txt": {
+      "path": "archaeology/artifact_analysis.txt",
+      "content_hash": "7e9b7f7cd4a59667",
+      "trained_at": "2026-01-11T13:37:58.820496",
+      "word_count": 673
+    },
+    "archaeology/bioarchaeology.txt": {
+      "path": "archaeology/bioarchaeology.txt",
+      "content_hash": "ad02ede2d927c4b3",
+      "trained_at": "2026-01-11T13:37:59.715539",
+      "word_count": 722
+    },
+    "archaeology/ceramic_analysis.txt": {
+      "path": "archaeology/ceramic_analysis.txt",
+      "content_hash": "ba50d15cc4ced69a",
+      "trained_at": "2026-01-11T13:38:00.560336",
+      "word_count": 772
+    },
+    "archaeology/classical_archaeology.txt": {
+      "path": "archaeology/classical_archaeology.txt",
+      "content_hash": "c263dadffd7b6769",
+      "trained_at": "2026-01-11T13:38:01.378287",
+      "word_count": 746
+    },
+    "archaeology/dating_techniques.txt": {
+      "path": "archaeology/dating_techniques.txt",
+      "content_hash": "5ef9f4ddb75bf2c5",
+      "trained_at": "2026-01-11T13:38:02.281692",
+      "word_count": 630
+    },
+    "archaeology/digital_archaeology.txt": {
+      "path": "archaeology/digital_archaeology.txt",
+      "content_hash": "05ca874f9c6f71f4",
+      "trained_at": "2026-01-11T13:38:03.211096",
+      "word_count": 659
+    },
+    "archaeology/ethnoarchaeology.txt": {
+      "path": "archaeology/ethnoarchaeology.txt",
+      "content_hash": "e701b74f21835874",
+      "trained_at": "2026-01-11T13:38:04.103091",
+      "word_count": 710
+    },
+    "archaeology/excavation_methods.txt": {
+      "path": "archaeology/excavation_methods.txt",
+      "content_hash": "3797e3e31d980ec1",
+      "trained_at": "2026-01-11T13:38:05.080165",
+      "word_count": 566
+    },
+    "archaeology/experimental_archaeology.txt": {
+      "path": "archaeology/experimental_archaeology.txt",
+      "content_hash": "3106896b3a36d687",
+      "trained_at": "2026-01-11T13:38:06.217344",
+      "word_count": 723
+    },
+    "archaeology/geoarchaeology.txt": {
+      "path": "archaeology/geoarchaeology.txt",
+      "content_hash": "a292a854c21178f3",
+      "trained_at": "2026-01-11T13:38:07.321612",
+      "word_count": 636
+    },
+    "archaeology/landscape_archaeology.txt": {
+      "path": "archaeology/landscape_archaeology.txt",
+      "content_hash": "d61fee23db08cb24",
+      "trained_at": "2026-01-11T13:38:08.505127",
+      "word_count": 714
+    },
+    "archaeology/lithic_technology.txt": {
+      "path": "archaeology/lithic_technology.txt",
+      "content_hash": "30e8f4f22fc3a472",
+      "trained_at": "2026-01-11T13:38:09.681763",
+      "word_count": 750
+    },
+    "archaeology/mortuary_archaeology.txt": {
+      "path": "archaeology/mortuary_archaeology.txt",
+      "content_hash": "3c41cf104483ad95",
+      "trained_at": "2026-01-11T13:38:10.929697",
+      "word_count": 719
+    },
+    "archaeology/paleoethnobotany.txt": {
+      "path": "archaeology/paleoethnobotany.txt",
+      "content_hash": "c411d94ecc59aae5",
+      "trained_at": "2026-01-11T13:38:12.039390",
+      "word_count": 727
+    },
+    "archaeology/prehistoric_archaeology.txt": {
+      "path": "archaeology/prehistoric_archaeology.txt",
+      "content_hash": "f5f2693d0d814351",
+      "trained_at": "2026-01-11T13:38:13.162067",
+      "word_count": 821
+    },
+    "archaeology/remote_sensing_archaeology.txt": {
+      "path": "archaeology/remote_sensing_archaeology.txt",
+      "content_hash": "bfbac2edf357bb4f",
+      "trained_at": "2026-01-11T13:38:14.286653",
+      "word_count": 742
+    },
+    "archaeology/settlement_patterns.txt": {
+      "path": "archaeology/settlement_patterns.txt",
+      "content_hash": "f4043eaf35bdba93",
+      "trained_at": "2026-01-11T13:38:15.415945",
+      "word_count": 755
+    },
+    "archaeology/stratigraphy_principles.txt": {
+      "path": "archaeology/stratigraphy_principles.txt",
+      "content_hash": "119b5fd94f63f38e",
+      "trained_at": "2026-01-11T13:38:16.598679",
+      "word_count": 796
+    },
+    "archaeology/underwater_archaeology.txt": {
+      "path": "archaeology/underwater_archaeology.txt",
+      "content_hash": "09440931f76eb2b4",
+      "trained_at": "2026-01-11T13:38:17.828984",
+      "word_count": 713
+    },
+    "archaeology/zooarchaeology.txt": {
+      "path": "archaeology/zooarchaeology.txt",
+      "content_hash": "c0f12bbcecaed8eb",
+      "trained_at": "2026-01-11T13:38:19.133170",
+      "word_count": 711
+    },
+    "art_history/abstract_expressionism.txt": {
+      "path": "art_history/abstract_expressionism.txt",
+      "content_hash": "8d0305f6e0836b29",
+      "trained_at": "2026-01-11T13:38:20.642978",
+      "word_count": 683
+    },
+    "art_history/ancient_greek_sculpture.txt": {
+      "path": "art_history/ancient_greek_sculpture.txt",
+      "content_hash": "9a3bbdb35b8c7f40",
+      "trained_at": "2026-01-11T13:38:22.203724",
+      "word_count": 692
+    },
+    "art_history/art_conservation.txt": {
+      "path": "art_history/art_conservation.txt",
+      "content_hash": "7bbdf7cdcf161b61",
+      "trained_at": "2026-01-11T13:38:24.181542",
+      "word_count": 818
+    },
+    "art_history/art_nouveau.txt": {
+      "path": "art_history/art_nouveau.txt",
+      "content_hash": "2d06f2d1db6c9c1b",
+      "trained_at": "2026-01-11T13:38:25.625057",
+      "word_count": 686
+    },
+    "art_history/art_patronage_history.txt": {
+      "path": "art_history/art_patronage_history.txt",
+      "content_hash": "f92d1df5983184e4",
+      "trained_at": "2026-01-11T13:38:27.051125",
+      "word_count": 664
+    },
+    "art_history/baroque_painting.txt": {
+      "path": "art_history/baroque_painting.txt",
+      "content_hash": "fb703e412fafc230",
+      "trained_at": "2026-01-11T13:38:28.447062",
+      "word_count": 691
+    },
+    "art_history/byzantine_icons.txt": {
+      "path": "art_history/byzantine_icons.txt",
+      "content_hash": "cea05088b853e8f5",
+      "trained_at": "2026-01-11T13:38:29.878542",
+      "word_count": 762
+    },
+    "art_history/color_theory_art.txt": {
+      "path": "art_history/color_theory_art.txt",
+      "content_hash": "05ca7ac9d0797630",
+      "trained_at": "2026-01-11T13:38:31.326070",
+      "word_count": 802
+    },
+    "art_history/composition_principles.txt": {
+      "path": "art_history/composition_principles.txt",
+      "content_hash": "2c55d4800da4ca79",
+      "trained_at": "2026-01-11T13:38:32.818186",
+      "word_count": 813
+    },
+    "art_history/conceptual_art.txt": {
+      "path": "art_history/conceptual_art.txt",
+      "content_hash": "e26797cda10bb9f5",
+      "trained_at": "2026-01-11T13:38:34.335300",
+      "word_count": 680
+    },
+    "art_history/cubism.txt": {
+      "path": "art_history/cubism.txt",
+      "content_hash": "6112a7974f62883b",
+      "trained_at": "2026-01-11T13:38:35.876406",
+      "word_count": 647
+    },
+    "art_history/expressionism.txt": {
+      "path": "art_history/expressionism.txt",
+      "content_hash": "13f69d59690aca97",
+      "trained_at": "2026-01-11T13:38:37.479932",
+      "word_count": 663
+    },
+    "art_history/gothic_architecture.txt": {
+      "path": "art_history/gothic_architecture.txt",
+      "content_hash": "de97811088fcd15a",
+      "trained_at": "2026-01-11T13:38:39.024813",
+      "word_count": 726
+    },
+    "art_history/impressionism.txt": {
+      "path": "art_history/impressionism.txt",
+      "content_hash": "7a49f1862cd33b3c",
+      "trained_at": "2026-01-11T13:38:40.502596",
+      "word_count": 668
+    },
+    "art_history/medieval_illuminated_manuscripts.txt": {
+      "path": "art_history/medieval_illuminated_manuscripts.txt",
+      "content_hash": "b065027db373e4c5",
+      "trained_at": "2026-01-11T13:38:42.165841",
+      "word_count": 801
+    },
+    "art_history/minimalism.txt": {
+      "path": "art_history/minimalism.txt",
+      "content_hash": "99480259e98c6c32",
+      "trained_at": "2026-01-11T13:38:43.753404",
+      "word_count": 645
+    },
+    "art_history/modern_art_movements.txt": {
+      "path": "art_history/modern_art_movements.txt",
+      "content_hash": "1f37fbbcb1f1b59a",
+      "trained_at": "2026-01-11T13:38:45.467355",
+      "word_count": 631
+    },
+    "art_history/northern_renaissance.txt": {
+      "path": "art_history/northern_renaissance.txt",
+      "content_hash": "ea8eb35ad087e89f",
+      "trained_at": "2026-01-11T13:38:47.207069",
+      "word_count": 736
+    },
+    "art_history/photography_as_art.txt": {
+      "path": "art_history/photography_as_art.txt",
+      "content_hash": "f8a5ab400cecf201",
+      "trained_at": "2026-01-11T13:38:48.907615",
+      "word_count": 628
+    },
+    "art_history/pop_art.txt": {
+      "path": "art_history/pop_art.txt",
+      "content_hash": "6dc18ab656fe282a",
+      "trained_at": "2026-01-11T13:38:50.819301",
+      "word_count": 711
+    },
+    "art_history/post_impressionism.txt": {
+      "path": "art_history/post_impressionism.txt",
+      "content_hash": "19e7060ff8a531ed",
+      "trained_at": "2026-01-11T13:38:52.729031",
+      "word_count": 726
+    },
+    "art_history/renaissance_art_movements.txt": {
+      "path": "art_history/renaissance_art_movements.txt",
+      "content_hash": "184fd0f310826513",
+      "trained_at": "2026-01-11T13:38:54.630626",
+      "word_count": 647
+    },
+    "art_history/rococo_decorative_arts.txt": {
+      "path": "art_history/rococo_decorative_arts.txt",
+      "content_hash": "73f1456c393d80f5",
+      "trained_at": "2026-01-11T13:38:56.528404",
+      "word_count": 769
+    },
+    "art_history/roman_mosaics.txt": {
+      "path": "art_history/roman_mosaics.txt",
+      "content_hash": "c61f64cdb53d1869",
+      "trained_at": "2026-01-11T13:38:58.258160",
+      "word_count": 830
+    },
+    "art_history/sculpture_through_ages.txt": {
+      "path": "art_history/sculpture_through_ages.txt",
+      "content_hash": "e4f429d04efaac78",
+      "trained_at": "2026-01-11T13:39:00.020906",
+      "word_count": 813
+    },
+    "astronomical_spectroscopy.txt": {
+      "path": "astronomical_spectroscopy.txt",
+      "content_hash": "a9c08baf2f66b345",
+      "trained_at": "2026-01-11T13:39:01.922274",
+      "word_count": 140
+    },
+    "attention_mechanism_research.txt": {
+      "path": "attention_mechanism_research.txt",
+      "content_hash": "9c66f580b1ae32d0",
+      "trained_at": "2026-01-11T13:39:03.871593",
+      "word_count": 661
+    },
+    "attention_mechanisms_cognitive_systems.txt": {
+      "path": "attention_mechanisms_cognitive_systems.txt",
+      "content_hash": "9a4a7d337fad1800",
+      "trained_at": "2026-01-11T13:39:05.891796",
+      "word_count": 362
+    },
+    "attention_mechanisms_markets.txt": {
+      "path": "attention_mechanisms_markets.txt",
+      "content_hash": "91e4203a0d11acdc",
+      "trained_at": "2026-01-11T13:39:07.832128",
+      "word_count": 556
+    },
+    "authentication_patterns.txt": {
+      "path": "authentication_patterns.txt",
+      "content_hash": "001b67e651cf86a7",
+      "trained_at": "2026-01-11T13:39:09.803541",
+      "word_count": 317
+    },
+    "bat_echolocation.txt": {
+      "path": "bat_echolocation.txt",
+      "content_hash": "7a392230d1e2b672",
+      "trained_at": "2026-01-11T13:39:11.985138",
+      "word_count": 321
+    },
+    "batch_processing_patterns.txt": {
+      "path": "batch_processing_patterns.txt",
+      "content_hash": "fdc10a82fb303b38",
+      "trained_at": "2026-01-11T13:39:14.088927",
+      "word_count": 335
+    },
+    "battery_cells.txt": {
+      "path": "battery_cells.txt",
+      "content_hash": "659af354c582016a",
+      "trained_at": "2026-01-11T13:39:16.340830",
+      "word_count": 324
+    },
+    "bayesian_truth_values_cognition.txt": {
+      "path": "bayesian_truth_values_cognition.txt",
+      "content_hash": "5d958e9e3d2a3c6c",
+      "trained_at": "2026-01-11T13:39:18.450848",
+      "word_count": 853
+    },
+    "beekeeping_practices.txt": {
+      "path": "beekeeping_practices.txt",
+      "content_hash": "c106477646ae725b",
+      "trained_at": "2026-01-11T13:39:20.768868",
+      "word_count": 341
+    },
+    "behavior_driven_development.txt": {
+      "path": "behavior_driven_development.txt",
+      "content_hash": "7e97f8c8b19a5757",
+      "trained_at": "2026-01-11T13:39:23.160023",
+      "word_count": 843
+    },
+    "bioinspired_computing_principles.txt": {
+      "path": "bioinspired_computing_principles.txt",
+      "content_hash": "adf89e7df4ed6961",
+      "trained_at": "2026-01-11T13:39:25.343724",
+      "word_count": 278
+    },
+    "biological_cells.txt": {
+      "path": "biological_cells.txt",
+      "content_hash": "25eedff04d0c8a10",
+      "trained_at": "2026-01-11T13:39:27.725030",
+      "word_count": 303
+    },
+    "biological_pattern_recognition_markets.txt": {
+      "path": "biological_pattern_recognition_markets.txt",
+      "content_hash": "4632e043c26a47a4",
+      "trained_at": "2026-01-11T13:39:29.834727",
+      "word_count": 898
+    },
+    "biomedical_engineering/biomaterials_tissue_engineering.txt": {
+      "path": "biomedical_engineering/biomaterials_tissue_engineering.txt",
+      "content_hash": "df1ff22e738949c4",
+      "trained_at": "2026-01-11T13:39:31.963445",
+      "word_count": 613
+    },
+    "biomedical_engineering/medical_imaging_technologies.txt": {
+      "path": "biomedical_engineering/medical_imaging_technologies.txt",
+      "content_hash": "ba91dd4933557298",
+      "trained_at": "2026-01-11T13:39:34.102573",
+      "word_count": 656
+    },
+    "biomedical_engineering/prosthetics_design.txt": {
+      "path": "biomedical_engineering/prosthetics_design.txt",
+      "content_hash": "86cdafbfed5b1e06",
+      "trained_at": "2026-01-11T13:39:36.288288",
+      "word_count": 669
+    },
+    "blockchain_consensus.txt": {
+      "path": "blockchain_consensus.txt",
+      "content_hash": "730bde8a9925d0ca",
+      "trained_at": "2026-01-11T13:39:38.566331",
+      "word_count": 206
+    },
+    "bonsai_cultivation.txt": {
+      "path": "bonsai_cultivation.txt",
+      "content_hash": "82e3082dabc8b8ed",
+      "trained_at": "2026-01-11T13:39:41.177543",
+      "word_count": 155
+    },
+    "bottleneck_diagnosis_procedures.txt": {
+      "path": "bottleneck_diagnosis_procedures.txt",
+      "content_hash": "0d88f934f04815d3",
+      "trained_at": "2026-01-11T13:39:43.693185",
+      "word_count": 488
+    },
+    "bpe_cognitive_text_processing.txt": {
+      "path": "bpe_cognitive_text_processing.txt",
+      "content_hash": "3137d99e7e6e45f4",
+      "trained_at": "2026-01-11T13:39:46.068747",
+      "word_count": 813
+    },
+    "brain_inspired_computing.txt": {
+      "path": "brain_inspired_computing.txt",
+      "content_hash": "2ee30f802b7470b8",
+      "trained_at": "2026-01-11T13:39:48.419109",
+      "word_count": 98
+    },
+    "cache_invalidation_strategies.txt": {
+      "path": "cache_invalidation_strategies.txt",
+      "content_hash": "914a4403d12ea6dc",
+      "trained_at": "2026-01-11T13:39:51.024398",
+      "word_count": 346
+    },
+    "call_center_operations.txt": {
+      "path": "call_center_operations.txt",
+      "content_hash": "cb16d3519f8174e8",
+      "trained_at": "2026-01-11T13:39:54.033186",
+      "word_count": 239
+    },
+    "candlestick_patterns.txt": {
+      "path": "candlestick_patterns.txt",
+      "content_hash": "434800016da937d3",
+      "trained_at": "2026-01-11T13:39:56.867595",
+      "word_count": 273
+    },
+    "cartography_mapping.txt": {
+      "path": "cartography_mapping.txt",
+      "content_hash": "81ecfbd78aaf0d3a",
+      "trained_at": "2026-01-11T13:39:59.324923",
+      "word_count": 344
+    },
+    "causal_inference_markets.txt": {
+      "path": "causal_inference_markets.txt",
+      "content_hash": "663c35ef4edc5588",
+      "trained_at": "2026-01-11T13:40:02.028075",
+      "word_count": 682
+    },
+    "cheese_affinage.txt": {
+      "path": "cheese_affinage.txt",
+      "content_hash": "d2f4aca24039d927",
+      "trained_at": "2026-01-11T13:40:05.308532",
+      "word_count": 163
+    },
+    "chemical_engineering/distillation_column_design.txt": {
+      "path": "chemical_engineering/distillation_column_design.txt",
+      "content_hash": "2635f93ed65bcb4c",
+      "trained_at": "2026-01-11T13:40:08.091214",
+      "word_count": 477
+    },
+    "chemical_engineering/heat_exchanger_design.txt": {
+      "path": "chemical_engineering/heat_exchanger_design.txt",
+      "content_hash": "32796c29ddd57aa2",
+      "trained_at": "2026-01-11T13:40:10.821978",
+      "word_count": 562
+    },
+    "chemical_engineering/reaction_kinetics_fundamentals.txt": {
+      "path": "chemical_engineering/reaction_kinetics_fundamentals.txt",
+      "content_hash": "d1672a1a4a8dc1ee",
+      "trained_at": "2026-01-11T13:40:13.619547",
+      "word_count": 500
+    },
+    "civil_engineering/bridge_design_principles.txt": {
+      "path": "civil_engineering/bridge_design_principles.txt",
+      "content_hash": "d63c5184bb231a3e",
+      "trained_at": "2026-01-11T13:40:16.242751",
+      "word_count": 743
+    },
+    "civil_engineering/concrete_technology.txt": {
+      "path": "civil_engineering/concrete_technology.txt",
+      "content_hash": "c3c0bfe257a43147",
+      "trained_at": "2026-01-11T13:40:18.934275",
+      "word_count": 762
+    },
+    "civil_engineering/foundation_engineering.txt": {
+      "path": "civil_engineering/foundation_engineering.txt",
+      "content_hash": "9ec2b4caccc8054d",
+      "trained_at": "2026-01-11T13:40:21.963310",
+      "word_count": 706
+    },
+    "civil_engineering/highway_design.txt": {
+      "path": "civil_engineering/highway_design.txt",
+      "content_hash": "76b7a955290c323e",
+      "trained_at": "2026-01-11T13:40:24.679026",
+      "word_count": 820
+    },
+    "civil_engineering/structural_analysis_basics.txt": {
+      "path": "civil_engineering/structural_analysis_basics.txt",
+      "content_hash": "7121a2923b0e9a56",
+      "trained_at": "2026-01-11T13:40:27.195429",
+      "word_count": 627
+    },
+    "clinical_medicine.txt": {
+      "path": "clinical_medicine.txt",
+      "content_hash": "57ed8d0c3df69037",
+      "trained_at": "2026-01-11T13:40:29.744250",
+      "word_count": 303
+    },
+    "code_review_practices.txt": {
+      "path": "code_review_practices.txt",
+      "content_hash": "6c44ae983f78d3cb",
+      "trained_at": "2026-01-11T13:40:32.302169",
+      "word_count": 524
+    },
+    "codebase_search_procedures.txt": {
+      "path": "codebase_search_procedures.txt",
+      "content_hash": "a1186ce12ed55cbc",
+      "trained_at": "2026-01-11T13:40:34.957234",
+      "word_count": 589
+    },
+    "cognitive_biases.txt": {
+      "path": "cognitive_biases.txt",
+      "content_hash": "039b3a6b82eaf30e",
+      "trained_at": "2026-01-11T13:40:37.718275",
+      "word_count": 366
+    },
+    "cognitive_graph_fundamentals.txt": {
+      "path": "cognitive_graph_fundamentals.txt",
+      "content_hash": "6afa0b261230fcd6",
+      "trained_at": "2026-01-11T13:40:40.331421",
+      "word_count": 390
+    },
+    "cognitive_science/analogical_reasoning.txt": {
+      "path": "cognitive_science/analogical_reasoning.txt",
+      "content_hash": "d958c16f17fb925a",
+      "trained_at": "2026-01-11T13:40:43.162710",
+      "word_count": 995
+    },
+    "cognitive_science/attention_consciousness.txt": {
+      "path": "cognitive_science/attention_consciousness.txt",
+      "content_hash": "2e0444d43644d352",
+      "trained_at": "2026-01-11T13:40:45.865372",
+      "word_count": 1044
+    },
+    "cognitive_science/causal_reasoning_development.txt": {
+      "path": "cognitive_science/causal_reasoning_development.txt",
+      "content_hash": "5f96c03b86fe31c8",
+      "trained_at": "2026-01-11T13:40:48.587693",
+      "word_count": 930
+    },
+    "cognitive_science/cognitive_control_executive_function.txt": {
+      "path": "cognitive_science/cognitive_control_executive_function.txt",
+      "content_hash": "b52895690e6ee708",
+      "trained_at": "2026-01-11T13:40:51.325108",
+      "word_count": 1120
+    },
+    "cognitive_science/cognitive_development.txt": {
+      "path": "cognitive_science/cognitive_development.txt",
+      "content_hash": "bf0226917692203b",
+      "trained_at": "2026-01-11T13:40:54.275459",
+      "word_count": 1074
+    },
+    "cognitive_science/cognitive_load_theory.txt": {
+      "path": "cognitive_science/cognitive_load_theory.txt",
+      "content_hash": "87c88db14f638937",
+      "trained_at": "2026-01-11T13:40:57.203259",
+      "word_count": 970
+    },
+    "cognitive_science/computational_cognitive_models.txt": {
+      "path": "cognitive_science/computational_cognitive_models.txt",
+      "content_hash": "c2139263212a77b6",
+      "trained_at": "2026-01-11T13:41:00.051432",
+      "word_count": 1099
+    },
+    "cognitive_science/decision_neuroscience.txt": {
+      "path": "cognitive_science/decision_neuroscience.txt",
+      "content_hash": "7ac96c97370dab90",
+      "trained_at": "2026-01-11T13:41:02.902223",
+      "word_count": 964
+    },
+    "cognitive_science/deductive_inductive_reasoning.txt": {
+      "path": "cognitive_science/deductive_inductive_reasoning.txt",
+      "content_hash": "4a81062c74eaeee4",
+      "trained_at": "2026-01-11T13:41:05.721876",
+      "word_count": 1023
+    },
+    "cognitive_science/distributed_cognition.txt": {
+      "path": "cognitive_science/distributed_cognition.txt",
+      "content_hash": "d0ba74f8606b4139",
+      "trained_at": "2026-01-11T13:41:08.636033",
+      "word_count": 1079
+    },
+    "cognitive_science/dual_process_theory.txt": {
+      "path": "cognitive_science/dual_process_theory.txt",
+      "content_hash": "2de84b520a725c1e",
+      "trained_at": "2026-01-11T13:41:11.667048",
+      "word_count": 1031
+    },
+    "cognitive_science/embodied_cognition.txt": {
+      "path": "cognitive_science/embodied_cognition.txt",
+      "content_hash": "e90c797c1919d447",
+      "trained_at": "2026-01-11T13:41:14.797683",
+      "word_count": 1013
+    },
+    "cognitive_science/emotion_cognition_interaction.txt": {
+      "path": "cognitive_science/emotion_cognition_interaction.txt",
+      "content_hash": "05e621fd16c06eeb",
+      "trained_at": "2026-01-11T13:41:17.939409",
+      "word_count": 1143
+    },
+    "cognitive_science/language_brain_processing.txt": {
+      "path": "cognitive_science/language_brain_processing.txt",
+      "content_hash": "bc3712ca8ace8db9",
+      "trained_at": "2026-01-11T13:41:21.308043",
+      "word_count": 1067
+    },
+    "cognitive_science/memory_formation_consolidation.txt": {
+      "path": "cognitive_science/memory_formation_consolidation.txt",
+      "content_hash": "961ef33a1c1651f3",
+      "trained_at": "2026-01-11T13:41:24.558848",
+      "word_count": 670
+    },
+    "cognitive_science/metacognition_introspection.txt": {
+      "path": "cognitive_science/metacognition_introspection.txt",
+      "content_hash": "5e1a0d9d7863b97e",
+      "trained_at": "2026-01-11T13:41:27.845849",
+      "word_count": 986
+    },
+    "cognitive_science/moral_reasoning_development.txt": {
+      "path": "cognitive_science/moral_reasoning_development.txt",
+      "content_hash": "d6adb873c2e5fadd",
+      "trained_at": "2026-01-11T13:41:31.127834",
+      "word_count": 1044
+    },
+    "cognitive_science/neural_plasticity_learning.txt": {
+      "path": "cognitive_science/neural_plasticity_learning.txt",
+      "content_hash": "ad6672bd7f04d74e",
+      "trained_at": "2026-01-11T13:41:34.585536",
+      "word_count": 1016
+    },
+    "cognitive_science/perception_action_coupling.txt": {
+      "path": "cognitive_science/perception_action_coupling.txt",
+      "content_hash": "cd6d4ca4a1ad2ca4",
+      "trained_at": "2026-01-11T13:41:38.093070",
+      "word_count": 1107
+    },
+    "cognitive_science/probabilistic_reasoning.txt": {
+      "path": "cognitive_science/probabilistic_reasoning.txt",
+      "content_hash": "c5187afa01d64e92",
+      "trained_at": "2026-01-11T13:41:41.680146",
+      "word_count": 1023
+    },
+    "cognitive_science/schemas_mental_models.txt": {
+      "path": "cognitive_science/schemas_mental_models.txt",
+      "content_hash": "0546bdd4b25a2d1d",
+      "trained_at": "2026-01-11T13:41:45.125200",
+      "word_count": 1114
+    },
+    "cognitive_science/social_cognition_theory_of_mind.txt": {
+      "path": "cognitive_science/social_cognition_theory_of_mind.txt",
+      "content_hash": "ac7e88054ea7de83",
+      "trained_at": "2026-01-11T13:41:48.536383",
+      "word_count": 1050
+    },
+    "cognitive_science/spatial_reasoning_cognition.txt": {
+      "path": "cognitive_science/spatial_reasoning_cognition.txt",
+      "content_hash": "06d9b64103e29e50",
+      "trained_at": "2026-01-11T13:41:52.112545",
+      "word_count": 963
+    },
+    "cognitive_science/working_memory_capacity.txt": {
+      "path": "cognitive_science/working_memory_capacity.txt",
+      "content_hash": "63ed0e4f7bae9a22",
+      "trained_at": "2026-01-11T13:41:55.949722",
+      "word_count": 827
+    },
+    "cognitive_state_persistence.txt": {
+      "path": "cognitive_state_persistence.txt",
+      "content_hash": "52e00a4fa91534ac",
+      "trained_at": "2026-01-11T13:41:59.315623",
+      "word_count": 877
+    },
+    "cognitive_task_system_integration.txt": {
+      "path": "cognitive_task_system_integration.txt",
+      "content_hash": "12ed4cf358773e29",
+      "trained_at": "2026-01-11T13:42:02.887246",
+      "word_count": 521
+    },
+    "commonsense_reasoning.txt": {
+      "path": "commonsense_reasoning.txt",
+      "content_hash": "8180a6f62174322b",
+      "trained_at": "2026-01-11T13:42:06.314137",
+      "word_count": 279
+    },
+    "compilers.txt": {
+      "path": "compilers.txt",
+      "content_hash": "a8c51031c3ff040a",
+      "trained_at": "2026-01-11T13:42:09.990580",
+      "word_count": 269
+    },
+    "complaint_resolution.txt": {
+      "path": "complaint_resolution.txt",
+      "content_hash": "9a227e6e10ec215d",
+      "trained_at": "2026-01-11T13:42:13.804882",
+      "word_count": 227
+    },
+    "compliance_auditing_practices.txt": {
+      "path": "compliance_auditing_practices.txt",
+      "content_hash": "5fbb95737f05ade2",
+      "trained_at": "2026-01-11T13:42:17.627165",
+      "word_count": 591
+    },
+    "composition_over_inheritance.txt": {
+      "path": "composition_over_inheritance.txt",
+      "content_hash": "5b8b25383c42e6cc",
+      "trained_at": "2026-01-11T13:42:21.399847",
+      "word_count": 801
+    },
+    "comprehensive_machine_learning.txt": {
+      "path": "comprehensive_machine_learning.txt",
+      "content_hash": "7250fa0c4469808e",
+      "trained_at": "2026-01-11T13:42:24.951211",
+      "word_count": 2484
+    },
+    "computation_staleness_management.txt": {
+      "path": "computation_staleness_management.txt",
+      "content_hash": "6a0964d55e124223",
+      "trained_at": "2026-01-11T13:42:28.649890",
+      "word_count": 462
+    },
+    "computational_complexity_tradeoffs.txt": {
+      "path": "computational_complexity_tradeoffs.txt",
+      "content_hash": "ed867c32fd06adf6",
+      "trained_at": "2026-01-11T13:42:32.443886",
+      "word_count": 397
+    },
+    "computational_theory.txt": {
+      "path": "computational_theory.txt",
+      "content_hash": "4633558ae7366315",
+      "trained_at": "2026-01-11T13:42:36.580874",
+      "word_count": 233
+    },
+    "computer_vision/3d_reconstruction_techniques.txt": {
+      "path": "computer_vision/3d_reconstruction_techniques.txt",
+      "content_hash": "f7b92a15414f29e1",
+      "trained_at": "2026-01-11T13:42:40.949821",
+      "word_count": 627
+    },
+    "computer_vision/image_segmentation_methods.txt": {
+      "path": "computer_vision/image_segmentation_methods.txt",
+      "content_hash": "157f138a9675eae7",
+      "trained_at": "2026-01-11T13:50:38.334530",
+      "word_count": 662
+    },
+    "computer_vision/object_detection_deep_learning.txt": {
+      "path": "computer_vision/object_detection_deep_learning.txt",
+      "content_hash": "f86a043a3d2cdb27",
+      "trained_at": "2026-01-11T13:50:38.429764",
+      "word_count": 679
+    },
+    "concept_cluster_evaluation.txt": {
+      "path": "concept_cluster_evaluation.txt",
+      "content_hash": "76faeaf369ab1b62",
+      "trained_at": "2026-01-11T13:50:38.555279",
+      "word_count": 583
+    },
+    "conceptnet_overview.txt": {
+      "path": "conceptnet_overview.txt",
+      "content_hash": "bedf7ab975266919",
+      "trained_at": "2026-01-11T13:50:38.688209",
+      "word_count": 256
+    },
+    "configuration_management.txt": {
+      "path": "configuration_management.txt",
+      "content_hash": "32bc504f9a25c79e",
+      "trained_at": "2026-01-11T13:50:38.858557",
+      "word_count": 280
+    },
+    "consumer_driven_contracts.txt": {
+      "path": "consumer_driven_contracts.txt",
+      "content_hash": "a3ff48e4506cb304",
+      "trained_at": "2026-01-11T13:50:39.077123",
+      "word_count": 769
+    },
+    "container_orchestration.txt": {
+      "path": "container_orchestration.txt",
+      "content_hash": "3177ea521442df29",
+      "trained_at": "2026-01-11T13:50:39.301079",
+      "word_count": 197
+    },
+    "content_addressable_memory_systems.txt": {
+      "path": "content_addressable_memory_systems.txt",
+      "content_hash": "7bfa584c1d9aee11",
+      "trained_at": "2026-01-11T13:50:39.568714",
+      "word_count": 774
+    },
+    "contract_law.txt": {
+      "path": "contract_law.txt",
+      "content_hash": "2ed16ef8e4606760",
+      "trained_at": "2026-01-11T13:50:39.850022",
+      "word_count": 359
+    },
+    "contract_testing_fundamentals.txt": {
+      "path": "contract_testing_fundamentals.txt",
+      "content_hash": "7a83a969b11aa9c6",
+      "trained_at": "2026-01-11T13:50:40.148217",
+      "word_count": 679
+    },
+    "corpus_indexing_procedures.txt": {
+      "path": "corpus_indexing_procedures.txt",
+      "content_hash": "c223d538dde64cee",
+      "trained_at": "2026-01-11T13:50:40.466737",
+      "word_count": 499
+    },
+    "corpus_maintenance_workflow.txt": {
+      "path": "corpus_maintenance_workflow.txt",
+      "content_hash": "19cb0f258bd7201f",
+      "trained_at": "2026-01-11T13:50:40.808724",
+      "word_count": 467
+    },
+    "cortical_columns.txt": {
+      "path": "cortical_columns.txt",
+      "content_hash": "e2c252cd7a195771",
+      "trained_at": "2026-01-11T13:50:41.154893",
+      "word_count": 99
+    },
+    "cortical_semantic_networks.txt": {
+      "path": "cortical_semantic_networks.txt",
+      "content_hash": "af4003ce013bafd7",
+      "trained_at": "2026-01-11T13:50:41.540235",
+      "word_count": 542
+    },
+    "cortical_text_processor_dictionary.txt": {
+      "path": "cortical_text_processor_dictionary.txt",
+      "content_hash": "c210f697835d28e4",
+      "trained_at": "2026-01-11T13:50:42.027017",
+      "word_count": 3516
+    },
+    "counter_strategy_modeling.txt": {
+      "path": "counter_strategy_modeling.txt",
+      "content_hash": "42186c9079a18ef6",
+      "trained_at": "2026-01-11T13:50:42.475102",
+      "word_count": 712
+    },
+    "counterfactual_reasoning_finance.txt": {
+      "path": "counterfactual_reasoning_finance.txt",
+      "content_hash": "0bcf83f1a098b2ed",
+      "trained_at": "2026-01-11T13:50:42.965110",
+      "word_count": 619
+    },
+    "coupling_and_cohesion.txt": {
+      "path": "coupling_and_cohesion.txt",
+      "content_hash": "838c307398f0024e",
+      "trained_at": "2026-01-11T13:50:43.461372",
+      "word_count": 901
+    },
+    "cricket_bat_making.txt": {
+      "path": "cricket_bat_making.txt",
+      "content_hash": "675d0a5b9502bbea",
+      "trained_at": "2026-01-11T13:50:43.986825",
+      "word_count": 323
+    },
+    "criminal_law/constitutional_protections.txt": {
+      "path": "criminal_law/constitutional_protections.txt",
+      "content_hash": "850afe067c248c0f",
+      "trained_at": "2026-01-11T13:50:44.579967",
+      "word_count": 1237
+    },
+    "criminal_law/criminal_procedure_overview.txt": {
+      "path": "criminal_law/criminal_procedure_overview.txt",
+      "content_hash": "86838956f66d9754",
+      "trained_at": "2026-01-11T13:50:45.143274",
+      "word_count": 708
+    },
+    "criminal_law/defenses_criminal_law.txt": {
+      "path": "criminal_law/defenses_criminal_law.txt",
+      "content_hash": "1b30006d76cb6824",
+      "trained_at": "2026-01-11T13:50:45.741611",
+      "word_count": 1015
+    },
+    "criminal_law/elements_of_crimes.txt": {
+      "path": "criminal_law/elements_of_crimes.txt",
+      "content_hash": "ad3160889e0e2af1",
+      "trained_at": "2026-01-11T13:50:46.345428",
+      "word_count": 853
+    },
+    "criminal_law/sentencing_principles.txt": {
+      "path": "criminal_law/sentencing_principles.txt",
+      "content_hash": "5a03f8d10cab1ec0",
+      "trained_at": "2026-01-11T13:50:46.975646",
+      "word_count": 1074
+    },
+    "cross_domain/attention_allocation_systems.txt": {
+      "path": "cross_domain/attention_allocation_systems.txt",
+      "content_hash": "7a311cb364a402c4",
+      "trained_at": "2026-01-11T13:50:47.621298",
+      "word_count": 813
+    },
+    "cross_domain/belief_updating_markets.txt": {
+      "path": "cross_domain/belief_updating_markets.txt",
+      "content_hash": "3bc4a55601822a90",
+      "trained_at": "2026-01-11T13:50:48.360705",
+      "word_count": 846
+    },
+    "cross_domain/cognitive_market_models.txt": {
+      "path": "cross_domain/cognitive_market_models.txt",
+      "content_hash": "0ff8ec42fd17e47d",
+      "trained_at": "2026-01-11T13:50:49.061537",
+      "word_count": 672
+    },
+    "cross_domain/collaborative_forecasting.txt": {
+      "path": "cross_domain/collaborative_forecasting.txt",
+      "content_hash": "2e79f8156b413cc8",
+      "trained_at": "2026-01-11T13:50:49.778481",
+      "word_count": 749
+    },
+    "cross_domain/distributed_intelligence_systems.txt": {
+      "path": "cross_domain/distributed_intelligence_systems.txt",
+      "content_hash": "80ff680a78791e91",
+      "trained_at": "2026-01-11T13:50:50.521936",
+      "word_count": 962
+    },
+    "cross_domain/embodied_decision_making.txt": {
+      "path": "cross_domain/embodied_decision_making.txt",
+      "content_hash": "adbc792b4e90526d",
+      "trained_at": "2026-01-11T13:50:51.328847",
+      "word_count": 883
+    },
+    "cross_domain/future_oriented_cognition.txt": {
+      "path": "cross_domain/future_oriented_cognition.txt",
+      "content_hash": "0c4655f75da1a9ea",
+      "trained_at": "2026-01-11T13:50:52.186426",
+      "word_count": 875
+    },
+    "cross_domain/influence_and_prediction.txt": {
+      "path": "cross_domain/influence_and_prediction.txt",
+      "content_hash": "7247a4d4aa8a4687",
+      "trained_at": "2026-01-11T13:50:53.045953",
+      "word_count": 720
+    },
+    "cross_domain/metacognition_in_ai.txt": {
+      "path": "cross_domain/metacognition_in_ai.txt",
+      "content_hash": "ea04808a03c2f6dd",
+      "trained_at": "2026-01-11T13:50:53.944179",
+      "word_count": 816
+    },
+    "cross_domain/narrative_market_influence.txt": {
+      "path": "cross_domain/narrative_market_influence.txt",
+      "content_hash": "8a00823b2a8f2ca9",
+      "trained_at": "2026-01-11T13:50:54.872514",
+      "word_count": 858
+    },
+    "cross_domain/social_dynamics_prediction.txt": {
+      "path": "cross_domain/social_dynamics_prediction.txt",
+      "content_hash": "1ada223610b45e24",
+      "trained_at": "2026-01-11T13:50:55.821807",
+      "word_count": 836
+    },
+    "cross_domain/world_models_for_trading.txt": {
+      "path": "cross_domain/world_models_for_trading.txt",
+      "content_hash": "0f7a3eb67bc6d39f",
+      "trained_at": "2026-01-11T13:50:56.791929",
+      "word_count": 800
+    },
+    "cryptocurrency_mining.txt": {
+      "path": "cryptocurrency_mining.txt",
+      "content_hash": "ed01575a709c12a3",
+      "trained_at": "2026-01-11T13:50:57.829799",
+      "word_count": 211
+    },
+    "customer_retention_strategies.txt": {
+      "path": "customer_retention_strategies.txt",
+      "content_hash": "da8485a771b31641",
+      "trained_at": "2026-01-11T13:50:58.884035",
+      "word_count": 234
+    },
+    "customer_satisfaction_metrics.txt": {
+      "path": "customer_satisfaction_metrics.txt",
+      "content_hash": "e9d6b7abe4cd80b1",
+      "trained_at": "2026-01-11T13:50:59.897014",
+      "word_count": 234
+    },
+    "customer_service/account_management_faq.txt": {
+      "path": "customer_service/account_management_faq.txt",
+      "content_hash": "61fa62c6eaaeed35",
+      "trained_at": "2026-01-11T13:51:00.950091",
+      "word_count": 659
+    },
+    "customer_service/complaint_escalation_procedures.txt": {
+      "path": "customer_service/complaint_escalation_procedures.txt",
+      "content_hash": "1444431d16298407",
+      "trained_at": "2026-01-11T13:51:01.969486",
+      "word_count": 1056
+    },
+    "customer_service/connectivity_network_troubleshooting.txt": {
+      "path": "customer_service/connectivity_network_troubleshooting.txt",
+      "content_hash": "978497cc15e77bb9",
+      "trained_at": "2026-01-11T13:51:03.058785",
+      "word_count": 984
+    },
+    "customer_service/customer_feedback_survey_guide.txt": {
+      "path": "customer_service/customer_feedback_survey_guide.txt",
+      "content_hash": "0226dde192d5dc08",
+      "trained_at": "2026-01-11T13:51:04.169558",
+      "word_count": 1480
+    },
+    "customer_service/electronics_product_faq.txt": {
+      "path": "customer_service/electronics_product_faq.txt",
+      "content_hash": "971caff92efb2545",
+      "trained_at": "2026-01-11T13:51:05.257766",
+      "word_count": 488
+    },
+    "customer_service/email_response_templates.txt": {
+      "path": "customer_service/email_response_templates.txt",
+      "content_hash": "d5c584708124e720",
+      "trained_at": "2026-01-11T13:51:06.407685",
+      "word_count": 1303
+    },
+    "customer_service/empathy_and_active_listening.txt": {
+      "path": "customer_service/empathy_and_active_listening.txt",
+      "content_hash": "0255f015d57db63a",
+      "trained_at": "2026-01-11T13:51:07.596821",
+      "word_count": 1010
+    },
+    "customer_service/login_access_troubleshooting.txt": {
+      "path": "customer_service/login_access_troubleshooting.txt",
+      "content_hash": "4bf24a850d26d97c",
+      "trained_at": "2026-01-11T13:51:08.869516",
+      "word_count": 1231
+    },
+    "customer_service/payment_billing_troubleshooting.txt": {
+      "path": "customer_service/payment_billing_troubleshooting.txt",
+      "content_hash": "4eb606ab57fcd4b2",
+      "trained_at": "2026-01-11T13:51:10.100772",
+      "word_count": 1246
+    },
+    "customer_service/privacy_data_security_policy.txt": {
+      "path": "customer_service/privacy_data_security_policy.txt",
+      "content_hash": "2e15f18c73b8330b",
+      "trained_at": "2026-01-11T13:51:11.356286",
+      "word_count": 1732
+    },
+    "customer_service/refund_request_handling.txt": {
+      "path": "customer_service/refund_request_handling.txt",
+      "content_hash": "ee52110cd3bde62c",
+      "trained_at": "2026-01-11T13:51:12.615335",
+      "word_count": 930
+    }
+  }
+}
