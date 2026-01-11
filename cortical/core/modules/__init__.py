@@ -24,6 +24,7 @@ from .cdg_module import CDGModule
 from .got_module import GoTModule
 from .schema_module import SchemaModule
 from .audit_module import AuditModule, AuditConfig
+from .cognitive_module import CognitiveModule
 
 __all__ = [
     'SchemaModule',
@@ -31,4 +32,5 @@ __all__ = [
     'GoTModule',
     'AuditModule',
     'AuditConfig',
+    'CognitiveModule',
 ]

@@ -877,16 +877,30 @@ Examples:
     )
 
     args = parser.parse_args()
+    run_cli(args)
 
-    # Import here to avoid circular imports at module level
-    from cortical.cognitive.graph import CognitiveAgent
 
-    # Create filesystem for real I/O
-    model_dir = Path(args.model_dir)
-    filesystem = RealFileSystem(model_dir)
+def run_cli(args, container: 'Optional[Container]' = None) -> None:
+    """
+    Execute CLI command with given args.
 
-    agent = CognitiveAgent(filesystem=filesystem)
-    trainer = IncrementalTrainer(agent, model_dir, filesystem)
+    This function is separated from main() to allow testing with DI.
+    Tests can pass a pre-configured container with InMemoryFileSystem.
+
+    Args:
+        args: Parsed command line arguments
+        container: Optional DI container. If None, creates one with RealFileSystem.
+    """
+    from cortical.common import Container
+    from cortical.core.modules import CognitiveModule
+
+    # Use provided container or create one
+    if container is None:
+        model_dir = Path(args.model_dir)
+        container = Container()
+        container.apply_module(CognitiveModule(model_dir=model_dir, use_memory=False))
+
+    trainer = container.resolve(IncrementalTrainer)
 
     if args.status:
         status = trainer.status()

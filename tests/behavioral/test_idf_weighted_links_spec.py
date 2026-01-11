@@ -61,14 +61,10 @@ def idf_tokenizer():
 
 
 @pytest.fixture
-def idf_bridge(tmp_path):
-    """TextToAtomsBridge with IDF weighting enabled."""
+def idf_bridge(memory_cognitive_container):
+    """TextToAtomsBridge with IDF weighting enabled (via DI container)."""
     from cortical.cognitive.text_bridge import TextToAtomsBridge
-    from cortical.cognitive.graph import CognitiveGraph
-
-    graph = CognitiveGraph()  # Uses InMemoryStorage by default
-    bridge = TextToAtomsBridge(graph=graph)
-    return bridge
+    return memory_cognitive_container.resolve(TextToAtomsBridge)
 
 
 class TrainedAgentWrapper:
@@ -120,17 +116,12 @@ class TrainedAgentWrapper:
 
 
 @pytest.fixture
-def trained_agent_with_idf(tmp_path):
-    """Pre-trained cognitive agent with IDF-weighted links."""
-    from cortical.cognitive.graph import CognitiveAgent
+def trained_agent_with_idf(memory_cognitive_container):
+    """Pre-trained cognitive agent with IDF-weighted links (via DI container)."""
     from cortical.cognitive.training import IncrementalTrainer
-    from cortical.common.filesystem import InMemoryFileSystem
 
-    # Create in-memory filesystem for fast tests (no disk I/O)
-    model_dir = tmp_path / "model"
-    filesystem = InMemoryFileSystem(tmp_path)
-    agent = CognitiveAgent(filesystem=filesystem)
-    trainer = IncrementalTrainer(agent, model_dir, filesystem)
+    # Resolve trainer from container (uses InMemoryFileSystem)
+    trainer = memory_cognitive_container.resolve(IncrementalTrainer)
 
     # Training corpus with varied IDF values
     corpus = [
@@ -552,48 +543,54 @@ class TestReindexCommand:
                 assert current_raw == raw_before[link.id], \
                     f"Raw strength changed for link {link.id}"
 
-    def test_reindex_cli_command(self, tmp_path):
+    def test_reindex_cli_command(self, memory_cognitive_container):
         """
         Scenario: CLI supports --reindex flag
 
         Given a trained model directory
-        When running `python -m cortical.cognitive.training --reindex`
+        When running the reindex CLI command
         Then IDF weights should be recalculated
-        And success message should be printed
+        And the operation should succeed
 
         Because operators need CLI access to reindexing.
         """
-        import subprocess
-        import sys
-        from cortical.cognitive.graph import CognitiveAgent
-        from cortical.cognitive.training import IncrementalTrainer
-        from cortical.common.filesystem import RealFileSystem
+        from argparse import Namespace
+        from cortical.cognitive.training import IncrementalTrainer, run_cli
 
-        # Given: Set up a trained model on disk (CLI needs real filesystem)
-        model_dir = tmp_path / "test_model"
-        docs_dir = tmp_path / "docs"
-        docs_dir.mkdir(parents=True)
+        # Given: Set up a trained model via DI (in-memory)
+        trainer = memory_cognitive_container.resolve(IncrementalTrainer)
 
-        # Create sample documents
-        (docs_dir / "doc1.txt").write_text("Neural networks learn patterns.")
-        (docs_dir / "doc2.txt").write_text("Deep learning is powerful.")
+        # Train some documents
+        corpus = ["Neural networks learn patterns.", "Deep learning is powerful."]
+        trainer.bridge.learn_vocabulary(corpus)
+        for i, text in enumerate(corpus):
+            trainer.bridge.feed_text(text, doc_id=f"doc_{i}")
+            trainer.manifest.total_documents += 1
+        trainer.save()
 
-        # Train the model
-        filesystem = RealFileSystem(tmp_path)
-        agent = CognitiveAgent(filesystem=filesystem)
-        trainer = IncrementalTrainer(agent, model_dir, filesystem)
-        trainer.train_directory(docs_dir, show_progress=False)
+        # Get initial state
+        links_before = trainer.bridge.get_similarity_links()
+        epoch_before = trainer.bridge.get_idf_epoch()
 
-        # When: Run CLI with --reindex
-        result = subprocess.run(
-            [sys.executable, "-m", "cortical.cognitive.training",
-             "--model-dir", str(model_dir), "--reindex", "--quiet"],
-            capture_output=True,
-            text=True,
+        # When: Run CLI reindex command with the in-memory container
+        args = Namespace(
+            reindex=True,
+            quiet=True,
+            status=False,
+            list=False,
+            files=None,
+            batch_size=None,
+            directory="samples",
+            pattern="*.txt",
+            force=False,
+            checkpoint=None,
+            model_dir=str(trainer.model_dir),
         )
+        run_cli(args, container=memory_cognitive_container)
 
-        # Then: Should succeed (quiet mode has minimal output)
-        assert result.returncode == 0, f"CLI failed: {result.stderr}"
+        # Then: Links should be updated
+        epoch_after = trainer.bridge.get_idf_epoch()
+        assert epoch_after > epoch_before, "IDF epoch should increment after reindex"
 
 
 # =============================================================================
