@@ -1,8 +1,8 @@
 {
   "model_version": "1.0",
-  "last_training": "2026-01-12T15:15:35.404344",
-  "total_documents": 1834,
-  "vocabulary_size": 29590,
+  "last_training": "2026-01-12T15:21:08.161091",
+  "total_documents": 1835,
+  "vocabulary_size": 29593,
   "last_reindex_doc_count": 1722,
   "idf_epoch": 3,
   "documents": {
@@ -11009,6 +11009,12 @@
       "content_hash": "6fa4cc85eb762b31",
       "trained_at": "2026-01-12T15:15:35.404224",
       "word_count": 2029
+    },
+    "training_process_findings_and_enhancements.md": {
+      "path": "training_process_findings_and_enhancements.md",
+      "content_hash": "05de497febf624ff",
+      "trained_at": "2026-01-12T15:21:08.160935",
+      "word_count": 944
     }
   }
 }
