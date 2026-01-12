@@ -278,6 +278,27 @@ def main() -> int:
         help="Show detailed query information",
     )
 
+    # Rebuild-links command (fast rebuild from committed vocabulary)
+    rebuild_links_parser = subparsers.add_parser(
+        "rebuild-links",
+        help="Rebuild FOLLOWS/SIMILARITY links from committed vocabulary (fast cold-start)"
+    )
+    rebuild_links_parser.add_argument(
+        "--model-dir",
+        default="models/cognitive_agent",
+        help="Directory for model storage",
+    )
+    rebuild_links_parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress progress output",
+    )
+    rebuild_links_parser.add_argument(
+        "--metrics",
+        action="store_true",
+        help="Output rebuild metrics as JSON",
+    )
+
     args = parser.parse_args()
 
     if args.command is None:

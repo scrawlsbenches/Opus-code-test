@@ -1233,6 +1233,9 @@ def run_cli_command(command: str, args, container: 'Optional[Container]' = None)
         _run_ask(trainer, args)
         return 0
 
+    if command == "rebuild-links":
+        return _run_rebuild_links(trainer, args)
+
     print(f"Unknown command: {command}")
     return 1
 
@@ -1580,6 +1583,131 @@ def _run_ask(trainer: 'IncrementalTrainer', args) -> None:
 
     # Print the response
     print(response)
+
+
+def _run_rebuild_links(trainer: 'IncrementalTrainer', args) -> int:
+    """
+    Rebuild FOLLOWS/SIMILARITY links from committed vocabulary.
+
+    This is the fast path for cold-start when:
+    - tokenizer/ is committed (~1.1MB vocabulary)
+    - training_manifest.json is committed (what files were trained)
+    - bridge/ is gitignored (152MB links)
+
+    Instead of full training (~45s), this:
+    1. Loads vocabulary from committed tokenizer/ (~1s)
+    2. Reads manifest to know which files (~0.1s)
+    3. Rebuilds only FOLLOWS/SIMILARITY links (~20s)
+
+    Args:
+        trainer: The IncrementalTrainer with loaded vocabulary
+        args: CLI arguments with quiet, metrics options
+
+    Returns:
+        0 on success, 1 on error
+    """
+    import time
+    import json
+
+    quiet = getattr(args, 'quiet', False)
+    output_metrics = getattr(args, 'metrics', False)
+
+    # Check if we have the prerequisites
+    if not trainer.manifest.documents:
+        print("ERROR: No training manifest found. Run full training first:")
+        print("  python -m cortical.cognitive train cortical/ samples/")
+        return 1
+
+    if trainer.bridge.tokenizer._total_docs == 0:
+        print("ERROR: No vocabulary found. Run full training first:")
+        print("  python -m cortical.cognitive train cortical/ samples/")
+        return 1
+
+    # Check if bridge already exists
+    from pathlib import Path
+    bridge_dir = Path(trainer.model_dir) / "bridge"
+    if bridge_dir.exists() and (bridge_dir / "meta.json").exists():
+        if not quiet:
+            print("Bridge already exists. Use --force with train to rebuild.")
+            print("Current stats:")
+            meta_file = bridge_dir / "meta.json"
+            if meta_file.exists():
+                meta = json.loads(meta_file.read_text())
+                print(f"  Atoms: {meta.get('total_atoms', 'unknown')}")
+                print(f"  Links: {meta.get('type_counts', {}).get('FOLLOWS', 0) + meta.get('type_counts', {}).get('SIMILARITY', 0)}")
+        return 0
+
+    start_time = time.perf_counter()
+
+    if not quiet:
+        print("Rebuilding links from committed vocabulary...")
+        print(f"  Vocabulary size: {trainer.manifest.vocabulary_size}")
+        print(f"  Documents in manifest: {len(trainer.manifest.documents)}")
+
+    # Count documents to process
+    docs_to_process = []
+    for doc_path in trainer.manifest.documents:
+        path = Path(doc_path)
+        # Try relative to current dir, then samples/
+        if path.exists():
+            docs_to_process.append(path)
+        elif Path("samples") / path.name:
+            alt_path = Path("samples") / path.name
+            if alt_path.exists():
+                docs_to_process.append(alt_path)
+
+    if not docs_to_process:
+        print("ERROR: No source documents found. Ensure source files exist.")
+        return 1
+
+    if not quiet:
+        print(f"  Source files found: {len(docs_to_process)}")
+        print()
+
+    # Process each document to rebuild links
+    links_created = 0
+    docs_processed = 0
+
+    for doc_path in docs_to_process:
+        try:
+            content = doc_path.read_text(encoding='utf-8', errors='replace')
+            # Feed to bridge to create links (vocabulary already loaded)
+            # feed_text returns list of created atoms
+            created_atoms = trainer.bridge.feed_text(content, doc_id=str(doc_path))
+            links_created += len(created_atoms)
+            docs_processed += 1
+
+            if not quiet and docs_processed % 50 == 0:
+                print(f"  Processed {docs_processed}/{len(docs_to_process)} documents...")
+
+        except Exception as e:
+            if not quiet:
+                print(f"  Warning: Could not process {doc_path}: {e}")
+
+    # Save the rebuilt bridge
+    if not quiet:
+        print()
+        print("Saving rebuilt links...")
+
+    trainer.save()
+
+    elapsed = time.perf_counter() - start_time
+
+    if output_metrics:
+        metrics = {
+            "documents_processed": docs_processed,
+            "links_created": links_created,
+            "vocabulary_size": trainer.manifest.vocabulary_size,
+            "rebuild_time_ms": int(elapsed * 1000),
+        }
+        print(json.dumps(metrics, indent=2))
+    elif not quiet:
+        print()
+        print(f"Rebuild complete in {elapsed:.1f}s")
+        print(f"  Documents processed: {docs_processed}")
+        print(f"  Links created: {links_created}")
+
+    return 0
 
 
 # =============================================================================
