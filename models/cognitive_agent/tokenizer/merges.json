@@ -1,241 +1,192 @@
 [
   [
     [
-      "dict",
-      "str"
+      "python",
+      "cortical"
     ],
-    "dict_str"
+    "python_cortical"
   ],
   [
     [
-      "if",
-      "not"
+      "cortical",
+      "cognitive"
     ],
-    "if_not"
+    "cortical_cognitive"
   ],
   [
     [
-      "in",
-      "self"
+      "text",
+      "to"
     ],
-    "in_self"
+    "text_to"
   ],
   [
     [
-      "entity",
-      "type"
+      "to",
+      "atoms"
     ],
-    "entity_type"
+    "to_atoms"
   ],
   [
     [
-      "for",
-      "in"
+      "atoms",
+      "bridge"
     ],
-    "for_in"
+    "atoms_bridge"
   ],
   [
     [
-      "str",
-      "any"
+      "split",
+      "identifier"
     ],
-    "str_any"
+    "split_identifier"
   ],
   [
     [
-      "list",
-      "str"
+      "root",
+      "cause"
     ],
-    "list_str"
+    "root_cause"
   ],
   [
     [
-      "doc",
-      "id"
+      "the",
+      "right"
     ],
-    "doc_id"
+    "the_right"
   ],
   [
     [
-      "return",
-      "self"
+      "deep",
+      "code"
     ],
-    "return_self"
+    "deep_code"
   ],
   [
     [
-      "task",
-      "id"
+      "code",
+      "review"
     ],
-    "task_id"
+    "code_review"
   ],
   [
     [
-      "if",
-      "self"
+      "does",
+      "it"
     ],
-    "if_self"
+    "does_it"
   ],
   [
     [
-      "entity",
-      "id"
+      "some",
+      "class"
     ],
-    "entity_id"
+    "some_class"
   ],
   [
     [
-      "list",
-      "of"
+      "the",
+      "tokenizer"
     ],
-    "list_of"
+    "the_tokenizer"
   ],
   [
     [
-      "data",
-      "get"
+      "camel",
+      "case"
     ],
-    "data_get"
+    "camel_case"
   ],
   [
     [
-      "id",
-      "str"
+      "cortical",
+      "tokenizer"
     ],
-    "id_str"
+    "cortical_tokenizer"
   ],
   [
     [
-      "str",
-      "none"
+      "cognitive",
+      "query"
     ],
-    "str_none"
-  ],
-  [
-    [
-      "not",
-      "in"
-    ],
-    "not_in"
-  ],
-  [
-    [
-      "def",
-      "get"
-    ],
-    "def_get"
-  ],
-  [
-    [
-      "node",
-      "id"
-    ],
-    "node_id"
-  ],
-  [
-    [
-      "value",
-      "error"
-    ],
-    "value_error"
-  ],
-  [
-    [
-      "id",
-      "if"
-    ],
-    "id_if"
-  ],
-  [
-    [
-      "str",
-      "float"
-    ],
-    "str_float"
-  ],
-  [
-    [
-      "lines",
-      "append"
-    ],
-    "lines_append"
-  ],
-  [
-    [
-      "edge",
-      "type"
-    ],
-    "edge_type"
+    "cognitive_query"
   ],
   [
     [
       "is",
-      "not"
+      "the"
     ],
-    "is_not"
+    "is_the"
   ],
   [
     [
-      "id",
-      "in"
+      "did",
+      "you"
     ],
-    "id_in"
+    "did_you"
   ],
   [
     [
-      "target",
-      "id"
+      "git",
+      "log"
     ],
-    "target_id"
-  ],
-  [
-    [
-      "len",
-      "self"
-    ],
-    "len_self"
-  ],
-  [
-    [
-      "field",
-      "default"
-    ],
-    "field_default"
-  ],
-  [
-    [
-      "default",
-      "factory"
-    ],
-    "default_factory"
-  ],
-  [
-    [
-      "is",
-      "none"
-    ],
-    "is_none"
-  ],
-  [
-    [
-      "optional",
-      "str"
-    ],
-    "optional_str"
+    "git_log"
   ],
   [
     [
       "file",
-      "path"
+      "py"
     ],
-    "file_path"
+    "file_py"
   ],
   [
     [
-      "number",
-      "of"
+      "test",
+      "the"
     ],
-    "number_of"
+    "test_the"
+  ],
+  [
+    [
+      "deep",
+      "dive"
+    ],
+    "deep_dive"
+  ],
+  [
+    [
+      "the",
+      "word"
+    ],
+    "the_word"
+  ],
+  [
+    [
+      "no",
+      "associations"
+    ],
+    "no_associations"
+  ],
+  [
+    [
+      "import",
+      "inspect"
+    ],
+    "import_inspect"
+  ],
+  [
+    [
+      "inspect",
+      "signature"
+    ],
+    "inspect_signature"
+  ],
+  [
+    [
+      "inspect",
+      "getsource"
+    ],
+    "inspect_getsource"
   ],
   [
     [
@@ -246,31 +197,346 @@
   ],
   [
     [
-      "returns",
-      "list"
+      "existing",
+      "code"
     ],
-    "returns_list"
+    "existing_code"
   ],
   [
     [
-      "str",
-      "list"
+      "does",
+      "the"
     ],
-    "str_list"
+    "does_the"
   ],
   [
     [
-      "error",
-      "if"
+      "bpe",
+      "tokenizer"
     ],
-    "error_if"
+    "bpe_tokenizer"
+  ],
+  [
+    [
+      "what",
+      "did"
+    ],
+    "what_did"
+  ],
+  [
+    [
+      "cognitive",
+      "agent"
+    ],
+    "cognitive_agent"
+  ],
+  [
+    [
+      "right",
+      "thing"
+    ],
+    "right_thing"
+  ],
+  [
+    [
+      "does",
+      "this"
+    ],
+    "does_this"
+  ],
+  [
+    [
+      "step",
+      "review"
+    ],
+    "step_review"
+  ],
+  [
+    [
+      "edge",
+      "cases"
+    ],
+    "edge_cases"
+  ],
+  [
+    [
+      "the",
+      "root"
+    ],
+    "the_root"
+  ],
+  [
+    [
+      "split",
+      "camel"
+    ],
+    "split_camel"
+  ],
+  [
+    [
+      "case",
+      "identifiers"
+    ],
+    "case_identifiers"
+  ],
+  [
+    [
+      "in",
+      "vocabulary"
+    ],
+    "in_vocabulary"
+  ],
+  [
+    [
+      "word",
+      "has"
+    ],
+    "word_has"
+  ],
+  [
+    [
+      "bash",
+      "find"
+    ],
+    "bash_find"
+  ],
+  [
+    [
+      "grep",
+      "class"
+    ],
+    "grep_class"
+  ],
+  [
+    [
+      "cortical",
+      "find"
+    ],
+    "cortical_find"
+  ],
+  [
+    [
+      "grep",
+      "def"
+    ],
+    "grep_def"
+  ],
+  [
+    [
+      "grep",
+      "from"
+    ],
+    "grep_from"
+  ],
+  [
+    [
+      "import",
+      "cortical"
+    ],
+    "import_cortical"
+  ],
+  [
+    [
+      "python",
+      "import"
+    ],
+    "python_import"
+  ],
+  [
+    [
+      "understand",
+      "function"
+    ],
+    "understand_function"
+  ],
+  [
+    [
+      "sig",
+      "inspect"
+    ],
+    "sig_inspect"
+  ],
+  [
+    [
+      "tokenizer",
+      "import"
+    ],
+    "tokenizer_import"
+  ],
+  [
+    [
+      "cortical",
+      "grep"
+    ],
+    "cortical_grep"
+  ],
+  [
+    [
+      "complex",
+      "logic"
+    ],
+    "complex_logic"
+  ],
+  [
+    [
+      "the",
+      "wheel"
+    ],
+    "the_wheel"
+  ],
+  [
+    [
+      "tok",
+      "tokenize"
+    ],
+    "tok_tokenize"
+  ],
+  [
+    [
+      "and",
+      "test"
+    ],
+    "and_test"
+  ],
+  [
+    [
+      "log",
+      "oneline"
+    ],
+    "log_oneline"
+  ],
+  [
+    [
+      "recent",
+      "changes"
+    ],
+    "recent_changes"
+  ],
+  [
+    [
+      "changes",
+      "git"
+    ],
+    "changes_git"
+  ],
+  [
+    [
+      "cortical",
+      "cli"
+    ],
+    "cortical_cli"
+  ],
+  [
+    [
+      "cli",
+      "audit"
+    ],
+    "cli_audit"
+  ],
+  [
+    [
+      "audit",
+      "health"
+    ],
+    "audit_health"
+  ],
+  [
+    [
+      "you",
+      "learn"
+    ],
+    "you_learn"
   ],
   [
     [
       "not",
-      "none"
+      "just"
     ],
-    "not_none"
+    "not_just"
+  ],
+  [
+    [
+      "to",
+      "understand"
+    ],
+    "to_understand"
+  ],
+  [
+    [
+      "the",
+      "code"
+    ],
+    "the_code"
+  ],
+  [
+    [
+      "the",
+      "test"
+    ],
+    "the_test"
+  ],
+  [
+    [
+      "understand",
+      "the"
+    ],
+    "understand_the"
+  ],
+  [
+    [
+      "search",
+      "before"
+    ],
+    "search_before"
+  ],
+  [
+    [
+      "cortical",
+      "check"
+    ],
+    "cortical_check"
+  ],
+  [
+    [
+      "check",
+      "for"
+    ],
+    "check_for"
+  ],
+  [
+    [
+      "the",
+      "tests"
+    ],
+    "the_tests"
+  ],
+  [
+    [
+      "tests",
+      "are"
+    ],
+    "tests_are"
+  ],
+  [
+    [
+      "ap",
+      "is"
+    ],
+    "ap_is"
+  ],
+  [
+    [
+      "tests",
+      "can"
+    ],
+    "tests_can"
+  ],
+  [
+    [
+      "class",
+      "method"
+    ],
+    "class_method"
   ],
   [
     [
@@ -281,422 +547,156 @@
   ],
   [
     [
-      "init",
-      "self"
+      "xml",
+      "parser"
     ],
-    "init_self"
+    "xml_parser"
   ],
   [
     [
-      "add",
-      "argument"
+      "deep",
+      "dives"
     ],
-    "add_argument"
+    "deep_dives"
   ],
   [
     [
-      "not",
-      "self"
+      "analysis",
+      "techniques"
     ],
-    "not_self"
+    "analysis_techniques"
   ],
   [
     [
-      "str",
-      "str"
+      "analysis",
+      "is"
     ],
-    "str_str"
+    "analysis_is"
   ],
   [
     [
-      "to",
-      "dict"
+      "about",
+      "understanding"
     ],
-    "to_dict"
+    "about_understanding"
   ],
   [
     [
-      "truth",
-      "value"
+      "understanding",
+      "before"
     ],
-    "truth_value"
+    "understanding_before"
   ],
   [
     [
-      "datetime",
-      "now"
+      "before",
+      "acting"
     ],
-    "datetime_now"
-  ],
-  [
-    [
-      "not",
-      "found"
-    ],
-    "not_found"
-  ],
-  [
-    [
-      "event",
-      "id"
-    ],
-    "event_id"
-  ],
-  [
-    [
-      "def",
-      "init"
-    ],
-    "def_init"
-  ],
-  [
-    [
-      "path",
-      "path"
-    ],
-    "path_path"
-  ],
-  [
-    [
-      "if",
-      "len"
-    ],
-    "if_len"
-  ],
-  [
-    [
-      "dataclass",
-      "class"
-    ],
-    "dataclass_class"
-  ],
-  [
-    [
-      "self",
-      "dict"
-    ],
-    "self_dict"
-  ],
-  [
-    [
-      "id",
-      "self"
-    ],
-    "id_self"
-  ],
-  [
-    [
-      "sprint",
-      "id"
-    ],
-    "sprint_id"
-  ],
-  [
-    [
-      "raise",
-      "value"
-    ],
-    "raise_value"
-  ],
-  [
-    [
-      "source",
-      "id"
-    ],
-    "source_id"
-  ],
-  [
-    [
-      "self",
-      "get"
-    ],
-    "self_get"
-  ],
-  [
-    [
-      "parser",
-      "add"
-    ],
-    "parser_add"
-  ],
-  [
-    [
-      "set",
-      "str"
-    ],
-    "set_str"
-  ],
-  [
-    [
-      "bool",
-      "true"
-    ],
-    "bool_true"
-  ],
-  [
-    [
-      "list",
-      "tuple"
-    ],
-    "list_tuple"
-  ],
-  [
-    [
-      "semantic",
-      "relations"
-    ],
-    "semantic_relations"
-  ],
-  [
-    [
-      "from",
-      "typing"
-    ],
-    "from_typing"
-  ],
-  [
-    [
-      "typing",
-      "import"
-    ],
-    "typing_import"
-  ],
-  [
-    [
-      "node",
-      "type"
-    ],
-    "node_type"
-  ],
-  [
-    [
-      "tuple",
-      "str"
-    ],
-    "tuple_str"
-  ],
-  [
-    [
-      "none",
-      "if"
-    ],
-    "none_if"
-  ],
-  [
-    [
-      "self",
-      "graph"
-    ],
-    "self_graph"
-  ],
-  [
-    [
-      "get",
-      "all"
-    ],
-    "get_all"
-  ],
-  [
-    [
-      "go",
-      "manager"
-    ],
-    "go_manager"
-  ],
-  [
-    [
-      "based",
-      "on"
-    ],
-    "based_on"
-  ],
-  [
-    [
-      "return",
-      "none"
-    ],
-    "return_none"
-  ],
-  [
-    [
-      "return",
-      "false"
-    ],
-    "return_false"
-  ],
-  [
-    [
-      "of",
-      "the"
-    ],
-    "of_the"
-  ],
-  [
-    [
-      "from",
-      "dict"
-    ],
-    "from_dict"
-  ],
-  [
-    [
-      "id",
-      "return"
-    ],
-    "id_return"
-  ],
-  [
-    [
-      "cortical",
-      "layer"
-    ],
-    "cortical_layer"
-  ],
-  [
-    [
-      "str",
-      "field"
-    ],
-    "str_field"
-  ],
-  [
-    [
-      "self",
-      "config"
-    ],
-    "self_config"
-  ],
-  [
-    [
-      "self",
-      "entity"
-    ],
-    "self_entity"
-  ],
-  [
-    [
-      "self",
-      "list"
-    ],
-    "self_list"
-  ],
-  [
-    [
-      "cognitive",
-      "event"
-    ],
-    "cognitive_event"
-  ],
-  [
-    [
-      "str",
-      "int"
-    ],
-    "str_int"
-  ],
-  [
-    [
-      "must",
-      "be"
-    ],
-    "must_be"
-  ],
-  [
-    [
-      "created",
-      "at"
-    ],
-    "created_at"
-  ],
-  [
-    [
-      "true",
-      "if"
-    ],
-    "true_if"
-  ],
-  [
-    [
-      "id",
-      "not"
-    ],
-    "id_not"
-  ],
-  [
-    [
-      "in",
-      "the"
-    ],
-    "in_the"
-  ],
-  [
-    [
-      "woven",
-      "mind"
-    ],
-    "woven_mind"
-  ],
-  [
-    [
-      "factory",
-      "list"
-    ],
-    "factory_list"
-  ],
-  [
-    [
-      "classmethod",
-      "def"
-    ],
-    "classmethod_def"
+    "before_acting"
   ],
   [
     [
       "key",
-      "lambda"
+      "principles"
     ],
-    "key_lambda"
+    "key_principles"
   ],
   [
     [
-      "type",
-      "str"
+      "question",
+      "assumptions"
     ],
-    "type_str"
+    "question_assumptions"
   ],
   [
     [
-      "count",
-      "self"
+      "follow",
+      "the"
     ],
-    "count_self"
+    "follow_the"
   ],
   [
     [
-      "event",
-      "store"
+      "test",
+      "your"
     ],
-    "event_store"
+    "test_your"
   ],
   [
     [
-      "bool",
-      "false"
+      "why",
+      "did"
     ],
-    "bool_false"
+    "why_did"
   ],
   [
     [
-      "none",
-      "return"
+      "isolated",
+      "token"
     ],
-    "none_return"
+    "isolated_token"
   ],
   [
     [
-      "with",
-      "open"
+      "words",
+      "co"
     ],
-    "with_open"
+    "words_co"
+  ],
+  [
+    [
+      "tokenizer",
+      "doesn"
+    ],
+    "tokenizer_doesn"
+  ],
+  [
+    [
+      "doesn",
+      "split"
+    ],
+    "doesn_split"
+  ],
+  [
+    [
+      "has",
+      "no"
+    ],
+    "has_no"
+  ],
+  [
+    [
+      "word",
+      "is"
+    ],
+    "word_is"
+  ],
+  [
+    [
+      "code",
+      "analysis"
+    ],
+    "code_analysis"
+  ],
+  [
+    [
+      "static",
+      "analysis"
+    ],
+    "static_analysis"
+  ],
+  [
+    [
+      "analysis",
+      "analyze"
+    ],
+    "analysis_analyze"
+  ],
+  [
+    [
+      "analyze",
+      "code"
+    ],
+    "analyze_code"
   ]
 ]

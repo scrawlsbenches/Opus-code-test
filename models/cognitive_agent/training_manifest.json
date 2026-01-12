@@ -1,10 +1,10 @@
 {
   "model_version": "1.0",
-  "last_training": "2026-01-12T16:38:21.602103",
-  "total_documents": 1845,
-  "vocabulary_size": 29673,
-  "last_reindex_doc_count": 1845,
-  "idf_epoch": 4,
+  "last_training": "2026-01-12T16:50:14.865884",
+  "total_documents": 1848,
+  "vocabulary_size": 29679,
+  "last_reindex_doc_count": 1848,
+  "idf_epoch": 5,
   "documents": {
     "accordion_repair.txt": {
       "path": "accordion_repair.txt",
@@ -11075,6 +11075,24 @@
       "content_hash": "209e0b947af3008e",
       "trained_at": "2026-01-12T15:28:36.078210",
       "word_count": 243
+    },
+    "analysis_techniques_and_patterns.md": {
+      "path": "analysis_techniques_and_patterns.md",
+      "content_hash": "189669c43ff05287",
+      "trained_at": "2026-01-12T16:50:14.828798",
+      "word_count": 753
+    },
+    "how_to_perform_deep_code_reviews.md": {
+      "path": "how_to_perform_deep_code_reviews.md",
+      "content_hash": "6d4c6eedf276c38d",
+      "trained_at": "2026-01-12T16:50:14.849064",
+      "word_count": 682
+    },
+    "how_to_perform_deep_dives.md": {
+      "path": "how_to_perform_deep_dives.md",
+      "content_hash": "21436fbe89966cf0",
+      "trained_at": "2026-01-12T16:50:14.865664",
+      "word_count": 519
     }
   }
 }
