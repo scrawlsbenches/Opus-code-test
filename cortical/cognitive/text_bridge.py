@@ -224,14 +224,24 @@ class BPETokenizer:
         Normalize text for consistent tokenization.
 
         Currently:
+            - Split CamelCase identifiers (TextToAtomsBridge -> Text To Atoms Bridge)
+            - Split snake_case identifiers (text_to_atoms_bridge -> text to atoms bridge)
             - Lowercase
             - Remove excessive whitespace
 
-        Future extensions:
-            - Unicode normalization
-            - Accent handling
-            - Custom normalization rules
+        Why split identifiers?
+            Code class names like "TextToAtomsBridge" become isolated tokens that
+            have no semantic links. Splitting them allows queries for "bridge" or
+            "atoms" to find the class. This significantly improves code search.
         """
+        # Split CamelCase: insert space before uppercase letters (except at start)
+        # e.g., "TextToAtomsBridge" -> "Text To Atoms Bridge"
+        text = re.sub(r'(?<!^)(?=[A-Z])', ' ', text)
+
+        # Split snake_case: replace underscores with spaces
+        # e.g., "text_to_atoms_bridge" -> "text to atoms bridge"
+        text = text.replace('_', ' ')
+
         return text.lower().strip()
 
     def _split_words(self, text: str) -> List[str]:
