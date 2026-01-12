@@ -240,12 +240,22 @@ class BPETokenizer:
         identifier_pattern = re.compile(r'\b_*[a-zA-Z][a-zA-Z0-9_]*\b')
 
         def replace_identifier(match: re.Match) -> str:
-            """Replace identifier with its split components."""
+            """Replace identifier with full form AND split components.
+
+            We preserve BOTH:
+            - Full identifier (texttoatomsbridge) for exact matches
+            - Split parts (text to atoms bridge) for semantic search
+
+            This allows queries for either "TextToAtomsBridge" or "atoms bridge"
+            to find the same code.
+            """
             identifier = match.group(0)
             # Check if it looks like an identifier (has underscore or internal capitals)
             if '_' in identifier or any(c.isupper() for c in identifier[1:]):
                 parts = split_identifier(identifier)
-                return ' '.join(parts)
+                full_lower = identifier.lower().replace('_', '')
+                # Include both: full identifier AND split parts
+                return f"{full_lower} {' '.join(parts)}"
             return identifier.lower()
 
         text = identifier_pattern.sub(replace_identifier, text)

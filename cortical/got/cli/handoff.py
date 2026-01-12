@@ -79,7 +79,7 @@ def cmd_handoff_initiate(args, manager: "GoTManager") -> int:
         instructions = sys.stdin.read().strip()
 
     # Use manager's handoff method (works with TX backend)
-    handoff_id = manager.initiate_handoff(
+    handoff = manager.initiate_handoff(
         source_agent=args.source,
         target_agent=args.target,
         task_id=args.task_id,
@@ -90,6 +90,9 @@ def cmd_handoff_initiate(args, manager: "GoTManager") -> int:
         },
         instructions=instructions,
     )
+
+    # Extract ID from result (may be Handoff object or string)
+    handoff_id = handoff.id if hasattr(handoff, 'id') else str(handoff)
 
     print(f"Handoff initiated: {handoff_id}")
     print(f"  Task: {task.content}")
@@ -318,13 +321,16 @@ def cmd_handoff_session(args, manager: "GoTManager") -> int:
         instructions += f"\n\nNotes: {context['notes']}"
 
     # Create the handoff (no task_id required)
-    handoff_id = manager.initiate_handoff(
+    handoff = manager.initiate_handoff(
         source_agent=args.source,
         target_agent=args.target,
         task_id="",  # Session handoff has no specific task
         context=context,
         instructions=instructions,
     )
+
+    # Extract ID from result (may be Handoff object or string)
+    handoff_id = handoff.id if hasattr(handoff, 'id') else str(handoff)
 
     # Display summary
     print(f"Session handoff created: {handoff_id}")
