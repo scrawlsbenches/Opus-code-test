@@ -47,6 +47,7 @@ if TYPE_CHECKING:
 # Import at runtime to avoid circular imports
 from cortical.cognitive.graph import AtomType, TruthValue
 from cortical.common.filesystem import FileSystem
+from cortical.tokenizer import split_identifier
 
 
 # =============================================================================
@@ -223,26 +224,32 @@ class BPETokenizer:
         """
         Normalize text for consistent tokenization.
 
-        Currently:
-            - Split CamelCase identifiers (TextToAtomsBridge -> Text To Atoms Bridge)
-            - Split snake_case identifiers (text_to_atoms_bridge -> text to atoms bridge)
-            - Lowercase
-            - Remove excessive whitespace
+        Uses cortical.tokenizer.split_identifier to properly handle:
+            - CamelCase (TextToAtomsBridge -> text to atoms bridge)
+            - PascalCase (UserCredentials -> user credentials)
+            - snake_case (get_user_data -> get user data)
+            - Acronyms (XMLParser -> xml parser, parseHTTPResponse -> parse http response)
 
         Why split identifiers?
             Code class names like "TextToAtomsBridge" become isolated tokens that
             have no semantic links. Splitting them allows queries for "bridge" or
             "atoms" to find the class. This significantly improves code search.
         """
-        # Split CamelCase: insert space before uppercase letters (except at start)
-        # e.g., "TextToAtomsBridge" -> "Text To Atoms Bridge"
-        text = re.sub(r'(?<!^)(?=[A-Z])', ' ', text)
+        # Find identifier-like patterns (CamelCase, snake_case, etc.)
+        # Pattern matches: word2vec, getUserData, get_user_data, XMLParser
+        identifier_pattern = re.compile(r'\b_*[a-zA-Z][a-zA-Z0-9_]*\b')
 
-        # Split snake_case: replace underscores with spaces
-        # e.g., "text_to_atoms_bridge" -> "text to atoms bridge"
-        text = text.replace('_', ' ')
+        def replace_identifier(match: re.Match) -> str:
+            """Replace identifier with its split components."""
+            identifier = match.group(0)
+            # Check if it looks like an identifier (has underscore or internal capitals)
+            if '_' in identifier or any(c.isupper() for c in identifier[1:]):
+                parts = split_identifier(identifier)
+                return ' '.join(parts)
+            return identifier.lower()
 
-        return text.lower().strip()
+        text = identifier_pattern.sub(replace_identifier, text)
+        return text.strip()
 
     def _split_words(self, text: str) -> List[str]:
         """
