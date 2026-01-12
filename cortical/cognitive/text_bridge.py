@@ -227,7 +227,7 @@ class BPETokenizer:
         Uses cortical.tokenizer.split_identifier to properly handle:
             - CamelCase (TextToAtomsBridge -> text to atoms bridge)
             - PascalCase (UserCredentials -> user credentials)
-            - snake_case (get_user_data -> get user data)
+            - underscore_style (get_user_data -> get user data)
             - Acronyms (XMLParser -> xml parser, parseHTTPResponse -> parse http response)
 
         Why split identifiers?
@@ -235,7 +235,7 @@ class BPETokenizer:
             have no semantic links. Splitting them allows queries for "bridge" or
             "atoms" to find the class. This significantly improves code search.
         """
-        # Find identifier-like patterns (CamelCase, snake_case, etc.)
+        # Find identifier-like patterns (CamelCase, underscore_style, etc.)
         # Pattern matches: word2vec, getUserData, get_user_data, XMLParser
         identifier_pattern = re.compile(r'\b_*[a-zA-Z][a-zA-Z0-9_]*\b')
 
