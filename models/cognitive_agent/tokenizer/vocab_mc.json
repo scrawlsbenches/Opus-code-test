@@ -1,13 +1,15 @@
 {
-  "mc": 14364,
-  "mca": 14365,
-  "mcaa": 14366,
-  "mccabe": 14367,
-  "mccormick": 14368,
-  "mcdermott": 14369,
-  "mce": 14370,
-  "mcguinness": 14371,
-  "mcm": 14372,
-  "mcp": 14373,
-  "mcpservers": 14374
+  "mc": 14384,
+  "mca": 14385,
+  "mcaa": 14386,
+  "mccabe": 14387,
+  "mccormick": 14388,
+  "mcdermott": 14389,
+  "mce": 14390,
+  "mcguinness": 14391,
+  "mcm": 14392,
+  "mcp": 14393,
+  "mcpservers": 14394,
+  "mcts": 14395,
+  "mctspattern": 14396
 }

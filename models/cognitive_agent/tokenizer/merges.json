@@ -1,24 +1,24 @@
 [
   [
     [
-      "the",
-      "model"
+      "scripts",
+      "py"
     ],
-    "the_model"
+    "scripts_py"
   ],
   [
     [
-      "cortical",
-      "cognitive"
+      "python",
+      "scripts"
     ],
-    "cortical_cognitive"
+    "python_scripts"
   ],
   [
     [
-      "cognitive",
-      "agent"
+      "python",
+      "from"
     ],
-    "cognitive_agent"
+    "python_from"
   ],
   [
     [
@@ -29,108 +29,94 @@
   ],
   [
     [
-      "what",
-      "is"
+      "cortical",
+      "got"
     ],
-    "what_is"
+    "cortical_got"
   ],
   [
     [
-      "def",
-      "self"
+      "text",
+      "processor"
     ],
-    "def_self"
+    "text_processor"
   ],
   [
     [
       "cortical",
-      "tests"
+      "text"
     ],
-    "cortical_tests"
+    "cortical_text"
   ],
   [
     [
-      "root",
-      "cause"
+      "from",
+      "cortical"
     ],
-    "root_cause"
-  ],
-  [
-    [
-      "self",
-      "awareness"
-    ],
-    "self_awareness"
-  ],
-  [
-    [
-      "about",
-      "itself"
-    ],
-    "about_itself"
-  ],
-  [
-    [
-      "self",
-      "training"
-    ],
-    "self_training"
-  ],
-  [
-    [
-      "model",
-      "should"
-    ],
-    "model_should"
-  ],
-  [
-    [
-      "know",
-      "about"
-    ],
-    "know_about"
-  ],
-  [
-    [
-      "word",
-      "in"
-    ],
-    "word_in"
-  ],
-  [
-    [
-      "step",
-      "training"
-    ],
-    "step_training"
-  ],
-  [
-    [
-      "training",
-      "on"
-    ],
-    "training_on"
-  ],
-  [
-    [
-      "auto",
-      "reindex"
-    ],
-    "auto_reindex"
+    "from_cortical"
   ],
   [
     [
       "the",
-      "cognitive"
+      "system"
     ],
-    "the_cognitive"
+    "the_system"
   ],
   [
     [
-      "trained",
+      "scripts",
+      "hubris"
+    ],
+    "scripts_hubris"
+  ],
+  [
+    [
+      "from",
+      "scripts"
+    ],
+    "from_scripts"
+  ],
+  [
+    [
+      "training",
+      "data"
+    ],
+    "training_data"
+  ],
+  [
+    [
+      "architecture",
+      "md"
+    ],
+    "architecture_md"
+  ],
+  [
+    [
+      "descriptor",
+      "md"
+    ],
+    "descriptor_md"
+  ],
+  [
+    [
+      "based",
       "on"
     ],
-    "trained_on"
+    "based_on"
+  ],
+  [
+    [
+      "cold",
+      "start"
+    ],
+    "cold_start"
+  ],
+  [
+    [
+      "how",
+      "to"
+    ],
+    "how_to"
   ],
   [
     [
@@ -141,206 +127,52 @@
   ],
   [
     [
-      "answer",
-      "questions"
+      "query",
+      "search"
     ],
-    "answer_questions"
+    "query_search"
   ],
   [
     [
-      "questions",
-      "about"
+      "guide",
+      "md"
     ],
-    "questions_about"
-  ],
-  [
-    [
-      "tests",
-      "docs"
-    ],
-    "tests_docs"
-  ],
-  [
-    [
-      "code",
-      "prefix"
-    ],
-    "code_prefix"
-  ],
-  [
-    [
-      "idf",
-      "weights"
-    ],
-    "idf_weights"
-  ],
-  [
-    [
-      "training",
-      "coverage"
-    ],
-    "training_coverage"
-  ],
-  [
-    [
-      "can",
-      "answer"
-    ],
-    "can_answer"
-  ],
-  [
-    [
-      "for",
-      "context"
-    ],
-    "for_context"
-  ],
-  [
-    [
-      "context",
-      "recovery"
-    ],
-    "context_recovery"
-  ],
-  [
-    [
-      "effort",
-      "medium"
-    ],
-    "effort_medium"
-  ],
-  [
-    [
-      "effort",
-      "low"
-    ],
-    "effort_low"
-  ],
-  [
-    [
-      "low",
-      "min"
-    ],
-    "low_min"
-  ],
-  [
-    [
-      "path",
-      "path"
-    ],
-    "path_path"
-  ],
-  [
-    [
-      "self",
-      "model"
-    ],
-    "self_model"
-  ],
-  [
-    [
-      "should",
-      "know"
-    ],
-    "should_know"
-  ],
-  [
-    [
-      "ask",
-      "what"
-    ],
-    "ask_what"
-  ],
-  [
-    [
-      "files",
-      "step"
-    ],
-    "files_step"
-  ],
-  [
-    [
-      "to",
-      "repository"
-    ],
-    "to_repository"
-  ],
-  [
-    [
-      "enhancement",
-      "proposals"
-    ],
-    "enhancement_proposals"
-  ],
-  [
-    [
-      "on",
-      "its"
-    ],
-    "on_its"
-  ],
-  [
-    [
-      "couldn",
-      "answer"
-    ],
-    "couldn_answer"
-  ],
-  [
-    [
-      "this",
-      "document"
-    ],
-    "this_document"
-  ],
-  [
-    [
-      "how",
-      "this"
-    ],
-    "how_this"
-  ],
-  [
-    [
-      "training",
-      "gap"
-    ],
-    "training_gap"
+    "guide_md"
   ],
   [
     [
       "key",
-      "directories"
+      "classes"
     ],
-    "key_directories"
+    "key_classes"
   ],
   [
     [
-      "is",
-      "texttoatomsbridge"
+      "cortical",
+      "cognitive"
     ],
-    "is_texttoatomsbridge"
+    "cortical_cognitive"
   ],
   [
     [
-      "on",
-      "samples"
+      "customer",
+      "service"
     ],
-    "on_samples"
+    "customer_service"
   ],
   [
     [
-      "files",
-      "were"
+      "query",
+      "expansion"
     ],
-    "files_were"
+    "query_expansion"
   ],
   [
     [
-      "code",
+      "the",
       "cortical"
     ],
-    "code_cortical"
+    "the_cortical"
   ],
   [
     [
@@ -351,6 +183,363 @@
   ],
   [
     [
+      "git",
+      "ml"
+    ],
+    "git_ml"
+  ],
+  [
+    [
+      "cortical",
+      "projects"
+    ],
+    "cortical_projects"
+  ],
+  [
+    [
+      "pytest",
+      "tests"
+    ],
+    "pytest_tests"
+  ],
+  [
+    [
+      "timestamp",
+      "descriptor"
+    ],
+    "timestamp_descriptor"
+  ],
+  [
+    [
+      "manifest",
+      "md"
+    ],
+    "manifest_md"
+  ],
+  [
+    [
+      "py",
+      "suggest"
+    ],
+    "py_suggest"
+  ],
+  [
+    [
+      "how",
+      "it"
+    ],
+    "how_it"
+  ],
+  [
+    [
+      "cortical",
+      "query"
+    ],
+    "cortical_query"
+  ],
+  [
+    [
+      "quick",
+      "start"
+    ],
+    "quick_start"
+  ],
+  [
+    [
+      "search",
+      "py"
+    ],
+    "search_py"
+  ],
+  [
+    [
+      "contributing",
+      "md"
+    ],
+    "contributing_md"
+  ],
+  [
+    [
+      "how",
+      "do"
+    ],
+    "how_do"
+  ],
+  [
+    [
+      "readme",
+      "md"
+    ],
+    "readme_md"
+  ],
+  [
+    [
+      "document",
+      "purpose"
+    ],
+    "document_purpose"
+  ],
+  [
+    [
+      "experts",
+      "import"
+    ],
+    "experts_import"
+  ],
+  [
+    [
+      "of",
+      "thought"
+    ],
+    "of_thought"
+  ],
+  [
+    [
+      "tf",
+      "idf"
+    ],
+    "tf_idf"
+  ],
+  [
+    [
+      "do",
+      "we"
+    ],
+    "do_we"
+  ],
+  [
+    [
+      "feedback",
+      "loop"
+    ],
+    "feedback_loop"
+  ],
+  [
+    [
+      "claude",
+      "md"
+    ],
+    "claude_md"
+  ],
+  [
+    [
+      "md",
+      "docs"
+    ],
+    "md_docs"
+  ],
+  [
+    [
+      "quickstart",
+      "md"
+    ],
+    "quickstart_md"
+  ],
+  [
+    [
+      "parking",
+      "lot"
+    ],
+    "parking_lot"
+  ],
+  [
+    [
+      "worker",
+      "worker"
+    ],
+    "worker_worker"
+  ],
+  [
+    [
+      "ml",
+      "models"
+    ],
+    "ml_models"
+  ],
+  [
+    [
+      "hubris",
+      "experts"
+    ],
+    "hubris_experts"
+  ],
+  [
+    [
+      "expert",
+      "metrics"
+    ],
+    "expert_metrics"
+  ],
+  [
+    [
+      "cognitive",
+      "state"
+    ],
+    "cognitive_state"
+  ],
+  [
+    [
+      "graph",
+      "of"
+    ],
+    "graph_of"
+  ],
+  [
+    [
+      "neural",
+      "networks"
+    ],
+    "neural_networks"
+  ],
+  [
+    [
+      "processor",
+      "corticaltextprocessor"
+    ],
+    "processor_corticaltextprocessor"
+  ],
+  [
+    [
+      "processor",
+      "save"
+    ],
+    "processor_save"
+  ],
+  [
+    [
+      "got",
+      "import"
+    ],
+    "got_import"
+  ],
+  [
+    [
+      "got",
+      "learning"
+    ],
+    "got_learning"
+  ],
+  [
+    [
+      "it",
+      "works"
+    ],
+    "it_works"
+  ],
+  [
+    [
+      "py",
+      "export"
+    ],
+    "py_export"
+  ],
+  [
+    [
+      "pip",
+      "install"
+    ],
+    "pip_install"
+  ],
+  [
+    [
+      "md",
+      "claude"
+    ],
+    "md_claude"
+  ],
+  [
+    [
+      "out",
+      "of"
+    ],
+    "out_of"
+  ],
+  [
+    [
+      "of",
+      "scope"
+    ],
+    "of_scope"
+  ],
+  [
+    [
+      "decisions",
+      "md"
+    ],
+    "decisions_md"
+  ],
+  [
+    [
+      "from",
+      "import"
+    ],
+    "from_import"
+  ],
+  [
+    [
+      "from",
+      "pathlib"
+    ],
+    "from_pathlib"
+  ],
+  [
+    [
+      "pathlib",
+      "import"
+    ],
+    "pathlib_import"
+  ],
+  [
+    [
+      "import",
+      "path"
+    ],
+    "import_path"
+  ],
+  [
+    [
+      "def",
+      "self"
+    ],
+    "def_self"
+  ],
+  [
+    [
+      "txt",
+      "txt"
+    ],
+    "txt_txt"
+  ],
+  [
+    [
+      "credit",
+      "system"
+    ],
+    "credit_system"
+  ],
+  [
+    [
+      "git",
+      "hooks"
+    ],
+    "git_hooks"
+  ],
+  [
+    [
+      "start",
+      "mode"
+    ],
+    "start_mode"
+  ],
+  [
+    [
+      "all",
+      "experts"
+    ],
+    "all_experts"
+  ],
+  [
+    [
       "analysis",
       "py"
     ],
@@ -358,345 +547,156 @@
   ],
   [
     [
+      "commit",
+      "history"
+    ],
+    "commit_history"
+  ],
+  [
+    [
+      "directory",
+      "contains"
+    ],
+    "directory_contains"
+  ],
+  [
+    [
+      "what",
+      "was"
+    ],
+    "what_was"
+  ],
+  [
+    [
       "py",
-      "from"
+      "python"
     ],
-    "py_from"
+    "py_python"
   ],
   [
     [
-      "index",
-      "code"
-    ],
-    "index_code"
-  ],
-  [
-    [
-      "train",
-      "command"
-    ],
-    "train_command"
-  ],
-  [
-    [
-      "cause",
+      "of",
       "the"
     ],
-    "cause_the"
+    "of_the"
   ],
   [
     [
-      "command",
-      "uses"
+      "why",
+      "it"
     ],
-    "command_uses"
+    "why_it"
   ],
   [
     [
-      "finding",
-      "no"
+      "the",
+      "codebase"
     ],
-    "finding_no"
+    "the_codebase"
   ],
   [
     [
-      "coverage",
-      "without"
+      "code",
+      "search"
     ],
-    "coverage_without"
+    "code_search"
   ],
   [
     [
-      "without",
-      "manual"
+      "woven",
+      "mind"
     ],
-    "without_manual"
+    "woven_mind"
   ],
   [
     [
-      "investigation",
-      "bash"
+      "dual",
+      "process"
     ],
-    "investigation_bash"
+    "dual_process"
   ],
   [
     [
-      "to",
-      "check"
+      "workflow",
+      "ctx"
     ],
-    "to_check"
+    "workflow_ctx"
   ],
   [
     [
-      "import",
-      "json"
+      "question",
+      "answer"
     ],
-    "import_json"
+    "question_answer"
   ],
   [
     [
-      "status",
-      "command"
+      "answer",
+      "produce"
     ],
-    "status_command"
+    "answer_produce"
   ],
   [
     [
-      "shows",
-      "totals"
+      "produce",
+      "verify"
     ],
-    "shows_totals"
+    "produce_verify"
   ],
   [
     [
-      "not",
-      "coverage"
+      "data",
+      "collection"
     ],
-    "not_coverage"
+    "data_collection"
   ],
   [
     [
-      "by",
-      "directory"
+      "file",
+      "prediction"
     ],
-    "by_directory"
+    "file_prediction"
   ],
   [
     [
-      "model",
-      "can"
-    ],
-    "model_can"
-  ],
-  [
-    [
-      "model",
-      "that"
-    ],
-    "model_that"
-  ],
-  [
-    [
-      "that",
-      "can"
-    ],
-    "that_can"
-  ],
-  [
-    [
-      "useful",
-      "for"
-    ],
-    "useful_for"
-  ],
-  [
-    [
-      "command",
-      "priority"
-    ],
-    "command_priority"
-  ],
-  [
-    [
-      "priority",
-      "high"
-    ],
-    "priority_high"
-  ],
-  [
-    [
-      "high",
-      "effort"
-    ],
-    "high_effort"
-  ],
-  [
-    [
-      "bash",
-      "python"
-    ],
-    "bash_python"
-  ],
-  [
-    [
-      "cognitive",
-      "coverage"
-    ],
-    "cognitive_coverage"
-  ],
-  [
-    [
-      "samples",
+      "which",
       "files"
     ],
-    "samples_files"
+    "which_files"
   ],
   [
     [
-      "cognitive",
-      "train"
+      "auth",
+      "py"
     ],
-    "cognitive_train"
+    "auth_py"
   ],
   [
     [
-      "bootstrap",
-      "self"
+      "knowledge",
+      "transfer"
     ],
-    "bootstrap_self"
+    "knowledge_transfer"
   ],
   [
     [
-      "train",
-      "on"
+      "processor",
+      "query"
     ],
-    "train_on"
+    "processor_query"
   ],
   [
     [
-      "on",
-      "cortical"
+      "corticaltextprocessor",
+      "load"
     ],
-    "on_cortical"
+    "corticaltextprocessor_load"
   ],
   [
     [
-      "coverage",
-      "is"
+      "definition",
+      "of"
     ],
-    "coverage_is"
-  ],
-  [
-    [
-      "coverage",
-      "python"
-    ],
-    "coverage_python"
-  ],
-  [
-    [
-      "cortical",
-      "coverage"
-    ],
-    "cortical_coverage"
-  ],
-  [
-    [
-      "path",
-      "normalization"
-    ],
-    "path_normalization"
-  ],
-  [
-    [
-      "priority",
-      "medium"
-    ],
-    "priority_medium"
-  ],
-  [
-    [
-      "medium",
-      "effort"
-    ],
-    "medium_effort"
-  ],
-  [
-    [
-      "medium",
-      "hour"
-    ],
-    "medium_hour"
-  ],
-  [
-    [
-      "in",
-      "manifest"
-    ],
-    "in_manifest"
-  ],
-  [
-    [
-      "python",
-      "in"
-    ],
-    "python_in"
-  ],
-  [
-    [
-      "path",
-      "str"
-    ],
-    "path_str"
-  ],
-  [
-    [
-      "awareness",
-      "test"
-    ],
-    "awareness_test"
-  ],
-  [
-    [
-      "response",
-      "ask"
-    ],
-    "response_ask"
-  ],
-  [
-    [
-      "assert",
-      "any"
-    ],
-    "assert_any"
-  ],
-  [
-    [
-      "any",
-      "word"
-    ],
-    "any_word"
-  ],
-  [
-    [
-      "in",
-      "response"
-    ],
-    "in_response"
-  ],
-  [
-    [
-      "response",
-      "lower"
-    ],
-    "response_lower"
-  ],
-  [
-    [
-      "lower",
-      "for"
-    ],
-    "lower_for"
-  ],
-  [
-    [
-      "for",
-      "word"
-    ],
-    "for_word"
-  ],
-  [
-    [
-      "catch",
-      "training"
-    ],
-    "catch_training"
-  ],
-  [
-    [
-      "training",
-      "regressions"
-    ],
-    "training_regressions"
+    "definition_of"
   ]
 ]

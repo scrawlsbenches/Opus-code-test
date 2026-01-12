@@ -1,8 +1,8 @@
 {
   "model_version": "1.0",
-  "last_training": "2026-01-12T15:21:08.161091",
-  "total_documents": 1835,
-  "vocabulary_size": 29593,
+  "last_training": "2026-01-12T15:28:36.078436",
+  "total_documents": 1845,
+  "vocabulary_size": 29633,
   "last_reindex_doc_count": 1722,
   "idf_epoch": 3,
   "documents": {
@@ -8612,9 +8612,9 @@
     },
     "README.md": {
       "path": "README.md",
-      "content_hash": "728edd17ace2b64f",
-      "trained_at": "2026-01-12T15:07:42.523345",
-      "word_count": 644
+      "content_hash": "fd0db6d8f4d56b5a",
+      "trained_at": "2026-01-12T15:28:35.897190",
+      "word_count": 3435
     },
     "REFACTOR-BOOK-GENERATION.md": {
       "path": "REFACTOR-BOOK-GENERATION.md",
@@ -11015,6 +11015,66 @@
       "content_hash": "05de497febf624ff",
       "trained_at": "2026-01-12T15:21:08.160935",
       "word_count": 944
+    },
+    ".pytest_cache/README.md": {
+      "path": ".pytest_cache/README.md",
+      "content_hash": "73fd6fccdd802c41",
+      "trained_at": "2026-01-12T15:28:35.845665",
+      "word_count": 48
+    },
+    "book/README.md": {
+      "path": "book/README.md",
+      "content_hash": "716adee83fcd4c90",
+      "trained_at": "2026-01-12T15:28:35.911932",
+      "word_count": 240
+    },
+    "cortical/projects/README.md": {
+      "path": "cortical/projects/README.md",
+      "content_hash": "12684b7fc88effb2",
+      "trained_at": "2026-01-12T15:28:35.926255",
+      "word_count": 477
+    },
+    "docs/README.md": {
+      "path": "docs/README.md",
+      "content_hash": "728edd17ace2b64f",
+      "trained_at": "2026-01-12T15:28:35.935105",
+      "word_count": 644
+    },
+    "docs/audits/README.md": {
+      "path": "docs/audits/README.md",
+      "content_hash": "08ce356130dbab97",
+      "trained_at": "2026-01-12T15:28:35.950859",
+      "word_count": 1666
+    },
+    "llm_orchestration/README.md": {
+      "path": "llm_orchestration/README.md",
+      "content_hash": "53cea0b35b149e9d",
+      "trained_at": "2026-01-12T15:28:35.990343",
+      "word_count": 2458
+    },
+    "samples/bdd-examples/README.md": {
+      "path": "samples/bdd-examples/README.md",
+      "content_hash": "a0330102c18f85b2",
+      "trained_at": "2026-01-12T15:28:36.002983",
+      "word_count": 333
+    },
+    "samples/customer_service/README.md": {
+      "path": "samples/customer_service/README.md",
+      "content_hash": "2fae6ae12d4c8034",
+      "trained_at": "2026-01-12T15:28:36.029504",
+      "word_count": 1399
+    },
+    "scripts/hubris/README.md": {
+      "path": "scripts/hubris/README.md",
+      "content_hash": "30d24a052faccef2",
+      "trained_at": "2026-01-12T15:28:36.066355",
+      "word_count": 3134
+    },
+    "tests/benchmarks/README.md": {
+      "path": "tests/benchmarks/README.md",
+      "content_hash": "209e0b947af3008e",
+      "trained_at": "2026-01-12T15:28:36.078210",
+      "word_count": 243
     }
   }
 }
