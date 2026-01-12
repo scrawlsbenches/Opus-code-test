@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "vocab_size": 22600,
+  "vocab_size": 22605,
   "shard_count": 476,
   "shards": [
     "vocab_aa.json",
@@ -482,5 +482,5 @@
   ],
   "min_frequency": 2,
   "max_vocab_size": 10000,
-  "total_docs": 673
+  "total_docs": 674
 }

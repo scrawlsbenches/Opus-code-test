@@ -1,10 +1,10 @@
 {
   "model_version": "1.0",
-  "last_training": "2026-01-12T14:36:24.483772",
-  "total_documents": 668,
-  "vocabulary_size": 22600,
-  "last_reindex_doc_count": 660,
-  "idf_epoch": 1,
+  "last_training": "2026-01-12T14:46:08.145790",
+  "total_documents": 669,
+  "vocabulary_size": 22605,
+  "last_reindex_doc_count": 669,
+  "idf_epoch": 2,
   "documents": {
     "accordion_repair.txt": {
       "path": "accordion_repair.txt",
@@ -4013,6 +4013,12 @@
       "content_hash": "ad438a3e24ffcaa4",
       "trained_at": "2026-01-12T14:36:24.483756",
       "word_count": 916
+    },
+    "session_2026_01_12_manifest_bug_fix.md": {
+      "path": "session_2026_01_12_manifest_bug_fix.md",
+      "content_hash": "cc34b3205d7e7c18",
+      "trained_at": "2026-01-12T14:46:08.145664",
+      "word_count": 433
     }
   }
 }

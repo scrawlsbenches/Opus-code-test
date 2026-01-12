@@ -1,17 +1,10 @@
 [
   [
     [
-      "prism",
-      "slm"
+      "training",
+      "py"
     ],
-    "prism_slm"
-  ],
-  [
-    [
-      "train",
-      "on"
-    ],
-    "train_on"
+    "training_py"
   ],
   [
     [
@@ -22,17 +15,10 @@
   ],
   [
     [
-      "cold",
-      "start"
+      "models",
+      "json"
     ],
-    "cold_start"
-  ],
-  [
-    [
-      "python",
-      "cortical"
-    ],
-    "python_cortical"
+    "models_json"
   ],
   [
     [
@@ -43,381 +29,38 @@
   ],
   [
     [
-      "during",
-      "training"
+      "path",
+      "samples"
     ],
-    "during_training"
+    "path_samples"
   ],
   [
     [
-      "query",
-      "expansion"
+      "samples",
+      "path"
     ],
-    "query_expansion"
+    "samples_path"
   ],
   [
     [
-      "bootstrap",
-      "script"
+      "path",
+      "name"
     ],
-    "bootstrap_script"
+    "path_name"
   ],
   [
     [
-      "instead",
-      "of"
+      "always",
+      "truthy"
     ],
-    "instead_of"
+    "always_truthy"
   ],
   [
     [
-      "follows",
-      "links"
+      "guard",
+      "in"
     ],
-    "follows_links"
-  ],
-  [
-    [
-      "models",
-      "bridge"
-    ],
-    "models_bridge"
-  ],
-  [
-    [
-      "natural",
-      "language"
-    ],
-    "natural_language"
-  ],
-  [
-    [
-      "what",
-      "is"
-    ],
-    "what_is"
-  ],
-  [
-    [
-      "grep",
-      "results"
-    ],
-    "grep_results"
-  ],
-  [
-    [
-      "on",
-      "demand"
-    ],
-    "on_demand"
-  ],
-  [
-    [
-      "first",
-      "pass"
-    ],
-    "first_pass"
-  ],
-  [
-    [
-      "meta",
-      "json"
-    ],
-    "meta_json"
-  ],
-  [
-    [
-      "rebuild",
-      "from"
-    ],
-    "rebuild_from"
-  ],
-  [
-    [
-      "redundant",
-      "with"
-    ],
-    "redundant_with"
-  ],
-  [
-    [
-      "is",
-      "the"
-    ],
-    "is_the"
-  ],
-  [
-    [
-      "cognitive",
-      "agent"
-    ],
-    "cognitive_agent"
-  ],
-  [
-    [
-      "only",
-      "if"
-    ],
-    "only_if"
-  ],
-  [
-    [
-      "the",
-      "model"
-    ],
-    "the_model"
-  ],
-  [
-    [
-      "we",
-      "need"
-    ],
-    "we_need"
-  ],
-  [
-    [
-      "then",
-      "echo"
-    ],
-    "then_echo"
-  ],
-  [
-    [
-      "pass",
-      "generation"
-    ],
-    "pass_generation"
-  ],
-  [
-    [
-      "task",
-      "justification"
-    ],
-    "task_justification"
-  ],
-  [
-    [
-      "justification",
-      "effort"
-    ],
-    "justification_effort"
-  ],
-  [
-    [
-      "git",
-      "history"
-    ],
-    "git_history"
-  ],
-  [
-    [
-      "merge",
-      "conflicts"
-    ],
-    "merge_conflicts"
-  ],
-  [
-    [
-      "from",
-      "committed"
-    ],
-    "from_committed"
-  ],
-  [
-    [
-      "committed",
-      "vocabulary"
-    ],
-    "committed_vocabulary"
-  ],
-  [
-    [
-      "the",
-      "cognitiveagent"
-    ],
-    "the_cognitiveagent"
-  ],
-  [
-    [
-      "cognitiveagent",
-      "graph"
-    ],
-    "cognitiveagent_graph"
-  ],
-  [
-    [
-      "cognitiveagent",
-      "already"
-    ],
-    "cognitiveagent_already"
-  ],
-  [
-    [
-      "already",
-      "has"
-    ],
-    "already_has"
-  ],
-  [
-    [
-      "if",
-      "cognitiveagent"
-    ],
-    "if_cognitiveagent"
-  ],
-  [
-    [
-      "cortical",
-      "query"
-    ],
-    "cortical_query"
-  ],
-  [
-    [
-      "expansion",
-      "py"
-    ],
-    "expansion_py"
-  ],
-  [
-    [
-      "operates",
-      "on"
-    ],
-    "operates_on"
-  ],
-  [
-    [
-      "on",
-      "corticaltextprocessor"
-    ],
-    "on_corticaltextprocessor"
-  ],
-  [
-    [
-      "corticaltextprocessor",
-      "not"
-    ],
-    "corticaltextprocessor_not"
-  ],
-  [
-    [
-      "not",
-      "cognitiveagent"
-    ],
-    "not_cognitiveagent"
-  ],
-  [
-    [
-      "in",
-      "gitignore"
-    ],
-    "in_gitignore"
-  ],
-  [
-    [
-      "from",
-      "gitignore"
-    ],
-    "from_gitignore"
-  ],
-  [
-    [
-      "with",
-      "cognitiveagent"
-    ],
-    "with_cognitiveagent"
-  ],
-  [
-    [
-      "brain",
-      "memory"
-    ],
-    "brain_memory"
-  ],
-  [
-    [
-      "the",
-      "cognitive"
-    ],
-    "the_cognitive"
-  ],
-  [
-    [
-      "query",
-      "for"
-    ],
-    "query_for"
-  ],
-  [
-    [
-      "intent",
-      "disambiguation"
-    ],
-    "intent_disambiguation"
-  ],
-  [
-    [
-      "to",
-      "improve"
-    ],
-    "to_improve"
-  ],
-  [
-    [
-      "similarity",
-      "links"
-    ],
-    "similarity_links"
-  ],
-  [
-    [
-      "need",
-      "to"
-    ],
-    "need_to"
-  ],
-  [
-    [
-      "training",
-      "pipeline"
-    ],
-    "training_pipeline"
-  ],
-  [
-    [
-      "apply",
-      "during"
-    ],
-    "apply_during"
-  ],
-  [
-    [
-      "priority",
-      "low"
-    ],
-    "priority_low"
-  ],
-  [
-    [
-      "testing",
-      "shows"
-    ],
-    "testing_shows"
-  ],
-  [
-    [
-      "list",
-      "str"
-    ],
-    "list_str"
-  ],
-  [
-    [
-      "if",
-      "vocabulary"
-    ],
-    "if_vocabulary"
+    "guard_in"
   ],
   [
     [
@@ -428,220 +71,276 @@
   ],
   [
     [
-      "what",
-      "we"
+      "manifest",
+      "documents"
     ],
-    "what_we"
+    "manifest_documents"
   ],
   [
     [
-      "reasoning",
-      "py"
+      "exists",
+      "and"
     ],
-    "reasoning_py"
+    "exists_and"
   ],
   [
     [
-      "overkill",
-      "for"
-    ],
-    "overkill_for"
-  ],
-  [
-    [
-      "for",
-      "simple"
-    ],
-    "for_simple"
-  ],
-  [
-    [
-      "simple",
-      "queries"
-    ],
-    "simple_queries"
-  ],
-  [
-    [
-      "current",
-      "state"
-    ],
-    "current_state"
-  ],
-  [
-    [
-      "slm",
-      "integration"
-    ],
-    "slm_integration"
-  ],
-  [
-    [
-      "new",
-      "training"
-    ],
-    "new_training"
-  ],
-  [
-    [
-      "on",
-      "grep"
-    ],
-    "on_grep"
-  ],
-  [
-    [
-      "storage",
-      "class"
-    ],
-    "storage_class"
-  ],
-  [
-    [
-      "class",
-      "definition"
-    ],
-    "class_definition"
-  ],
-  [
-    [
-      "storage",
-      "py"
-    ],
-    "storage_py"
-  ],
-  [
-    [
-      "training",
-      "data"
-    ],
-    "training_data"
-  ],
-  [
-    [
-      "repo",
-      "size"
-    ],
-    "repo_size"
-  ],
-  [
-    [
-      "train",
+      "python",
       "cortical"
     ],
-    "train_cortical"
+    "python_cortical"
   ],
   [
     [
-      "pattern",
-      "py"
+      "invalid",
+      "entry"
     ],
-    "pattern_py"
+    "invalid_entry"
   ],
   [
     [
-      "training",
-      "not"
+      "cognitive",
+      "agent"
     ],
-    "training_not"
+    "cognitive_agent"
   ],
   [
     [
-      "not",
-      "runtime"
+      "is",
+      "directory"
     ],
-    "not_runtime"
+    "is_directory"
   ],
   [
     [
-      "for",
-      "training"
+      "cold",
+      "start"
     ],
-    "for_training"
+    "cold_start"
+  ],
+  [
+    [
+      "scripts",
+      "sh"
+    ],
+    "scripts_sh"
+  ],
+  [
+    [
+      "import",
+      "json"
+    ],
+    "import_json"
   ],
   [
     [
       "json",
-      "files"
+      "json"
     ],
-    "json_files"
+    "json_json"
   ],
   [
     [
-      "derived",
-      "from"
+      "json",
+      "load"
     ],
-    "derived_from"
+    "json_load"
   ],
   [
     [
-      "what",
-      "was"
+      "load",
+      "open"
     ],
-    "what_was"
+    "load_open"
   ],
   [
     [
-      "was",
-      "trained"
+      "open",
+      "models"
     ],
-    "was_trained"
+    "open_models"
   ],
   [
     [
-      "source",
-      "files"
+      "in",
+      "documents"
     ],
-    "source_files"
+    "in_documents"
   ],
   [
     [
-      "rebuild",
+      "documents",
+      "if"
+    ],
+    "documents_if"
+  ],
+  [
+    [
+      "if",
+      "in"
+    ],
+    "if_in"
+  ],
+  [
+    [
+      "in",
+      "python"
+    ],
+    "in_python"
+  ],
+  [
+    [
+      "name",
+      "if"
+    ],
+    "name_if"
+  ],
+  [
+    [
+      "if",
+      "exists"
+    ],
+    "if_exists"
+  ],
+  [
+    [
+      "append",
+      "path"
+    ],
+    "append_path"
+  ],
+  [
+    [
+      "the",
+      "fix"
+    ],
+    "the_fix"
+  ],
+  [
+    [
+      "fix",
+      "guard"
+    ],
+    "fix_guard"
+  ],
+  [
+    [
+      "in",
+      "training"
+    ],
+    "in_training"
+  ],
+  [
+    [
+      "py",
+      "python"
+    ],
+    "py_python"
+  ],
+  [
+    [
+      "skip",
+      "invalid"
+    ],
+    "skip_invalid"
+  ],
+  [
+    [
+      "if",
+      "not"
+    ],
+    "if_not"
+  ],
+  [
+    [
+      "or",
+      "path"
+    ],
+    "or_path"
+  ],
+  [
+    [
+      "in",
+      "or"
+    ],
+    "in_or"
+  ],
+  [
+    [
+      "read",
       "the"
     ],
-    "rebuild_the"
+    "read_the"
+  ],
+  [
+    [
+      "one",
+      "liner"
+    ],
+    "one_liner"
+  ],
+  [
+    [
+      "path",
+      "objects"
+    ],
+    "path_objects"
+  ],
+  [
+    [
+      "objects",
+      "are"
+    ],
+    "objects_are"
+  ],
+  [
+    [
+      "are",
+      "always"
+    ],
+    "are_always"
+  ],
+  [
+    [
+      "at",
+      "entry"
+    ],
+    "at_entry"
+  ],
+  [
+    [
+      "entry",
+      "points"
+    ],
+    "entry_points"
+  ],
+  [
+    [
+      "rm",
+      "rf"
+    ],
+    "rm_rf"
+  ],
+  [
+    [
+      "rf",
+      "models"
+    ],
+    "rf_models"
   ],
   [
     [
       "models",
-      "tokenizer"
+      "bridge"
     ],
-    "models_tokenizer"
+    "models_bridge"
   ],
   [
     [
-      "json",
-      "rebuild"
+      "bridge",
+      "python"
     ],
-    "json_rebuild"
-  ],
-  [
-    [
-      "cache",
-      "branch"
-    ],
-    "cache_branch"
-  ],
-  [
-    [
-      "pre",
-      "built"
-    ],
-    "pre_built"
-  ],
-  [
-    [
-      "model",
-      "cache"
-    ],
-    "model_cache"
-  ],
-  [
-    [
-      "json",
-      "then"
-    ],
-    "json_then"
+    "bridge_python"
   ],
   [
     [
@@ -652,51 +351,23 @@
   ],
   [
     [
-      "content",
-      "addressed"
+      "links",
+      "metrics"
     ],
-    "content_addressed"
+    "links_metrics"
   ],
   [
     [
-      "no",
-      "conflict"
+      "cognitive",
+      "training"
     ],
-    "no_conflict"
+    "cognitive_training"
   ],
   [
     [
-      "merge",
-      "strategy"
+      "py",
+      "guard"
     ],
-    "merge_strategy"
-  ],
-  [
-    [
-      "improving",
-      "natural"
-    ],
-    "improving_natural"
-  ],
-  [
-    [
-      "deep",
-      "analysis"
-    ],
-    "deep_analysis"
-  ],
-  [
-    [
-      "session",
-      "topic"
-    ],
-    "session_topic"
-  ],
-  [
-    [
-      "this",
-      "first"
-    ],
-    "this_first"
+    "py_guard"
   ]
 ]
