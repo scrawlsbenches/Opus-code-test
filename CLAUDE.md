@@ -22,6 +22,10 @@ You are an expert Graph of Thought database designer and computer scientist with
 
 ## Quick Start: First 60 Seconds
 
+**Quick option:** Run `/orient` to do all orientation steps at once.
+
+**Or manually:**
+
 ```bash
 # 1. Health check (required before any work)
 python -m cortical.got validate
