@@ -41,7 +41,8 @@ See also: tests/behavioral/test_code_indexing_spec.py
 1. **No "ask again"** - Generate complete answer or honestly say "I don't know"
 2. **Actionable** - Include file paths, line numbers, CLI commands
 3. **Grounded** - Answers come from trained knowledge + code graph, not hallucination
-4. **Extensible** - Easy to add new question types
+4. **Extensible** - Tool registry allows adding new capabilities without changing core
+5. **Future-ready** - Entry points for CDG queries, GoT integration, custom procedures
 
 ## Architecture
 
@@ -61,11 +62,23 @@ See also: tests/behavioral/test_code_indexing_spec.py
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                   Knowledge Gatherer                             │
-│  - Query vocabulary associations (similar_to)                   │
-│  - Query code structure (callers_of, methods_of, defined_in)    │
-│  - Query text-code bridge (code_for_word)                       │
-│  - Aggregate related information                                │
+│  - Uses Tool Registry to execute queries                        │
+│  - Aggregates results from multiple tools                       │
+│  - Extensible: new tools = new capabilities                     │
 └─────────────────────────────────────────────────────────────────┘
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        ▼                     ▼                     ▼
+┌───────────────┐   ┌───────────────┐   ┌───────────────┐
+│ Tool Registry │   │ Tool Registry │   │ Tool Registry │
+│  (built-in)   │   │   (future)    │   │   (future)    │
+├───────────────┤   ├───────────────┤   ├───────────────┤
+│ similar_to    │   │ cdg_query     │   │ got_tasks     │
+│ callers_of    │   │ cdg_entities  │   │ got_sprint    │
+│ methods_of    │   │ cdg_tx_log    │   │ got_epic      │
+│ code_for_word │   │               │   │ got_decision  │
+│ defined_in    │   │               │   │ got_handoff   │
+└───────────────┘   └───────────────┘   └───────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
@@ -80,6 +93,97 @@ See also: tests/behavioral/test_code_indexing_spec.py
 ┌─────────────────────────────────────────────────────────────────┐
 │                      Formatted Answer                            │
 └─────────────────────────────────────────────────────────────────┘
+```
+
+## Tool Registry (Extensibility)
+
+The Tool Registry allows registering new capabilities without modifying core code.
+
+```python
+class ToolRegistry:
+    """Registry of tools the query system can use."""
+
+    def register(self, name: str, handler: Callable, description: str,
+                 category: str = "general") -> None:
+        """Register a tool.
+
+        Args:
+            name: Tool identifier (e.g., "callers_of")
+            handler: Function to execute (takes target, returns results)
+            description: What this tool does (for intent matching)
+            category: Tool category (cognitive, cdg, got, custom)
+        """
+
+    def get(self, name: str) -> Callable:
+        """Get a registered tool by name."""
+
+    def find_by_category(self, category: str) -> List[Tool]:
+        """Get all tools in a category."""
+
+    def match_intent(self, intent: str) -> List[Tool]:
+        """Find tools that match an intent description."""
+```
+
+### Built-in Tools (Phase 1)
+
+```python
+# Cognitive tools - already implemented via agent.query()
+registry.register("similar_to", agent.query_similar_to,
+                  "Find semantically related words", category="cognitive")
+registry.register("callers_of", agent.query_callers_of,
+                  "Find functions that call target", category="cognitive")
+registry.register("methods_of", agent.query_methods_of,
+                  "Find methods of a class", category="cognitive")
+registry.register("code_for_word", agent.query_code_for_word,
+                  "Find code entities matching word", category="cognitive")
+registry.register("defined_in", agent.query_defined_in,
+                  "Find entities defined in file", category="cognitive")
+```
+
+### Future Tools (Entry Points)
+
+```python
+# CDG Integration (future)
+registry.register("cdg_query", cdg_adapter.query,
+                  "Query CDG entities by type or ID", category="cdg")
+registry.register("cdg_tx_log", cdg_adapter.transaction_log,
+                  "Get recent transactions", category="cdg")
+
+# GoT Integration (future)
+registry.register("got_tasks", got_adapter.list_tasks,
+                  "List tasks by status or priority", category="got")
+registry.register("got_sprint", got_adapter.get_sprint,
+                  "Get current sprint info", category="got")
+registry.register("got_epic", got_adapter.get_epic,
+                  "Get epic with linked tasks", category="got")
+registry.register("got_decision", got_adapter.list_decisions,
+                  "List decisions with rationale", category="got")
+registry.register("got_handoff", got_adapter.list_handoffs,
+                  "List pending handoffs", category="got")
+
+# Custom Procedures (future)
+registry.register("run_tests", custom.run_tests,
+                  "Run tests for a module", category="custom")
+registry.register("check_coverage", custom.check_coverage,
+                  "Get coverage for file", category="custom")
+```
+
+### Adding New Tools
+
+To add a new capability later:
+
+```python
+# 1. Define the handler
+def my_custom_tool(target: str) -> List[Any]:
+    """My custom query logic."""
+    return results
+
+# 2. Register it
+registry.register("my_tool", my_custom_tool,
+                  "Description for intent matching",
+                  category="custom")
+
+# 3. It's now available to the query system
 ```
 
 ## Question Types and Query Strategies
@@ -190,8 +294,10 @@ class TestAskCommand:
 | File | Change |
 |------|--------|
 | `tests/behavioral/test_nl_query_spec.py` | NEW - behavioral tests (FIRST) |
+| `cortical/cognitive/tool_registry.py` | NEW - Tool registry for extensibility |
 | `cortical/cognitive/nl_query.py` | NEW - Intent parser, gatherer, generator |
 | `cortical/cognitive/__main__.py` | Add `ask` command |
+| `cortical/cognitive/adapters/` | FUTURE - CDG and GoT adapter entry points |
 
 ## Execution Order
 
@@ -203,11 +309,13 @@ class TestAskCommand:
 6. Verify all tests pass
 7. Test on real questions
 
-## Open Questions
+## Design Decisions (Resolved)
 
-1. Should we cache responses for common questions?
-2. Should we log questions to learn what users ask?
-3. Should responses include confidence scores?
+1. **Caching:** Only if needed for effective agent use. Start without, add if performance requires.
+
+2. **Question logging:** Yes, but implement towards the end of the process. Log to learn what questions are asked and improve the system over time.
+
+3. **Confidence scores:** Only if it doesn't get in the way or cause issues. Keep responses clean and actionable first.
 
 ## Dependencies
 
