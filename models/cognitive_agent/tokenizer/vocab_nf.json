@@ -1,8 +1,21 @@
 {
-  "nfacts": 13217,
-  "nfiles": 13218,
-  "nfinal": 13219,
-  "nfindings": 13220,
-  "nformed": 13221,
-  "nfpa": 13222
+  "nfacts": 15824,
+  "nfailed": 15825,
+  "nfailure": 15826,
+  "nfastest": 15827,
+  "nfc": 15828,
+  "nfd": 15829,
+  "nfile": 15830,
+  "nfiles": 15831,
+  "nfinal": 15832,
+  "nfind": 15833,
+  "nfindings": 15834,
+  "nfingerprint": 15835,
+  "nfixes": 15836,
+  "nformed": 15837,
+  "nfound": 15838,
+  "nfpa": 15839,
+  "nfs": 15840,
+  "nfull": 15841,
+  "nfunction": 15842
 }

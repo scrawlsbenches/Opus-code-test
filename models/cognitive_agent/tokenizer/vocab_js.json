@@ -1,7 +1,10 @@
 {
-  "js": 10820,
-  "json": 10821,
-  "jsondecodeerror": 10822,
-  "jsonify": 10823,
-  "jsonl": 10824
+  "js": 12851,
+  "json": 12852,
+  "jsonb": 12853,
+  "jsondecodeerror": 12854,
+  "jsonencoder": 12855,
+  "jsonify": 12856,
+  "jsonl": 12857,
+  "jsx": 12858
 }

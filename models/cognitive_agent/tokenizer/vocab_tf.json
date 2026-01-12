@@ -1,4 +1,7 @@
 {
-  "tf": 20320,
-  "tfidf": 20321
+  "tf": 26805,
+  "tfeature": 26806,
+  "tfidf": 26807,
+  "tfidfsearcher": 26808,
+  "tfoo": 26809
 }
