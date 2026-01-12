@@ -1,11 +1,12 @@
 {
-  "ls": 13980,
-  "lsd": 13981,
-  "lsh": 13982,
-  "lsl": 13983,
-  "lsm": 13984,
-  "lsmtrainingstore": 13985,
-  "lsp": 13986,
-  "lstm": 13987,
-  "lstrip": 13988
+  "ls": 14005,
+  "lsd": 14006,
+  "lsh": 14007,
+  "lsl": 14008,
+  "lsm": 14009,
+  "lsmtrainingstore": 14010,
+  "lsof": 14011,
+  "lsp": 14012,
+  "lstm": 14013,
+  "lstrip": 14014
 }
