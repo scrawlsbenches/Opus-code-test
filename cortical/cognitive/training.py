@@ -129,6 +129,9 @@ class TrainingManifest:
         word_count: int = 0,
     ) -> None:
         """Record a newly trained document."""
+        # Skip invalid paths (directories, empty paths)
+        if not path or path in ('.', '..') or path.endswith('/'):
+            return
         self.documents[path] = TrainedDocument(
             path=path,
             content_hash=content_hash,
@@ -1647,13 +1650,16 @@ def _run_rebuild_links(trainer: 'IncrementalTrainer', args) -> int:
     # Count documents to process
     docs_to_process = []
     for doc_path in trainer.manifest.documents:
+        # Skip invalid manifest entries
+        if not doc_path or doc_path in ('.', '..') or doc_path.endswith('/'):
+            continue
         path = Path(doc_path)
         # Try relative to current dir, then samples/
-        if path.exists():
+        if path.exists() and path.is_file():
             docs_to_process.append(path)
-        elif Path("samples") / path.name:
+        else:
             alt_path = Path("samples") / path.name
-            if alt_path.exists():
+            if alt_path.exists() and alt_path.is_file():
                 docs_to_process.append(alt_path)
 
     if not docs_to_process:

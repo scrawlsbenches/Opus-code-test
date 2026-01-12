@@ -1,7 +1,7 @@
 {
   "model_version": "1.0",
-  "last_training": "2026-01-12T14:06:22.697344",
-  "total_documents": 667,
+  "last_training": "2026-01-12T14:36:24.483772",
+  "total_documents": 668,
   "vocabulary_size": 22600,
   "last_reindex_doc_count": 660,
   "idf_epoch": 1,
@@ -4002,10 +4002,16 @@
       "trained_at": "2026-01-12T11:02:16.632295",
       "word_count": 393
     },
-    ".": {
-      "path": ".",
+    "improving_natural_language_queries.md": {
+      "path": "improving_natural_language_queries.md",
+      "content_hash": "5a8b98ef01a3ace6",
+      "trained_at": "2026-01-12T14:36:24.464294",
+      "word_count": 1848
+    },
+    "large_file_management_strategy.md": {
+      "path": "large_file_management_strategy.md",
       "content_hash": "ad438a3e24ffcaa4",
-      "trained_at": "2026-01-12T14:06:22.697302",
+      "trained_at": "2026-01-12T14:36:24.483756",
       "word_count": 916
     }
   }
