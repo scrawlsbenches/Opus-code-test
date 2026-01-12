@@ -185,25 +185,34 @@ class NLQuery:
             return "general"
 
     def _extract_concepts(self, question: str) -> List[str]:
-        """Extract meaningful concepts from question."""
+        """Extract meaningful concepts from question.
+
+        Prioritizes CamelCase/PascalCase terms (like WovenMind, CodeBridge)
+        as they typically represent specific code entities.
+        """
         # Tokenize: split on non-alphanumeric, keep underscores
         tokens = re.findall(r'[a-zA-Z_][a-zA-Z0-9_]*', question)
 
-        # Filter stop words and short tokens
-        concepts = [
-            t.lower() for t in tokens
-            if t.lower() not in STOP_WORDS and len(t) >= 2
-        ]
+        # Filter stop words and short tokens, track original case
+        filtered = []
+        for t in tokens:
+            if t.lower() not in STOP_WORDS and len(t) >= 2:
+                # Check if CamelCase/PascalCase (has internal uppercase)
+                is_camel = any(c.isupper() for c in t[1:])
+                filtered.append((t.lower(), is_camel, t))
 
-        # Remove duplicates while preserving order
+        # Remove duplicates while preserving order, track original index
         seen = set()
         unique = []
-        for c in concepts:
-            if c not in seen:
-                seen.add(c)
-                unique.append(c)
+        for idx, (lower, is_camel, original) in enumerate(filtered):
+            if lower not in seen:
+                seen.add(lower)
+                unique.append((lower, is_camel, idx))
 
-        return unique
+        # Sort: CamelCase terms first, then preserve original order within groups
+        unique.sort(key=lambda x: (not x[1], x[2]))
+
+        return [concept for concept, _, _ in unique]
 
     def _determine_strategy(self, question_type: str, question: str) -> List[str]:
         """Determine which tools to use based on question type."""
