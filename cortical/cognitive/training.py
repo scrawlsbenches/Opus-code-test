@@ -682,6 +682,12 @@ class IncrementalTrainer:
         """Save model, tokenizer, and manifest."""
         from cortical.cognitive.graph_storage import ShardedGraphStorage
 
+        # Initialize staleness tracking baseline on first save
+        # This enables proper staleness calculation after initial training
+        if self.manifest.last_reindex_doc_count == 0 and self.manifest.total_documents > 0:
+            self.manifest.last_reindex_doc_count = self.manifest.total_documents
+            self.manifest.idf_epoch = 1  # Mark as having initial IDF values
+
         # Save tokenizer to sharded directory (merge-conflict-free)
         tokenizer_dir = self.model_dir / "tokenizer"
         self.tokenizer_storage.save_incremental(self.bridge.tokenizer, tokenizer_dir)
