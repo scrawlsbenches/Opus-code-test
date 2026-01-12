@@ -175,7 +175,7 @@ def cmd_handoff_show(args, manager: "GoTManager") -> int:
     handoffs = manager.list_handoffs(status=None)
     handoff = None
     for h in handoffs:
-        if h.get("id") == handoff_id:
+        if h.id == handoff_id:
             handoff = h
             break
 
@@ -184,7 +184,7 @@ def cmd_handoff_show(args, manager: "GoTManager") -> int:
         return 1
 
     # Display full handoff details
-    status = handoff.get("status", "?")
+    status = getattr(handoff, 'status', '?')
     status_icon = {
         "initiated": "→",
         "accepted": "✓",
@@ -196,40 +196,40 @@ def cmd_handoff_show(args, manager: "GoTManager") -> int:
     print(f"HANDOFF: {handoff_id}")
     print("=" * 60)
     print(f"Status:      {status_icon} {status}")
-    print(f"From:        {handoff.get('source_agent', '?')}")
-    print(f"To:          {handoff.get('target_agent', '?')}")
-    print(f"Task:        {handoff.get('task_id', '?')}")
+    print(f"From:        {getattr(handoff, 'source_agent', '?')}")
+    print(f"To:          {getattr(handoff, 'target_agent', '?')}")
+    print(f"Task:        {getattr(handoff, 'task_id', '?')}")
 
-    if handoff.get("created_at"):
-        print(f"Created:     {handoff['created_at']}")
-    if handoff.get("accepted_at"):
-        print(f"Accepted:    {handoff['accepted_at']}")
-    if handoff.get("completed_at"):
-        print(f"Completed:   {handoff['completed_at']}")
+    if getattr(handoff, 'created_at', None):
+        print(f"Created:     {handoff.created_at}")
+    if getattr(handoff, 'accepted_at', None):
+        print(f"Accepted:    {handoff.accepted_at}")
+    if getattr(handoff, 'completed_at', None):
+        print(f"Completed:   {handoff.completed_at}")
 
     # Show context
-    context = handoff.get("context", {})
+    context = getattr(handoff, 'context', {}) or {}
     if context:
         print(f"\nContext:")
         for key, value in context.items():
             print(f"  {key}: {value}")
 
     # Show full instructions (not truncated)
-    if handoff.get("instructions"):
+    if getattr(handoff, 'instructions', None):
         print(f"\nInstructions:")
         print("-" * 40)
-        print(handoff["instructions"])
+        print(handoff.instructions)
         print("-" * 40)
 
     # Show result if completed
-    if handoff.get("result"):
+    if getattr(handoff, 'result', None):
         print(f"\nResult:")
-        print(json.dumps(handoff["result"], indent=2))
+        print(json.dumps(handoff.result, indent=2))
 
     # Show artifacts if any
-    if handoff.get("artifacts"):
+    if getattr(handoff, 'artifacts', None):
         print(f"\nArtifacts:")
-        for artifact in handoff["artifacts"]:
+        for artifact in handoff.artifacts:
             print(f"  - {artifact}")
 
     print("=" * 60)
