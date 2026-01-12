@@ -4,6 +4,24 @@
 
 ---
 
+## CRITICAL CAVEATS AND ASSUMPTIONS
+
+> **READ THIS FIRST**: This document contains proposals that need hypothesis testing before implementation. Many suggestions assume runtime integration, but some should be applied during TRAINING instead. The CognitiveAgent graph is fast to query (~1-20ms) but slow to build (~45s for 200 files). Design decisions should preserve query speed.
+
+### Key Assumptions to Verify
+
+1. **CognitiveAgent already has atom-based prediction** via `predict_next()` using FOLLOWS links. Before integrating PRISM-SLM or NGram models, verify if CognitiveAgent's existing prediction is sufficient.
+
+2. **cortical/query/expansion.py operates on CorticalTextProcessor**, not CognitiveAgent. Integration requires either:
+   - Training expansion results INTO the CognitiveAgent graph (preferred)
+   - Runtime bridge between processor and agent (adds latency)
+
+3. **Model persistence is currently gitignored** (`models/cognitive_agent/` in .gitignore line 190). This breaks cold-start. **FIX REQUIRED**: Remove from .gitignore or provide bootstrap script.
+
+4. **Some proposed modules may be redundant** with CognitiveAgent's existing capabilities. Audit before adding complexity.
+
+---
+
 ## 1. What Happens When We Don't Use the Correct Word?
 
 When a user queries with an inexact term, the current NLQuery pipeline faces several challenges:
@@ -32,50 +50,55 @@ The system fails gracefully (returns what it finds) but doesn't bridge the seman
 
 ### How to Improve Natural Language Understanding
 
-#### A. Query Expansion (Already Exists!)
+#### A. Query Expansion
 
-The `cortical/query/expansion.py` module provides multi-method expansion:
+> **CAVEAT**: `cortical/query/expansion.py` operates on CorticalTextProcessor, NOT CognitiveAgent. Direct integration would require bridging two different graph systems.
 
+> **RECOMMENDATION**: Instead of runtime expansion, consider TRAINING the CognitiveAgent on expansion relationships. When we see "brain" in documents near "cognitive", the SIMILARITY links already capture this. The question is: are we training on the right documents?
+
+**Training-Time Solution** (Preferred):
 ```python
-# Current capability we're NOT using:
-from cortical.query.expansion import expand_query_multihop, get_expanded_query_terms
+# Train on documents that establish synonymy:
+# "The cognitive agent (also called brain memory or neural system)..."
+# This creates SIMILARITY links: brain ↔ cognitive automatically
+```
 
-# Multi-hop semantic inference
+**Runtime Solution** (If needed, adds latency):
+```python
+# Would need to verify this works with CognitiveAgent
+from cortical.query.expansion import expand_query_multihop
+
 expanded = expand_query_multihop(
-    processor,
+    processor,  # NOTE: This is CorticalTextProcessor, not CognitiveAgent
     ["brain"],
     relation_types=["IsA", "HasA", "RelatedTo"],
     max_hops=2
 )
-# Could yield: brain → neural → cognitive → agent
 ```
 
-**Integration Point**: NLQuery.gather_knowledge() should call `get_expanded_query_terms()` before looking up associations.
+#### B. Semantic Retrofitting
 
-#### B. Semantic Retrofitting (Already Exists!)
+> **CAVEAT**: `cortical/semantics.py` also operates on CorticalTextProcessor. Same integration challenge.
 
-The `cortical/semantics.py` module can align terms:
+> **RECOMMENDATION**: Apply retrofitting DURING training pipeline, not at query time. This improves the stored associations rather than computing them on every query.
 
 ```python
+# Apply DURING training (one-time cost):
 from cortical.semantics import retrofit_connections, extract_pattern_relations
 
-# Extract implicit relations from trained documents
 relations = extract_pattern_relations(processor)
-# Might find: "cognitive agent is a type of reasoning system"
-
-# Retrofit connections to bring related terms closer
 retrofit_connections(processor, relations, alpha=0.5)
+# Then persist the improved connections
 ```
-
-**Integration Point**: Run retrofitting after training to improve association quality.
 
 #### C. Spelling Correction via Edit Distance
 
-We could add fuzzy matching:
+> **PRIORITY: Low** - Only implement if user testing shows frequent typos.
 
 ```python
 def find_closest_known_word(unknown_word: str, vocabulary: Set[str], max_distance: int = 2) -> List[str]:
     """Find vocabulary words within edit distance of unknown word."""
+    # O(n) scan of vocabulary - acceptable if vocabulary < 50k terms
     candidates = []
     for known in vocabulary:
         if abs(len(known) - len(unknown_word)) <= max_distance:
@@ -87,13 +110,12 @@ def find_closest_known_word(unknown_word: str, vocabulary: Set[str], max_distanc
 
 #### D. Intent Disambiguation
 
-For ambiguous queries, we could return clarification:
+> **PRIORITY: Medium** - Good UX improvement, low implementation risk.
 
 ```python
 def suggest_clarifications(concepts: List[str], knowledge: GatheredKnowledge) -> List[str]:
     """When results are weak, suggest alternative interpretations."""
     if len(knowledge.associations) < 3:
-        # Results are thin - maybe user meant something else
         return [
             f"Did you mean '{expand_concept(c)}'?"
             for c in concepts
@@ -114,500 +136,293 @@ class AuditQuery:
     """Translates natural language to structured audit queries."""
 
     def translate_audit_query(self, nl_query: str) -> StructuredQuery:
-        # "risky files in reasoning/" becomes:
-        # StructuredQuery(
-        #     target="files",
-        #     filters={"path": "reasoning/"},
-        #     metric="risk_score",
-        #     threshold=0.7
-        # )
+        # "risky files in reasoning/" becomes structured query
 ```
 
-The PLN engine supports:
-- **Multi-rule aggregation**: Combine evidence from multiple sources
-- **Attention-based focus**: Prioritize relevant atoms (STI/LTI/VLTI weights)
-- **Inference traces**: Explainable reasoning chains
-- **WovenMind integration**: Discovery → PLN validation pipeline
+> **CAVEAT**: PLN reasoning is designed for audit use cases (risk scoring, code quality). Integration with NLQuery requires verifying the inference rules are applicable to general knowledge queries.
 
-### How to Integrate with NLQuery
+> **HYPOTHESIS TO TEST**: Can PLN inference chains improve "what is X?" answers, or is it overkill for simple queries?
 
-```python
-# In nl_query.py, add PLN-based inference:
+### Integration Consideration
 
-from cortical.audits.reasoning import PLNReasoner, InferenceContext
-
-class NLQuery:
-    def __init__(self, agent, reasoner: Optional[PLNReasoner] = None):
-        self.agent = agent
-        self.reasoner = reasoner or PLNReasoner()
-
-    def gather_knowledge_with_inference(self, intent: QueryIntent) -> GatheredKnowledge:
-        """Gather knowledge using both graph lookup AND probabilistic inference."""
-        knowledge = self.gather_knowledge(intent)
-
-        # Add PLN-inferred facts
-        for concept in intent.concepts:
-            # Create inference context
-            ctx = InferenceContext(
-                focus_atoms=[concept],
-                max_depth=3,
-                confidence_threshold=0.6
-            )
-
-            # Run inference
-            inferred = self.reasoner.infer(ctx)
-
-            # Add high-confidence inferences to knowledge
-            for fact in inferred:
-                if fact.confidence > 0.7:
-                    knowledge.associations.append(fact.conclusion)
-
-        return knowledge
-```
-
-### Learnable Rules from Patterns
+> **PRIORITY: Low for initial implementation** - PLN adds complexity. Start with simpler improvements first.
 
 The audit algorithms (`cortical/audits/algorithms/`) provide:
 
-| Algorithm | Use Case for NLQuery |
-|-----------|---------------------|
-| Naive Bayes | Classify question intent with learned priors |
-| Decision Tree | Rule-based query routing |
-| Markov Chain | Predict likely next concepts in a query |
-| LSH | Fast approximate matching for fuzzy queries |
+| Algorithm | NLQuery Use Case | Integration Complexity |
+|-----------|------------------|------------------------|
+| Naive Bayes | Classify question intent | Low - stateless classifier |
+| Decision Tree | Rule-based query routing | Low - can train on query logs |
+| Markov Chain | Predict next concepts | **Redundant with predict_next()** |
+| LSH | Fast fuzzy matching | Medium - needs vocabulary index |
 
-**Example: Learning Query Patterns**
-
-```python
-from cortical.audits.algorithms.naive_bayes import NaiveBayesClassifier
-
-# Train on historical queries
-classifier = NaiveBayesClassifier()
-classifier.train([
-    ("what is the cognitive agent", "identity"),
-    ("how does training work", "mechanism"),
-    ("where is storage defined", "location"),
-    # ... more examples
-])
-
-# Classify new queries
-intent_type = classifier.predict("what's the brain memory")
-# Returns: "identity" (with confidence)
-```
+> **NOTE**: Markov Chain is redundant with CognitiveAgent.predict_next() which already uses FOLLOWS links for sequential prediction. **Do not integrate** - use existing capability.
 
 ---
 
 ## 3. Using Our Statistical Model for Better Natural Language Generation
 
-### Current Limitation
+### Current State: CognitiveAgent vs PRISM-SLM
 
-The `ask` function returns templated responses:
+> **CRITICAL COMPARISON**:
 
-```python
-# Current approach (rigid templates):
-return f"The {subject_title} is a component that works with {tech_str}."
+| Feature | CognitiveAgent.predict_next() | PRISM-SLM.generate() |
+|---------|-------------------------------|----------------------|
+| Mechanism | FOLLOWS links (atom → atom) | SynapticTransition (token → token) |
+| Training | Trained with IDF weighting | Separate Hebbian training |
+| Storage | Part of unified graph | Separate TransitionGraph |
+| Query Speed | ~1-20ms (indexed) | Unknown - needs benchmark |
+| Already Integrated | Yes | No |
+
+> **QUESTION TO ANSWER**: Does PRISM-SLM offer something CognitiveAgent's predict_next() doesn't?
+>
+> - **Hebbian decay**: PRISM-SLM has synaptic decay for unused transitions. CognitiveAgent has IDF weighting but no decay.
+> - **Context window**: PRISM-SLM maintains sliding context. CognitiveAgent is single-word prediction.
+>
+> **RECOMMENDATION**: Before integrating PRISM-SLM, test if chaining CognitiveAgent.predict_next() calls achieves similar quality. If so, don't add complexity.
+
+### Existing Generation via CognitiveAgent
+
+The CLI already has a `generate` command that chains predict_next():
+
+```bash
+python -m cortical.cognitive generate --prompt "The cognitive agent" --max-tokens 20
 ```
 
-This produces grammatically correct but mechanical text.
+> **TEST THIS FIRST** before adding PRISM-SLM integration.
 
-### What We Have for Generation
+### If PRISM-SLM Integration Is Needed
 
-#### PRISM-SLM (Synaptic Language Model)
-
-```python
-# cortical/reasoning/prism_slm.py
-from cortical.reasoning.prism_slm import PRISMLanguageModel
-
-slm = PRISMLanguageModel()
-slm.train_on_corpus(documents)
-
-# Generate text given a seed
-generated = slm.generate(
-    seed="The cognitive agent",
-    max_tokens=50,
-    temperature=0.7
-)
-# Could yield: "The cognitive agent maintains semantic associations
-#              through hebbian learning and graph-based storage..."
-```
-
-#### N-gram Model for Fluency
+> **CAVEAT**: PRISM-SLM would need separate training. This adds to build time and storage.
 
 ```python
-# cortical/spark/ngram.py
-from cortical.spark.ngram import NGramModel
-
-ngram = NGramModel(order=3)  # Trigram
-ngram.train(corpus_text)
-
-# Complete a partial response
-completion = ngram.generate(
-    context="The cognitive agent is",
-    max_tokens=20
-)
-```
-
-### Proposed Integration: Hybrid Response Generation
-
-```python
+# Only if CognitiveAgent generation is insufficient:
 def generate_response_with_model(
     self,
     intent: QueryIntent,
     knowledge: GatheredKnowledge,
-    language_model: PRISMLanguageModel
+    language_model: PRISMLanguageModel  # Requires separate training!
 ) -> str:
-    """Generate natural response using statistical language model."""
-
-    # 1. Build seed from knowledge
-    subject = self._extract_subject(intent)
-    key_terms = knowledge.associations[:5]
-    seed = f"The {subject} "
-
-    # 2. Prime the model with relevant context
-    context_text = " ".join([
-        f"{subject} relates to {term}"
-        for term in key_terms
-    ])
-    language_model.prime(context_text)
-
-    # 3. Generate fluent continuation
-    generated = language_model.generate(
-        seed=seed,
-        max_tokens=100,
-        temperature=0.8,
-        stop_tokens=[".", "?", "!"]
-    )
-
-    # 4. Validate generated text contains our knowledge
-    if not any(term in generated.lower() for term in key_terms[:3]):
-        # Fallback to template if generation missed key facts
-        return self._generate_template_response(intent, knowledge)
-
-    return generated
+    # ... generation logic ...
 ```
 
-### Benefits of Model-Generated Responses
+### New Training Angles to Consider
 
-| Aspect | Template | Model-Generated |
-|--------|----------|-----------------|
-| Naturalness | Mechanical | Fluent |
-| Variety | Repetitive | Diverse |
-| Accuracy | Guaranteed | Needs validation |
-| Speed | Fast | Slower |
+> **QUESTION**: What new training approaches does our current architecture enable?
 
-**Recommendation**: Use model generation with template fallback for validation.
+1. **Train on query-response pairs**: Log successful queries and their responses, train to predict good responses from concepts.
+
+2. **Train on definition patterns**: "X is a Y that does Z" patterns could strengthen FOLLOWS links for definition generation.
+
+3. **Fine-tune on results**: After generating responses, rate them (manual or automated), retrain on high-rated outputs.
+
+4. **Self-referential training**: Train the model on its own documentation (like this file) to improve self-description.
 
 ---
 
 ## 4. Reducing Reliance on Grep: Using Our Framework
 
-### The Current Reality
+### CognitiveAgent as Trained Search
 
-When exploring code, we often reach for Grep:
+> **KEY INSIGHT**: CognitiveAgent IS a form of trained search. The question isn't "use CognitiveAgent instead of Grep" but "train CognitiveAgent to return what we need."
 
+### Proposed: CognitiveAgent.semantic_search()
+
+> **INSTEAD OF**: Wrapping grep, train on grep-like queries and their expected results.
+
+```python
+# Concept: Train on search patterns
+# Input: "storage class definition"
+# Expected: files containing storage classes
+
+# Training document (create these):
+"""
+When searching for 'storage class definition', the relevant files are:
+- cortical/cdg/storage.py (StorageBackend class)
+- cortical/cognitive/graph_storage.py (ShardedStorage class)
+- cortical/got/versioned_store.py (VersionedStore class)
+"""
+
+# After training, agent.get_associations("storage class definition")
+# should return these files as associations
+```
+
+### Storing Grep Results in Graph
+
+> **HYPOTHESIS**: If we store grep results as REFERS_TO links, future queries could bypass grep entirely.
+
+```python
+# When grep finds "class StorageBackend" in storage.py:
+# Create: WORD("storagebackend") --REFERS_TO--> FILE("cortical/cdg/storage.py")
+#
+# Future query for "storage backend" finds the file through associations
+# without running grep
+```
+
+> **BENEFIT**: Grep results become training data. The model learns what grep would return.
+>
+> **RISK**: Stale results if files change. Need staleness tracking (already have this).
+
+### Cold-Start Problem: CRITICAL FIX NEEDED
+
+> **CURRENT STATE**: `models/cognitive_agent/` is in `.gitignore` (line 190).
+> This means the trained model is NOT committed, causing cold-start on every fresh clone.
+
+**Options**:
+1. **Remove from .gitignore** - Commit the model (increases repo size by ~150MB+)
+2. **Bootstrap script** - Run training on first use, cache results
+3. **Smaller committed model** - Commit only essential vocabulary, rebuild links on demand
+
+> **RECOMMENDATION**: Option 2 (bootstrap script) balances repo size with usability:
 ```bash
-grep -r "class CognitiveAgent" cortical/
+# scripts/bootstrap_cognitive.sh
+if [ ! -d "models/cognitive_agent" ]; then
+    echo "Building cognitive model (first run only)..."
+    python -m cortical.cognitive train cortical/ --pattern "*.py"
+fi
 ```
-
-But our framework already provides semantic search capabilities.
-
-### What Our Framework Offers Instead
-
-#### Semantic Code Search
-
-```python
-# Instead of grep, use trained associations:
-agent = CognitiveAgent.load("model/")
-
-# Find code related to "cognitive agent"
-results = agent.query("code_for_word", "cognitiveagent")
-# Returns: Atom objects with file_path, lineno, context
-
-# Find callers
-callers = agent.query("callers_of", "CognitiveAgent")
-
-# Find by semantic similarity (not just text match)
-similar = agent.get_associations("storage", top_k=20)
-# May find: persistence, disk, file, cache, save, load
-```
-
-#### Multi-hop Semantic Traversal
-
-```python
-from cortical.query.expansion import expand_query_multihop
-
-# Find concepts 2 hops away from "agent"
-related = expand_query_multihop(
-    processor,
-    ["agent"],
-    relation_types=["IsA", "UsedBy", "Contains"],
-    max_hops=2
-)
-# Might find: agent → cognitive → memory → storage → file
-```
-
-### New Problem Angles This Creates
-
-#### Challenge 1: Cold Start
-
-Grep works immediately. Our framework requires training.
-
-**Solution**: Incremental training with manifest tracking (already implemented).
-
-```python
-# Quick bootstrap for new codebase
-trainer.train_directory("cortical/", pattern="*.py")
-# ~45 seconds for 200 files, then queries work
-```
-
-#### Challenge 2: Vocabulary Mismatch
-
-Grep finds exact text. Our model finds trained vocabulary.
-
-**Solution**: Hybrid approach - try semantic first, fall back to text search.
-
-```python
-def smart_search(query: str, agent: CognitiveAgent, codebase_path: str) -> List[Result]:
-    """Semantic-first search with text fallback."""
-
-    # Try semantic search
-    semantic_results = agent.query("code_for_word", query)
-
-    if semantic_results:
-        return semantic_results
-
-    # Fallback: Use our Trie for prefix matching
-    from cortical.audits.algorithms.trie import CommentMarkerTrie
-    trie = CommentMarkerTrie()
-    # ... populate and search
-
-    # Last resort: shell out to grep (but log it for training)
-    log_missed_query(query)  # So we can improve
-    return grep_fallback(query, codebase_path)
-```
-
-#### Challenge 3: Freshness
-
-Grep always sees current files. Our model sees trained state.
-
-**Solution**: Staleness tracking (already implemented).
-
-```python
-staleness = trainer.manifest.get_staleness()
-if staleness > 0.1:  # >10% new content
-    print(f"Warning: Model is {staleness*100:.1f}% stale. Consider retraining.")
-```
-
-### Does This Give Pause for Imagination?
-
-Yes. Consider these possibilities:
-
-1. **Self-Improving Search**: Log queries that fall back to grep, automatically retrain on those patterns.
-
-2. **Query Understanding**: Instead of searching for text, understand what the user wants:
-   ```
-   User: "find the storage bug"
-   System: Understands "storage" + "bug" → searches for:
-           - Files with "storage" in associations
-           - Recent commits mentioning "fix" near storage code
-           - Error handling patterns in storage modules
-   ```
-
-3. **Conversational Refinement**:
-   ```
-   User: "where's the agent?"
-   System: "I found 3 agents: CognitiveAgent, TaskAgent, AuditAgent.
-            Which are you looking for?"
-   ```
-
-4. **Predictive Assistance**: Based on recent queries, predict what the user might need next.
 
 ---
 
 ## 5. Other Functionality That May Help the Ask Function
 
-### Already Available in Our Codebase
+### Inventory with Integration Assessment
 
-#### 1. Query Expansion Module (`cortical/query/expansion.py`)
+> **LEGEND**:
+> - **Use**: Already applicable, low integration effort
+> - **Train**: Apply during training, not runtime
+> - **Redundant**: CognitiveAgent already has equivalent
+> - **Complex**: High effort, uncertain benefit
 
-```python
-from cortical.query.expansion import (
-    expand_query,           # Basic lateral expansion
-    expand_query_semantic,  # Relation-based expansion
-    expand_query_multihop,  # Multi-hop inference
-    get_expanded_query_terms  # Consolidated expansion
-)
+| Module | Capability | Assessment | Notes |
+|--------|------------|------------|-------|
+| `query/expansion.py` | Query expansion | **Train** | Apply during training, not runtime |
+| `spark/intent_parser.py` | Action/entity extraction | **Use** | Stateless, can integrate directly |
+| `spark/predictor.py` | Query completion | **Redundant** | CognitiveAgent.predict_next() does this |
+| `spark/ngram.py` | N-gram prediction | **Redundant** | predict_next() with FOLLOWS links |
+| `embeddings.py` | Similarity by embedding | **Train** | Use to improve training, not runtime |
+| `semantics.py` | Semantic relations | **Train** | Retrofit during training |
+| `query/analogy.py` | Analogy reasoning | **Complex** | Novel capability but uncertain value |
+| `reasoning/cognitive_loop.py` | QAPV cycle | **Complex** | Overkill for simple queries |
+| `audits/reasoning.py` | PLN inference | **Complex** | Designed for audits, not NL queries |
 
-# Use in NLQuery to expand concepts before lookup
-expanded_concepts = get_expanded_query_terms(
-    processor,
-    intent.concepts,
-    methods=["lateral", "clusters", "code_concepts"],
-    max_terms=20
-)
-```
+### Should We Integrate or Retire?
 
-#### 2. Intent Parser (`cortical/spark/intent_parser.py`)
+> **OBSERVATION**: We have multiple prediction/generation systems:
+> - CognitiveAgent.predict_next() (FOLLOWS links)
+> - PRISM-SLM (synaptic transitions)
+> - NGramModel (n-gram statistics)
+> - SparkPredictor (ngram + alignment)
 
-```python
-from cortical.spark.intent_parser import IntentParser
-
-parser = IntentParser()
-parsed = parser.parse("fix the storage bug in cognitive module")
-# Returns:
-#   action: "fix"
-#   entities: ["storage", "bug", "cognitive", "module"]
-#   priority: "medium"
-#   confidence: 0.85
-```
-
-**Integration**: Use IntentParser to better understand what the user wants to DO, not just what they're asking about.
-
-#### 3. Spark Predictor (`cortical/spark/predictor.py`)
-
-```python
-from cortical.spark.predictor import SparkPredictor
-
-predictor = SparkPredictor(ngram_model, alignment_index)
-predictor.prime("cognitive agent")
-
-# Suggest completions for partial queries
-completions = predictor.complete("what is the cog")
-# Returns: ["cognitive agent", "cognitive graph", "cognitive loop"]
-```
-
-**Integration**: Add auto-complete to the ask command for query assistance.
-
-#### 4. Embeddings for Similarity (`cortical/embeddings.py`)
-
-```python
-from cortical.embeddings import (
-    compute_graph_embeddings,
-    find_similar_by_embedding
-)
-
-# Compute embeddings using TF-IDF method (best for semantic similarity)
-embeddings = compute_graph_embeddings(processor, method="tfidf")
-
-# Find terms similar to query even if not directly connected
-similar = find_similar_by_embedding(embeddings, "agent", top_n=10)
-```
-
-**Integration**: When direct lookup fails, use embedding similarity as fallback.
-
-#### 5. Semantic Relations (`cortical/semantics.py`)
-
-```python
-from cortical.semantics import (
-    extract_pattern_relations,  # Extract IsA, HasA, etc.
-    build_isa_hierarchy,        # Build type hierarchy
-    inherit_properties          # Property inheritance
-)
-
-# Build semantic hierarchy from trained corpus
-relations = extract_pattern_relations(processor)
-hierarchy = build_isa_hierarchy(relations)
-
-# Use hierarchy for inference
-# "CognitiveAgent IsA Agent" → inherit Agent properties
-```
-
-**Integration**: Use semantic hierarchy to answer "What kind of X is Y?" questions.
-
-#### 6. Analogy Engine (`cortical/query/analogy.py`)
-
-```python
-from cortical.query.analogy import find_analogies
-
-# "cognitive is to agent as neural is to ?"
-analogies = find_analogies(
-    processor,
-    a="cognitive", b="agent",
-    c="neural"
-)
-# Might return: "network", "model", "system"
-```
-
-**Integration**: Support analogy-based queries in ask function.
-
-#### 7. Cognitive Loop (`cortical/reasoning/cognitive_loop.py`)
-
-```python
-from cortical.reasoning.cognitive_loop import CognitiveLoop, Phase
-
-loop = CognitiveLoop()
-
-# QAPV cycle for complex queries
-loop.question("What is the cognitive agent?")
-answer = loop.answer()      # Gather initial knowledge
-product = loop.produce()    # Synthesize response
-verified = loop.verify()    # Check for consistency
-```
-
-**Integration**: Use QAPV cycle for complex, multi-part questions.
+> **RECOMMENDATION**: **Consolidate around CognitiveAgent**. The others exist for historical reasons or specific use cases. For NLQuery, use CognitiveAgent exclusively unless testing shows it's insufficient.
 
 ---
 
-## Proposed Integration Architecture
+## 6. First-Pass Generation for Training
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        Enhanced NLQuery Pipeline                     │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  1. PARSE                                                           │
-│     ├─ IntentParser.parse() → action, entities, priority            │
-│     ├─ NLQuery.parse_intent() → question_type, concepts             │
-│     └─ SparkPredictor.complete() → query suggestions                │
-│                                                                      │
-│  2. EXPAND                                                          │
-│     ├─ get_expanded_query_terms() → lateral, semantic, code         │
-│     ├─ find_similar_by_embedding() → embedding-based matches        │
-│     └─ fuzzy_match() → spelling correction                          │
-│                                                                      │
-│  3. GATHER                                                          │
-│     ├─ agent.query() → direct graph lookup                          │
-│     ├─ PLNReasoner.infer() → probabilistic inference                │
-│     ├─ expand_query_multihop() → relation chain traversal           │
-│     └─ build_isa_hierarchy() → type-based inheritance               │
-│                                                                      │
-│  4. GENERATE                                                        │
-│     ├─ PRISMLanguageModel.generate() → fluent response              │
-│     ├─ template_fallback() → guaranteed accuracy                    │
-│     └─ CognitiveLoop.verify() → consistency check                   │
-│                                                                      │
-│  5. REFINE                                                          │
-│     ├─ suggest_clarifications() → "Did you mean...?"                │
-│     └─ log_for_training() → improve future queries                  │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
+> **QUESTION**: Do we need a first-pass text generator to create training data for better generation?
+
+**Yes, this is valuable.** The idea:
+
+1. Generate responses using current (imperfect) templates
+2. Human reviews and corrects/approves responses
+3. Train on the corrected responses
+4. Model learns to generate better responses directly
+
+```python
+# First-pass generation pipeline
+def generate_training_pairs():
+    questions = load_sample_questions()
+    for q in questions:
+        response = nl_query.ask(q)  # Current imperfect response
+        yield {
+            "question": q,
+            "draft_response": response,
+            "human_corrected": None,  # To be filled by human
+            "approved": False
+        }
+
+# After human review, train on approved pairs
 ```
 
 ---
 
-## Summary: Key Improvements to Implement
+## Prioritized Roadmap with Justifications
 
-| Priority | Improvement | Existing Module | Effort |
-|----------|-------------|-----------------|--------|
-| High | Query expansion before lookup | `cortical/query/expansion.py` | Low |
-| High | Embedding fallback for unknown terms | `cortical/embeddings.py` | Medium |
-| Medium | Intent parser integration | `cortical/spark/intent_parser.py` | Low |
-| Medium | PLN inference for multi-hop reasoning | `cortical/audits/reasoning.py` | Medium |
-| Medium | Language model response generation | `cortical/reasoning/prism_slm.py` | Medium |
-| Low | Fuzzy matching for typos | New implementation | Medium |
-| Low | Query auto-complete | `cortical/spark/predictor.py` | Low |
+### Priority 1: CRITICAL (Do Immediately)
 
-The foundation already exists. The opportunity is integration.
+| Task | Justification | Effort |
+|------|---------------|--------|
+| Fix cold-start (bootstrap script) | Model currently unusable on fresh clone | Low |
+| Verify CognitiveAgent.generate quality | Avoid adding PRISM-SLM if unnecessary | Low |
+| Remove redundant Markov/NGram from integration plan | CognitiveAgent.predict_next() already does this | None |
+
+### Priority 2: HIGH (Next Sprint)
+
+| Task | Justification | Effort |
+|------|---------------|--------|
+| Integrate IntentParser | Stateless, improves question understanding | Low |
+| Create training documents for self-description | "Teach" the model about itself | Low |
+| Store grep results as training data | Self-improving search | Medium |
+
+### Priority 3: MEDIUM (After Validation)
+
+| Task | Justification | Effort |
+|------|---------------|--------|
+| Apply semantic retrofitting during training | Improves association quality at build time | Medium |
+| First-pass generation for training pipeline | Creates feedback loop for improvement | Medium |
+| Add intent disambiguation | Better UX for ambiguous queries | Medium |
+
+### Priority 4: LOW (Needs Hypothesis Testing)
+
+| Task | Justification | Effort |
+|------|---------------|--------|
+| PLN integration | May be overkill for simple queries | High |
+| PRISM-SLM integration | Only if CognitiveAgent.generate insufficient | High |
+| Fuzzy spelling correction | Only if user testing shows need | Medium |
 
 ---
 
-## Questions for Future Sessions
+## Latency Budget Considerations
 
-1. Should we implement a unified `EnhancedNLQuery` class that composes all these capabilities?
-2. What's the acceptable latency budget for query response? (Currently ~50ms, could increase with inference)
-3. Should we add a "confidence" score to responses so users know when to trust vs verify?
-4. How do we handle the cold-start problem for new codebases gracefully?
+### Current State
+- CognitiveAgent.get_associations(): ~1-20ms
+- CognitiveAgent.predict_next(): ~1-20ms
+- Full ask() pipeline: ~50-100ms
+
+### Proposed Tiered Response Strategy
+
+| Query Type | Budget | Approach |
+|------------|--------|----------|
+| Quick lookup | <100ms | Direct association lookup |
+| Standard query | <500ms | Expansion + inference |
+| Deep analysis | <5s | Multi-hop reasoning, PLN |
+| Comprehensive | <60s | Full corpus scan, report generation |
+
+> **IMPLEMENTATION**: Add `--depth` flag to ask command:
+> ```bash
+> python -m cortical.cognitive ask "What is X?" --depth quick   # <100ms
+> python -m cortical.cognitive ask "What is X?" --depth deep    # <5s
+> ```
 
 ---
 
-*This document serves as both analysis and roadmap for improving natural language query capabilities in the Cognitive Agent system.*
+## Questions Resolved
+
+1. **SparkSLM vs CognitiveAgent.predict_next()?** → Use predict_next() first. SparkSLM only if predict_next() chaining is insufficient.
+
+2. **New training angles?** → Self-referential training, query-response pairs, grep result capture.
+
+3. **Unified training pipeline?** → Yes, see Priority 2 tasks. Store everything in CognitiveAgent graph.
+
+4. **Too many prediction models?** → Yes. Consolidate around CognitiveAgent. Others are redundant for NLQuery.
+
+5. **First-pass generation?** → Yes, valuable for creating training feedback loop.
+
+6. **CognitiveAgent.grep?** → Better: train on grep results so semantic search returns what grep would.
+
+7. **Cold-start?** → **BROKEN**. Model in .gitignore. Need bootstrap script.
+
+---
+
+*This document serves as analysis, roadmap, and caveat guide for improving natural language query capabilities. Verify assumptions through testing before implementing.*
