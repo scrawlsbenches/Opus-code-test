@@ -1182,6 +1182,10 @@ def run_cli_command(command: str, args, container: 'Optional[Container]' = None)
         _run_index_code(trainer, args)
         return 0
 
+    if command == "ask":
+        _run_ask(trainer, args)
+        return 0
+
     print(f"Unknown command: {command}")
     return 1
 
@@ -1498,6 +1502,37 @@ def _run_index_code(trainer: 'IncrementalTrainer', args) -> None:
             print(f"  REFERS_TO links:  {stats.refers_to_links}")
         print(f"  Parse errors:     {stats.parse_errors}")
         print(f"  Elapsed time:     {stats.elapsed_seconds:.2f}s")
+
+
+def _run_ask(trainer: 'IncrementalTrainer', args) -> None:
+    """
+    Ask a natural language question about the codebase.
+
+    Uses NLQuery to parse the question, gather knowledge from
+    trained vocabulary and indexed code, and generate a response.
+
+    Args:
+        trainer: The IncrementalTrainer with loaded model
+        args: CLI arguments with question, verbose options
+    """
+    from cortical.cognitive.nl_query import NLQuery
+
+    # Create NLQuery with the trainer's agent
+    nl = NLQuery(trainer.agent)
+
+    # Get the answer
+    response = nl.ask(args.question)
+
+    # Show verbose info if requested
+    if getattr(args, 'verbose', False):
+        intent = nl.parse_intent(args.question)
+        print(f"Question type: {intent.question_type}")
+        print(f"Concepts: {', '.join(intent.concepts)}")
+        print(f"Strategy: {', '.join(intent.query_strategy)}")
+        print("-" * 40)
+
+    # Print the response
+    print(response)
 
 
 # =============================================================================

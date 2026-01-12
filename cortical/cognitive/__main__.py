@@ -253,6 +253,26 @@ def main() -> int:
         help="Create REFERS_TO links to existing WORD atoms (bridges code to text)",
     )
 
+    # Ask command (natural language query)
+    ask_parser = subparsers.add_parser(
+        "ask",
+        help="Ask a natural language question about the codebase"
+    )
+    ask_parser.add_argument(
+        "question",
+        help="Natural language question (e.g., 'How does code indexing work?')",
+    )
+    ask_parser.add_argument(
+        "--model-dir",
+        default="models/cognitive_agent",
+        help="Directory for model storage",
+    )
+    ask_parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Show detailed query information",
+    )
+
     args = parser.parse_args()
 
     if args.command is None:
