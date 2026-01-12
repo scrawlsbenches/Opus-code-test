@@ -1,0 +1,39 @@
+REFERS_TO Semantic Bridge - Connecting Text to Code
+
+When you need to find what code relates to a vocabulary word, use REFERS_TO links.
+
+What it solves:
+  You train on text and learn "pagerank" is associated with "graph, network, algorithm".
+  You index code and have atoms for compute_pagerank(), PageRankResult class.
+  REFERS_TO links connect the vocabulary word "pagerank" to the code entities.
+  Now you can ask "what code is about pagerank?" and get actual function references.
+
+How it works:
+  1. CodeBridge extracts name parts from code entities
+     "compute_pagerank" -> ["compute", "pagerank"]
+     "MyClassName" -> ["myclassname", "my", "class", "name"]
+
+  2. For each WORD atom in vocabulary, find matching code atoms
+     Case-insensitive matching
+     Exact match gets strength 0.9, substring match gets 0.7
+
+  3. Create REFERS_TO link from WORD to CODE atom
+
+Query methods:
+  bridge.query_code_for_word("pagerank") - returns [compute_pagerank FUNCTION atom]
+  bridge.query_words_for_code("MyClass") - returns [WORD atoms that refer to it]
+  agent.query("code_for_word", "pagerank") - unified interface
+
+CLI:
+  python -m cortical.cognitive index-code cortical/ --link-text
+
+The --link-text flag triggers create_refers_to_links() after indexing.
+
+Performance:
+  Created 61,482 REFERS_TO links for cortical/got/ in 2.1 seconds.
+  This is O(words * code_entities) but filtered by min_word_length=3.
+
+Bug fixed:
+  Initial implementation didn't match "myclass" to "MyClass".
+  The _extract_name_parts() method split camelCase but didn't keep the full word.
+  Fix was adding the full lowercased word before splitting.
