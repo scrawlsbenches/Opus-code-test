@@ -1,0 +1,47 @@
+{
+  "_checksum": "91ec9aad47416001",
+  "_written_at": "2026-01-12T15:53:09.955162+00:00",
+  "data": {
+    "accepted_at": "",
+    "artifacts": [],
+    "completed_at": "",
+    "context": {
+      "blockers": [],
+      "current_branch": "claude/recover-idf-cognitive-agent-gnH6g",
+      "files_modified": [
+        "got/entities/_version.json",
+        ".got/entities/wal/_sequence.json",
+        ".got/entities/wal/current.wal",
+        "cortical/got/api.py",
+        "cortical/got/cli/knowledge_transfer.py",
+        ".got/entities/KT-20260112-155037-7e413cc6.json",
+        ".got/entities/_history/KT-20260112-155037-7e413cc6.jsonl"
+      ],
+      "kt_id": "KT-20260112-155037-7e413cc6",
+      "notes": "TEST THIS SESSION: Validate that new Claude sessions discover and use the cognitive agent through README.md and CLAUDE.md documentation. Key questions to answer: What is the cognitive agent? What is TextToAtomsBridge? What training issues were found?",
+      "recent_commits": [
+        "c079ae1a docs(CLAUDE.md): Add cognitive agent instructions for future sessions",
+        "cfe9193f docs: Add 'Message to Claude from Claude' section to README",
+        "8de2d7ed docs(cognitive): Add training process findings and enhancement proposals",
+        "a316fe5b feat(cognitive): Major training expansion - 1834 documents, 29590 words",
+        "f5662ee9 chore(cognitive): Update tokenizer after CLI validation and training"
+      ],
+      "session_id": ""
+    },
+    "created_at": "2026-01-12T15:53:09.941876+00:00",
+    "entity_type": "handoff",
+    "id": "H-20260112-155309-d8e8b053",
+    "initiated_at": "2026-01-12T15:53:09.941886+00:00",
+    "instructions": "Cognitive agent training coverage fix, documentation updates, and bug fixes\n\nNotes: TEST THIS SESSION: Validate that new Claude sessions discover and use the cognitive agent through README.md and CLAUDE.md documentation. Key questions to answer: What is the cognitive agent? What is TextToAtomsBridge? What training issues were found?",
+    "modified_at": "2026-01-12T15:53:09.955088+00:00",
+    "properties": {},
+    "reject_reason": "",
+    "rejected_at": "",
+    "result": {},
+    "source_agent": "claude-opus-4.5-20260112",
+    "status": "initiated",
+    "target_agent": "next-session",
+    "task_id": "",
+    "version": 2
+  }
+}
