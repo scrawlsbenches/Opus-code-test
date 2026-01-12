@@ -124,7 +124,10 @@ class ShardedGraphStorage:
 
     def save(self, graph: 'CognitiveGraph', directory: Path) -> Dict[str, Any]:
         """
-        Save graph to sharded directory structure.
+        Save graph to sharded directory structure with incremental support.
+
+        If the storage tracks dirty atoms, only shards containing dirty atoms
+        are rewritten. Otherwise, all shards are written.
 
         Args:
             graph: The CognitiveGraph to save
@@ -136,14 +139,42 @@ class ShardedGraphStorage:
         directory = Path(directory)
         directory.mkdir(parents=True, exist_ok=True)
 
-        # Clean up old shard files to prevent stale data
-        for old_file in directory.glob("atoms_*.json"):
-            old_file.unlink()
+        storage = graph._storage
 
-        # Group atoms by type
+        # Check if incremental save is possible
+        supports_dirty = hasattr(storage, 'get_dirty_atoms') and hasattr(storage, 'is_all_dirty')
+        is_incremental = supports_dirty and not storage.is_all_dirty()
+
+        if is_incremental:
+            dirty_atoms = storage.get_dirty_atoms()
+            if not dirty_atoms:
+                # Nothing changed, skip save
+                return {
+                    "shards_written": 0,
+                    "total_atoms": len(storage._atoms),
+                    "shard_names": [],
+                    "incremental": True,
+                }
+            # Determine which atom types have dirty atoms
+            dirty_types: set = set()
+            for atom_id in dirty_atoms:
+                atom = storage.load(atom_id)
+                if atom:
+                    dirty_types.add(atom.atom_type.name)
+        else:
+            # Full save needed - mark all types as dirty
+            dirty_types = None  # None means all types
+            # Clean up old shard files for full save
+            for old_file in directory.glob("atoms_*.json"):
+                old_file.unlink()
+
+        # Group atoms by type (only for types we need to save)
         atoms_by_type: Dict[str, List[Dict]] = {}
-        for atom in graph._storage.all_atoms():
+        for atom in storage.all_atoms():
             type_name = atom.atom_type.name
+            # Skip types that aren't dirty (incremental mode)
+            if dirty_types is not None and type_name not in dirty_types:
+                continue
             if type_name not in atoms_by_type:
                 atoms_by_type[type_name] = []
             atoms_by_type[type_name].append(self._atom_to_dict(atom))
@@ -151,13 +182,12 @@ class ShardedGraphStorage:
         # Determine which types need subdivision
         type_sizes: Dict[str, int] = {}
         for type_name, atoms in atoms_by_type.items():
-            # Estimate size using conservative bytes per atom
             estimated_size = len(atoms) * BYTES_PER_ATOM
             type_sizes[type_name] = estimated_size
 
         # Save each type to appropriate shard(s)
         shards_written = []
-        total_atoms = 0
+        atoms_saved = 0
 
         for type_name, atoms in atoms_by_type.items():
             if type_name in LARGE_TYPES and type_sizes[type_name] > MAX_SHARD_SIZE:
@@ -174,35 +204,62 @@ class ShardedGraphStorage:
                     shard_path = directory / shard_name
                     self._write_shard(shard_path, sub_atoms)
                     shards_written.append(shard_name)
-                    total_atoms += len(sub_atoms)
+                    atoms_saved += len(sub_atoms)
             else:
                 # Single shard for this type
                 shard_name = self._get_shard_name(type_name)
                 shard_path = directory / shard_name
                 self._write_shard(shard_path, atoms)
                 shards_written.append(shard_name)
-                total_atoms += len(atoms)
+                atoms_saved += len(atoms)
 
-        # Write metadata
-        meta = {
-            "version": self.VERSION,
-            "total_atoms": total_atoms,
-            "shards": shards_written,
-            "type_counts": {t: len(a) for t, a in atoms_by_type.items()},
-        }
+        # Get total atoms including non-dirty types
+        total_atoms = len(storage._atoms) if hasattr(storage, '_atoms') else atoms_saved
+
+        # Update metadata (includes all shards, not just written ones)
         meta_path = directory / "meta.json"
+        if is_incremental and meta_path.exists():
+            # Load existing meta and update
+            with open(meta_path) as f:
+                meta = json.load(f)
+            meta["total_atoms"] = total_atoms
+            # Add new shards to list
+            existing_shards = set(meta.get("shards", []))
+            existing_shards.update(shards_written)
+            meta["shards"] = sorted(existing_shards)
+            # Update type counts for dirty types
+            if "type_counts" not in meta:
+                meta["type_counts"] = {}
+            for type_name, atoms in atoms_by_type.items():
+                meta["type_counts"][type_name] = len(atoms)
+        else:
+            # Full metadata for new save
+            all_shards = list(directory.glob("atoms_*.json"))
+            meta = {
+                "version": self.VERSION,
+                "total_atoms": total_atoms,
+                "shards": [f.name for f in all_shards],
+                "type_counts": {t: len(a) for t, a in atoms_by_type.items()},
+            }
+
         with open(meta_path, 'w') as f:
             json.dump(meta, f, indent=2)
 
-        # Remove legacy graph.json if it exists and is now sharded
+        # Remove legacy graph.json if it exists
         legacy_path = directory / "graph.json"
-        if legacy_path.exists() and len(shards_written) > 0:
+        if legacy_path.exists():
             legacy_path.unlink()
+
+        # Clear dirty state after successful save
+        if supports_dirty:
+            storage.clear_dirty()
 
         return {
             "shards_written": len(shards_written),
             "total_atoms": total_atoms,
             "shard_names": shards_written,
+            "incremental": is_incremental,
+            "atoms_saved": atoms_saved,
         }
 
     def _write_shard(self, path: Path, atoms: List[Dict]) -> None:

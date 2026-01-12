@@ -386,6 +386,10 @@ class IncrementalTrainer:
             id_map[atom_data["id"]] = atom
             storage.save(atom)
 
+        # Mark storage as clean after loading (enables incremental saves)
+        if hasattr(storage, 'mark_all_clean_after_load'):
+            storage.mark_all_clean_after_load()
+
         # Restore bridge stats from meta.json if available
         meta_path = bridge_dir / "meta.json"
         if meta_path.exists():

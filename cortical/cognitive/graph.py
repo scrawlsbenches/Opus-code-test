@@ -338,10 +338,13 @@ class InMemoryStorage:
         self._incoming: Dict[str, Set[str]] = {}  # atom_id -> set of link_ids pointing TO it
         self._outgoing: Dict[str, Set[str]] = {}  # atom_id -> set of link_ids originating FROM it
         self._by_link_key: Dict[tuple, str] = {}  # (type, outgoing_tuple) -> link_id
+        self._dirty_atoms: Set[str] = set()  # atom IDs modified since last save
+        self._all_dirty: bool = True  # True means ALL atoms are dirty (initial state or after load)
 
     def save(self, atom: Atom) -> None:
         """Persist an atom."""
         self._atoms[atom.id] = atom
+        self._dirty_atoms.add(atom.id)  # Mark as dirty
 
         if atom.name:
             self._by_name[atom.name] = atom.id
@@ -443,6 +446,28 @@ class InMemoryStorage:
         if atom_type is not None:
             links = [link for link in links if link.atom_type == atom_type]
         return links
+
+    # =========================================================================
+    # Dirty Tracking for Incremental Saves
+    # =========================================================================
+
+    def get_dirty_atoms(self) -> Set[str]:
+        """Get the set of atom IDs modified since last clear_dirty()."""
+        return self._dirty_atoms
+
+    def is_all_dirty(self) -> bool:
+        """Check if all atoms should be considered dirty (after load or initial creation)."""
+        return self._all_dirty
+
+    def clear_dirty(self) -> None:
+        """Clear dirty state after successful save."""
+        self._dirty_atoms.clear()
+        self._all_dirty = False
+
+    def mark_all_clean_after_load(self) -> None:
+        """Mark storage as clean after loading from disk (no changes yet)."""
+        self._dirty_atoms.clear()
+        self._all_dirty = False
 
 
 # =============================================================================
