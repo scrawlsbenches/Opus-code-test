@@ -1,0 +1,33 @@
+Unified Query Interface for CognitiveAgent
+
+When you need to query the cognitive graph, use agent.query() with a query type and target.
+
+Location: cortical/cognitive/graph.py line 2293
+
+Query types available:
+  similar_to      - find words connected by SIMILARITY links
+  callers_of      - find functions that call target function
+  subclasses_of   - find classes inheriting from target
+  methods_of      - find methods belonging to a class
+  defined_in      - find entities defined in a file
+  code_for_word   - find code entities matching vocabulary word
+  words_for_code  - find vocabulary words referring to code entity
+
+Usage pattern:
+  from cortical.cognitive.graph import CognitiveAgent
+  agent = CognitiveAgent.load("models/cognitive_agent")
+  results = agent.query("callers_of", "compute_pagerank")
+  for atom in results:
+      print(atom.name, atom.metadata.get("file_path"), atom.metadata.get("lineno"))
+
+CLI equivalent for text queries:
+  python -m cortical.cognitive query neural --top-k 10
+
+What I learned implementing this:
+  The query method delegates to CodeBridge for code queries.
+  CodeBridge query methods must search the graph directly, not just internal cache.
+  This allows queries to work with atoms created outside of CodeBridge.index_*
+
+Related files:
+  cortical/cognitive/code_bridge.py - CodeBridge query implementations
+  tests/behavioral/test_unified_query_spec.py - 12 behavioral tests

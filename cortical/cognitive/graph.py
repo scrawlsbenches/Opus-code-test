@@ -66,12 +66,24 @@ class AtomType(Enum):
     NUMBER = auto()       # Numeric value
     WORD = auto()         # Lexical item
 
+    # Code entity types (for unified knowledge queries)
+    FILE = auto()         # Source file: "auth/handler.py"
+    CLASS = auto()        # Class definition: "AuthHandler"
+    FUNCTION = auto()     # Function/method: "authenticate"
+    MODULE = auto()       # Package/module: "cortical.cognitive"
+
     # Link types (first-order: typically connect nodes)
     INHERITANCE = auto()  # IS-A relationship
-    SIMILARITY = auto()   # Bidirectional similarity
+    SIMILARITY = auto()   # Bidirectional similarity (co-occurrence)
     EVALUATION = auto()   # Predicate application
     MEMBER = auto()       # Set membership
     LIST = auto()         # Ordered collection
+    FOLLOWS = auto()      # Directional: B follows A (for prediction)
+    REFERS_TO = auto()    # WORD refers to CODE entity (semantic bridge)
+    DEFINES = auto()      # FILE defines CLASS/FUNCTION
+    CONTAINS = auto()     # CLASS contains METHOD
+    CALLS = auto()        # FUNCTION calls FUNCTION
+    IMPORTS = auto()      # FILE imports MODULE
 
     # Link types (higher-order: can connect to links)
     BELIEVES = auto()     # Agent believes a statement
@@ -175,6 +187,58 @@ class TruthValue:
 
 
 @dataclass
+class Association:
+    """
+    A weighted association between words.
+
+    Used as return type for get_associations() queries.
+    """
+
+    word: str
+    weight: float
+
+    def __repr__(self) -> str:
+        return f"Association({self.word!r}, {self.weight:.4f})"
+
+
+@dataclass
+class Prediction:
+    """
+    Result of predicting the next atom.
+
+    Used as return type for predict_next() queries.
+
+    Attributes:
+        candidates: List of (word, probability) pairs, sorted by probability desc
+        confidence: 0.0-1.0, how certain the prediction is
+        is_boundary: True if this is a natural stopping point
+        is_unknown: True if the input word was not in vocabulary
+    """
+    candidates: List[Tuple[str, float]]
+    confidence: float
+    is_boundary: bool
+    is_unknown: bool
+
+    @property
+    def top(self) -> Optional[str]:
+        """Get top prediction, or None if unknown/boundary."""
+        if self.is_unknown or not self.candidates:
+            return None
+        return self.candidates[0][0]
+
+    @property
+    def top_probability(self) -> float:
+        """Get probability of top prediction."""
+        if not self.candidates:
+            return 0.0
+        return self.candidates[0][1]
+
+    def __repr__(self) -> str:
+        top_str = f"{self.top}@{self.top_probability:.2f}" if self.top else "?"
+        return f"Prediction({top_str}, conf={self.confidence:.2f}, boundary={self.is_boundary})"
+
+
+@dataclass
 class Atom:
     """
     The universal unit of the cognitive graph.
@@ -192,6 +256,7 @@ class Atom:
         lti: Long-term importance (persistent significance) [0, 1]
         created_at: Timestamp of creation
         accessed_at: Last access timestamp (for LRU tracking)
+        metadata: Extensible dictionary for additional attributes (e.g., raw_strength, idf_strength)
 
     Grounding: Standard graph theory + probabilistic databases.
     """
@@ -205,6 +270,7 @@ class Atom:
     lti: float = 0.0  # Long-term importance
     created_at: float = 0.0  # Timestamp of creation
     accessed_at: float = 0.0  # Last access timestamp
+    metadata: Dict[str, Any] = field(default_factory=dict)  # Extensible metadata
 
     def is_link(self) -> bool:
         """True if this atom is a link (has outgoing connections)."""
@@ -2030,6 +2096,341 @@ class CognitiveAgent:
 
         return episodes
 
+    def get_associations(
+        self,
+        word: str,
+        weight_type: str = "idf",
+        top_k: int = 20,
+    ) -> List[Association]:
+        """
+        Get weighted associations for a word.
+
+        Retrieves words connected by SIMILARITY links, sorted by weight.
+
+        Args:
+            word: The word to find associations for
+            weight_type: "idf" for IDF-weighted strength, "raw" for raw co-occurrence
+            top_k: Maximum associations to return
+
+        Returns:
+            List of Association(word, weight) sorted by weight descending
+        """
+        # Find the word's atom
+        atom = self.graph.get_node(word)
+        if not atom:
+            return []
+
+        # Get all SIMILARITY links pointing to this atom
+        incoming = self.graph.get_incoming(atom.id)
+        similarity_links = [
+            link for link in incoming
+            if link.atom_type == AtomType.SIMILARITY
+        ]
+
+        associations = []
+        for link in similarity_links:
+            # Find the other endpoint
+            other_id = None
+            for target_id in link.outgoing:
+                if target_id != atom.id:
+                    other_id = target_id
+                    break
+
+            if not other_id:
+                continue
+
+            other_atom = self.graph.get_atom(other_id)
+            if not other_atom or not other_atom.name:
+                continue
+
+            # Get the appropriate weight
+            if weight_type == "idf":
+                weight = link.metadata.get("idf_strength", link.tv.strength)
+            else:  # raw
+                weight = link.metadata.get("raw_strength", link.tv.strength)
+
+            associations.append(Association(word=other_atom.name, weight=weight))
+
+        # Sort by weight descending and return top_k
+        associations.sort(key=lambda a: a.weight, reverse=True)
+        return associations[:top_k]
+
+    def predict_next(
+        self,
+        word: str,
+        top_k: int = 5,
+        boundary_threshold: float = 0.1,
+    ) -> Prediction:
+        """
+        Predict the next word using FOLLOWS links.
+
+        Unlike get_associations() which finds semantically related words,
+        predict_next() uses directional transitions to predict what word
+        typically follows the input.
+
+        Args:
+            word: The current word to predict from
+            top_k: Maximum candidates to return
+            boundary_threshold: If total FOLLOWS strength is below this,
+                                consider it a natural boundary
+
+        Returns:
+            Prediction with candidates, confidence, and flags
+
+        Design Notes:
+            - is_unknown: Word not in vocabulary (honest "never seen this")
+            - is_boundary: Word has few/weak outgoing transitions
+            - confidence: How peaked is the distribution? (entropy-based)
+            - Small corpus -> sparse transitions -> honest uncertainty
+        """
+        # Find the word's atom
+        atom = self.graph.get_node(word)
+        if not atom:
+            # Unknown word - honest admission
+            # is_boundary=False because we don't know if it's a boundary
+            # (boundary means known word with no outgoing transitions)
+            return Prediction(
+                candidates=[],
+                confidence=0.0,
+                is_boundary=False,
+                is_unknown=True,
+            )
+
+        # Get all FOLLOWS links originating from this atom
+        # FOLLOWS links have [from_atom, to_atom] structure
+        all_links = self.graph._storage.find_by_type(AtomType.FOLLOWS)
+        follows_links = [
+            link for link in all_links
+            if len(link.outgoing) == 2 and link.outgoing[0] == atom.id
+        ]
+
+        if not follows_links:
+            # Known word but no transitions - natural boundary
+            return Prediction(
+                candidates=[],
+                confidence=0.0,
+                is_boundary=True,
+                is_unknown=False,
+            )
+
+        # Calculate transition probabilities
+        candidates = []
+        total_count = 0
+
+        for link in follows_links:
+            target_id = link.outgoing[1]
+            target_atom = self.graph.get_atom(target_id)
+            if not target_atom or not target_atom.name:
+                continue
+
+            count = link.metadata.get('count', 1)
+            total_count += count
+            candidates.append((target_atom.name, count))
+
+        if not candidates:
+            return Prediction(
+                candidates=[],
+                confidence=0.0,
+                is_boundary=True,
+                is_unknown=False,
+            )
+
+        # Convert counts to probabilities
+        candidates = [
+            (word, count / total_count)
+            for word, count in candidates
+        ]
+
+        # Sort by probability descending
+        candidates.sort(key=lambda x: x[1], reverse=True)
+        candidates = candidates[:top_k]
+
+        # Calculate confidence based on:
+        # 1. Entropy (distribution sharpness)
+        # 2. Sample size (more observations = more confident)
+        import math
+
+        # Entropy-based confidence
+        # High entropy = flat distribution = low confidence
+        entropy = 0.0
+        for _, prob in candidates:
+            if prob > 0:
+                entropy -= prob * math.log2(prob)
+
+        # Normalize: max entropy for k items is log2(k)
+        max_entropy = math.log2(len(candidates)) if len(candidates) > 1 else 1.0
+        normalized_entropy = entropy / max_entropy if max_entropy > 0 else 0.0
+
+        # Entropy-based confidence (inverse of normalized entropy)
+        entropy_confidence = 1.0 - normalized_entropy
+
+        # Sample-size factor: few observations = low confidence
+        # Uses log scale: 1 obs -> 0.0, 2 obs -> 0.5, 5 obs -> 0.7, 10+ obs -> ~0.9
+        sample_factor = min(1.0, math.log1p(total_count) / math.log1p(10))
+
+        # Combined confidence: geometric mean of entropy and sample factors
+        # This ensures both distribution AND sample size matter
+        confidence = math.sqrt(entropy_confidence * sample_factor)
+
+        # Check if this is a boundary
+        # Low total strength means weak outgoing connections
+        total_strength = sum(
+            link.tv.strength for link in follows_links
+        )
+        is_boundary = total_strength < boundary_threshold * len(follows_links)
+
+        return Prediction(
+            candidates=candidates,
+            confidence=confidence,
+            is_boundary=is_boundary,
+            is_unknown=False,
+        )
+
+    # =========================================================================
+    # Unified Query Interface
+    # =========================================================================
+
+    def query(
+        self,
+        query_type: str,
+        target: str,
+        top_k: int = 20,
+        **kwargs
+    ) -> List[Atom]:
+        """
+        Unified query interface for all query types.
+
+        Query types:
+            Text queries:
+                - similar_to: Words associated with target via SIMILARITY links
+
+            Code queries:
+                - callers_of: Functions that call target function
+                - subclasses_of: Classes that inherit from target class
+                - methods_of: Methods contained in target class
+                - defined_in: Entities defined in target file
+
+            Bridge queries:
+                - code_for_word: Code entities that a word refers to
+                - words_for_code: Words that refer to a code entity
+
+        Args:
+            query_type: Type of query (see above)
+            target: Target entity name
+            top_k: Maximum results to return (default 20)
+            **kwargs: Additional query-specific options
+
+        Returns:
+            List of Atom results (possibly empty)
+
+        Raises:
+            ValueError: If query_type is unknown
+        """
+        # Text queries
+        if query_type == "similar_to":
+            return self._query_similar_to(target, top_k=top_k)
+
+        # Code queries - need CodeBridge
+        if query_type in ("callers_of", "subclasses_of", "methods_of", "defined_in"):
+            return self._query_code(query_type, target)
+
+        # Bridge queries
+        if query_type in ("code_for_word", "words_for_code"):
+            return self._query_bridge(query_type, target)
+
+        # Unknown query type
+        raise ValueError(f"Unknown query type: '{query_type}'")
+
+    def _query_similar_to(self, word: str, top_k: int = 20) -> List[Atom]:
+        """
+        Find words similar to target via SIMILARITY links.
+
+        Args:
+            word: Target word
+            top_k: Maximum results
+
+        Returns:
+            List of WORD atoms connected by SIMILARITY links
+        """
+        atom = self.graph.get_node(word)
+        if not atom:
+            return []
+
+        # Get atoms connected by SIMILARITY links
+        similar_atoms = []
+
+        # Check incoming links (bidirectional similarity)
+        incoming = self.graph.get_incoming(atom.id)
+        for link in incoming:
+            if link.atom_type == AtomType.SIMILARITY:
+                for target_id in link.outgoing:
+                    if target_id != atom.id:
+                        target_atom = self.graph.get_atom(target_id)
+                        if target_atom and target_atom not in similar_atoms:
+                            similar_atoms.append(target_atom)
+
+        # Also check outgoing (SIMILARITY is symmetric but stored once)
+        all_similarity_links = self.graph.find_by_type(AtomType.SIMILARITY)
+        for link in all_similarity_links:
+            if atom.id in link.outgoing:
+                for target_id in link.outgoing:
+                    if target_id != atom.id:
+                        target_atom = self.graph.get_atom(target_id)
+                        if target_atom and target_atom not in similar_atoms:
+                            similar_atoms.append(target_atom)
+
+        return similar_atoms[:top_k]
+
+    def _query_code(self, query_type: str, target: str) -> List[Atom]:
+        """
+        Execute a code structure query.
+
+        Uses CodeBridge to traverse code relationships.
+
+        Args:
+            query_type: One of callers_of, subclasses_of, methods_of, defined_in
+            target: Name of target entity
+
+        Returns:
+            List of matching atoms
+        """
+        from cortical.cognitive.code_bridge import CodeBridge
+
+        bridge = CodeBridge(self.graph)
+
+        if query_type == "callers_of":
+            return bridge.query_callers_of(target)
+        elif query_type == "subclasses_of":
+            return bridge.query_subclasses_of(target)
+        elif query_type == "methods_of":
+            return bridge.query_methods_of(target)
+        elif query_type == "defined_in":
+            return bridge.query_defined_in(target)
+
+        return []
+
+    def _query_bridge(self, query_type: str, target: str) -> List[Atom]:
+        """
+        Execute a bridge query (text <-> code).
+
+        Args:
+            query_type: code_for_word or words_for_code
+            target: Target word or code entity name
+
+        Returns:
+            List of matching atoms
+        """
+        from cortical.cognitive.code_bridge import CodeBridge
+
+        bridge = CodeBridge(self.graph)
+
+        if query_type == "code_for_word":
+            return bridge.query_code_for_word(target)
+        elif query_type == "words_for_code":
+            return bridge.query_words_for_code(target)
+
+        return []
+
     # =========================================================================
     # Persistence (JSON-based for security and git-friendliness)
     # =========================================================================
@@ -2054,6 +2455,7 @@ class CognitiveAgent:
                 "lti": atom.lti,
                 "created_at": atom.created_at,
                 "accessed_at": atom.accessed_at,
+                "metadata": atom.metadata,
             })
 
         # Serialize goals
@@ -2147,6 +2549,7 @@ class CognitiveAgent:
                 lti=atom_data.get("lti", 0.0),
                 created_at=atom_data.get("created_at", 0.0),
                 accessed_at=atom_data.get("accessed_at", 0.0),
+                metadata=atom_data.get("metadata", {}),
             )
             agent.graph._storage.save(atom)
             atom_lookup[atom.id] = atom

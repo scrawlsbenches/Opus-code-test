@@ -209,6 +209,7 @@ class TaskDAG:
         return {task for task in self._nodes if len(self._edges[task]) == 0}
 
 
+# Demo/test cases - this module doesn't use DI so standalone execution is safe
 if __name__ == "__main__":
     # Run all test cases
     print("Running TaskDAG Test Suite...")

@@ -1,0 +1,45 @@
+Finding Code After Context Loss
+
+When you lose context and need to understand this codebase, start here.
+
+Quick orientation:
+  python -m cortical.cognitive status    # see what's trained
+  python -m cortical.got validate        # check GoT health
+  git log --oneline -10                  # recent changes
+
+Architecture overview:
+  cortical/cognitive/     - CognitiveAgent, training, graph storage
+  cortical/got/           - Graph of Thought, tasks, decisions
+  cortical/cdg/           - Core data graph, transactions, storage
+  cortical/processor/     - Text processing, TF-IDF, PageRank
+
+Key files for cognitive agent:
+  cortical/cognitive/graph.py       - CognitiveAgent class, Atom, AtomType
+  cortical/cognitive/code_bridge.py - CodeBridge for AST indexing
+  cortical/cognitive/__main__.py    - CLI entry point
+  cortical/cognitive/training.py    - Training handlers
+
+To find code by concept:
+  python -m cortical.cognitive query <concept> --top-k 10
+
+  This returns associated words. The model learned these by training on
+  documents and code, so "neural" returns "networks, graph, processor".
+
+To find code structure:
+  Use agent.query() with code query types:
+    agent.query("callers_of", "function_name")
+    agent.query("methods_of", "ClassName")
+    agent.query("defined_in", "file.py")
+
+To find code for a word:
+  agent.query("code_for_word", "pagerank")
+  Returns actual function/class atoms with file_path and lineno.
+
+Documentation:
+  docs/cli-reference.md       - All CLI commands
+  docs/plans/                 - Implementation plans
+  CLAUDE.md                   - Project instructions and workflow
+
+Tests tell you how things work:
+  tests/behavioral/test_code_indexing_spec.py   - CodeBridge behavior
+  tests/behavioral/test_unified_query_spec.py   - query() interface

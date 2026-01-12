@@ -32,6 +32,7 @@ Grounding: BPE algorithm (Sennrich et al., 2016) adapted for cognitive graphs.
 from __future__ import annotations
 
 import json
+import math
 import re
 import sys
 import time
@@ -171,12 +172,20 @@ class BPETokenizer:
     _pair_counts: Counter = field(default_factory=Counter)
     _word_counts: Counter = field(default_factory=Counter)
 
+    # IDF tracking
+    _doc_frequency: Dict[str, int] = field(default_factory=dict)
+    _total_docs: int = 0
+
     def __post_init__(self):
         """Initialize counters if not provided."""
         if not hasattr(self, '_pair_counts') or self._pair_counts is None:
             self._pair_counts = Counter()
         if not hasattr(self, '_word_counts') or self._word_counts is None:
             self._word_counts = Counter()
+        if not hasattr(self, '_doc_frequency') or self._doc_frequency is None:
+            self._doc_frequency = {}
+        if not hasattr(self, '_total_docs') or self._total_docs is None:
+            self._total_docs = 0
 
     def tokenize(self, text: str) -> List[str]:
         """
@@ -269,11 +278,19 @@ class BPETokenizer:
         if not incremental:
             self._word_counts = Counter()
             self._pair_counts = Counter()
+            self._doc_frequency = {}
+            self._total_docs = 0
 
         # Count words and pairs
         for text in texts:
             tokens = self.tokenize(text)
             self._word_counts.update(tokens)
+
+            # Track document frequency (count of docs containing each word)
+            unique_words = set(tokens)
+            for word in unique_words:
+                self._doc_frequency[word] = self._doc_frequency.get(word, 0) + 1
+            self._total_docs += 1
 
             # Count adjacent pairs
             for i in range(len(tokens) - 1):
@@ -302,6 +319,10 @@ class BPETokenizer:
             top_words = [w for w, _ in self._word_counts.most_common(self.max_vocab_size)]
             self.vocab = set(top_words)
 
+    def learn_vocabulary(self, texts: List[str], n_merges: int = 100, incremental: bool = False) -> None:
+        """Alias for learn_from_texts - trains tokenizer on corpus."""
+        self.learn_from_texts(texts, n_merges, incremental)
+
     def get_vocabulary(self) -> List[str]:
         """Get sorted vocabulary list."""
         return sorted(self.vocab)
@@ -318,6 +339,24 @@ class BPETokenizer:
         """Get most frequent word pairs."""
         return self._pair_counts.most_common(n)
 
+    def get_idf(self, word: str) -> float:
+        """
+        Get IDF (Inverse Document Frequency) for a word.
+
+        Uses smoothed IDF formula: log((N + 1) / (df + 1))
+        where N = total documents, df = documents containing the word.
+
+        Args:
+            word: The word to get IDF for
+
+        Returns:
+            IDF value, or 0.0 if word not in vocabulary
+        """
+        if word not in self.vocab:
+            return 0.0
+        df = self._doc_frequency.get(word, 0)
+        return math.log((self._total_docs + 1) / (df + 1))
+
     def to_dict(self) -> Dict[str, Any]:
         """Serialize tokenizer state to dictionary."""
         return {
@@ -327,6 +366,8 @@ class BPETokenizer:
             "max_vocab_size": self.max_vocab_size,
             "word_counts": dict(self._word_counts),
             "pair_counts": {f"{k[0]}|{k[1]}": v for k, v in self._pair_counts.items()},
+            "doc_frequency": dict(self._doc_frequency),
+            "total_docs": self._total_docs,
         }
 
     @classmethod
@@ -343,6 +384,9 @@ class BPETokenizer:
             tuple(k.split("|")): v
             for k, v in data.get("pair_counts", {}).items()
         })
+        # Restore IDF data (backward compatible - defaults to empty/0 if missing)
+        tok._doc_frequency = dict(data.get("doc_frequency", {}))
+        tok._total_docs = data.get("total_docs", 0)
         return tok
 
     def save(self, path: Path, filesystem: FileSystem) -> None:
@@ -493,6 +537,21 @@ class TextToAtomsBridge:
                 )
                 links_created_this_doc += 1
 
+        # Step 3: Create FOLLOWS links for adjacent words (for prediction)
+        # FOLLOWS is directional: A -> B means B follows A
+        for i in range(len(tokens) - 1):
+            current_token = tokens[i]
+            next_token = tokens[i + 1]
+
+            if current_token == next_token:
+                continue
+
+            # Create directional FOLLOWS link (not canonicalized)
+            self._create_follows_link(
+                token_atoms[current_token],
+                token_atoms[next_token],
+            )
+
         self._documents_fed += 1
         return created_atoms
 
@@ -551,6 +610,11 @@ class TextToAtomsBridge:
         Link strength is based on co-occurrence frequency.
         If link already exists, merge evidence (strength increases).
 
+        The link stores dual strength values in metadata:
+            - raw_strength: Co-occurrence based strength (backward compatible)
+            - idf_strength: raw_strength * min(idf_word1, idf_word2)
+            - idf_epoch: Training epoch when IDF was computed
+
         Args:
             atom1: First atom
             atom2: Second atom
@@ -559,21 +623,96 @@ class TextToAtomsBridge:
         Returns:
             The SIMILARITY link atom
         """
+        # Canonicalize atom order for SIMILARITY (bidirectional) links
+        # This ensures [A,B] and [B,A] map to the same link
+        if atom1.name > atom2.name:
+            atom1, atom2 = atom2, atom1
+
         # Calculate strength based on co-occurrence frequency
         pair_freq = self.tokenizer.get_pair_frequency(atom1.name, atom2.name)
         pair_freq += self.tokenizer.get_pair_frequency(atom2.name, atom1.name)
 
         # Strength scales with frequency (capped)
         import math
-        strength = min(0.9, base_strength + math.log1p(pair_freq) * 0.1)
+        raw_strength = min(0.9, base_strength + math.log1p(pair_freq) * 0.1)
 
-        if strength < self.min_link_strength:
+        if raw_strength < self.min_link_strength:
             return None
 
-        # Create link with computed strength
-        tv = TruthValue(strength=strength, confidence=0.3)
+        # Get IDF values for both words
+        # IDF=0 is valid: means word appears in all documents (no discriminative power)
+        idf1 = self.tokenizer.get_idf(atom1.name) if atom1.name else 0.0
+        idf2 = self.tokenizer.get_idf(atom2.name) if atom2.name else 0.0
+
+        # Calculate IDF-weighted strength using minimum IDF of the pair
+        # If either word is ubiquitous (IDF=0), the link has low discriminative value
+        idf_strength = raw_strength * min(idf1, idf2)
+
+        # Create link with raw_strength in truth value
+        tv = TruthValue(strength=raw_strength, confidence=0.3)
         link = self.graph.link(AtomType.SIMILARITY, [atom1, atom2], tv)
 
+        # Store dual values in metadata
+        link.metadata['raw_strength'] = raw_strength
+        link.metadata['idf_strength'] = idf_strength
+        link.metadata['idf_epoch'] = getattr(self, '_current_epoch', 0)
+
+        # Save the updated link with metadata
+        self.graph._storage.save(link)
+
+        self._links_created += 1
+        return link
+
+    def _create_follows_link(
+        self,
+        from_atom: 'Atom',
+        to_atom: 'Atom',
+    ) -> Optional['Atom']:
+        """
+        Create or strengthen a directional FOLLOWS link.
+
+        FOLLOWS links are directional: from_atom → to_atom means
+        to_atom follows from_atom in text sequences.
+
+        Unlike SIMILARITY links:
+        - FOLLOWS is directional (order matters)
+        - No IDF weighting (we care about transition frequency)
+        - Strength represents transition probability
+
+        Args:
+            from_atom: The preceding word atom
+            to_atom: The following word atom
+
+        Returns:
+            The FOLLOWS link atom, or None if below threshold
+        """
+        # Check for existing FOLLOWS link (directional - order matters)
+        # Use find_link_by_outgoing with [from_id, to_id] - order matters
+        existing = self.graph._storage.find_link_by_outgoing(
+            AtomType.FOLLOWS,
+            [from_atom.id, to_atom.id],
+        )
+
+        if existing:
+            # Strengthen existing link
+            link = existing
+            link.metadata['count'] = link.metadata.get('count', 1) + 1
+            # Increase strength with each observation (diminishing returns)
+            import math
+            count = link.metadata['count']
+            link.tv.strength = min(0.95, 0.3 + math.log1p(count) * 0.1)
+            self.graph._storage.save(link)
+            return link
+
+        # Create new FOLLOWS link
+        tv = TruthValue(strength=0.3, confidence=0.2)  # Start uncertain
+        link = self.graph.link(AtomType.FOLLOWS, [from_atom, to_atom], tv)
+
+        # Initialize metadata
+        link.metadata['count'] = 1
+        link.metadata['direction'] = 'forward'  # Explicit direction marker
+
+        self.graph._storage.save(link)
         self._links_created += 1
         return link
 
@@ -586,6 +725,85 @@ class TextToAtomsBridge:
             "vocabulary_size": len(self.tokenizer.vocab),
             "learned_merges": len(self.tokenizer.merges),
         }
+
+    def get_similarity_links(self) -> List['Atom']:
+        """
+        Get all SIMILARITY links in the graph.
+
+        Returns:
+            List of SIMILARITY link atoms with their metadata.
+        """
+        from cortical.cognitive.graph import AtomType
+        return self.graph.find_by_type(AtomType.SIMILARITY)
+
+    def reindex_idf(self) -> Dict[str, Any]:
+        """
+        Recalculate idf_strength for all SIMILARITY links using current IDF values.
+
+        This should be called after incremental training to update stale link
+        weights. Links created before vocabulary updates will have idf_strength
+        computed with old IDF values - this method fixes that.
+
+        Performance: O(L) where L = number of SIMILARITY links.
+        Each link requires 2 atom lookups (O(1) with hash storage) and
+        2 IDF lookups (O(1) dict access).
+
+        Returns:
+            Dict with reindex statistics:
+                - links_updated: Number of links processed
+                - time_ms: Time taken in milliseconds
+                - new_epoch: The new IDF epoch number
+        """
+        import time
+        from cortical.cognitive.graph import AtomType
+
+        start = time.perf_counter()
+
+        # Increment epoch counter
+        if not hasattr(self, '_idf_epoch'):
+            self._idf_epoch = 0
+        self._idf_epoch += 1
+        new_epoch = self._idf_epoch
+
+        storage = self.graph._storage
+        links = storage.find_by_type(AtomType.SIMILARITY)
+        links_updated = 0
+
+        for link in links:
+            # Get the two connected word atoms
+            if len(link.outgoing) != 2:
+                continue
+
+            atom1 = storage.load(link.outgoing[0])
+            atom2 = storage.load(link.outgoing[1])
+
+            if not atom1 or not atom2:
+                continue
+
+            # Get current IDF values
+            idf1 = self.tokenizer.get_idf(atom1.name) if atom1.name else 0.0
+            idf2 = self.tokenizer.get_idf(atom2.name) if atom2.name else 0.0
+
+            # Recalculate idf_strength using raw_strength from metadata or tv.strength
+            raw = link.metadata.get('raw_strength', link.tv.strength)
+            link.metadata['idf_strength'] = raw * min(idf1, idf2)
+            link.metadata['idf_epoch'] = new_epoch
+
+            # Persist updated link
+            storage.save(link)
+            links_updated += 1
+
+        elapsed_ms = (time.perf_counter() - start) * 1000
+
+        return {
+            'links_updated': links_updated,
+            'time_ms': round(elapsed_ms, 2),
+            'new_epoch': new_epoch,
+        }
+
+    def get_idf_epoch(self) -> int:
+        """Return current IDF epoch number."""
+        return getattr(self, '_idf_epoch', 0)
 
     def add_documents(
         self,
@@ -658,47 +876,48 @@ class TextToAtomsBridge:
 
         Creates:
             path/tokenizer.json - Tokenizer vocabulary and stats
-            path/graph.json - CognitiveGraph state
+            path/meta.json - Graph metadata
+            path/atoms_*.json - Sharded graph atoms by type
+
+        Uses ShardedGraphStorage to keep files under 50MB for git.
 
         Args:
             path: Directory to save to (created if doesn't exist)
             filesystem: FileSystem for I/O operations
         """
+        from cortical.cognitive.graph_storage import ShardedGraphStorage
+
         path = Path(path)
         filesystem.mkdir(path, parents=True, exist_ok=True)
 
         # Save tokenizer
         self.tokenizer.save(path / "tokenizer.json", filesystem)
 
-        # Save graph (uses its own save method)
-        # The CognitiveGraph should have a save method
-        graph_data = {
-            "atoms": [],
-            "stats": self.get_statistics(),
-        }
+        # Save graph using sharded storage
+        storage = ShardedGraphStorage()
+        result = storage.save(self.graph, path)
 
-        # Serialize atoms
-        for atom in self.graph._storage.all_atoms():
-            atom_data = {
-                "id": atom.id,
-                "name": atom.name,
-                "atom_type": atom.atom_type.name,
-                "tv_strength": atom.tv.strength,
-                "tv_confidence": atom.tv.confidence,
-                "sti": atom.sti,
-                "lti": atom.lti,
-                "outgoing": atom.outgoing,
-            }
-            graph_data["atoms"].append(atom_data)
+        # Also save stats in meta.json (append to existing)
+        meta_path = path / "meta.json"
+        if meta_path.exists():
+            with open(meta_path) as f:
+                meta = json.load(f)
+        else:
+            meta = {}
 
-        filesystem.write_text(path / "graph.json", json.dumps(graph_data, indent=2))
+        meta["bridge_stats"] = self.get_statistics()
+        with open(meta_path, 'w') as f:
+            json.dump(meta, f, indent=2)
 
         print(f"Saved bridge to {path}/")
+        print(f"  Shards: {result['shards_written']}, Atoms: {result['total_atoms']}")
 
     @classmethod
     def load(cls, path: Path, graph: 'CognitiveGraph', filesystem: FileSystem) -> 'TextToAtomsBridge':
         """
         Load bridge state from directory.
+
+        Supports both sharded format (atoms_*.json) and legacy format (graph.json).
 
         Args:
             path: Directory containing saved state
@@ -708,6 +927,8 @@ class TextToAtomsBridge:
         Returns:
             Loaded TextToAtomsBridge
         """
+        from cortical.cognitive.graph_storage import ShardedGraphStorage
+
         path = Path(path)
 
         # Load tokenizer
@@ -716,10 +937,11 @@ class TextToAtomsBridge:
         # Create bridge with loaded tokenizer
         bridge = cls(graph=graph, tokenizer=tokenizer)
 
-        # Load graph data
-        graph_data = json.loads(filesystem.read_text(path / "graph.json"))
+        # Load graph data using sharded storage (handles legacy format too)
+        storage = ShardedGraphStorage()
+        atoms_data = storage.load(path)
 
-        atoms_data = graph_data.get("atoms", [])
+        # Separate nodes and links
         nodes = [a for a in atoms_data if not a.get("outgoing")]
         links = [a for a in atoms_data if a.get("outgoing")]
 
@@ -727,17 +949,26 @@ class TextToAtomsBridge:
         id_map = {}  # old_id -> new_atom
         for atom_data in nodes:
             atom_type = AtomType[atom_data["atom_type"]]
-            tv = TruthValue(atom_data["tv_strength"], atom_data["tv_confidence"])
+            # Handle both old format (tv_strength) and new format (tv.strength)
+            if "tv" in atom_data:
+                tv = TruthValue(atom_data["tv"]["strength"], atom_data["tv"]["confidence"])
+            else:
+                tv = TruthValue(atom_data.get("tv_strength", 0.5), atom_data.get("tv_confidence", 0.5))
             atom = graph.node(atom_data["name"], atom_type=atom_type, tv=tv)
             atom.sti = atom_data.get("sti", 0.0)
             atom.lti = atom_data.get("lti", 0.0)
+            atom.metadata = atom_data.get("metadata", {})
             graph._storage.save(atom)
             id_map[atom_data["id"]] = atom
 
         # Pass 2: Restore links
         for atom_data in links:
             atom_type = AtomType[atom_data["atom_type"]]
-            tv = TruthValue(atom_data["tv_strength"], atom_data["tv_confidence"])
+            # Handle both old format (tv_strength) and new format (tv.strength)
+            if "tv" in atom_data:
+                tv = TruthValue(atom_data["tv"]["strength"], atom_data["tv"]["confidence"])
+            else:
+                tv = TruthValue(atom_data.get("tv_strength", 0.5), atom_data.get("tv_confidence", 0.5))
 
             # Resolve target atoms
             targets = []
@@ -749,10 +980,18 @@ class TextToAtomsBridge:
                 link = graph.link(atom_type, targets, tv)
                 link.sti = atom_data.get("sti", 0.0)
                 link.lti = atom_data.get("lti", 0.0)
+                link.metadata = atom_data.get("metadata", {})
                 graph._storage.save(link)
 
-        # Restore stats
-        stats = graph_data.get("stats", {})
+        # Restore stats from meta.json if available
+        meta_path = path / "meta.json"
+        if meta_path.exists():
+            with open(meta_path) as f:
+                meta = json.load(f)
+            stats = meta.get("bridge_stats", {})
+        else:
+            stats = {}
+
         bridge._documents_fed = stats.get("documents_fed", 0)
         bridge._atoms_created = stats.get("atoms_created", 0)
         bridge._links_created = stats.get("links_created", 0)

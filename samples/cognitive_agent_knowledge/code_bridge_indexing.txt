@@ -1,0 +1,38 @@
+Code Bridge - Indexing Python Code Structure
+
+When you need to understand code relationships in the codebase, use CodeBridge.
+
+Location: cortical/cognitive/code_bridge.py
+
+What it does:
+  Parses Python AST and creates atoms for code structure.
+  Creates FILE, CLASS, FUNCTION atoms with metadata (file_path, lineno).
+  Creates relationship links: CALLS, INHERITANCE, DEFINES, CONTAINS.
+  Optionally creates REFERS_TO links bridging vocabulary to code.
+
+Key classes:
+  CodeBridge - main class for indexing
+  IndexStats - dataclass tracking indexing results
+
+Key methods:
+  index_file(path) - index single Python file
+  index_directory(path, exclude) - recursively index .py files
+  create_refers_to_links(min_word_length=3) - bridge vocabulary to code
+
+CLI usage:
+  python -m cortical.cognitive index-code cortical/
+  python -m cortical.cognitive index-code cortical/got/ --link-text --json
+
+Performance characteristics:
+  36 files indexed in 2 seconds
+  61,000 REFERS_TO links created in 2.1 seconds
+  Storage overhead minimal - atoms store references not code
+
+Bug I fixed:
+  camelCase splitting in _extract_name_parts() must include the full word.
+  Without this, "myclass" wouldn't match "MyClass" because only ["my", "class"] were indexed.
+  Fix: Add full word (lowercased) before splitting camelCase.
+
+Related:
+  docs/plans/ast-integration-plan.md - implementation plan
+  tests/behavioral/test_code_indexing_spec.py - 32 behavioral tests

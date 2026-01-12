@@ -65,6 +65,12 @@ from cortical.cognitive.graph import Atom, AtomType, TruthValue
 
 
 @dataclass
+class TrainingConfig:
+    """Configuration for training behavior."""
+    staleness_warning_threshold: float = 0.2  # 20% growth triggers warning
+
+
+@dataclass
 class TrainedDocument:
     """Record of a trained document."""
 
@@ -113,6 +119,8 @@ class TrainingManifest:
     total_documents: int = 0
     vocabulary_size: int = 0
     model_version: str = "1.0"
+    last_reindex_doc_count: int = 0  # corpus size at last IDF reindex
+    idf_epoch: int = 0  # increments each time IDF is recalculated
 
     def add_document(
         self,
@@ -161,6 +169,8 @@ class TrainingManifest:
             "last_training": self.last_training,
             "total_documents": self.total_documents,
             "vocabulary_size": self.vocabulary_size,
+            "last_reindex_doc_count": self.last_reindex_doc_count,
+            "idf_epoch": self.idf_epoch,
             "documents": {
                 k: v.to_dict() for k, v in self.documents.items()
             },
@@ -180,12 +190,20 @@ class TrainingManifest:
             total_documents=data.get("total_documents", 0),
             vocabulary_size=data.get("vocabulary_size", 0),
             model_version=data.get("model_version", "1.0"),
+            last_reindex_doc_count=data.get("last_reindex_doc_count", 0),
+            idf_epoch=data.get("idf_epoch", 0),
         )
 
         for path_key, doc_data in data.get("documents", {}).items():
             manifest.documents[path_key] = TrainedDocument.from_dict(doc_data)
 
         return manifest
+
+    def get_staleness(self) -> float:
+        """Calculate IDF staleness as fraction of corpus growth since last reindex."""
+        if self.last_reindex_doc_count == 0:
+            return 0.0
+        return (self.total_documents - self.last_reindex_doc_count) / self.last_reindex_doc_count
 
 
 def compute_content_hash(content: str) -> str:
@@ -273,6 +291,7 @@ class IncrementalTrainer:
         model_dir: str | Path,
         filesystem: FileSystem,
         checkpoint_interval: int = 50,
+        config: Optional[TrainingConfig] = None,
     ):
         """
         Initialize trainer.
@@ -282,8 +301,10 @@ class IncrementalTrainer:
             model_dir: Directory for model persistence
             filesystem: FileSystem for I/O operations
             checkpoint_interval: Save progress every N documents (default 50)
+            config: Training configuration (default: TrainingConfig())
         """
         self.agent = agent
+        self.config = config or TrainingConfig()
         self.model_dir = Path(model_dir)
         self.filesystem = filesystem
         self.checkpoint_interval = checkpoint_interval
@@ -307,13 +328,13 @@ class IncrementalTrainer:
             self.bridge.tokenizer = self.tokenizer_storage.load(tokenizer_dir)
 
         # Load existing graph state if available (CRITICAL for session recovery)
-        graph_path = self.model_dir / "bridge" / "graph.json"
-        if self.filesystem.exists(graph_path):
-            self._load_graph_state(graph_path)
+        bridge_dir = self.model_dir / "bridge"
+        if bridge_dir.exists():
+            self._load_graph_state(bridge_dir)
 
-    def _load_graph_state(self, graph_path: Path) -> None:
+    def _load_graph_state(self, bridge_dir: Path) -> None:
         """
-        Load graph state from a previously saved graph.json file.
+        Load graph state from sharded files or legacy graph.json.
 
         This is CRITICAL for session recovery - without this, all learned
         atoms and links are lost when resuming training in a new session.
@@ -329,38 +350,65 @@ class IncrementalTrainer:
         Direct Atom creation: 0.15s (200x faster)
 
         Args:
-            graph_path: Path to graph.json file
+            bridge_dir: Directory containing graph shards or graph.json
         """
-        graph_data = json.loads(self.filesystem.read_text(graph_path))
-        storage = self.agent.graph._storage
+        from cortical.cognitive.graph_storage import ShardedGraphStorage
 
-        atoms_data = graph_data.get("atoms", [])
+        storage_handler = ShardedGraphStorage()
+        atoms_data = storage_handler.load(bridge_dir)
+
+        if not atoms_data:
+            return
+
+        storage = self.agent.graph._storage
 
         # OPTIMIZED: Direct Atom instantiation bypasses O(n²) find_by_type()
         # We load all atoms in a single pass since we have the complete data
         id_map = {}  # old_id -> new_atom
 
         for atom_data in atoms_data:
+            # Handle both old format (tv_strength) and new format (tv.strength)
+            if "tv" in atom_data:
+                tv = TruthValue(atom_data["tv"]["strength"], atom_data["tv"]["confidence"])
+            else:
+                tv = TruthValue(atom_data.get("tv_strength", 0.5), atom_data.get("tv_confidence", 0.5))
+
             atom = Atom(
                 id=atom_data["id"],
                 atom_type=AtomType[atom_data["atom_type"]],
                 name=atom_data.get("name", ""),
                 outgoing=atom_data.get("outgoing", []),
-                tv=TruthValue(
-                    atom_data["tv_strength"],
-                    atom_data["tv_confidence"]
-                ),
+                tv=tv,
                 sti=atom_data.get("sti", 0.0),
                 lti=atom_data.get("lti", 0.0),
+                metadata=atom_data.get("metadata", {}),  # Restore IDF weights
             )
             id_map[atom_data["id"]] = atom
             storage.save(atom)
 
-        # Restore bridge stats
-        stats = graph_data.get("stats", {})
+        # Restore bridge stats from meta.json if available
+        meta_path = bridge_dir / "meta.json"
+        if meta_path.exists():
+            with open(meta_path) as f:
+                meta = json.load(f)
+            stats = meta.get("bridge_stats", {})
+        else:
+            stats = {}
+
         self.bridge._documents_fed = stats.get("documents_fed", 0)
         self.bridge._atoms_created = stats.get("atoms_created", 0)
         self.bridge._links_created = stats.get("links_created", 0)
+
+    def _check_staleness_warning(self) -> None:
+        """Emit warning to stderr if IDF weights are stale."""
+        staleness = self.manifest.get_staleness()
+        if staleness > self.config.staleness_warning_threshold:
+            import sys
+            print(
+                f"Warning: IDF weights are {staleness:.0%} stale. "
+                f"Consider running --reindex to update link weights.",
+                file=sys.stderr,
+            )
 
     def scan_directory(
         self,
@@ -433,6 +481,9 @@ class IncrementalTrainer:
 
         stats = TrainingStats()
         directory = Path(directory)
+
+        # Check for stale IDF weights before training
+        self._check_staleness_warning()
 
         # Scan all files
         all_files = list(self.scan_directory(directory, pattern, recursive))
@@ -560,6 +611,9 @@ class IncrementalTrainer:
 
         stats = TrainingStats()
 
+        # Check for stale IDF weights before training
+        self._check_staleness_warning()
+
         # Resolve paths and load content
         files_data = []
         for fp in file_paths:
@@ -626,39 +680,67 @@ class IncrementalTrainer:
 
     def save(self) -> None:
         """Save model, tokenizer, and manifest."""
+        from cortical.cognitive.graph_storage import ShardedGraphStorage
+
         # Save tokenizer to sharded directory (merge-conflict-free)
         tokenizer_dir = self.model_dir / "tokenizer"
         self.tokenizer_storage.save_incremental(self.bridge.tokenizer, tokenizer_dir)
 
-        # Save bridge graph data
+        # Save bridge graph data using sharded storage (git-friendly)
         bridge_dir = self.model_dir / "bridge"
         self.filesystem.mkdir(bridge_dir, parents=True, exist_ok=True)
 
-        # Serialize graph to bridge directory
-        graph_data = {
-            "atoms": [],
-            "stats": self.bridge.get_statistics(),
-        }
-        for atom in self.bridge.graph._storage.all_atoms():
-            atom_data = {
-                "id": atom.id,
-                "name": atom.name,
-                "atom_type": atom.atom_type.name,
-                "tv_strength": atom.tv.strength,
-                "tv_confidence": atom.tv.confidence,
-                "sti": atom.sti,
-                "lti": atom.lti,
-                "outgoing": atom.outgoing,
-            }
-            graph_data["atoms"].append(atom_data)
+        storage = ShardedGraphStorage()
+        result = storage.save(self.bridge.graph, bridge_dir)
 
-        self.filesystem.write_text(
-            bridge_dir / "graph.json",
-            json.dumps(graph_data, indent=2)
-        )
+        # Save stats in meta.json
+        meta_path = bridge_dir / "meta.json"
+        if meta_path.exists():
+            with open(meta_path) as f:
+                meta = json.load(f)
+        else:
+            meta = {}
+
+        meta["bridge_stats"] = self.bridge.get_statistics()
+        with open(meta_path, 'w') as f:
+            json.dump(meta, f, indent=2)
 
         # Save manifest
         self.manifest.save(self.manifest_path, self.filesystem)
+
+    def reindex(self, show_progress: bool = True) -> Dict[str, Any]:
+        """
+        Recalculate IDF weights for all similarity links.
+
+        This should be called after incremental training to update stale
+        link weights. Updates manifest with new reindex stats.
+
+        Args:
+            show_progress: Print progress info to stderr
+
+        Returns:
+            Dict with reindex statistics
+        """
+        import sys
+
+        if show_progress:
+            n_links = len(self.bridge.get_similarity_links())
+            print(f"Reindexing {n_links} links...", file=sys.stderr)
+
+        result = self.bridge.reindex_idf()
+
+        # Update manifest
+        self.manifest.last_reindex_doc_count = self.manifest.total_documents
+        self.manifest.idf_epoch = result['new_epoch']
+
+        # Save updated state
+        self.save()
+
+        if show_progress:
+            print(f"Reindex complete: {result['links_updated']} links updated in {result['time_ms']}ms", file=sys.stderr)
+            print(f"IDF epoch: {result['new_epoch']}", file=sys.stderr)
+
+        return result
 
     @classmethod
     def load(
@@ -780,6 +862,11 @@ Examples:
         help="List trained documents and exit",
     )
     parser.add_argument(
+        "--reindex",
+        action="store_true",
+        help="Recalculate IDF weights for all similarity links",
+    )
+    parser.add_argument(
         "--quiet",
         action="store_true",
         help="Suppress progress output",
@@ -798,16 +885,32 @@ Examples:
     )
 
     args = parser.parse_args()
+    run_cli(args)
 
-    # Import here to avoid circular imports at module level
-    from cortical.cognitive.graph import CognitiveAgent
 
-    # Create filesystem for real I/O
-    model_dir = Path(args.model_dir)
-    filesystem = RealFileSystem(model_dir)
+def run_cli(args, container: 'Optional[Container]' = None) -> None:
+    """
+    Execute CLI command with given args.
 
-    agent = CognitiveAgent(filesystem=filesystem)
-    trainer = IncrementalTrainer(agent, model_dir, filesystem)
+    This function is separated from main() to allow testing with DI.
+    Tests can pass a pre-configured container with InMemoryFileSystem.
+
+    Args:
+        args: Parsed command line arguments
+        container: Optional DI container. If None, creates one with RealFileSystem.
+    """
+    from cortical.common import Container
+    from cortical.core.modules import CognitiveModule
+    # Import from canonical module to avoid __main__ class identity issues with -m
+    import cortical.cognitive.training as training_module
+
+    # Use provided container or create one
+    if container is None:
+        model_dir = Path(args.model_dir)
+        container = Container()
+        container.apply_module(CognitiveModule(model_dir=model_dir, use_memory=False))
+
+    trainer = container.resolve(training_module.IncrementalTrainer)
 
     if args.status:
         status = trainer.status()
@@ -822,6 +925,13 @@ Examples:
                 print(f"  {doc}")
         else:
             print("No documents trained yet.")
+        return
+
+    if args.reindex:
+        result = trainer.reindex(show_progress=not args.quiet)
+        if not args.quiet:
+            staleness = trainer.manifest.get_staleness()
+            print(f"Staleness after reindex: {staleness:.1%}")
         return
 
     if args.files:
@@ -874,5 +984,574 @@ Examples:
         print(f"\nModel saved to: {trainer.model_dir}")
 
 
-if __name__ == "__main__":
-    main()
+def run_cli_command(command: str, args, container: 'Optional[Container]' = None) -> int:
+    """
+    Execute a CLI command from __main__.py.
+
+    This is the proper entry point for CLI execution, called from
+    cortical/cognitive/__main__.py. It avoids class identity issues
+    by being called after all imports are complete.
+
+    Args:
+        command: Command name ('train', 'status', 'list', 'reindex')
+        args: Parsed command line arguments
+        container: Optional DI container for testing
+
+    Returns:
+        Exit code (0 for success)
+    """
+    import json
+    from cortical.common import Container
+    from cortical.core.modules import CognitiveModule
+
+    # Create container if not provided
+    if container is None:
+        model_dir = Path(args.model_dir)
+        container = Container()
+        container.apply_module(CognitiveModule(model_dir=model_dir, use_memory=False))
+
+    trainer = container.resolve(IncrementalTrainer)
+
+    if command == "status":
+        status = trainer.status()
+        print(json.dumps(status, indent=2))
+        return 0
+
+    if command == "list":
+        trained = trainer.list_trained()
+        if trained:
+            print(f"Trained documents ({len(trained)}):")
+            for doc in trained:
+                print(f"  {doc}")
+        else:
+            print("No documents trained yet.")
+        return 0
+
+    if command == "reindex":
+        trainer.reindex(show_progress=not args.quiet)
+        if not args.quiet:
+            staleness = trainer.manifest.get_staleness()
+            print(f"Staleness after reindex: {staleness:.1%}")
+        return 0
+
+    if command == "train":
+        if args.files:
+            trainer.train_files(
+                args.files,
+                base_dir=args.directory,
+                show_progress=not args.quiet,
+            )
+        elif args.batch_size is not None:
+            # Batch mode: train only N untrained documents
+            all_files = list(trainer.scan_directory(
+                args.directory, args.pattern, recursive=True
+            ))
+            untrained = trainer.manifest.get_untrained(all_files)
+
+            if not untrained:
+                print("All documents are already trained. Nothing to do.")
+                return 0
+
+            batch = untrained[:args.batch_size]
+            paths = [path for path, _ in batch]
+
+            if not args.quiet:
+                print(f"Batch training: {len(batch)} of {len(untrained)} remaining documents")
+                for i, path in enumerate(paths, 1):
+                    print(f"  {i}. {path}")
+                print()
+
+            base_dir = Path(args.directory)
+            full_paths = [base_dir / path for path in paths]
+
+            trainer.train_files(
+                file_paths=full_paths,
+                base_dir=base_dir,
+                show_progress=not args.quiet,
+            )
+        else:
+            trainer.train_directory(
+                args.directory,
+                pattern=args.pattern,
+                show_progress=not args.quiet,
+                force_retrain=args.force,
+                checkpoint_interval=args.checkpoint,
+            )
+
+        if not args.quiet:
+            print(f"\nModel saved to: {trainer.model_dir}")
+        return 0
+
+    if command == "rebuild-df":
+        # Rebuild document frequency from trained documents
+        trained_docs = trainer.list_trained()
+        if not trained_docs:
+            print("No trained documents found.")
+            return 0
+
+        if not args.quiet:
+            print(f"Rebuilding document frequency from {len(trained_docs)} documents...")
+
+        # Reset doc frequency
+        tok = trainer.bridge.tokenizer
+        tok._doc_frequency = {}
+        tok._total_docs = 0
+
+        # Re-read each document and count word frequencies
+        base_dir = Path("samples/")  # Default training directory
+        processed = 0
+        for doc_path in trained_docs:
+            full_path = base_dir / doc_path
+            if not full_path.exists():
+                if not args.quiet:
+                    print(f"  Skipping (not found): {doc_path}", file=sys.stderr)
+                continue
+
+            try:
+                text = full_path.read_text(encoding='utf-8')
+                tokens = tok.tokenize(text)
+                unique_words = set(tokens)
+                for word in unique_words:
+                    tok._doc_frequency[word] = tok._doc_frequency.get(word, 0) + 1
+                tok._total_docs += 1
+                processed += 1
+            except Exception as e:
+                if not args.quiet:
+                    print(f"  Error reading {doc_path}: {e}", file=sys.stderr)
+
+        # Save updated tokenizer
+        trainer.save()
+
+        if not args.quiet:
+            print(f"Rebuilt document frequency:")
+            print(f"  Documents processed: {processed}")
+            print(f"  Unique words with DF: {len(tok._doc_frequency)}")
+            print(f"  Sample IDF(data): {tok.get_idf('data'):.4f}")
+
+        # Also reindex IDF weights on links
+        if not args.quiet:
+            print("Reindexing IDF weights on links...")
+        trainer.reindex(show_progress=not args.quiet)
+
+        return 0
+
+    if command == "query":
+        # Query requires the agent, not just the trainer
+        agent = trainer.agent
+        word = args.word.lower()
+
+        associations = agent.get_associations(
+            word,
+            weight_type=args.weight_type,
+            top_k=args.top_k,
+        )
+
+        if not associations:
+            print(f"No associations found for '{word}'")
+            print("(Word may not exist in vocabulary or have no similarity links)")
+            return 0
+
+        if args.json:
+            import json
+            result = {
+                "word": word,
+                "weight_type": args.weight_type,
+                "associations": [
+                    {"word": a.word, "weight": a.weight}
+                    for a in associations
+                ]
+            }
+            print(json.dumps(result, indent=2))
+        else:
+            print(f"Associations for '{word}' ({args.weight_type} weights):")
+            print("-" * 40)
+            for i, assoc in enumerate(associations, 1):
+                print(f"  {i:2}. {assoc.word:<20} {assoc.weight:.4f}")
+
+        return 0
+
+    if command == "demo":
+        _run_demo(trainer)
+        return 0
+
+    if command == "generate":
+        _run_generate(trainer, args)
+        return 0
+
+    if command == "index-code":
+        _run_index_code(trainer, args)
+        return 0
+
+    if command == "ask":
+        _run_ask(trainer, args)
+        return 0
+
+    print(f"Unknown command: {command}")
+    return 1
+
+
+def _run_generate(trainer: 'IncrementalTrainer', args) -> None:
+    """
+    Generate text using FOLLOWS links and predict_next().
+
+    Uses directional word transitions learned from training data
+    to generate text token by token.
+
+    Args:
+        trainer: The IncrementalTrainer with loaded model
+        args: CLI arguments with prompt, max_tokens, temperature, etc.
+    """
+    import random
+    import json as json_module
+
+    agent = trainer.agent
+    graph = agent.graph
+
+    # Get starting word(s)
+    if args.prompt:
+        # Tokenize the prompt
+        tokens = trainer.bridge.tokenizer.tokenize(args.prompt.lower())
+        if not tokens:
+            print(f"Could not tokenize prompt: {args.prompt}")
+            return
+        current_word = tokens[-1]  # Start prediction from last word
+        generated = list(tokens)
+    else:
+        # Pick a random word from vocabulary
+        word_atoms = [a for a in graph._storage.all_atoms()
+                      if a.atom_type.name == 'WORD' and a.name]
+        if not word_atoms:
+            print("No words in vocabulary. Train the model first.")
+            return
+        current_word = random.choice(word_atoms).name
+        generated = [current_word]
+
+    # Track predictions for JSON output
+    predictions = []
+
+    # Generate tokens
+    for i in range(args.max_tokens):
+        pred = agent.predict_next(current_word)
+
+        # Record prediction details
+        pred_record = {
+            "step": i + 1,
+            "from_word": current_word,
+            "is_unknown": pred.is_unknown,
+            "is_boundary": pred.is_boundary,
+            "confidence": pred.confidence,
+            "candidates": pred.candidates[:5],
+        }
+
+        if pred.is_unknown:
+            pred_record["result"] = "[UNKNOWN]"
+            predictions.append(pred_record)
+            break
+
+        if pred.is_boundary:
+            pred_record["result"] = "[BOUNDARY]"
+            predictions.append(pred_record)
+            break
+
+        if args.min_confidence > 0 and pred.confidence < args.min_confidence:
+            pred_record["result"] = "[LOW_CONFIDENCE]"
+            predictions.append(pred_record)
+            break
+
+        # Select next word
+        if args.temperature == 0 or len(pred.candidates) == 1:
+            # Greedy: pick top candidate
+            next_word = pred.top
+        else:
+            # Temperature-based sampling
+            import math
+            candidates = pred.candidates
+            # Apply temperature
+            if args.temperature != 1.0:
+                # Adjust probabilities with temperature
+                adjusted = []
+                for word, prob in candidates:
+                    # Temperature scaling in log space
+                    adjusted_prob = math.pow(prob, 1.0 / args.temperature)
+                    adjusted.append((word, adjusted_prob))
+                # Renormalize
+                total = sum(p for _, p in adjusted)
+                candidates = [(w, p / total) for w, p in adjusted]
+
+            # Weighted random selection
+            r = random.random()
+            cumulative = 0.0
+            next_word = candidates[0][0]  # fallback
+            for word, prob in candidates:
+                cumulative += prob
+                if r <= cumulative:
+                    next_word = word
+                    break
+
+        pred_record["selected"] = next_word
+        predictions.append(pred_record)
+
+        generated.append(next_word)
+        current_word = next_word
+
+    # Output results
+    if args.json:
+        result = {
+            "prompt": args.prompt,
+            "generated_text": " ".join(generated),
+            "token_count": len(generated),
+            "temperature": args.temperature,
+            "predictions": predictions,
+        }
+        print(json_module.dumps(result, indent=2))
+    elif args.show_confidence:
+        # Show text with confidence annotations
+        print(" ".join(generated))
+        print()
+        print("Prediction details:")
+        print("-" * 50)
+        for pred in predictions:
+            conf_str = f"{pred['confidence']:.2f}" if not pred.get('is_unknown') else "N/A"
+            result = pred.get('selected') or pred.get('result', '?')
+            print(f"  {pred['from_word']:15} -> {result:15} (conf={conf_str})")
+    else:
+        # Simple text output
+        print(" ".join(generated))
+
+
+def _run_demo(trainer: IncrementalTrainer) -> None:
+    """
+    Interactive demo showcasing CognitiveAgent capabilities.
+
+    Demonstrates:
+    - Model statistics
+    - Word associations with IDF weighting
+    - Comparison of IDF vs raw weights
+    - Semantic discovery examples
+    """
+    agent = trainer.agent
+    tok = trainer.bridge.tokenizer
+
+    # Header
+    print()
+    print("=" * 70)
+    print("        COGNITIVE AGENT DEMO - Semantic Knowledge Graph")
+    print("=" * 70)
+    print()
+
+    # Model statistics
+    print("MODEL STATISTICS")
+    print("-" * 40)
+    status = trainer.status()
+    print(f"  Documents trained:  {status['total_documents_trained']}")
+    print(f"  Vocabulary size:    {status['vocabulary_size']}")
+    print(f"  Total docs (IDF):   {tok._total_docs}")
+    print(f"  Last training:      {status['last_training'][:10] if status['last_training'] else 'Never'}")
+    print()
+
+    # Demo queries
+    demo_words = ["neural", "machine", "data", "algorithm", "learning"]
+
+    print("WORD ASSOCIATIONS (IDF-weighted)")
+    print("-" * 40)
+    print("IDF (Inverse Document Frequency) down-weights common words,")
+    print("highlighting semantically meaningful associations.")
+    print()
+
+    for word in demo_words:
+        associations = agent.get_associations(word, weight_type="idf", top_k=5)
+        if associations:
+            top_assocs = ", ".join(f"{a.word}({a.weight:.2f})" for a in associations[:3])
+            print(f"  {word:<12} -> {top_assocs}")
+        else:
+            print(f"  {word:<12} -> (not in vocabulary)")
+    print()
+
+    # IDF vs Raw comparison
+    print("IDF vs RAW WEIGHT COMPARISON")
+    print("-" * 40)
+    print("Raw weights reflect co-occurrence frequency.")
+    print("IDF weights penalize common terms, surfacing rare connections.")
+    print()
+
+    comparison_word = "neural"
+    idf_assocs = agent.get_associations(comparison_word, weight_type="idf", top_k=5)
+    raw_assocs = agent.get_associations(comparison_word, weight_type="raw", top_k=5)
+
+    if idf_assocs and raw_assocs:
+        print(f"  Associations for '{comparison_word}':")
+        print()
+        print(f"  {'IDF-weighted':<25} {'Raw co-occurrence':<25}")
+        print(f"  {'-'*23:<25} {'-'*23:<25}")
+        for i in range(min(5, len(idf_assocs), len(raw_assocs))):
+            idf_item = f"{idf_assocs[i].word} ({idf_assocs[i].weight:.3f})"
+            raw_item = f"{raw_assocs[i].word} ({raw_assocs[i].weight:.3f})"
+            print(f"  {idf_item:<25} {raw_item:<25}")
+    print()
+
+    # Interesting discoveries
+    print("SEMANTIC DISCOVERIES")
+    print("-" * 40)
+    print("Words that bridge different domains (high connectivity):")
+    print()
+
+    # Find words with many strong associations
+    bridge_words = []
+    for word in list(tok.vocab)[:500]:  # Sample vocabulary
+        assocs = agent.get_associations(word, weight_type="idf", top_k=10)
+        if assocs:
+            avg_weight = sum(a.weight for a in assocs) / len(assocs)
+            if avg_weight > 0.3 and len(assocs) >= 5:
+                bridge_words.append((word, len(assocs), avg_weight))
+
+    bridge_words.sort(key=lambda x: -x[2])
+    for word, num_assocs, avg_weight in bridge_words[:8]:
+        print(f"  {word:<15} {num_assocs:>3} associations, avg weight: {avg_weight:.3f}")
+
+    print()
+    print("=" * 70)
+    print("Try: python -m cortical.cognitive query <word> --top-k 10")
+    print("=" * 70)
+    print()
+
+
+def _run_index_code(trainer: 'IncrementalTrainer', args) -> None:
+    """
+    Index Python code structure into the cognitive graph.
+
+    Creates atoms for FILE, CLASS, FUNCTION entities and links for
+    DEFINES, CONTAINS, CALLS, INHERITANCE relationships.
+
+    Args:
+        trainer: The IncrementalTrainer with loaded model
+        args: CLI arguments with path, exclude, quiet, json options
+    """
+    import json as json_module
+
+    from cortical.cognitive.code_bridge import CodeBridge
+
+    # Use the trainer's agent's graph
+    graph = trainer.agent.graph
+    bridge = CodeBridge(graph)
+
+    path = Path(args.path)
+    if not path.exists():
+        print(f"Error: Path does not exist: {path}")
+        return
+
+    if not args.quiet:
+        print(f"Indexing Python code in: {path}")
+        if args.exclude:
+            print(f"Excluding: {', '.join(args.exclude)}")
+        print()
+
+    # Progress callback
+    def progress(current: int, total: int) -> None:
+        if not args.quiet and total > 0:
+            pct = current * 100 // total
+            if current % 50 == 0 or current == total:
+                print(f"  Indexed {current}/{total} files ({pct}%)")
+
+    # Index
+    if path.is_file():
+        stats = bridge.index_file(path)
+    else:
+        stats = bridge.index_directory(
+            path,
+            exclude=args.exclude,
+            progress_callback=progress
+        )
+
+    # Create REFERS_TO links if requested
+    refers_to_stats = None
+    if getattr(args, 'link_text', False):
+        if not args.quiet:
+            print("\nCreating REFERS_TO links (bridging code to text)...")
+        refers_to_stats = bridge.create_refers_to_links()
+        stats.refers_to_links = refers_to_stats.refers_to_links
+
+    # Save the updated graph
+    trainer.save()
+
+    # Output results
+    if args.json:
+        result = {
+            "path": str(path),
+            "files": stats.files,
+            "classes": stats.classes,
+            "functions": stats.functions,
+            "calls_links": stats.calls_links,
+            "inheritance_links": stats.inheritance_links,
+            "defines_links": stats.defines_links,
+            "contains_links": stats.contains_links,
+            "refers_to_links": stats.refers_to_links,
+            "parse_errors": stats.parse_errors,
+            "elapsed_seconds": round(stats.elapsed_seconds, 2),
+        }
+        print(json_module.dumps(result, indent=2))
+    else:
+        if not args.quiet:
+            print()
+        print("Code indexing complete:")
+        print(f"  Files indexed:    {stats.files}")
+        print(f"  Classes:          {stats.classes}")
+        print(f"  Functions:        {stats.functions}")
+        print(f"  CALLS links:      {stats.calls_links}")
+        print(f"  INHERITANCE:      {stats.inheritance_links}")
+        if stats.refers_to_links > 0:
+            print(f"  REFERS_TO links:  {stats.refers_to_links}")
+        print(f"  Parse errors:     {stats.parse_errors}")
+        print(f"  Elapsed time:     {stats.elapsed_seconds:.2f}s")
+
+
+def _run_ask(trainer: 'IncrementalTrainer', args) -> None:
+    """
+    Ask a natural language question about the codebase.
+
+    Uses NLQuery to parse the question, gather knowledge from
+    trained vocabulary and indexed code, and generate a response.
+
+    Args:
+        trainer: The IncrementalTrainer with loaded model
+        args: CLI arguments with question, verbose options
+    """
+    from cortical.cognitive.nl_query import NLQuery
+
+    # Create NLQuery with the trainer's agent
+    nl = NLQuery(trainer.agent)
+
+    # Get the answer
+    response = nl.ask(args.question)
+
+    # Show verbose info if requested
+    if getattr(args, 'verbose', False):
+        intent = nl.parse_intent(args.question)
+        print(f"Question type: {intent.question_type}")
+        print(f"Concepts: {', '.join(intent.concepts)}")
+        print(f"Strategy: {', '.join(intent.query_strategy)}")
+        print("-" * 40)
+
+    # Print the response
+    print(response)
+
+
+# =============================================================================
+# IMPORTANT: Do NOT add `if __name__ == "__main__"` here!
+#
+# This module should be run via: python -m cortical.cognitive
+# which uses cortical/cognitive/__main__.py as the entry point.
+#
+# Why? When Python runs `python -m cortical.cognitive.training`:
+#   1. It imports cortical.cognitive package first (__init__.py)
+#   2. If __init__.py imports from this module, classes are created
+#   3. Then this module runs as __main__, creating DIFFERENT class objects
+#   4. DI containers use class objects as dict keys, so lookup fails
+#
+# The __main__.py pattern avoids this by being a separate file that:
+#   - Is never imported by __init__.py
+#   - Imports this module's classes only when needed for CLI
+#   - Preserves class identity throughout the application
+#
+# For backward compatibility, main() and run_cli() are still available
+# for direct programmatic use, but CLI should use __main__.py.
+# =============================================================================

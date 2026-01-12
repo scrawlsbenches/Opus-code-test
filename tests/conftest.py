@@ -445,3 +445,89 @@ def got_manager_large(tmp_path_factory):
 def running_under_coverage():
     """Fixture indicating whether tests are running under coverage."""
     return 'coverage' in sys.modules
+
+
+# =============================================================================
+# COGNITIVE AGENT FIXTURES
+# =============================================================================
+# CENTRAL FIXTURE LOCATION for all CognitiveAgent/IncrementalTrainer tests.
+#
+# USE THESE FIXTURES - DO NOT CREATE AGENTS DIRECTLY IN TESTS:
+#   - memory_cognitive_agent: In-memory CognitiveAgent ready to use
+#   - memory_trainer: In-memory IncrementalTrainer ready to use
+#   - memory_cognitive_container: Full container for custom resolution
+#
+# For tests that need custom components (rare), use the helper function:
+#   - _create_cognitive_container(model_dir, use_memory) - Standard creation
+
+
+def _create_cognitive_container(model_dir: Path, use_memory: bool = True):
+    """
+    Create container with CognitiveModule.
+
+    This is the ONLY supported way to create cognitive services.
+    All dependencies (filesystem, graph, bridge) are properly configured.
+
+    Args:
+        model_dir: Directory for model storage
+        use_memory: Use in-memory filesystem (default: True for fast tests)
+
+    Returns:
+        Fully configured Container with cognitive services
+    """
+    from cortical.common import Container
+    from cortical.core.modules import CognitiveModule
+
+    container = Container()
+    container.apply_module(CognitiveModule(model_dir=model_dir, use_memory=use_memory))
+    return container
+
+
+@pytest.fixture
+def memory_cognitive_container(tmp_path):
+    """
+    Function-scoped fixture for an in-memory cognitive container.
+
+    Use when you need access to multiple cognitive services.
+
+    Example:
+        def test_services(memory_cognitive_container):
+            from cortical.cognitive.graph import CognitiveAgent
+            from cortical.cognitive.training import IncrementalTrainer
+            agent = memory_cognitive_container.resolve(CognitiveAgent)
+            trainer = memory_cognitive_container.resolve(IncrementalTrainer)
+    """
+    return _create_cognitive_container(tmp_path / "model", use_memory=True)
+
+
+@pytest.fixture
+def memory_cognitive_agent(memory_cognitive_container):
+    """
+    Function-scoped fixture for an in-memory CognitiveAgent.
+
+    Use when your test needs a cognitive agent without disk I/O.
+    ~10x faster than disk-based agents.
+
+    Example:
+        def test_agent(memory_cognitive_agent):
+            assocs = memory_cognitive_agent.get_associations("word")
+    """
+    from cortical.cognitive.graph import CognitiveAgent
+    return memory_cognitive_container.resolve(CognitiveAgent)
+
+
+@pytest.fixture
+def memory_trainer(memory_cognitive_container):
+    """
+    Function-scoped fixture for an in-memory IncrementalTrainer.
+
+    Use when your test needs training without disk I/O.
+    ~10x faster than disk-based trainers.
+
+    Example:
+        def test_training(memory_trainer):
+            memory_trainer.bridge.learn_vocabulary(["hello world"])
+            memory_trainer.bridge.feed_text("hello world", doc_id="doc1")
+    """
+    from cortical.cognitive.training import IncrementalTrainer
+    return memory_cognitive_container.resolve(IncrementalTrainer)

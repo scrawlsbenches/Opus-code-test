@@ -168,6 +168,139 @@ EOF
 
 ---
 
+## Cognitive CLI Reference
+
+The Cognitive CLI manages the cognitive agent's training, querying, and code understanding:
+
+```bash
+python -m cortical.cognitive [command] [options]
+```
+
+### Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `train` | Train on text documents (incremental) |
+| `status` | Show training status and vocabulary size |
+| `list` | List trained documents |
+| `reindex` | Recalculate IDF weights |
+| `rebuild-df` | Rebuild document frequency from trained documents |
+| `query` | Query word associations |
+| `generate` | Generate text using FOLLOWS links |
+| `index-code` | Index Python code structure into cognitive graph |
+| `demo` | Interactive demo of capabilities |
+
+### Training Commands
+
+```bash
+# Train on documents in a directory
+python -m cortical.cognitive train samples/ --model-dir models/cognitive_agent
+
+# Train with specific pattern
+python -m cortical.cognitive train docs/ --pattern "*.md"
+
+# Train specific files
+python -m cortical.cognitive train --files doc1.txt doc2.txt
+
+# Batch training with checkpoints
+python -m cortical.cognitive train samples/ --batch-size 50 --checkpoint 10
+
+# Force retrain all documents
+python -m cortical.cognitive train samples/ --force
+```
+
+### Status & Inspection
+
+```bash
+# Check training status
+python -m cortical.cognitive status --model-dir models/cognitive_agent
+# Output: {"total_documents_trained": 794, "vocabulary_size": 23371, ...}
+
+# List trained documents
+python -m cortical.cognitive list --model-dir models/cognitive_agent
+```
+
+### Query Commands
+
+```bash
+# Query word associations (IDF-weighted, default)
+python -m cortical.cognitive query neural --top-k 10
+# Output:
+#    1. networks             1.1360
+#    2. graph                1.0215
+#    ...
+
+# Query with raw co-occurrence weights
+python -m cortical.cognitive query pagerank --weight-type raw
+
+# JSON output for programmatic use
+python -m cortical.cognitive query atom --json --top-k 5
+# Output: {"word": "atom", "associations": [{"word": "sti", "weight": 2.63}, ...]}
+```
+
+### Text Generation
+
+```bash
+# Generate from prompt (greedy, temperature=0)
+python -m cortical.cognitive generate "the cognitive" --max-tokens 15
+
+# Generate with sampling (temperature > 0)
+python -m cortical.cognitive generate --max-tokens 10 --temperature 0.5
+
+# Show confidence scores for each prediction
+python -m cortical.cognitive generate "neural" --show-confidence
+# Output:
+#   neural      -> networks      (conf=0.85)
+#   networks    -> graph         (conf=0.72)
+#   ...
+
+# JSON output with full prediction details
+python -m cortical.cognitive generate "neural" --json
+```
+
+### Code Indexing
+
+Index Python code structure to enable code queries (callers_of, subclasses_of, etc.):
+
+```bash
+# Index a directory
+python -m cortical.cognitive index-code cortical/cognitive/ --model-dir models/cognitive_agent
+
+# Quiet mode with JSON stats output
+python -m cortical.cognitive index-code cortical/ --quiet --json
+# Output: {"files": 8, "classes": 35, "functions": 223, "calls_links": 173, ...}
+
+# Exclude directories
+python -m cortical.cognitive index-code . --exclude __pycache__ .git venv
+
+# Create REFERS_TO links (bridges code entities to text vocabulary)
+python -m cortical.cognitive index-code cortical/got/ --link-text
+# This enables queries like "what code relates to 'pagerank'?"
+```
+
+### IDF Maintenance
+
+```bash
+# Recalculate IDF weights after adding documents
+python -m cortical.cognitive reindex
+
+# Rebuild document frequency (fixes corrupted IDF)
+python -m cortical.cognitive rebuild-df
+```
+
+### Model Directory
+
+All commands support `--model-dir` to specify storage location:
+
+```bash
+python -m cortical.cognitive status --model-dir models/my_agent
+python -m cortical.cognitive query neural --model-dir models/my_agent
+```
+
+Default: `models/cognitive_agent`
+
+---
+
 ## Audit CLI Reference
 
 The Audit CLI provides codebase quality analysis tools using algorithms like Bloom Filters, LSH, Suffix Arrays, and PLN reasoning:

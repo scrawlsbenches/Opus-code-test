@@ -1,0 +1,40 @@
+Cognitive CLI Commands Reference
+
+Entry point: python -m cortical.cognitive [command]
+
+Training commands:
+  train <path>              - train on documents in directory
+  train --files a.txt b.txt - train specific files
+  train --force             - retrain all documents
+  status                    - show training status and vocabulary size
+  list                      - list trained documents
+
+Query commands:
+  query <word>              - get word associations (IDF-weighted)
+  query <word> --top-k 5    - limit results
+  query <word> --weight-type raw - use raw co-occurrence counts
+  query <word> --json       - output as JSON
+
+Generation commands:
+  generate "prompt"         - generate text using FOLLOWS links
+  generate --temperature 0.5 - sampling with temperature
+  generate --show-confidence - show per-token confidence
+
+Code indexing commands:
+  index-code <path>         - index Python code structure
+  index-code --link-text    - create REFERS_TO links to vocabulary
+  index-code --json         - output stats as JSON
+  index-code --exclude dir1 dir2 - skip directories
+
+Maintenance commands:
+  reindex                   - recalculate IDF weights
+  rebuild-df                - rebuild document frequency
+
+All commands support --model-dir to specify storage location.
+Default model directory: models/cognitive_agent
+
+Example workflow:
+  python -m cortical.cognitive train samples/
+  python -m cortical.cognitive index-code cortical/ --link-text
+  python -m cortical.cognitive query neural --top-k 10
+  python -m cortical.cognitive generate "the cognitive" --max-tokens 20
