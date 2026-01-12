@@ -1,9 +1,11 @@
 {
-  "cm": 4066,
-  "cmd": 4067,
-  "cmdloop": 4068,
-  "cml": 4069,
-  "cms": 4070,
-  "cmv": 4071,
-  "cmyk": 4072
+  "cm": 4093,
+  "cmd": 4094,
+  "cmdhandoffshow": 4095,
+  "cmdktshow": 4096,
+  "cmdloop": 4097,
+  "cml": 4098,
+  "cms": 4099,
+  "cmv": 4100,
+  "cmyk": 4101
 }

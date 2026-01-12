@@ -1,10 +1,10 @@
 {
   "model_version": "1.0",
-  "last_training": "2026-01-12T16:58:56.875055",
-  "total_documents": 1858,
-  "vocabulary_size": 29734,
-  "last_reindex_doc_count": 1858,
-  "idf_epoch": 6,
+  "last_training": "2026-01-12T22:30:39.238071",
+  "total_documents": 1861,
+  "vocabulary_size": 30017,
+  "last_reindex_doc_count": 1861,
+  "idf_epoch": 8,
   "documents": {
     "accordion_repair.txt": {
       "path": "accordion_repair.txt",
@@ -4022,9 +4022,9 @@
     },
     "__init__.py": {
       "path": "__init__.py",
-      "content_hash": "9784374b5b937395",
-      "trained_at": "2026-01-12T16:37:37.290212",
-      "word_count": 217
+      "content_hash": "afc04da11065e74e",
+      "trained_at": "2026-01-12T22:30:39.118281",
+      "word_count": 592
     },
     "__main__.py": {
       "path": "__main__.py",
@@ -4058,9 +4058,9 @@
     },
     "text_bridge.py": {
       "path": "text_bridge.py",
-      "content_hash": "4df037360b4bad86",
-      "trained_at": "2026-01-12T15:01:54.254086",
-      "word_count": 3384
+      "content_hash": "7731ef3a7ee2c00b",
+      "trained_at": "2026-01-12T22:30:39.169362",
+      "word_count": 5289
     },
     "tokenizer_storage.py": {
       "path": "tokenizer_storage.py",
@@ -4076,9 +4076,9 @@
     },
     "training.py": {
       "path": "training.py",
-      "content_hash": "66d1d5e4bfa65cfe",
-      "trained_at": "2026-01-12T15:01:54.348837",
-      "word_count": 4725
+      "content_hash": "a317fc993cb67125",
+      "trained_at": "2026-01-12T22:30:39.237938",
+      "word_count": 7899
     },
     "analysis/__init__.py": {
       "path": "analysis/__init__.py",
@@ -11153,6 +11153,24 @@
       "content_hash": "b6469d831dfa3df1",
       "trained_at": "2026-01-12T16:58:56.874835",
       "word_count": 1892
+    },
+    "common_error_patterns.md": {
+      "path": "common_error_patterns.md",
+      "content_hash": "e62a2adf122cff6f",
+      "trained_at": "2026-01-12T22:28:56.919180",
+      "word_count": 765
+    },
+    "session_continuity_patterns.md": {
+      "path": "session_continuity_patterns.md",
+      "content_hash": "d7336223c0f55972",
+      "trained_at": "2026-01-12T22:28:56.936499",
+      "word_count": 657
+    },
+    "type_safety_patterns.md": {
+      "path": "type_safety_patterns.md",
+      "content_hash": "c366736d94194598",
+      "trained_at": "2026-01-12T22:28:56.951102",
+      "word_count": 558
     }
   }
 }
