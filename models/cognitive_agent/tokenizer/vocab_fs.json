@@ -1,8 +1,12 @@
 {
-  "fs": 8203,
-  "fsc": 8204,
-  "fsm": 8205,
-  "fsync": 8206,
-  "fsynced": 8207,
-  "fsyncs": 8208
+  "fs": 9810,
+  "fsc": 9811,
+  "fse": 9812,
+  "fsm": 9813,
+  "fspath": 9814,
+  "fsync": 9815,
+  "fsynced": 9816,
+  "fsyncgate": 9817,
+  "fsyncing": 9818,
+  "fsyncs": 9819
 }

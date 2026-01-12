@@ -1,8 +1,13 @@
 {
-  "qa": 15880,
-  "qadar": 15881,
-  "qadiriyya": 15882,
-  "qapv": 15883,
-  "qatar": 15884,
-  "qatari": 15885
+  "qa": 19095,
+  "qadar": 19096,
+  "qadiriyya": 19097,
+  "qapv": 19098,
+  "qapvanomaly": 19099,
+  "qapvexecution": 19100,
+  "qapvpattern": 19101,
+  "qapvphase": 19102,
+  "qapvverifier": 19103,
+  "qatar": 19104,
+  "qatari": 19105
 }

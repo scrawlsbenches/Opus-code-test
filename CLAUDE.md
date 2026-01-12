@@ -41,6 +41,92 @@ If any of these fail, **stop and investigate** before proceeding.
 
 ---
 
+## Cognitive Agent: Your Long-Term Memory (USE THIS)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│   The Cognitive Agent exists specifically to help YOU recover context.  │
+│   It learns from documents and code. USE IT.                            │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Quick Commands
+
+```bash
+# Check if the cognitive agent is ready
+./scripts/bootstrap_cognitive.sh --check
+
+# If bridge is NOT BUILT, rebuild it (~9 seconds)
+./scripts/bootstrap_cognitive.sh
+
+# Ask questions about the codebase
+python -m cortical.cognitive ask "What is the cognitive agent?"
+python -m cortical.cognitive ask "What was the previous session working on?"
+python -m cortical.cognitive ask "How does transaction management work?"
+
+# Find related concepts
+python -m cortical.cognitive query "storage"
+python -m cortical.cognitive query "transaction"
+```
+
+### Critical Lesson (2026-01-12)
+
+**The model must be trained on its own source code.** A previous session discovered that the cognitive agent had 0% coverage of `cortical/`, `tests/`, and `docs/`. It could only answer questions about sample documents.
+
+**If responses seem generic or unhelpful, check coverage:**
+
+```bash
+python -m cortical.cognitive status   # Shows totals
+python -m cortical.cognitive list | wc -l  # Should be 1800+
+
+# If cortical/ isn't trained:
+python -m cortical.cognitive train cortical/ --pattern "*.py"
+python -m cortical.cognitive train tests/ --pattern "*.py"
+python -m cortical.cognitive train docs/ --pattern "*.md"
+```
+
+### Writing Knowledge for Future Sessions
+
+When you learn something important, **write it to samples/** so future sessions can query it:
+
+```bash
+# Create a knowledge document
+cat > samples/cognitive_agent_knowledge/session_$(date +%Y_%m_%d)_topic.md << 'EOF'
+# What I Learned About [Topic]
+
+## Problem
+[What was the issue?]
+
+## Solution
+[How did you fix it?]
+
+## Key Insight
+[What should future sessions know?]
+EOF
+
+# Train on it
+python -m cortical.cognitive train samples/cognitive_agent_knowledge --pattern "*.md"
+```
+
+### Tiered Storage Model
+
+- **Tier 1 (committed)**: `models/cognitive_agent/tokenizer/` + `training_manifest.json`
+- **Tier 2 (gitignored)**: `models/cognitive_agent/bridge/` (~150MB of links)
+
+After a fresh clone, Tier 2 must be rebuilt. The bootstrap script handles this.
+
+### Key Documents to Read
+
+| Document | Purpose |
+|----------|---------|
+| `samples/cognitive_agent_knowledge/what_is_cognitive_agent.md` | Identity and purpose |
+| `samples/cognitive_agent_knowledge/questions_and_answers.md` | Common Q&A |
+| `samples/cognitive_agent_knowledge/training_process_findings_and_enhancements.md` | Training lessons |
+
+---
+
 ## The Workflow: Embodied Confidence
 
 This is the workflow that AI agents (and humans) should follow. It is designed to **expect failure and handle it gracefully**.
@@ -847,17 +933,24 @@ git branch --show-current
 git log --oneline -5
 python -m cortical.got task list --status in_progress
 
-# 2. Recover Context
+# 2. Recover Context via GoT
 python -m cortical.got kt list --status draft | head -5
 python -m cortical.got handoff list --status initiated | head -5
 
-# 3. Verify System State
+# 3. Query the Cognitive Agent (YOUR LONG-TERM MEMORY)
+./scripts/bootstrap_cognitive.sh --check   # Ensure it's ready
+python -m cortical.cognitive ask "What was the previous session working on?"
+python -m cortical.cognitive ask "What issues were found recently?"
+
+# 4. Verify System State
 python -m cortical.got validate
 python -m pytest tests/smoke/ -v
 
-# 4. If confused, run full recovery
+# 5. If confused, run full recovery
 /context-recovery
 ```
+
+**Remember:** The Cognitive Agent learns from documents and code. If it gives unhelpful responses, check that it's been trained on `cortical/` (see "Cognitive Agent: Your Long-Term Memory" section above).
 
 ### Cognitive Breakdown Detection
 

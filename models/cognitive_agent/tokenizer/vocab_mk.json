@@ -1,5 +1,6 @@
 {
-  "mkdir": 12624,
-  "mkdtemp": 12625,
-  "mktemp": 12626
+  "mkdir": 14992,
+  "mkdtemp": 14993,
+  "mkstemp": 14994,
+  "mktemp": 14995
 }

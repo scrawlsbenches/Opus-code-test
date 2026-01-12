@@ -1,8 +1,13 @@
 {
-  "aac": 0,
-  "aad": 1,
-  "aam": 2,
-  "aaron": 3,
-  "aashto": 4,
-  "aav": 5
+  "aa": 0,
+  "aaa": 1,
+  "aaaa": 2,
+  "aaabbbccc": 3,
+  "aac": 4,
+  "aad": 5,
+  "aam": 6,
+  "aardvark": 7,
+  "aaron": 8,
+  "aashto": 9,
+  "aav": 10
 }

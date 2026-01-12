@@ -1,0 +1,29 @@
+{
+  "_checksum": "ddc1b799c047415e",
+  "_written_at": "2026-01-12T15:53:07.991658+00:00",
+  "data": {
+    "code_refs": [],
+    "created_at": "2026-01-12T15:50:37.954164+00:00",
+    "entity_type": "knowledge_transfer",
+    "id": "KT-20260112-155037-7e413cc6",
+    "modified_at": "2026-01-12T15:53:07.991582+00:00",
+    "properties": {},
+    "related_decisions": [],
+    "related_handoffs": [],
+    "related_tasks": [],
+    "sections": {
+      "Bugs Fixed This Session": "1. kt append CLI used wrong method name (append_kt_section -> append_knowledge_transfer_section)\n2. update_knowledge_transfer had wrong tx pattern (tx.tx_manager.write(tx.tx, kt) -> self.tx_manager.write(tx, kt))\n3. Training manifest '.' entry guard\n4. Path truthiness bug in rebuild-links",
+      "Documentation Added": "- README.md: 'Message to Claude from Claude' section\n- CLAUDE.md: 'Cognitive Agent: Your Long-Term Memory' section\n- samples/cognitive_agent_knowledge/training_process_findings_and_enhancements.md\n- samples/cognitive_agent_knowledge/session_2026_01_12_manifest_bug_fix.md",
+      "Problem Found": "The cognitive agent had only 669 documents trained, almost entirely from samples/. Key directories had 0% coverage: cortical/ (0%), tests/ (0%), docs/ (0%), scripts/ (0%). The model could not answer questions about its own source code.",
+      "Solution Applied": "1. Trained on cortical/ (267 files, 98.9% coverage)\n2. Trained on tests/ (477 files, 99.8% coverage)\n3. Trained on docs/ (302 files, 98.7% coverage)\n4. Trained on scripts/ (112 files)\n5. Reindexed IDF weights\n6. Fixed bug with '.' directory entry in manifest\n7. Fixed buggy Path truthiness check in rebuild-links"
+    },
+    "session_date": "",
+    "session_id": "",
+    "source_file": null,
+    "status": "published",
+    "summary": "Discovered and fixed critical training gap - cognitive agent was not trained on its own source code. Expanded training from 669 to 1845 documents. Added documentation to README.md and CLAUDE.md for future sessions.",
+    "tags": [],
+    "title": "Session 2026-01-12: Cognitive Agent Training Coverage Fix",
+    "version": 12
+  }
+}

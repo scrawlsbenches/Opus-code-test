@@ -1,10 +1,15 @@
 {
-  "mca": 12115,
-  "mcaa": 12116,
-  "mccabe": 12117,
-  "mccormick": 12118,
-  "mcdermott": 12119,
-  "mce": 12120,
-  "mcguinness": 12121,
-  "mcm": 12122
+  "mc": 14384,
+  "mca": 14385,
+  "mcaa": 14386,
+  "mccabe": 14387,
+  "mccormick": 14388,
+  "mcdermott": 14389,
+  "mce": 14390,
+  "mcguinness": 14391,
+  "mcm": 14392,
+  "mcp": 14393,
+  "mcpservers": 14394,
+  "mcts": 14395,
+  "mctspattern": 14396
 }

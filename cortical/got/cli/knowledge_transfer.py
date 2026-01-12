@@ -235,7 +235,7 @@ def cmd_kt_append(args, manager: "GoTManager") -> int:
         content = sys.stdin.read().strip()
 
     # Append section
-    success = manager.append_kt_section(kt_id, section_heading, content)
+    success = manager.append_knowledge_transfer_section(kt_id, section_heading, content)
 
     if not success:
         print(f"Failed to append section to: {kt_id}")
