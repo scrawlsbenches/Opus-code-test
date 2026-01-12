@@ -302,12 +302,21 @@ class CodeBridge:
         Returns:
             List of FUNCTION atoms that call the target
         """
-        # Find the target function atom
+        # Find the target function atom - search graph directly
         target_atom = None
+
+        # First check internal cache
         for name, atom in self._function_atoms.items():
             if function_name in name:
                 target_atom = atom
                 break
+
+        # Fall back to graph search
+        if not target_atom:
+            for atom in self.graph.find_by_type(AtomType.FUNCTION):
+                if function_name in atom.name:
+                    target_atom = atom
+                    break
 
         if not target_atom:
             return []
@@ -336,8 +345,15 @@ class CodeBridge:
         Returns:
             List of CLASS atoms that inherit from target
         """
-        # Find the parent class atom
+        # Find the parent class atom - check cache first, then graph
         parent_atom = self._class_atoms.get(class_name)
+
+        if not parent_atom:
+            for atom in self.graph.find_by_type(AtomType.CLASS):
+                if atom.name == class_name:
+                    parent_atom = atom
+                    break
+
         if not parent_atom:
             return []
 
@@ -365,8 +381,15 @@ class CodeBridge:
         Returns:
             List of FUNCTION atoms that are methods of the class
         """
-        # Find the class atom
+        # Find the class atom - check cache first, then graph
         class_atom = self._class_atoms.get(class_name)
+
+        if not class_atom:
+            for atom in self.graph.find_by_type(AtomType.CLASS):
+                if atom.name == class_name:
+                    class_atom = atom
+                    break
+
         if not class_atom:
             return []
 
@@ -394,12 +417,18 @@ class CodeBridge:
         Returns:
             List of CLASS and FUNCTION atoms defined in the file
         """
-        # Find the file atom
+        # Find the file atom - check cache first, then graph
         file_atom = None
         for path, atom in self._file_atoms.items():
             if file_path in path:
                 file_atom = atom
                 break
+
+        if not file_atom:
+            for atom in self.graph.find_by_type(AtomType.FILE):
+                if file_path in atom.name:
+                    file_atom = atom
+                    break
 
         if not file_atom:
             return []

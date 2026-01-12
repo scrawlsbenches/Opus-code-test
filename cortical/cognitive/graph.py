@@ -2287,6 +2287,151 @@ class CognitiveAgent:
         )
 
     # =========================================================================
+    # Unified Query Interface
+    # =========================================================================
+
+    def query(
+        self,
+        query_type: str,
+        target: str,
+        top_k: int = 20,
+        **kwargs
+    ) -> List[Atom]:
+        """
+        Unified query interface for all query types.
+
+        Query types:
+            Text queries:
+                - similar_to: Words associated with target via SIMILARITY links
+
+            Code queries:
+                - callers_of: Functions that call target function
+                - subclasses_of: Classes that inherit from target class
+                - methods_of: Methods contained in target class
+                - defined_in: Entities defined in target file
+
+            Bridge queries:
+                - code_for_word: Code entities that a word refers to
+                - words_for_code: Words that refer to a code entity
+
+        Args:
+            query_type: Type of query (see above)
+            target: Target entity name
+            top_k: Maximum results to return (default 20)
+            **kwargs: Additional query-specific options
+
+        Returns:
+            List of Atom results (possibly empty)
+
+        Raises:
+            ValueError: If query_type is unknown
+        """
+        # Text queries
+        if query_type == "similar_to":
+            return self._query_similar_to(target, top_k=top_k)
+
+        # Code queries - need CodeBridge
+        if query_type in ("callers_of", "subclasses_of", "methods_of", "defined_in"):
+            return self._query_code(query_type, target)
+
+        # Bridge queries
+        if query_type in ("code_for_word", "words_for_code"):
+            return self._query_bridge(query_type, target)
+
+        # Unknown query type
+        raise ValueError(f"Unknown query type: '{query_type}'")
+
+    def _query_similar_to(self, word: str, top_k: int = 20) -> List[Atom]:
+        """
+        Find words similar to target via SIMILARITY links.
+
+        Args:
+            word: Target word
+            top_k: Maximum results
+
+        Returns:
+            List of WORD atoms connected by SIMILARITY links
+        """
+        atom = self.graph.get_node(word)
+        if not atom:
+            return []
+
+        # Get atoms connected by SIMILARITY links
+        similar_atoms = []
+
+        # Check incoming links (bidirectional similarity)
+        incoming = self.graph.get_incoming(atom.id)
+        for link in incoming:
+            if link.atom_type == AtomType.SIMILARITY:
+                for target_id in link.outgoing:
+                    if target_id != atom.id:
+                        target_atom = self.graph.get_atom(target_id)
+                        if target_atom and target_atom not in similar_atoms:
+                            similar_atoms.append(target_atom)
+
+        # Also check outgoing (SIMILARITY is symmetric but stored once)
+        all_similarity_links = self.graph.find_by_type(AtomType.SIMILARITY)
+        for link in all_similarity_links:
+            if atom.id in link.outgoing:
+                for target_id in link.outgoing:
+                    if target_id != atom.id:
+                        target_atom = self.graph.get_atom(target_id)
+                        if target_atom and target_atom not in similar_atoms:
+                            similar_atoms.append(target_atom)
+
+        return similar_atoms[:top_k]
+
+    def _query_code(self, query_type: str, target: str) -> List[Atom]:
+        """
+        Execute a code structure query.
+
+        Uses CodeBridge to traverse code relationships.
+
+        Args:
+            query_type: One of callers_of, subclasses_of, methods_of, defined_in
+            target: Name of target entity
+
+        Returns:
+            List of matching atoms
+        """
+        from cortical.cognitive.code_bridge import CodeBridge
+
+        bridge = CodeBridge(self.graph)
+
+        if query_type == "callers_of":
+            return bridge.query_callers_of(target)
+        elif query_type == "subclasses_of":
+            return bridge.query_subclasses_of(target)
+        elif query_type == "methods_of":
+            return bridge.query_methods_of(target)
+        elif query_type == "defined_in":
+            return bridge.query_defined_in(target)
+
+        return []
+
+    def _query_bridge(self, query_type: str, target: str) -> List[Atom]:
+        """
+        Execute a bridge query (text <-> code).
+
+        Args:
+            query_type: code_for_word or words_for_code
+            target: Target word or code entity name
+
+        Returns:
+            List of matching atoms
+        """
+        from cortical.cognitive.code_bridge import CodeBridge
+
+        bridge = CodeBridge(self.graph)
+
+        if query_type == "code_for_word":
+            return bridge.query_code_for_word(target)
+        elif query_type == "words_for_code":
+            return bridge.query_words_for_code(target)
+
+        return []
+
+    # =========================================================================
     # Persistence (JSON-based for security and git-friendliness)
     # =========================================================================
 
