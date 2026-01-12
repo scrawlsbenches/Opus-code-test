@@ -1,7 +1,7 @@
 {
   "version": "1.0",
-  "vocab_size": 29633,
-  "shard_count": 524,
+  "vocab_size": 29673,
+  "shard_count": 525,
   "shards": [
     "vocab_aa.json",
     "vocab_ab.json",
@@ -357,6 +357,7 @@
     "vocab_qc.json",
     "vocab_qe.json",
     "vocab_qi.json",
+    "vocab_ql.json",
     "vocab_qm.json",
     "vocab_qo.json",
     "vocab_qp.json",
@@ -530,5 +531,5 @@
   ],
   "min_frequency": 2,
   "max_vocab_size": 10000,
-  "total_docs": 1854
+  "total_docs": 2121
 }

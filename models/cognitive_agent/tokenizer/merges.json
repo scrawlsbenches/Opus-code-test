@@ -1,52 +1,241 @@
 [
   [
     [
-      "scripts",
-      "py"
+      "dict",
+      "str"
     ],
-    "scripts_py"
+    "dict_str"
   ],
   [
     [
-      "python",
-      "scripts"
+      "if",
+      "not"
     ],
-    "python_scripts"
+    "if_not"
   ],
   [
     [
-      "python",
-      "from"
+      "in",
+      "self"
     ],
-    "python_from"
+    "in_self"
   ],
   [
     [
-      "python",
-      "cortical"
+      "entity",
+      "type"
     ],
-    "python_cortical"
+    "entity_type"
   ],
   [
     [
-      "cortical",
-      "got"
+      "for",
+      "in"
     ],
-    "cortical_got"
+    "for_in"
   ],
   [
     [
-      "text",
-      "processor"
+      "str",
+      "any"
     ],
-    "text_processor"
+    "str_any"
   ],
   [
     [
-      "cortical",
-      "text"
+      "list",
+      "str"
     ],
-    "cortical_text"
+    "list_str"
+  ],
+  [
+    [
+      "doc",
+      "id"
+    ],
+    "doc_id"
+  ],
+  [
+    [
+      "return",
+      "self"
+    ],
+    "return_self"
+  ],
+  [
+    [
+      "task",
+      "id"
+    ],
+    "task_id"
+  ],
+  [
+    [
+      "if",
+      "self"
+    ],
+    "if_self"
+  ],
+  [
+    [
+      "entity",
+      "id"
+    ],
+    "entity_id"
+  ],
+  [
+    [
+      "list",
+      "of"
+    ],
+    "list_of"
+  ],
+  [
+    [
+      "data",
+      "get"
+    ],
+    "data_get"
+  ],
+  [
+    [
+      "id",
+      "str"
+    ],
+    "id_str"
+  ],
+  [
+    [
+      "str",
+      "none"
+    ],
+    "str_none"
+  ],
+  [
+    [
+      "not",
+      "in"
+    ],
+    "not_in"
+  ],
+  [
+    [
+      "def",
+      "get"
+    ],
+    "def_get"
+  ],
+  [
+    [
+      "node",
+      "id"
+    ],
+    "node_id"
+  ],
+  [
+    [
+      "value",
+      "error"
+    ],
+    "value_error"
+  ],
+  [
+    [
+      "id",
+      "if"
+    ],
+    "id_if"
+  ],
+  [
+    [
+      "str",
+      "float"
+    ],
+    "str_float"
+  ],
+  [
+    [
+      "lines",
+      "append"
+    ],
+    "lines_append"
+  ],
+  [
+    [
+      "edge",
+      "type"
+    ],
+    "edge_type"
+  ],
+  [
+    [
+      "is",
+      "not"
+    ],
+    "is_not"
+  ],
+  [
+    [
+      "id",
+      "in"
+    ],
+    "id_in"
+  ],
+  [
+    [
+      "target",
+      "id"
+    ],
+    "target_id"
+  ],
+  [
+    [
+      "len",
+      "self"
+    ],
+    "len_self"
+  ],
+  [
+    [
+      "field",
+      "default"
+    ],
+    "field_default"
+  ],
+  [
+    [
+      "default",
+      "factory"
+    ],
+    "default_factory"
+  ],
+  [
+    [
+      "is",
+      "none"
+    ],
+    "is_none"
+  ],
+  [
+    [
+      "optional",
+      "str"
+    ],
+    "optional_str"
+  ],
+  [
+    [
+      "file",
+      "path"
+    ],
+    "file_path"
+  ],
+  [
+    [
+      "number",
+      "of"
+    ],
+    "number_of"
   ],
   [
     [
@@ -57,45 +246,262 @@
   ],
   [
     [
-      "the",
-      "system"
+      "returns",
+      "list"
     ],
-    "the_system"
+    "returns_list"
   ],
   [
     [
-      "scripts",
-      "hubris"
+      "str",
+      "list"
     ],
-    "scripts_hubris"
+    "str_list"
+  ],
+  [
+    [
+      "error",
+      "if"
+    ],
+    "error_if"
+  ],
+  [
+    [
+      "not",
+      "none"
+    ],
+    "not_none"
+  ],
+  [
+    [
+      "check",
+      "if"
+    ],
+    "check_if"
+  ],
+  [
+    [
+      "init",
+      "self"
+    ],
+    "init_self"
+  ],
+  [
+    [
+      "add",
+      "argument"
+    ],
+    "add_argument"
+  ],
+  [
+    [
+      "not",
+      "self"
+    ],
+    "not_self"
+  ],
+  [
+    [
+      "str",
+      "str"
+    ],
+    "str_str"
+  ],
+  [
+    [
+      "to",
+      "dict"
+    ],
+    "to_dict"
+  ],
+  [
+    [
+      "truth",
+      "value"
+    ],
+    "truth_value"
+  ],
+  [
+    [
+      "datetime",
+      "now"
+    ],
+    "datetime_now"
+  ],
+  [
+    [
+      "not",
+      "found"
+    ],
+    "not_found"
+  ],
+  [
+    [
+      "event",
+      "id"
+    ],
+    "event_id"
+  ],
+  [
+    [
+      "def",
+      "init"
+    ],
+    "def_init"
+  ],
+  [
+    [
+      "path",
+      "path"
+    ],
+    "path_path"
+  ],
+  [
+    [
+      "if",
+      "len"
+    ],
+    "if_len"
+  ],
+  [
+    [
+      "dataclass",
+      "class"
+    ],
+    "dataclass_class"
+  ],
+  [
+    [
+      "self",
+      "dict"
+    ],
+    "self_dict"
+  ],
+  [
+    [
+      "id",
+      "self"
+    ],
+    "id_self"
+  ],
+  [
+    [
+      "sprint",
+      "id"
+    ],
+    "sprint_id"
+  ],
+  [
+    [
+      "raise",
+      "value"
+    ],
+    "raise_value"
+  ],
+  [
+    [
+      "source",
+      "id"
+    ],
+    "source_id"
+  ],
+  [
+    [
+      "self",
+      "get"
+    ],
+    "self_get"
+  ],
+  [
+    [
+      "parser",
+      "add"
+    ],
+    "parser_add"
+  ],
+  [
+    [
+      "set",
+      "str"
+    ],
+    "set_str"
+  ],
+  [
+    [
+      "bool",
+      "true"
+    ],
+    "bool_true"
+  ],
+  [
+    [
+      "list",
+      "tuple"
+    ],
+    "list_tuple"
+  ],
+  [
+    [
+      "semantic",
+      "relations"
+    ],
+    "semantic_relations"
   ],
   [
     [
       "from",
-      "scripts"
+      "typing"
     ],
-    "from_scripts"
+    "from_typing"
   ],
   [
     [
-      "training",
-      "data"
+      "typing",
+      "import"
     ],
-    "training_data"
+    "typing_import"
   ],
   [
     [
-      "architecture",
-      "md"
+      "node",
+      "type"
     ],
-    "architecture_md"
+    "node_type"
   ],
   [
     [
-      "descriptor",
-      "md"
+      "tuple",
+      "str"
     ],
-    "descriptor_md"
+    "tuple_str"
+  ],
+  [
+    [
+      "none",
+      "if"
+    ],
+    "none_if"
+  ],
+  [
+    [
+      "self",
+      "graph"
+    ],
+    "self_graph"
+  ],
+  [
+    [
+      "get",
+      "all"
+    ],
+    "get_all"
+  ],
+  [
+    [
+      "go",
+      "manager"
+    ],
+    "go_manager"
   ],
   [
     [
@@ -106,472 +512,17 @@
   ],
   [
     [
-      "cold",
-      "start"
+      "return",
+      "none"
     ],
-    "cold_start"
+    "return_none"
   ],
   [
     [
-      "how",
-      "to"
+      "return",
+      "false"
     ],
-    "how_to"
-  ],
-  [
-    [
-      "its",
-      "own"
-    ],
-    "its_own"
-  ],
-  [
-    [
-      "query",
-      "search"
-    ],
-    "query_search"
-  ],
-  [
-    [
-      "guide",
-      "md"
-    ],
-    "guide_md"
-  ],
-  [
-    [
-      "key",
-      "classes"
-    ],
-    "key_classes"
-  ],
-  [
-    [
-      "cortical",
-      "cognitive"
-    ],
-    "cortical_cognitive"
-  ],
-  [
-    [
-      "customer",
-      "service"
-    ],
-    "customer_service"
-  ],
-  [
-    [
-      "query",
-      "expansion"
-    ],
-    "query_expansion"
-  ],
-  [
-    [
-      "the",
-      "cortical"
-    ],
-    "the_cortical"
-  ],
-  [
-    [
-      "cortical",
-      "analysis"
-    ],
-    "cortical_analysis"
-  ],
-  [
-    [
-      "git",
-      "ml"
-    ],
-    "git_ml"
-  ],
-  [
-    [
-      "cortical",
-      "projects"
-    ],
-    "cortical_projects"
-  ],
-  [
-    [
-      "pytest",
-      "tests"
-    ],
-    "pytest_tests"
-  ],
-  [
-    [
-      "timestamp",
-      "descriptor"
-    ],
-    "timestamp_descriptor"
-  ],
-  [
-    [
-      "manifest",
-      "md"
-    ],
-    "manifest_md"
-  ],
-  [
-    [
-      "py",
-      "suggest"
-    ],
-    "py_suggest"
-  ],
-  [
-    [
-      "how",
-      "it"
-    ],
-    "how_it"
-  ],
-  [
-    [
-      "cortical",
-      "query"
-    ],
-    "cortical_query"
-  ],
-  [
-    [
-      "quick",
-      "start"
-    ],
-    "quick_start"
-  ],
-  [
-    [
-      "search",
-      "py"
-    ],
-    "search_py"
-  ],
-  [
-    [
-      "contributing",
-      "md"
-    ],
-    "contributing_md"
-  ],
-  [
-    [
-      "how",
-      "do"
-    ],
-    "how_do"
-  ],
-  [
-    [
-      "readme",
-      "md"
-    ],
-    "readme_md"
-  ],
-  [
-    [
-      "document",
-      "purpose"
-    ],
-    "document_purpose"
-  ],
-  [
-    [
-      "experts",
-      "import"
-    ],
-    "experts_import"
-  ],
-  [
-    [
-      "of",
-      "thought"
-    ],
-    "of_thought"
-  ],
-  [
-    [
-      "tf",
-      "idf"
-    ],
-    "tf_idf"
-  ],
-  [
-    [
-      "do",
-      "we"
-    ],
-    "do_we"
-  ],
-  [
-    [
-      "feedback",
-      "loop"
-    ],
-    "feedback_loop"
-  ],
-  [
-    [
-      "claude",
-      "md"
-    ],
-    "claude_md"
-  ],
-  [
-    [
-      "md",
-      "docs"
-    ],
-    "md_docs"
-  ],
-  [
-    [
-      "quickstart",
-      "md"
-    ],
-    "quickstart_md"
-  ],
-  [
-    [
-      "parking",
-      "lot"
-    ],
-    "parking_lot"
-  ],
-  [
-    [
-      "worker",
-      "worker"
-    ],
-    "worker_worker"
-  ],
-  [
-    [
-      "ml",
-      "models"
-    ],
-    "ml_models"
-  ],
-  [
-    [
-      "hubris",
-      "experts"
-    ],
-    "hubris_experts"
-  ],
-  [
-    [
-      "expert",
-      "metrics"
-    ],
-    "expert_metrics"
-  ],
-  [
-    [
-      "cognitive",
-      "state"
-    ],
-    "cognitive_state"
-  ],
-  [
-    [
-      "graph",
-      "of"
-    ],
-    "graph_of"
-  ],
-  [
-    [
-      "neural",
-      "networks"
-    ],
-    "neural_networks"
-  ],
-  [
-    [
-      "processor",
-      "corticaltextprocessor"
-    ],
-    "processor_corticaltextprocessor"
-  ],
-  [
-    [
-      "processor",
-      "save"
-    ],
-    "processor_save"
-  ],
-  [
-    [
-      "got",
-      "import"
-    ],
-    "got_import"
-  ],
-  [
-    [
-      "got",
-      "learning"
-    ],
-    "got_learning"
-  ],
-  [
-    [
-      "it",
-      "works"
-    ],
-    "it_works"
-  ],
-  [
-    [
-      "py",
-      "export"
-    ],
-    "py_export"
-  ],
-  [
-    [
-      "pip",
-      "install"
-    ],
-    "pip_install"
-  ],
-  [
-    [
-      "md",
-      "claude"
-    ],
-    "md_claude"
-  ],
-  [
-    [
-      "out",
-      "of"
-    ],
-    "out_of"
-  ],
-  [
-    [
-      "of",
-      "scope"
-    ],
-    "of_scope"
-  ],
-  [
-    [
-      "decisions",
-      "md"
-    ],
-    "decisions_md"
-  ],
-  [
-    [
-      "from",
-      "import"
-    ],
-    "from_import"
-  ],
-  [
-    [
-      "from",
-      "pathlib"
-    ],
-    "from_pathlib"
-  ],
-  [
-    [
-      "pathlib",
-      "import"
-    ],
-    "pathlib_import"
-  ],
-  [
-    [
-      "import",
-      "path"
-    ],
-    "import_path"
-  ],
-  [
-    [
-      "def",
-      "self"
-    ],
-    "def_self"
-  ],
-  [
-    [
-      "txt",
-      "txt"
-    ],
-    "txt_txt"
-  ],
-  [
-    [
-      "credit",
-      "system"
-    ],
-    "credit_system"
-  ],
-  [
-    [
-      "git",
-      "hooks"
-    ],
-    "git_hooks"
-  ],
-  [
-    [
-      "start",
-      "mode"
-    ],
-    "start_mode"
-  ],
-  [
-    [
-      "all",
-      "experts"
-    ],
-    "all_experts"
-  ],
-  [
-    [
-      "analysis",
-      "py"
-    ],
-    "analysis_py"
-  ],
-  [
-    [
-      "commit",
-      "history"
-    ],
-    "commit_history"
-  ],
-  [
-    [
-      "directory",
-      "contains"
-    ],
-    "directory_contains"
-  ],
-  [
-    [
-      "what",
-      "was"
-    ],
-    "what_was"
-  ],
-  [
-    [
-      "py",
-      "python"
-    ],
-    "py_python"
+    "return_false"
   ],
   [
     [
@@ -582,24 +533,101 @@
   ],
   [
     [
-      "why",
-      "it"
+      "from",
+      "dict"
     ],
-    "why_it"
+    "from_dict"
   ],
   [
     [
-      "the",
-      "codebase"
+      "id",
+      "return"
     ],
-    "the_codebase"
+    "id_return"
   ],
   [
     [
-      "code",
-      "search"
+      "cortical",
+      "layer"
     ],
-    "code_search"
+    "cortical_layer"
+  ],
+  [
+    [
+      "str",
+      "field"
+    ],
+    "str_field"
+  ],
+  [
+    [
+      "self",
+      "config"
+    ],
+    "self_config"
+  ],
+  [
+    [
+      "self",
+      "entity"
+    ],
+    "self_entity"
+  ],
+  [
+    [
+      "self",
+      "list"
+    ],
+    "self_list"
+  ],
+  [
+    [
+      "cognitive",
+      "event"
+    ],
+    "cognitive_event"
+  ],
+  [
+    [
+      "str",
+      "int"
+    ],
+    "str_int"
+  ],
+  [
+    [
+      "must",
+      "be"
+    ],
+    "must_be"
+  ],
+  [
+    [
+      "created",
+      "at"
+    ],
+    "created_at"
+  ],
+  [
+    [
+      "true",
+      "if"
+    ],
+    "true_if"
+  ],
+  [
+    [
+      "id",
+      "not"
+    ],
+    "id_not"
+  ],
+  [
+    [
+      "in",
+      "the"
+    ],
+    "in_the"
   ],
   [
     [
@@ -610,93 +638,65 @@
   ],
   [
     [
-      "dual",
-      "process"
+      "factory",
+      "list"
     ],
-    "dual_process"
+    "factory_list"
   ],
   [
     [
-      "workflow",
-      "ctx"
+      "classmethod",
+      "def"
     ],
-    "workflow_ctx"
+    "classmethod_def"
   ],
   [
     [
-      "question",
-      "answer"
+      "key",
+      "lambda"
     ],
-    "question_answer"
+    "key_lambda"
   ],
   [
     [
-      "answer",
-      "produce"
+      "type",
+      "str"
     ],
-    "answer_produce"
+    "type_str"
   ],
   [
     [
-      "produce",
-      "verify"
+      "count",
+      "self"
     ],
-    "produce_verify"
+    "count_self"
   ],
   [
     [
-      "data",
-      "collection"
+      "event",
+      "store"
     ],
-    "data_collection"
+    "event_store"
   ],
   [
     [
-      "file",
-      "prediction"
+      "bool",
+      "false"
     ],
-    "file_prediction"
+    "bool_false"
   ],
   [
     [
-      "which",
-      "files"
+      "none",
+      "return"
     ],
-    "which_files"
+    "none_return"
   ],
   [
     [
-      "auth",
-      "py"
+      "with",
+      "open"
     ],
-    "auth_py"
-  ],
-  [
-    [
-      "knowledge",
-      "transfer"
-    ],
-    "knowledge_transfer"
-  ],
-  [
-    [
-      "processor",
-      "query"
-    ],
-    "processor_query"
-  ],
-  [
-    [
-      "corticaltextprocessor",
-      "load"
-    ],
-    "corticaltextprocessor_load"
-  ],
-  [
-    [
-      "definition",
-      "of"
-    ],
-    "definition_of"
+    "with_open"
   ]
 ]
