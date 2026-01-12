@@ -403,6 +403,9 @@ class IncrementalTrainer:
         self.bridge._atoms_created = stats.get("atoms_created", 0)
         self.bridge._links_created = stats.get("links_created", 0)
 
+        # Restore IDF epoch from manifest for proper epoch tracking
+        self.bridge._idf_epoch = self.manifest.idf_epoch
+
     def _check_staleness_warning(self) -> None:
         """Emit warning to stderr if IDF weights are stale."""
         staleness = self.manifest.get_staleness()
@@ -1045,11 +1048,21 @@ def run_cli_command(command: str, args, container: 'Optional[Container]' = None)
         return 0
 
     if command == "train":
+        import time
+        import tracemalloc
+
+        # Start metrics collection
+        output_metrics = getattr(args, 'metrics', False)
+        if output_metrics:
+            tracemalloc.start()
+            train_start = time.perf_counter()
+
+        stats = None
         if args.files:
-            trainer.train_files(
+            stats = trainer.train_files(
                 args.files,
                 base_dir=args.directory,
-                show_progress=not args.quiet,
+                show_progress=not args.quiet and not output_metrics,
             )
         elif args.batch_size is not None:
             # Batch mode: train only N untrained documents
@@ -1059,13 +1072,14 @@ def run_cli_command(command: str, args, container: 'Optional[Container]' = None)
             untrained = trainer.manifest.get_untrained(all_files)
 
             if not untrained:
-                print("All documents are already trained. Nothing to do.")
+                if not output_metrics:
+                    print("All documents are already trained. Nothing to do.")
                 return 0
 
             batch = untrained[:args.batch_size]
             paths = [path for path, _ in batch]
 
-            if not args.quiet:
+            if not args.quiet and not output_metrics:
                 print(f"Batch training: {len(batch)} of {len(untrained)} remaining documents")
                 for i, path in enumerate(paths, 1):
                     print(f"  {i}. {path}")
@@ -1074,19 +1088,42 @@ def run_cli_command(command: str, args, container: 'Optional[Container]' = None)
             base_dir = Path(args.directory)
             full_paths = [base_dir / path for path in paths]
 
-            trainer.train_files(
+            stats = trainer.train_files(
                 file_paths=full_paths,
                 base_dir=base_dir,
-                show_progress=not args.quiet,
+                show_progress=not args.quiet and not output_metrics,
             )
         else:
-            trainer.train_directory(
+            stats = trainer.train_directory(
                 args.directory,
                 pattern=args.pattern,
-                show_progress=not args.quiet,
+                show_progress=not args.quiet and not output_metrics,
                 force_retrain=args.force,
                 checkpoint_interval=args.checkpoint,
             )
+
+        # Output metrics if requested
+        if output_metrics:
+            train_time = time.perf_counter() - train_start
+            current_mem, peak_mem = tracemalloc.get_traced_memory()
+            tracemalloc.stop()
+
+            metrics = {
+                "documents_trained": stats.new_documents if stats else 0,
+                "documents_skipped": stats.skipped_documents if stats else 0,
+                "total_scanned": stats.total_files_scanned if stats else 0,
+                "atoms_created": stats.atoms_created if stats else 0,
+                "links_created": stats.links_created if stats else 0,
+                "vocabulary_size": stats.vocabulary_size if stats else trainer.manifest.vocabulary_size,
+                "training_time_ms": int(train_time * 1000),
+                "memory_current_mb": round(current_mem / 1024 / 1024, 1),
+                "memory_peak_mb": round(peak_mem / 1024 / 1024, 1),
+                "total_documents": trainer.manifest.total_documents,
+                "staleness_pct": round(trainer.manifest.get_staleness() * 100, 1),
+                "idf_epoch": trainer.manifest.idf_epoch,
+            }
+            print(json.dumps(metrics, indent=2))
+            return 0
 
         if not args.quiet:
             print(f"\nModel saved to: {trainer.model_dir}")

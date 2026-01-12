@@ -84,6 +84,11 @@ def main() -> int:
         action="store_true",
         help="Suppress progress output",
     )
+    train_parser.add_argument(
+        "--metrics",
+        action="store_true",
+        help="Output training metrics as JSON (for performance monitoring)",
+    )
 
     # Status command
     status_parser = subparsers.add_parser("status", help="Show training status")
