@@ -61,7 +61,9 @@ STOP_WORDS = {
     "own", "same", "so", "than", "too", "very", "just", "and", "but",
     "if", "or", "because", "until", "while", "this", "that", "these",
     "those", "what", "which", "who", "whom", "it", "its", "i", "me", "my",
-    "work", "works", "working", "does"
+    "work", "works", "working", "does", "you", "your", "we", "our", "they",
+    "their", "he", "she", "him", "her", "py", "txt", "md", "json", "also",
+    "use", "using", "get", "set", "new", "like", "see", "one", "two", "first"
 }
 
 
@@ -189,6 +191,7 @@ class NLQuery:
 
         Prioritizes CamelCase/PascalCase terms (like WovenMind, CodeBridge)
         as they typically represent specific code entities.
+        Also detects compound terms by combining adjacent non-stop-words.
         """
         # Tokenize: split on non-alphanumeric, keep underscores
         tokens = re.findall(r'[a-zA-Z_][a-zA-Z0-9_]*', question)
@@ -212,14 +215,28 @@ class NLQuery:
         # Sort: CamelCase terms first, then preserve original order within groups
         unique.sort(key=lambda x: (not x[1], x[2]))
 
-        return [concept for concept, _, _ in unique]
+        concepts = [concept for concept, _, _ in unique]
+
+        # Also try compound forms if we have adjacent concepts
+        # e.g., "cognitive agent" -> also try "cognitiveagent", "cognitive_agent"
+        compound_concepts = []
+        for i in range(len(concepts) - 1):
+            # Concatenated form (cognitiveagent)
+            compound = concepts[i] + concepts[i + 1]
+            compound_concepts.append(compound)
+            # Underscore form (cognitive_agent)
+            compound_underscore = concepts[i] + "_" + concepts[i + 1]
+            compound_concepts.append(compound_underscore)
+
+        # Add compounds to the front (higher priority)
+        return compound_concepts + concepts
 
     def _determine_strategy(self, question_type: str, question: str) -> List[str]:
         """Determine which tools to use based on question type."""
         strategies = {
             "how": ["similar_to", "code_for_word", "methods_of"],
             "where": ["code_for_word", "defined_in"],
-            "what": [],  # Depends on question content
+            "what": ["similar_to", "code_for_word"],  # Identity questions need associations
             "who": ["code_for_word"],
             "why": ["similar_to"],
             "which": ["code_for_word"],
@@ -235,6 +252,21 @@ class NLQuery:
             strategy = ["subclasses_of"] + strategy
 
         return strategy
+
+    def _is_identity_question(self, question: str) -> bool:
+        """Check if this is a 'what is X' style identity question."""
+        question_lower = question.lower().strip()
+        identity_patterns = [
+            r"^what is (the |a |an )?",
+            r"^what('s| is) (the |a |an )?",
+            r"^define ",
+            r"^explain (the |what |a |an )?",
+            r"^describe (the |what |a |an )?",
+        ]
+        for pattern in identity_patterns:
+            if re.match(pattern, question_lower):
+                return True
+        return False
 
     # =========================================================================
     # Knowledge Gatherer
@@ -252,17 +284,35 @@ class NLQuery:
         """
         knowledge = GatheredKnowledge()
 
+        # Track which concepts we found results for (prioritize compound terms)
+        found_compound = False
+
         for concept in intent.concepts:
             # Get word associations
             similar_tool = self.registry.get("similar_to")
             if similar_tool:
                 try:
                     results = similar_tool(concept)
+                    added_any = False
                     for atom in results:
-                        if hasattr(atom, 'name') and atom.name not in knowledge.associations:
-                            knowledge.associations.append(atom.name)
+                        if hasattr(atom, 'name'):
+                            name = atom.name
+                            # Filter out stop words and very short terms
+                            if name.lower() in STOP_WORDS or len(name) < 3:
+                                continue
+                            # Skip single-letter words and common noise
+                            if name not in knowledge.associations:
+                                knowledge.associations.append(name)
+                                added_any = True
+                    # If we found results for a compound term, prioritize those
+                    if added_any and ("_" in concept or len(concept) > 12):
+                        found_compound = True
                 except Exception:
                     pass
+
+            # If we found good compound results, limit how many single-word concepts we process
+            if found_compound and "_" not in concept and len(concept) <= 12:
+                continue  # Skip individual words if compound found good results
 
             # Get code entities
             code_tool = self.registry.get("code_for_word")
@@ -418,6 +468,10 @@ class NLQuery:
         knowledge: GatheredKnowledge
     ) -> str:
         """Generate summary for general questions."""
+        # Check if this is an identity question ("What is X?")
+        if self._is_identity_question(intent.raw_question):
+            return self._generate_identity_summary(intent, knowledge)
+
         if knowledge.code_entities:
             entity = knowledge.code_entities[0]
             return f"Found: {entity.name}"
@@ -425,6 +479,91 @@ class NLQuery:
             return f"Related to: {', '.join(knowledge.associations[:5])}"
         else:
             return f"Information about {', '.join(intent.concepts)}:"
+
+    def _generate_identity_summary(
+        self,
+        intent: QueryIntent,
+        knowledge: GatheredKnowledge
+    ) -> str:
+        """Generate a rich summary for identity questions ('What is X?')."""
+        # Extract subject from original question by removing question words
+        raw = intent.raw_question.lower().strip()
+        # Remove common question prefixes
+        for prefix in ["what is the ", "what is a ", "what is an ", "what is ",
+                       "what's the ", "what's a ", "what's an ", "what's ",
+                       "define ", "explain the ", "explain ", "describe the ", "describe "]:
+            if raw.startswith(prefix):
+                raw = raw[len(prefix):]
+                break
+        # Remove trailing punctuation
+        subject = raw.rstrip("?.,!").strip()
+        subject_title = subject.title()
+
+        # Group associations by semantic categories to build a description
+        if knowledge.associations:
+            # Classify associations to build coherent description
+            technical_terms = []
+            functional_terms = []
+            other_terms = []
+
+            tech_keywords = {"graph", "model", "data", "storage", "index", "atom", "link",
+                           "memory", "learning", "training", "neural", "semantic", "token",
+                           "prediction", "query", "code", "cognitive", "structure"}
+            func_keywords = {"process", "create", "build", "manage", "track", "compute",
+                           "analyze", "extract", "generate", "transform", "load", "save",
+                           "train", "predict", "search", "find", "index"}
+
+            for assoc in knowledge.associations[:15]:
+                assoc_lower = assoc.lower()
+                if any(kw in assoc_lower for kw in tech_keywords) or assoc_lower in tech_keywords:
+                    technical_terms.append(assoc)
+                elif any(kw in assoc_lower for kw in func_keywords) or assoc_lower in func_keywords:
+                    functional_terms.append(assoc)
+                else:
+                    other_terms.append(assoc)
+
+            # Build description parts
+            parts = []
+
+            # Core identity
+            parts.append(f"The {subject_title} is a component that")
+
+            # What it works with (technical terms)
+            if technical_terms:
+                tech_str = ", ".join(technical_terms[:4])
+                parts.append(f"works with {tech_str}")
+
+            # What it does (functional terms)
+            if functional_terms:
+                func_str = ", ".join(functional_terms[:3])
+                if technical_terms:
+                    parts.append(f"and handles {func_str}")
+                else:
+                    parts.append(f"handles {func_str}")
+
+            # Additional context
+            if other_terms and len(parts) < 4:
+                other_str = ", ".join(other_terms[:3])
+                parts.append(f"({other_str})")
+
+            # Join parts into readable sentence
+            if len(parts) > 1:
+                description = " ".join(parts) + "."
+            else:
+                description = f"The {subject_title} relates to: {', '.join(knowledge.associations[:5])}."
+
+            return description
+
+        elif knowledge.code_entities:
+            entity = knowledge.code_entities[0]
+            entity_type = entity.atom_type.name.lower() if hasattr(entity.atom_type, 'name') else "entity"
+            file_path = entity.metadata.get("file_path", "")
+            if file_path:
+                return f"The {subject_title} is a {entity_type} defined in {file_path}."
+            return f"The {subject_title} is a {entity_type} in the codebase."
+
+        else:
+            return f"The {subject_title} is a concept in this system."
 
     # =========================================================================
     # Main Entry Point

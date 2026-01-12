@@ -187,4 +187,8 @@ docs/audits/audit_index.pkl
 # Trained model artifacts
 trained_model/
 trained_model_v2/
-models/cognitive_agent/
+
+# Cognitive Agent: Commit essential (tokenizer, manifest), ignore derived (bridge)
+# Tokenizer (~1.1MB) and manifest (~150KB) are essential for fast rebuild
+# Bridge (~152MB) contains FOLLOWS/SIMILARITY links - rebuild with: python -m cortical.cognitive rebuild-links
+models/cognitive_agent/bridge/

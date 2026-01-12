@@ -386,6 +386,10 @@ class IncrementalTrainer:
             id_map[atom_data["id"]] = atom
             storage.save(atom)
 
+        # Mark storage as clean after loading (enables incremental saves)
+        if hasattr(storage, 'mark_all_clean_after_load'):
+            storage.mark_all_clean_after_load()
+
         # Restore bridge stats from meta.json if available
         meta_path = bridge_dir / "meta.json"
         if meta_path.exists():
@@ -398,6 +402,9 @@ class IncrementalTrainer:
         self.bridge._documents_fed = stats.get("documents_fed", 0)
         self.bridge._atoms_created = stats.get("atoms_created", 0)
         self.bridge._links_created = stats.get("links_created", 0)
+
+        # Restore IDF epoch from manifest for proper epoch tracking
+        self.bridge._idf_epoch = self.manifest.idf_epoch
 
     def _check_staleness_warning(self) -> None:
         """Emit warning to stderr if IDF weights are stale."""
@@ -681,6 +688,12 @@ class IncrementalTrainer:
     def save(self) -> None:
         """Save model, tokenizer, and manifest."""
         from cortical.cognitive.graph_storage import ShardedGraphStorage
+
+        # Initialize staleness tracking baseline on first save
+        # This enables proper staleness calculation after initial training
+        if self.manifest.last_reindex_doc_count == 0 and self.manifest.total_documents > 0:
+            self.manifest.last_reindex_doc_count = self.manifest.total_documents
+            self.manifest.idf_epoch = 1  # Mark as having initial IDF values
 
         # Save tokenizer to sharded directory (merge-conflict-free)
         tokenizer_dir = self.model_dir / "tokenizer"
@@ -1035,11 +1048,21 @@ def run_cli_command(command: str, args, container: 'Optional[Container]' = None)
         return 0
 
     if command == "train":
+        import time
+        import tracemalloc
+
+        # Start metrics collection
+        output_metrics = getattr(args, 'metrics', False)
+        if output_metrics:
+            tracemalloc.start()
+            train_start = time.perf_counter()
+
+        stats = None
         if args.files:
-            trainer.train_files(
+            stats = trainer.train_files(
                 args.files,
                 base_dir=args.directory,
-                show_progress=not args.quiet,
+                show_progress=not args.quiet and not output_metrics,
             )
         elif args.batch_size is not None:
             # Batch mode: train only N untrained documents
@@ -1049,13 +1072,14 @@ def run_cli_command(command: str, args, container: 'Optional[Container]' = None)
             untrained = trainer.manifest.get_untrained(all_files)
 
             if not untrained:
-                print("All documents are already trained. Nothing to do.")
+                if not output_metrics:
+                    print("All documents are already trained. Nothing to do.")
                 return 0
 
             batch = untrained[:args.batch_size]
             paths = [path for path, _ in batch]
 
-            if not args.quiet:
+            if not args.quiet and not output_metrics:
                 print(f"Batch training: {len(batch)} of {len(untrained)} remaining documents")
                 for i, path in enumerate(paths, 1):
                     print(f"  {i}. {path}")
@@ -1064,19 +1088,42 @@ def run_cli_command(command: str, args, container: 'Optional[Container]' = None)
             base_dir = Path(args.directory)
             full_paths = [base_dir / path for path in paths]
 
-            trainer.train_files(
+            stats = trainer.train_files(
                 file_paths=full_paths,
                 base_dir=base_dir,
-                show_progress=not args.quiet,
+                show_progress=not args.quiet and not output_metrics,
             )
         else:
-            trainer.train_directory(
+            stats = trainer.train_directory(
                 args.directory,
                 pattern=args.pattern,
-                show_progress=not args.quiet,
+                show_progress=not args.quiet and not output_metrics,
                 force_retrain=args.force,
                 checkpoint_interval=args.checkpoint,
             )
+
+        # Output metrics if requested
+        if output_metrics:
+            train_time = time.perf_counter() - train_start
+            current_mem, peak_mem = tracemalloc.get_traced_memory()
+            tracemalloc.stop()
+
+            metrics = {
+                "documents_trained": stats.new_documents if stats else 0,
+                "documents_skipped": stats.skipped_documents if stats else 0,
+                "total_scanned": stats.total_files_scanned if stats else 0,
+                "atoms_created": stats.atoms_created if stats else 0,
+                "links_created": stats.links_created if stats else 0,
+                "vocabulary_size": stats.vocabulary_size if stats else trainer.manifest.vocabulary_size,
+                "training_time_ms": int(train_time * 1000),
+                "memory_current_mb": round(current_mem / 1024 / 1024, 1),
+                "memory_peak_mb": round(peak_mem / 1024 / 1024, 1),
+                "total_documents": trainer.manifest.total_documents,
+                "staleness_pct": round(trainer.manifest.get_staleness() * 100, 1),
+                "idf_epoch": trainer.manifest.idf_epoch,
+            }
+            print(json.dumps(metrics, indent=2))
+            return 0
 
         if not args.quiet:
             print(f"\nModel saved to: {trainer.model_dir}")
@@ -1185,6 +1232,9 @@ def run_cli_command(command: str, args, container: 'Optional[Container]' = None)
     if command == "ask":
         _run_ask(trainer, args)
         return 0
+
+    if command == "rebuild-links":
+        return _run_rebuild_links(trainer, args)
 
     print(f"Unknown command: {command}")
     return 1
@@ -1533,6 +1583,131 @@ def _run_ask(trainer: 'IncrementalTrainer', args) -> None:
 
     # Print the response
     print(response)
+
+
+def _run_rebuild_links(trainer: 'IncrementalTrainer', args) -> int:
+    """
+    Rebuild FOLLOWS/SIMILARITY links from committed vocabulary.
+
+    This is the fast path for cold-start when:
+    - tokenizer/ is committed (~1.1MB vocabulary)
+    - training_manifest.json is committed (what files were trained)
+    - bridge/ is gitignored (152MB links)
+
+    Instead of full training (~45s), this:
+    1. Loads vocabulary from committed tokenizer/ (~1s)
+    2. Reads manifest to know which files (~0.1s)
+    3. Rebuilds only FOLLOWS/SIMILARITY links (~20s)
+
+    Args:
+        trainer: The IncrementalTrainer with loaded vocabulary
+        args: CLI arguments with quiet, metrics options
+
+    Returns:
+        0 on success, 1 on error
+    """
+    import time
+    import json
+
+    quiet = getattr(args, 'quiet', False)
+    output_metrics = getattr(args, 'metrics', False)
+
+    # Check if we have the prerequisites
+    if not trainer.manifest.documents:
+        print("ERROR: No training manifest found. Run full training first:")
+        print("  python -m cortical.cognitive train cortical/ samples/")
+        return 1
+
+    if trainer.bridge.tokenizer._total_docs == 0:
+        print("ERROR: No vocabulary found. Run full training first:")
+        print("  python -m cortical.cognitive train cortical/ samples/")
+        return 1
+
+    # Check if bridge already exists
+    from pathlib import Path
+    bridge_dir = Path(trainer.model_dir) / "bridge"
+    if bridge_dir.exists() and (bridge_dir / "meta.json").exists():
+        if not quiet:
+            print("Bridge already exists. Use --force with train to rebuild.")
+            print("Current stats:")
+            meta_file = bridge_dir / "meta.json"
+            if meta_file.exists():
+                meta = json.loads(meta_file.read_text())
+                print(f"  Atoms: {meta.get('total_atoms', 'unknown')}")
+                print(f"  Links: {meta.get('type_counts', {}).get('FOLLOWS', 0) + meta.get('type_counts', {}).get('SIMILARITY', 0)}")
+        return 0
+
+    start_time = time.perf_counter()
+
+    if not quiet:
+        print("Rebuilding links from committed vocabulary...")
+        print(f"  Vocabulary size: {trainer.manifest.vocabulary_size}")
+        print(f"  Documents in manifest: {len(trainer.manifest.documents)}")
+
+    # Count documents to process
+    docs_to_process = []
+    for doc_path in trainer.manifest.documents:
+        path = Path(doc_path)
+        # Try relative to current dir, then samples/
+        if path.exists():
+            docs_to_process.append(path)
+        elif Path("samples") / path.name:
+            alt_path = Path("samples") / path.name
+            if alt_path.exists():
+                docs_to_process.append(alt_path)
+
+    if not docs_to_process:
+        print("ERROR: No source documents found. Ensure source files exist.")
+        return 1
+
+    if not quiet:
+        print(f"  Source files found: {len(docs_to_process)}")
+        print()
+
+    # Process each document to rebuild links
+    links_created = 0
+    docs_processed = 0
+
+    for doc_path in docs_to_process:
+        try:
+            content = doc_path.read_text(encoding='utf-8', errors='replace')
+            # Feed to bridge to create links (vocabulary already loaded)
+            # feed_text returns list of created atoms
+            created_atoms = trainer.bridge.feed_text(content, doc_id=str(doc_path))
+            links_created += len(created_atoms)
+            docs_processed += 1
+
+            if not quiet and docs_processed % 50 == 0:
+                print(f"  Processed {docs_processed}/{len(docs_to_process)} documents...")
+
+        except Exception as e:
+            if not quiet:
+                print(f"  Warning: Could not process {doc_path}: {e}")
+
+    # Save the rebuilt bridge
+    if not quiet:
+        print()
+        print("Saving rebuilt links...")
+
+    trainer.save()
+
+    elapsed = time.perf_counter() - start_time
+
+    if output_metrics:
+        metrics = {
+            "documents_processed": docs_processed,
+            "links_created": links_created,
+            "vocabulary_size": trainer.manifest.vocabulary_size,
+            "rebuild_time_ms": int(elapsed * 1000),
+        }
+        print(json.dumps(metrics, indent=2))
+    elif not quiet:
+        print()
+        print(f"Rebuild complete in {elapsed:.1f}s")
+        print(f"  Documents processed: {docs_processed}")
+        print(f"  Links created: {links_created}")
+
+    return 0
 
 
 # =============================================================================

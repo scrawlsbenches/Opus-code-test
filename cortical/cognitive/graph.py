@@ -335,22 +335,33 @@ class InMemoryStorage:
     def __init__(self):
         self._atoms: Dict[str, Atom] = {}
         self._by_name: Dict[str, str] = {}  # name -> id
-        self._incoming: Dict[str, Set[str]] = {}  # atom_id -> set of link_ids
+        self._incoming: Dict[str, Set[str]] = {}  # atom_id -> set of link_ids pointing TO it
+        self._outgoing: Dict[str, Set[str]] = {}  # atom_id -> set of link_ids originating FROM it
         self._by_link_key: Dict[tuple, str] = {}  # (type, outgoing_tuple) -> link_id
+        self._dirty_atoms: Set[str] = set()  # atom IDs modified since last save
+        self._all_dirty: bool = True  # True means ALL atoms are dirty (initial state or after load)
 
     def save(self, atom: Atom) -> None:
         """Persist an atom."""
         self._atoms[atom.id] = atom
+        self._dirty_atoms.add(atom.id)  # Mark as dirty
 
         if atom.name:
             self._by_name[atom.name] = atom.id
 
-        # Update incoming index for links
+        # Update incoming and outgoing indexes for links
         if atom.is_link():
             for target_id in atom.outgoing:
                 if target_id not in self._incoming:
                     self._incoming[target_id] = set()
                 self._incoming[target_id].add(atom.id)
+
+            # Update outgoing index: for FOLLOWS/directional links, first element is source
+            if atom.outgoing:
+                source_id = atom.outgoing[0]
+                if source_id not in self._outgoing:
+                    self._outgoing[source_id] = set()
+                self._outgoing[source_id].add(atom.id)
 
             # Update link key index for O(1) duplicate detection
             link_key = (atom.atom_type, tuple(atom.outgoing))
@@ -371,11 +382,17 @@ class InMemoryStorage:
         if atom.name and self._by_name.get(atom.name) == atom_id:
             del self._by_name[atom.name]
 
-        # Remove from incoming index
+        # Remove from incoming and outgoing indexes
         if atom.is_link():
             for target_id in atom.outgoing:
                 if target_id in self._incoming:
                     self._incoming[target_id].discard(atom_id)
+
+            # Remove from outgoing index
+            if atom.outgoing:
+                source_id = atom.outgoing[0]
+                if source_id in self._outgoing:
+                    self._outgoing[source_id].discard(atom_id)
 
             # Remove from link key index
             link_key = (atom.atom_type, tuple(atom.outgoing))
@@ -412,6 +429,45 @@ class InMemoryStorage:
         """Get all links pointing to this atom."""
         link_ids = self._incoming.get(atom_id, set())
         return [self._atoms[lid] for lid in link_ids if lid in self._atoms]
+
+    def get_outgoing(self, atom_id: str, atom_type: Optional[AtomType] = None) -> List[Atom]:
+        """
+        Get all links originating from this atom (O(1) lookup).
+
+        Args:
+            atom_id: The source atom ID
+            atom_type: Optional filter for link type (e.g., AtomType.FOLLOWS)
+
+        Returns:
+            List of link atoms where this atom is the source (first in outgoing list)
+        """
+        link_ids = self._outgoing.get(atom_id, set())
+        links = [self._atoms[lid] for lid in link_ids if lid in self._atoms]
+        if atom_type is not None:
+            links = [link for link in links if link.atom_type == atom_type]
+        return links
+
+    # =========================================================================
+    # Dirty Tracking for Incremental Saves
+    # =========================================================================
+
+    def get_dirty_atoms(self) -> Set[str]:
+        """Get the set of atom IDs modified since last clear_dirty()."""
+        return self._dirty_atoms
+
+    def is_all_dirty(self) -> bool:
+        """Check if all atoms should be considered dirty (after load or initial creation)."""
+        return self._all_dirty
+
+    def clear_dirty(self) -> None:
+        """Clear dirty state after successful save."""
+        self._dirty_atoms.clear()
+        self._all_dirty = False
+
+    def mark_all_clean_after_load(self) -> None:
+        """Mark storage as clean after loading from disk (no changes yet)."""
+        self._dirty_atoms.clear()
+        self._all_dirty = False
 
 
 # =============================================================================
@@ -582,6 +638,28 @@ class CognitiveGraph:
         for atom in self._storage.all_atoms():
             if atom.is_link() and atom_id in atom.outgoing:
                 result.append(atom)
+        return result
+
+    def get_outgoing(self, atom_id: str, atom_type: Optional[AtomType] = None) -> List[Atom]:
+        """
+        Get all links originating from this atom (O(1) with InMemoryStorage).
+
+        Args:
+            atom_id: The source atom ID
+            atom_type: Optional filter for link type (e.g., AtomType.FOLLOWS)
+
+        Returns:
+            List of link atoms where this atom is the source
+        """
+        if isinstance(self._storage, InMemoryStorage):
+            return self._storage.get_outgoing(atom_id, atom_type)
+
+        # Fallback: scan all atoms
+        result = []
+        for atom in self._storage.all_atoms():
+            if atom.is_link() and atom.outgoing and atom.outgoing[0] == atom_id:
+                if atom_type is None or atom.atom_type == atom_type:
+                    result.append(atom)
         return result
 
     def find_by_type(self, atom_type: AtomType) -> List[Atom]:
@@ -2196,12 +2274,11 @@ class CognitiveAgent:
                 is_unknown=True,
             )
 
-        # Get all FOLLOWS links originating from this atom
+        # Get FOLLOWS links originating from this atom using O(1) indexed lookup
         # FOLLOWS links have [from_atom, to_atom] structure
-        all_links = self.graph._storage.find_by_type(AtomType.FOLLOWS)
         follows_links = [
-            link for link in all_links
-            if len(link.outgoing) == 2 and link.outgoing[0] == atom.id
+            link for link in self.graph.get_outgoing(atom.id, AtomType.FOLLOWS)
+            if len(link.outgoing) == 2
         ]
 
         if not follows_links:
