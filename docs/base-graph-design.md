@@ -1301,17 +1301,58 @@ class ThoughtGraphV2(
 
 ### Phase 3: Incremental Migration
 
-1. Migrate least-complex graphs first:
-   - `TaskDAG` -> inherits `BaseGraph` (simple, no custom nodes)
-   - `SimpleGraph` -> reference implementation
+#### First Target: TaskDAG → DAGGraph (RECOMMENDED)
 
-2. Migrate medium-complexity:
-   - `ThoughtGraph` -> `ThoughtGraphV2`
-   - `CausalGraph` -> inherits `BaseGraph`
+**Location:** `cortical/audits/algorithms/dag.py` (459 lines)
 
-3. Migrate complex graphs:
-   - `SemanticKnowledgeGraph` (has layers, WAL)
-   - `CognitiveGraph` (hypergraph, attention)
+**Analysis (2026-01-13):** TaskDAG is functionally identical to DAGGraph:
+
+| TaskDAG Method | DAGGraph Method | Status |
+|----------------|-----------------|--------|
+| `add_task(id)` | `add_node(id)` | ✅ Identical |
+| `add_dependency(from, to)` | `add_edge(from, to)` | ⚠️ Returns bool vs raises ValueError |
+| `_has_path(start, end)` | `_has_path(start, end)` | ✅ Identical DFS |
+| `topological_sort()` | `topological_sort()` | ✅ Both use Kahn's algorithm |
+| `blocked_by(id)` | `blocked_by(id)` | ✅ Identical |
+| `blocks(id)` | `blocks(id)` | ✅ Identical |
+| `ready_tasks(completed)` | `ready_tasks(completed)` | ✅ Identical |
+| `roots()` | `find_roots()` | ✅ Same logic |
+| `leaves()` | `find_leaves()` | ✅ Same logic |
+| `has_dependency(from, to)` | `has_edge(from, to)` | ✅ Identical |
+
+**Migration steps:**
+
+1. **Add compatibility wrapper** (if needed for `add_dependency` return type):
+   ```python
+   # In cortical/audits/algorithms/dag.py (temporary)
+   from cortical.graph import DAGGraph as _DAGGraph
+
+   class TaskDAG(_DAGGraph):
+       """Compatibility wrapper during migration."""
+
+       def add_task(self, task_id: str) -> None:
+           self.add_node(task_id)
+
+       def add_dependency(self, from_task: str, to_task: str) -> bool:
+           try:
+               self.add_edge(from_task, to_task)
+               return True
+           except ValueError:
+               return False
+   ```
+
+2. **Update call sites** to use DAGGraph directly (grep for `TaskDAG`)
+
+3. **Delete** the 459-line TaskDAG implementation
+
+**Expected outcome:** -450+ lines of duplicate code
+
+#### Subsequent Migrations
+
+2. `ThoughtGraph` -> Subclass `BaseGraph` with custom `ThoughtNode`/`ThoughtEdge`
+3. `CausalGraph` -> Subclass `BaseGraph` with evidence tracking
+4. `SemanticKnowledgeGraph` -> Complex (has layers, WAL) - defer
+5. `CognitiveGraph` -> Keep separate (hypergraph, different paradigm)
 
 ### Phase 4: Deprecation
 
