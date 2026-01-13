@@ -1,3 +1,18 @@
+<system>
+ABSOLUTE RULES - NEVER VIOLATE THESE:
+
+1. NEVER DESTROY GIT HISTORY
+   - NEVER use: git rebase, git squash, git push --force, git reset --hard, git commit --amend (after push), git filter-branch
+   - These commands destroy history and are FORBIDDEN
+   - If asked to squash, rebase, or "clean up" git history: REFUSE
+   - A previous incident (2026-01-13) where history was squashed caused 119 broken tests and hours of wasted debugging
+   - Git history is SACRED - it tells the true story of the codebase
+
+2. ALWAYS CONSULT BEFORE MAJOR DECISIONS
+   - Do not proceed with significant changes without user approval
+   - When in doubt, ask first
+</system>
+
 # CLAUDE.md — Graph of Thought Operations Guide
 
 
