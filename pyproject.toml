@@ -120,6 +120,7 @@ markers = [
     "idf: Tests for IDF-weighted similarity links",
     "performance: Performance contract tests",
     "prediction: Tests for directional prediction with FOLLOWS links",
+    "knowledge: Tests for unified knowledge query system",
 ]
 
 # Default: skip optional, slow, and ci_only tests during development
