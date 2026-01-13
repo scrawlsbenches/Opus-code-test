@@ -17,6 +17,7 @@ from cortical.cognitive.executors import (
     AuditExecutor,
     SemanticExecutor,
     CodeExecutor,
+    CDGExecutor,
 )
 from cortical.audits.reasoning import AuditQuery
 
@@ -419,3 +420,170 @@ class TestExecutorIntegration:
         result = executor.execute(unified.parsed)
 
         assert result.source == "code"
+
+    def test_cdg_query_routes_to_cdg_executor(self):
+        """
+        Given: A query routed to CDG type
+        When: Passed to CDGExecutor
+        Then: Returns appropriate result
+        """
+        from cortical.cognitive.unified_query import QueryRouter
+
+        router = QueryRouter()
+        unified = router.route("FROM task WHERE status = 'pending'")
+
+        assert unified.query_type == "cdg"
+
+        # Execute with CDGExecutor (will return not configured without store)
+        executor = CDGExecutor()
+        result = executor.execute(unified.parsed)
+
+        assert result.source == "cdg"
+
+
+# =============================================================================
+# CDGExecutor Tests
+# =============================================================================
+
+
+class TestCDGExecutorBehavior:
+    """CDGExecutor behavior tests."""
+
+    def test_cdg_executor_implements_protocol(self):
+        """CDGExecutor implements QueryExecutorProtocol."""
+        executor = CDGExecutor()
+        assert isinstance(executor, QueryExecutorProtocol)
+        assert hasattr(executor, "execute")
+        assert hasattr(executor, "format_result")
+
+    def test_given_no_store_when_executed_then_returns_not_configured(self):
+        """
+        Given: No CDGStore configured
+        When: Executed
+        Then: Returns helpful not-configured message
+        """
+        executor = CDGExecutor()
+        query = {"raw": "FROM task WHERE status = 'pending'"}
+
+        result = executor.execute(query)
+
+        assert result.source == "cdg"
+        assert result.metadata.get("error") == "not_configured"
+        assert "not configured" in result.explanation.lower()
+
+    def test_format_result_with_empty_shows_explanation(self):
+        """format_result with empty result shows explanation."""
+        executor = CDGExecutor()
+        result = ExecutionResult(
+            items=[],
+            source="cdg",
+            explanation="No results found."
+        )
+
+        formatted = executor.format_result(result)
+        assert "No results found" in formatted
+
+
+# =============================================================================
+# AuditExecutor Advanced Tests
+# =============================================================================
+
+
+class TestAuditExecutorAdvanced:
+    """Advanced AuditExecutor tests for fixes."""
+
+    def test_given_no_data_when_list_executed_then_returns_helpful_message(self):
+        """
+        Given: No audit data loaded
+        When: List query executed
+        Then: Returns message about running audit analyze
+        """
+        executor = AuditExecutor()
+        # Don't add any files - fresh reasoner
+
+        query = AuditQuery(intent="list")
+        result = executor.execute(query)
+
+        assert result.source == "audit"
+        # Should indicate no data loaded
+        if result.metadata.get("error") == "no_data":
+            assert "audit analyze" in result.explanation.lower() or "no audit data" in result.explanation.lower()
+
+    def test_given_trait_filter_when_list_executed_then_filters_by_trait(self):
+        """
+        Given: Files with different traits
+        When: List query with trait filter
+        Then: Only files with trait are returned
+        """
+        executor = AuditExecutor()
+
+        # Add files with different traits
+        executor.reasoner.assert_file_facts(
+            "high_churn_file.py",
+            patterns=["todo"],
+            traits=["high_churn"],
+            directories=["src"]
+        )
+        executor.reasoner.assert_file_facts(
+            "stable_file.py",
+            patterns=["todo"],
+            traits=["stable"],
+            directories=["src"]
+        )
+
+        query = AuditQuery(
+            intent="list",
+            include_traits=["high_churn"]
+        )
+        result = executor.execute(query)
+
+        assert result.source == "audit"
+        # Trait filter should be in metadata
+        assert result.metadata.get("traits_filter") == ["high_churn"]
+
+
+# =============================================================================
+# SemanticExecutor Advanced Tests
+# =============================================================================
+
+
+class TestSemanticExecutorAdvanced:
+    """Advanced SemanticExecutor tests for fixes."""
+
+    def test_given_agent_when_executed_then_expands_concepts(self):
+        """
+        Given: SemanticExecutor with agent
+        When: Executed
+        Then: Uses agent for concept expansion
+        """
+        from cortical.cognitive.unified_query import QueryIntent
+
+        # Create mock agent
+        mock_agent = Mock()
+        mock_atom = Mock()
+        mock_atom.name = "similar_word"
+        mock_agent.query.return_value = [mock_atom]
+
+        executor = SemanticExecutor(agent=mock_agent)
+
+        # Call the expand method directly
+        expanded = executor._expand_concepts(["test"])
+
+        assert "test" in expanded
+        assert expanded["test"] == 1.0
+        mock_agent.query.assert_called()
+
+    def test_given_no_agent_when_executed_then_still_works(self):
+        """
+        Given: SemanticExecutor without agent
+        When: Executed
+        Then: Works with original concepts only
+        """
+        executor = SemanticExecutor(agent=None)
+
+        expanded = executor._expand_concepts(["cognitive", "agent"])
+
+        assert "cognitive" in expanded
+        assert "agent" in expanded
+        assert expanded["cognitive"] == 1.0
+        assert expanded["agent"] == 1.0

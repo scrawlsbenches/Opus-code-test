@@ -1,21 +1,24 @@
 """
-Semantic Executor: Document retrieval via TF-IDF.
+Semantic Executor: Document retrieval via cognitive graph.
 
 Retrieves relevant documents from the trained corpus:
-- Loads training manifest to find documents
-- Uses TF-IDF similarity to rank documents
-- Returns content excerpts for answers
+- Uses cognitive graph for concept expansion (similar words)
+- Searches document content for expanded concepts
+- Returns content excerpts with relevance scores
 """
 
 import json
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING
 
 from .protocol import BaseExecutor, ExecutionResult
 
 # Import the QueryIntent from unified_query
 from cortical.cognitive.unified_query import QueryIntent
+
+if TYPE_CHECKING:
+    from cortical.cognitive.graph import CognitiveAgent
 
 
 class SemanticExecutor(BaseExecutor):
@@ -23,13 +26,14 @@ class SemanticExecutor(BaseExecutor):
     Executes semantic queries via document retrieval.
 
     Capabilities:
-    - Find documents relevant to query concepts
-    - Return content excerpts
-    - Rank by TF-IDF similarity
+    - Expand concepts using cognitive graph SIMILARITY links
+    - Find documents matching expanded concepts
+    - Return content excerpts with relevance scores
     """
 
     def __init__(
         self,
+        agent: Optional["CognitiveAgent"] = None,
         model_dir: Optional[Path] = None,
         samples_dir: Optional[Path] = None,
     ):
@@ -37,9 +41,11 @@ class SemanticExecutor(BaseExecutor):
         Initialize semantic executor.
 
         Args:
+            agent: CognitiveAgent for concept expansion (optional)
             model_dir: Directory containing training manifest
             samples_dir: Base directory for document content
         """
+        self._agent = agent
         self._model_dir = model_dir or Path("models/cognitive_agent")
         self._samples_dir = samples_dir or Path("samples")
         self._manifest: Optional[Dict[str, Any]] = None
@@ -122,6 +128,38 @@ class SemanticExecutor(BaseExecutor):
             }
         )
 
+    def _expand_concepts(self, concepts: List[str]) -> Dict[str, float]:
+        """
+        Expand concepts using cognitive graph SIMILARITY links.
+
+        Args:
+            concepts: Original query concepts
+
+        Returns:
+            Dict mapping words to weights (original=1.0, similar=0.5)
+        """
+        expanded: Dict[str, float] = {}
+
+        # Add original concepts with full weight
+        for concept in concepts:
+            expanded[concept.lower()] = 1.0
+
+        # If we have an agent, expand using similarity links
+        if self._agent is not None:
+            try:
+                for concept in concepts:
+                    similar_atoms = self._agent.query("similar_to", concept.lower(), top_k=5)
+                    for atom in similar_atoms:
+                        word = atom.name.lower()
+                        if word not in expanded:
+                            # Similar words get lower weight
+                            expanded[word] = 0.5
+            except Exception:
+                # If agent query fails, continue with original concepts
+                pass
+
+        return expanded
+
     def _find_relevant_documents(
         self,
         concepts: List[str],
@@ -130,7 +168,8 @@ class SemanticExecutor(BaseExecutor):
         """
         Find documents matching the query concepts.
 
-        Uses simple TF-IDF-like scoring based on concept matches.
+        Searches document content (not just paths) for concepts.
+        Uses cognitive graph to expand concepts if available.
 
         Args:
             concepts: List of concept words to search for
@@ -141,33 +180,44 @@ class SemanticExecutor(BaseExecutor):
         """
         documents = self.manifest.get("documents", {})
 
-        # Score each document by concept match
+        # Expand concepts using cognitive graph
+        expanded_concepts = self._expand_concepts(concepts)
+
+        # Score each document by concept match in CONTENT
         doc_scores: Dict[str, float] = {}
 
         for doc_path, doc_info in documents.items():
-            # Score based on path match
-            path_lower = doc_path.lower()
             score = 0.0
 
-            for concept in concepts:
-                concept_lower = concept.lower()
+            # Score 1: Path matching (lightweight, always done)
+            path_lower = doc_path.lower()
+            path_parts = re.split(r'[/_\-\.]', path_lower)
 
-                # Exact word match in path
-                if concept_lower in path_lower:
-                    score += 2.0
+            for concept, weight in expanded_concepts.items():
+                # Exact path component match
+                if concept in path_parts:
+                    score += 3.0 * weight
+                # Substring in path
+                elif concept in path_lower:
+                    score += 1.5 * weight
 
-                # Check path components
-                path_parts = re.split(r'[/_\-\.]', path_lower)
-                for part in path_parts:
-                    if concept_lower == part:
-                        score += 3.0
-                    elif concept_lower in part:
-                        score += 1.0
+            # Score 2: Content matching (if path score is promising or we have few docs)
+            if score > 0 or len(documents) <= 50:
+                content = self._get_document_content(doc_path)
+                if content:
+                    content_lower = content.lower()
+                    for concept, weight in expanded_concepts.items():
+                        # Count occurrences in content
+                        count = content_lower.count(concept)
+                        if count > 0:
+                            # Log-scaled to reduce impact of high-frequency words
+                            import math
+                            score += math.log(1 + count) * 2.0 * weight
 
-            # Boost for larger documents (more likely to have detail)
+            # Boost for larger documents (more detailed)
             word_count = doc_info.get("word_count", 0)
             if word_count > 500:
-                score *= 1.2
+                score *= 1.1
 
             if score > 0:
                 doc_scores[doc_path] = score

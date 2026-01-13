@@ -109,6 +109,16 @@ class AuditExecutor(BaseExecutor):
         max_results = query.max_results or 20
         priority_files = self.reasoner.get_priority_files(top_n=max_results * 2)
 
+        # Check if we have any data
+        if not priority_files and not self.reasoner.file_importance:
+            return ExecutionResult(
+                items=[],
+                confidence=0.1,
+                source=self.name,
+                explanation="No audit data loaded. Run 'audit analyze' first to scan files.",
+                metadata={"intent": "list", "error": "no_data"}
+            )
+
         # Filter by min_risk if specified
         if query.min_risk > 0:
             priority_files = [
@@ -123,6 +133,13 @@ class AuditExecutor(BaseExecutor):
             priority_files = [
                 (f, score) for f, score in priority_files
                 if dir_name in f or self._file_in_directory(f, dir_name)
+            ]
+
+        # Apply trait filters - files must have ALL specified traits
+        if query.include_traits:
+            priority_files = [
+                (f, score) for f, score in priority_files
+                if self._file_has_traits(f, query.include_traits)
             ]
 
         # Apply negations
@@ -171,6 +188,20 @@ class AuditExecutor(BaseExecutor):
             if file_id in atom_name and f"has_dir({file_id}, {dir_name})" in atom_name:
                 return True
         return False
+
+    def _file_has_traits(self, file_id: str, traits: List[str]) -> bool:
+        """Check if a file has all specified traits."""
+        # Check PLN graph for has_trait facts
+        for trait in traits:
+            trait_fact = f"has_trait({file_id}, {trait})"
+            found = False
+            for atom_name in self.reasoner.pln.graph._atoms.keys():
+                if trait_fact in atom_name:
+                    found = True
+                    break
+            if not found:
+                return False
+        return True
 
     def format_result(self, result: ExecutionResult) -> str:
         """Format audit results as natural language."""
