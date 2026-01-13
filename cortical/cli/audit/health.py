@@ -97,11 +97,11 @@ def run(args: Any) -> None:
         print("\nFINDINGS:")
         print_separator()
         for finding in result.findings[:20]:  # Limit to first 20
-            rel_path = os.path.relpath(finding.get('file', ''), directory)
+            full_path = os.path.join(directory, finding.get('file', ''))
             line = finding.get('line', '?')
             pattern = finding.get('pattern', 'unknown')
             comment = finding.get('comment', '')[:60]
-            print(f"\n  [{pattern}] {rel_path}:{line}")
+            print(f"\n  [{pattern}] {full_path}:{line}")
             print(f"    {comment}...")
 
         if len(result.findings) > 20:
