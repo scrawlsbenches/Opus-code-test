@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Dict, Any, List
 from ..types import EdgeTypes
 
 if TYPE_CHECKING:
-    from cortical.got.adapter import TransactionalGoTAdapter
+    from cortical.got.api import GoTManager
 
 
 # =============================================================================
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 # =============================================================================
 
 
-def cmd_analyze_summary(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_analyze_summary(args, manager: "GoTManager") -> int:
     """
     Generate a summary using the Query builder.
 
@@ -148,7 +148,7 @@ def cmd_analyze_summary(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_analyze_dependencies(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_analyze_dependencies(args, manager: "GoTManager") -> int:
     """
     Analyze the dependency chain for a specific task.
 
@@ -268,7 +268,7 @@ def cmd_analyze_dependencies(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_analyze_patterns(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_analyze_patterns(args, manager: "GoTManager") -> int:
     """
     Find common patterns in the graph using PatternMatcher.
 
@@ -361,7 +361,7 @@ def cmd_analyze_patterns(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_analyze_orphans(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_analyze_orphans(args, manager: "GoTManager") -> int:
     """
     Find orphan tasks using PathFinder's connected_components.
 
@@ -496,7 +496,7 @@ def setup_analyze_parser(subparsers):
     )
 
 
-def handle_analyze_command(args, manager: "TransactionalGoTAdapter") -> int:
+def handle_analyze_command(args, manager: "GoTManager") -> int:
     """Route 'analyze' subcommand to appropriate handler."""
     if not hasattr(args, 'analyze_command') or not args.analyze_command:
         # Default to summary

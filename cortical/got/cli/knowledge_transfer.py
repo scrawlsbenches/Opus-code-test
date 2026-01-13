@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:
-    from cortical.got.adapter import TransactionalGoTAdapter
+    from cortical.got.api import GoTManager
 
 
 def _get_attr(obj: Any, key: str, default: Any = None) -> Any:
@@ -160,7 +160,7 @@ def parse_markdown_file(file_path: Path) -> Dict[str, Any]:
 # CLI COMMAND HANDLERS
 # =============================================================================
 
-def cmd_kt_create(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_kt_create(args, manager: "GoTManager") -> int:
     """
     Handle 'got knowledge create' command.
 
@@ -200,7 +200,7 @@ def cmd_kt_create(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_kt_append(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_kt_append(args, manager: "GoTManager") -> int:
     """
     Handle 'got knowledge append' command.
 
@@ -250,7 +250,7 @@ def cmd_kt_append(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_kt_link(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_kt_link(args, manager: "GoTManager") -> int:
     """
     Handle 'got knowledge link' command.
 
@@ -286,7 +286,7 @@ def cmd_kt_link(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_kt_list(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_kt_list(args, manager: "GoTManager") -> int:
     """
     Handle 'got knowledge list' command.
 
@@ -336,7 +336,7 @@ def cmd_kt_list(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_kt_show(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_kt_show(args, manager: "GoTManager") -> int:
     """
     Handle 'got knowledge show' command.
 
@@ -442,7 +442,7 @@ def cmd_kt_show(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_kt_import(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_kt_import(args, manager: "GoTManager") -> int:
     """
     Handle 'got knowledge import' command.
 
@@ -514,7 +514,7 @@ def cmd_kt_import(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_kt_finalize(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_kt_finalize(args, manager: "GoTManager") -> int:
     """
     Handle 'got knowledge finalize' command.
 
@@ -560,7 +560,7 @@ def cmd_kt_finalize(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_kt_history(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_kt_history(args, manager: "GoTManager") -> int:
     """
     Handle 'got knowledge history' command.
 
@@ -777,13 +777,13 @@ def setup_knowledge_transfer_parser(subparsers) -> None:
     history_parser.add_argument("kt_id", help="Knowledge transfer ID to trace")
 
 
-def handle_knowledge_transfer_command(args, manager: "TransactionalGoTAdapter") -> int:
+def handle_knowledge_transfer_command(args, manager: "GoTManager") -> int:
     """
     Route knowledge transfer subcommand to appropriate handler.
 
     Args:
         args: Parsed command-line arguments
-        manager: TransactionalGoTAdapter instance
+        manager: GoTManager instance
 
     Returns:
         Exit code (0 for success, non-zero for error)

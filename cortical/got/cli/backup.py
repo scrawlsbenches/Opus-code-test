@@ -18,14 +18,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from cortical.got.adapter import TransactionalGoTAdapter
+    from cortical.got.api import GoTManager
 
 
 # =============================================================================
 # CLI COMMAND HANDLERS
 # =============================================================================
 
-def cmd_backup_create(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_backup_create(args, manager: "GoTManager") -> int:
     """Handle 'got backup create' command."""
     compress = getattr(args, 'compress', True)
 
@@ -46,7 +46,7 @@ def cmd_backup_create(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
-def cmd_backup_list(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_backup_list(args, manager: "GoTManager") -> int:
     """Handle 'got backup list' command."""
     limit = getattr(args, 'limit', 10)
 
@@ -119,7 +119,7 @@ def cmd_backup_list(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_backup_verify(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_backup_verify(args, manager: "GoTManager") -> int:
     """Handle 'got backup verify' command."""
     snapshot_id = getattr(args, 'snapshot_id', None)
 
@@ -189,7 +189,7 @@ def cmd_backup_verify(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
-def cmd_backup_restore(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_backup_restore(args, manager: "GoTManager") -> int:
     """Handle 'got backup restore' command."""
     from cortical.reasoning.thought_graph import ThoughtGraph
     from cortical.reasoning.graph_of_thought import NodeType, EdgeType
@@ -269,7 +269,7 @@ def cmd_backup_restore(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
-def cmd_sync(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_sync(args, manager: "GoTManager") -> int:
     """Handle 'got sync' command.
 
     This is CRITICAL for environment resilience:
@@ -373,7 +373,7 @@ def setup_backup_parser(subparsers) -> None:
     )
 
 
-def handle_backup_command(args, manager: "TransactionalGoTAdapter") -> int:
+def handle_backup_command(args, manager: "GoTManager") -> int:
     """
     Route backup subcommand to appropriate handler.
 
@@ -403,7 +403,7 @@ def handle_backup_command(args, manager: "TransactionalGoTAdapter") -> int:
     return 1
 
 
-def handle_sync_migrate_commands(args, manager: "TransactionalGoTAdapter") -> int:
+def handle_sync_migrate_commands(args, manager: "GoTManager") -> int:
     """
     Route sync/migrate commands to appropriate handlers.
 

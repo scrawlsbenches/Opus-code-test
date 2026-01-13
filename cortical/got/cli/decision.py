@@ -12,7 +12,7 @@ This module can be integrated into got_utils.py CLI or used standalone.
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from cortical.got.adapter import TransactionalGoTAdapter
+    from cortical.got.api import GoTManager
 
 from ..types import EdgeTypes
 
@@ -21,7 +21,7 @@ from ..types import EdgeTypes
 # CLI COMMAND HANDLERS
 # =============================================================================
 
-def cmd_decision_log(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_decision_log(args, manager: "GoTManager") -> int:
     """Handle 'got decision log' command."""
     context = {}
     if args.file:
@@ -49,7 +49,7 @@ def cmd_decision_log(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def _prompt_task_linkage(decision_id: str, manager: "TransactionalGoTAdapter") -> None:
+def _prompt_task_linkage(decision_id: str, manager: "GoTManager") -> None:
     """Prompt user to optionally link decision to a task.
 
     Args:
@@ -120,7 +120,7 @@ def _prompt_task_linkage(decision_id: str, manager: "TransactionalGoTAdapter") -
         print(f"Warning: Could not prompt for task linkage: {e}", file=sys.stderr)
 
 
-def cmd_decision_list(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_decision_list(args, manager: "GoTManager") -> int:
     """Handle 'got decision list' command."""
     # Use list_decisions for transactional backend compatibility
     if hasattr(manager, 'list_decisions'):
@@ -149,7 +149,7 @@ def cmd_decision_list(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_decision_show(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_decision_show(args, manager: "GoTManager") -> int:
     """Handle 'got decision show' command."""
     decision_id = args.decision_id
 
@@ -209,7 +209,7 @@ def cmd_decision_show(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_decision_why(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_decision_why(args, manager: "GoTManager") -> int:
     """Handle 'got decision why' command."""
     reasons = manager.why(args.task_id)
 
@@ -229,7 +229,7 @@ def cmd_decision_why(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_decision_trace(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_decision_trace(args, manager: "GoTManager") -> int:
     """Handle 'got decision trace' command.
 
     Shows the full context of a decision:
@@ -330,7 +330,7 @@ def cmd_decision_trace(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def _get_entity_summary(manager: "TransactionalGoTAdapter", entity_id: str) -> str:
+def _get_entity_summary(manager: "GoTManager", entity_id: str) -> str:
     """Get a brief summary of an entity by ID."""
     # Try task first
     try:
@@ -363,7 +363,7 @@ def _get_entity_summary(manager: "TransactionalGoTAdapter", entity_id: str) -> s
     return "(details unavailable)"
 
 
-def cmd_decision_delete(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_decision_delete(args, manager: "GoTManager") -> int:
     """Handle 'got decision delete' command."""
     decision_id = args.decision_id
     force = getattr(args, 'force', False)
@@ -466,7 +466,7 @@ def setup_decision_parser(subparsers) -> None:
     )
 
 
-def handle_decision_command(args, manager: "TransactionalGoTAdapter") -> int:
+def handle_decision_command(args, manager: "GoTManager") -> int:
     """
     Route decision subcommand to appropriate handler.
 

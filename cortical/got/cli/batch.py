@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from cortical.got.adapter import TransactionalGoTAdapter
+    from cortical.got.api import GoTManager
 
 
 class BatchError(Exception):
@@ -384,12 +384,12 @@ class BatchParser:
 class BatchExecutor:
     """Executor for batch operations."""
 
-    def __init__(self, manager: "TransactionalGoTAdapter"):
+    def __init__(self, manager: "GoTManager"):
         """
         Initialize executor with a GoT manager.
 
         Args:
-            manager: TransactionalGoTAdapter for executing operations
+            manager: GoTManager for executing operations
         """
         self.manager = manager
 
@@ -575,7 +575,7 @@ Usage:
     )
 
 
-def handle_batch_command(args, manager: "TransactionalGoTAdapter") -> int:
+def handle_batch_command(args, manager: "GoTManager") -> int:
     """Handle the batch command."""
     import sys
 

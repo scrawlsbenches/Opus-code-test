@@ -15,14 +15,14 @@ from typing import TYPE_CHECKING, List
 from cortical.got.types import VALID_EDGE_TYPES
 
 if TYPE_CHECKING:
-    from cortical.got.adapter import TransactionalGoTAdapter
+    from cortical.got.api import GoTManager
 
 
 # =============================================================================
 # CLI COMMAND HANDLERS
 # =============================================================================
 
-def cmd_edge_add(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_edge_add(args, manager: "GoTManager") -> int:
     """Handle 'got edge add' command."""
     edge_type = args.edge_type.upper()
 
@@ -56,7 +56,7 @@ def cmd_edge_add(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
-def cmd_edge_list(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_edge_list(args, manager: "GoTManager") -> int:
     """Handle 'got edge list' command."""
     try:
         edges = manager.list_edges()
@@ -107,7 +107,7 @@ def cmd_edge_list(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
-def cmd_edge_types(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_edge_types(args, manager: "GoTManager") -> int:
     """Handle 'got edge types' command - show available edge types.
 
     Displays the 22 authoritative edge types from VALID_EDGE_TYPES.
@@ -166,7 +166,7 @@ def cmd_edge_types(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_edge_for(args, manager: "TransactionalGoTAdapter") -> int:
+def cmd_edge_for(args, manager: "GoTManager") -> int:
     """Handle 'got edge for' command - show edges for a specific entity."""
     entity_id = args.entity_id
 
@@ -293,7 +293,7 @@ def setup_edge_parser(subparsers) -> None:
     )
 
 
-def handle_edge_command(args, manager: "TransactionalGoTAdapter") -> int:
+def handle_edge_command(args, manager: "GoTManager") -> int:
     """
     Route edge subcommand to appropriate handler.
 
