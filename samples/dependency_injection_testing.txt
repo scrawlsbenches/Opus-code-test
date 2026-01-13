@@ -1,0 +1,21 @@
+Dependency Injection and Testable Architecture
+
+Dependency injection inverts control of dependencies. Rather than a component creating its dependencies internally, dependencies are provided from outside. This decouples components and enables substitution.
+
+Constructor injection passes dependencies at creation time. The component receives everything it needs through its constructor. Dependencies are explicit in the signature. The component cannot be created without them.
+
+Containers manage dependency wiring. Rather than manually constructing object graphs, containers resolve dependencies automatically. Registration tells the container how to create each type. Resolution requests instances.
+
+Singleton scope creates one instance shared across requests. Transient scope creates fresh instances each time. Scoped lifetime ties instances to specific contexts. Choosing appropriate scope prevents resource waste and subtle bugs.
+
+Interface segregation enables mock substitution. Components depend on interfaces, not concrete classes. Tests provide mock implementations. This isolates the component under test from its dependencies.
+
+Testable architecture separates pure logic from effects. Pure functions transform inputs to outputs without side effects. Effects like file access or network calls are isolated in injectable components. Tests substitute pure mocks for effect components.
+
+Unit tests verify component behavior in isolation. With dependencies mocked, tests exercise one component at a time. This makes failures specific and tests fast. Each test covers one behavior.
+
+Integration tests verify component combinations. Real dependencies are used to test interactions. These tests are slower but catch integration issues. Coverage complements unit testing.
+
+Behavioral tests specify what the system should do. Given certain conditions, when certain actions occur, then certain outcomes result. These readable specifications serve as documentation and verification.
+
+Test fixtures provide reusable test setup. Common configurations are defined once and reused across tests. This reduces duplication and ensures consistency. Fixtures encapsulate complex initialization.

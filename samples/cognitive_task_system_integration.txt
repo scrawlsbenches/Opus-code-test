@@ -1,0 +1,21 @@
+Cognitive Agent and Task System Integration
+
+Cognitive agents maintain internal goal representations that differ fundamentally from external task systems. Goals are fluid, contextual, and weighted by subjective importance, while tasks are discrete, assignable, and prioritized for workflow management. The integration challenge lies in bridging these two paradigms without compromising either system's integrity.
+
+Bidirectional synchronization enables goals to manifest as tasks and tasks to inform goals. When an agent crystallizes a goal into actionable work, it creates a corresponding task in the external system. Conversely, when external collaborators create tasks, the agent may internalize them as goals worth pursuing. This two-way flow ensures neither system operates in isolation.
+
+Importance-to-priority mapping translates the continuous spectrum of goal importance into discrete priority levels. Critical priority corresponds to goals essential for core function, high priority to goals with significant impact, medium priority to goals contributing to secondary objectives, and low priority to exploratory or optional goals. This mapping is approximate by nature, as internal importance carries nuances that discrete categories cannot fully capture.
+
+Progress tracking spans both systems through shared identifiers and state synchronization. When goal progress advances, task completion percentages update. When tasks reach milestones, goal satisfaction metrics reflect the change. This dual tracking provides both internal awareness and external visibility into work advancement.
+
+Goal-to-task creation suits situations where the agent has determined what needs accomplishing and seeks external coordination or persistence. Task-to-goal creation fits when external requests arrive that the agent must internalize for proper attention and resource allocation. The direction of creation depends on where the work originates and who needs visibility.
+
+Loose coupling ensures the cognitive agent operates effectively without task system access. The agent's goal management remains fully functional standalone, with task synchronization as an optional enhancement. This design prevents external system failures from degrading cognitive function and allows the agent to work offline or in isolated contexts.
+
+Event-driven updates propagate state changes efficiently between systems. Goal completion triggers task status updates. Task reassignment may shift goal ownership. Priority changes in either system attempt reconciliation with the other. These events flow through a notification channel that each system monitors without tight runtime dependencies.
+
+Conflicts arise when internal and external representations diverge. An agent may deprioritize a goal that remains high-priority externally, or external collaborators may close a task the agent considers incomplete. Resolution strategies include external-wins for collaborative contexts, internal-wins for autonomous operation, and manual reconciliation for ambiguous cases. The chosen strategy depends on operational context and trust relationships.
+
+The benefits of integration include external visibility into agent intentions, enabling human oversight and collaboration. Persistence in external systems protects against context loss during agent restarts. Shared task systems allow multiple agents or humans to coordinate on related work. Audit trails in task systems provide accountability for agent actions.
+
+The bridge pattern structures this integration cleanly. A dedicated bridge component mediates between the cognitive goal manager and the external task system. The bridge handles translation, synchronization timing, conflict resolution, and failure recovery. Neither the goal manager nor the task system knows about the other directly, maintaining separation of concerns and enabling independent evolution of each system.

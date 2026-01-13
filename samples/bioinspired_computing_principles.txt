@@ -1,0 +1,21 @@
+Bio-Inspired Computing Principles
+
+Biological systems evolved sophisticated information processing over billions of years. Bio-inspired computing adapts these solutions to artificial systems. The brain remains the most capable general intelligence known.
+
+Neural networks abstract biological neurons into computational units. Each unit receives weighted inputs, applies an activation function, and produces output. Layers of units transform inputs into outputs. Deep networks learn hierarchical representations.
+
+Spiking neural networks more closely match biological timing. Rather than continuous activations, units produce discrete spikes. Temporal patterns carry information. This approach may enable more efficient computation.
+
+Attention mechanisms in neural networks mirror biological attention. Not all inputs receive equal processing. Learned attention weights focus computation on relevant inputs. Transformer architectures rely heavily on attention.
+
+Memory networks separate storage from computation. The network can read from and write to external memory. This addresses the limited memory capacity of standard networks. Biological systems similarly separate hippocampus from cortex.
+
+Hebbian learning in artificial systems strengthens co-activated connections. When two units activate together repeatedly, their connection strengthens. This enables unsupervised learning of input statistics.
+
+Evolutionary algorithms adapt populations of solutions. Fitness evaluation selects better solutions. Mutation and crossover create variation. Over generations, populations improve. This mirrors biological evolution.
+
+Swarm intelligence emerges from simple agent interactions. Individual ants or bees follow simple rules. Collective behavior exhibits complex problem-solving. Artificial swarms solve optimization and routing problems.
+
+Neuromorphic hardware implements neural computation directly in circuits. Rather than simulating neurons in software, neuromorphic chips perform neural operations in hardware. This promises efficiency and speed.
+
+Cognitive architectures integrate multiple bio-inspired components. Attention, memory, learning, and reasoning combine into unified systems. These architectures aim for general intelligence through principled integration.

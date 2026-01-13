@@ -2225,7 +2225,7 @@ class GoTManager:
 
         # Write back using transaction
         with self.transaction() as tx:
-            tx.tx_manager.write(tx.tx, kt)
+            self.tx_manager.write(tx, kt)
 
         return kt
 

@@ -1,0 +1,21 @@
+Semantic Similarity Through Co-occurrence Analysis
+
+Words that appear together frequently tend to be semantically related. The distributional hypothesis states that meaning is derived from context. By analyzing co-occurrence patterns, we can infer semantic similarity without explicit definitions.
+
+Co-occurrence windows define what counts as appearing together. A window of five words means words within five positions of each other co-occur. Smaller windows capture syntactic relations. Larger windows capture topical relations.
+
+Co-occurrence matrices count pairwise word appearances. Rows and columns represent vocabulary words. Cell values represent how often each pair co-occurred. High values indicate strong association.
+
+Pointwise mutual information transforms raw counts to association strength. PMI compares observed co-occurrence to expected co-occurrence under independence. High PMI indicates words appear together more than chance.
+
+Word embeddings learn dense vector representations from co-occurrence. Words with similar contexts get similar vectors. The vector space captures semantic relationships geometrically. Similar words cluster together.
+
+Similarity links in cognitive graphs represent co-occurrence strength. Words that frequently appear together get linked. Link strength reflects association strength. Traversing similarity links finds semantically related concepts.
+
+Context windows in tokenization determine link creation. For each word, neighbors within the window are linked. This creates a local neighborhood structure. The window size trades off specificity for coverage.
+
+Vocabulary learning identifies the word set to track. Common words appear frequently and get high importance. Rare words may be filtered or treated specially. The vocabulary size affects memory requirements and coverage.
+
+Incremental vocabulary learning adds new words as encountered. The system does not require all words upfront. As new documents arrive, new words enter the vocabulary and link to existing words.
+
+Compound concepts emerge from frequent bigrams. When two words consistently appear together, they may form a conceptual unit. Recognizing compounds improves semantic representation.

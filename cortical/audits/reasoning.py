@@ -41,6 +41,7 @@ from .persistence import (
     create_default_persistence,
     DEFAULT_WOVEN_MIND_FILE,
 )
+from .health import analyze_directory, HealthAnalysisResult
 
 
 # =============================================================================
@@ -110,12 +111,11 @@ def translate_audit_query(query: str) -> AuditQuery:
         result.target_file = explain_match.group(1)
         result.explain = True
 
-    # Scope Extraction
+    # Scope Extraction - order matters: more specific patterns first
     dir_patterns = [
-        r'in\s+(\S+/)',
-        r'in\s+(\S+)',
-        r'^(\S+/)\s',
-        r'^(\S+/?)$',
+        r'in\s+(\S+)',      # Captures full path like "cortical/audits"
+        r'^(\S+/)\s',       # Path at start followed by space
+        r'^(\S+/?)$',       # Path alone (with or without trailing /)
     ]
 
     for pattern in dir_patterns:
@@ -438,10 +438,11 @@ class AuditReasoner:
                     history=[],
                 )
 
-        self._persistence_state.attention_focus = list(self.attention_focus._focused.keys())
+        # Use public API for encapsulation
+        self._persistence_state.attention_focus = self.attention_focus.get_focused_atoms()
         self._persistence_state.global_stats = {
             "last_aggregate_strategy": self.aggregate_strategy,
-            "files_in_focus": len(self.attention_focus._focused),
+            "files_in_focus": len(self.attention_focus.get_focused_atoms()),
             "total_files_tracked": len(self.file_importance),
             "vlti_files": len(self.get_vlti_files()),
         }
@@ -554,20 +555,34 @@ class AuditReasoner:
 
         # Set up importance tracking
         sti = initial_importance if initial_importance is not None else 0.3
+        lti = 0.1
+
+        # Trait-based boosts
         if "high_churn" in traits:
+            sti += 0.3
+        if "bug_prone" in traits:
             sti += 0.2
-        if any(p in patterns for p in ["todo", "fixme", "hack"]):
-            sti += 0.1
+        if "critical" in traits:
+            lti = 0.2  # Higher LTI for critical files
+
+        # Pattern-based boosts
+        risk_patterns = ["todo", "fixme", "hack", "xxx"]
+        pattern_count = sum(1 for p in patterns if p in risk_patterns)
+        if pattern_count > 0:
+            sti += 0.1 + (pattern_count - 1) * 0.05  # 0.1 for first, +0.05 per extra
         sti = min(1.0, sti)
 
+        # Set VLTI for critical files
+        vlti = "critical" in traits
+
         if file_id not in self.file_importance:
-            self.file_importance[file_id] = AttentionValue(sti=sti, lti=0.1)
+            self.file_importance[file_id] = AttentionValue(sti=sti, lti=lti, vlti=vlti)
         else:
             current = self.file_importance[file_id]
             self.file_importance[file_id] = AttentionValue(
                 sti=max(current.sti, sti),
-                lti=current.lti,
-                vlti=current.vlti
+                lti=max(current.lti, lti),
+                vlti=current.vlti or vlti  # Preserve VLTI if already set
             )
 
         self.pln.set_attention(file_id, self.file_importance[file_id])
@@ -581,6 +596,27 @@ class AuditReasoner:
         if high_importance:
             self.attention_focus.focus_on(high_importance, boost=2.0)
         return high_importance
+
+    def focus_on_high_risk_files(self, threshold: float = 0.5) -> int:
+        """
+        Focus attention on files with high risk scores.
+
+        Args:
+            threshold: Minimum risk level to consider (0.0-1.0)
+
+        Returns:
+            Number of high-risk files focused on
+        """
+        high_risk_files = []
+        for file_id in self.file_importance.keys():
+            tv = self.query_risk(file_id, aggregate=True)
+            if tv and tv.mean() >= threshold:
+                high_risk_files.append(file_id)
+
+        if high_risk_files:
+            self.attention_focus.focus_on(high_risk_files, boost=2.0)
+
+        return len(high_risk_files)
 
     def query_risk(
         self,
@@ -635,42 +671,108 @@ class AuditReasoner:
             return self._persistence_state.file_importance[file_id].history
         return []
 
+    def get_stats(self) -> Dict[str, Any]:
+        """
+        Return statistics about the reasoner state.
+
+        Returns dict with:
+        - facts: Number of facts asserted in PLN graph
+        - rules: Number of rules in the reasoner
+        - aggregate_strategy: Current aggregation strategy
+        """
+        return {
+            "facts": self.pln.fact_count,
+            "rules": self.pln.rule_count,
+            "aggregate_strategy": self.aggregate_strategy
+        }
+
+    def collect_rent(self, sti_decay: float = 0.9, lti_decay: float = 0.95) -> None:
+        """
+        Apply attention decay to all tracked files.
+
+        Uses AttentionValue decay methods which protect VLTI files:
+        - VLTI atoms decay STI slower (max 5% per cycle)
+        - VLTI atoms don't decay LTI at all
+
+        Args:
+            sti_decay: Factor to multiply STI by (0 < factor < 1)
+            lti_decay: Factor to multiply LTI by (typically close to 1)
+        """
+        for file_id, av in self.file_importance.items():
+            av.decay_sti(sti_decay)
+            av.decay_lti(lti_decay)
+
+    def get_importance_trend(self, file_id: str) -> Optional[str]:
+        """
+        Analyze importance history to determine trend direction.
+
+        Compares first and last history entries to determine if file
+        importance is increasing, decreasing, or stable over time.
+
+        Args:
+            file_id: The file identifier to analyze
+
+        Returns:
+            "increasing" - Total importance has grown since first tracked
+            "decreasing" - Total importance has declined since first tracked
+            "stable" - Total importance unchanged
+            None - No history available (fewer than 2 entries)
+        """
+        history = self.get_importance_history(file_id)
+        if len(history) < 2:
+            return None
+
+        first = history[0]
+        last = history[-1]
+
+        first_total = first.get("sti", 0) + first.get("lti", 0)
+        last_total = last.get("sti", 0) + last.get("lti", 0)
+
+        if last_total > first_total:
+            return "increasing"
+        elif last_total < first_total:
+            return "decreasing"
+        else:
+            return "stable"
+
     def explain_file_risk(
         self,
         file_id: str,
+        verbose: bool = False,
     ) -> Dict[str, Any]:
         """
         Explain why a file is flagged as risky.
 
         Returns dict with:
-        - facts: List of facts asserted for this file
-        - inferences: Inference chains that fired
-        - risk_level: Overall risk assessment
-        - traces: Reasoning traces (inference chains)
+        - file: Original filename
+        - file_id: Normalized file identifier
+        - facts: Dict mapping fact names to their presence (fact_name -> fact_name)
+        - traces: Dict of inference traces
+        - raw_traces: Raw inference trace data
         - summary: Brief summary of the risk assessment
+        - suggestions: List of actionable suggestions
         """
         # Normalize file_id the same way as assert_file_facts
         file_id_clean = Path(file_id).name.replace(".", "_")
 
         explanation = {
+            "file": file_id,
             "file_id": file_id_clean,
-            "facts": [],
+            "facts": {},
             "inferences": [],
             "risk_level": None,
             "suggestions": [],
             "traces": {},
+            "raw_traces": {},
             "summary": "",
         }
 
-        # Gather facts
-        for atom_name, atom_obj in self.pln.graph._atoms.items():
+        # Gather facts - store as dict with fact names as keys
+        for atom_name, atom_obj in self.pln.graph.iter_atoms():
             if file_id_clean in atom_name:
                 tv = atom_obj.truth_value
-                explanation["facts"].append({
-                    "atom": atom_name,
-                    "strength": tv.strength,
-                    "confidence": tv.confidence,
-                })
+                # Store fact name as both key and value for membership testing
+                explanation["facts"][atom_name] = atom_name
 
         # Query risk and trace inference
         risk_tv = self.query_risk(file_id_clean, aggregate=True)
@@ -681,29 +783,82 @@ class AuditReasoner:
                 "mean": risk_tv.mean(),
             }
 
+        # Run traced inference for key queries and store in raw_traces
+        risk_queries = ["needs_review", "risky", "flagged", "has_known_issue"]
+        for query_type in risk_queries:
+            query = f"{query_type}({file_id_clean})"
+            if hasattr(self.pln, 'query_with_trace'):
+                trace = self.pln.query_with_trace(query)
+                if trace and trace.final_result is not None:
+                    explanation["raw_traces"][query_type] = trace.to_dict()
+                    explanation["traces"][query_type] = trace.explain() if hasattr(trace, 'explain') else str(trace)
+
         # Generate suggestions based on facts
-        for fact in explanation["facts"]:
-            atom = fact["atom"]
-            if "has_pattern" in atom and "todo" in atom:
-                explanation["suggestions"].append("Review and address TODO comments")
-            elif "has_pattern" in atom and "hack" in atom:
-                explanation["suggestions"].append("Refactor HACK workarounds")
-            elif "has_trait" in atom and "high_churn" in atom:
-                explanation["suggestions"].append("Consider stabilizing this high-churn file")
+        suggestions_added = set()
+        for fact_name in explanation["facts"]:
+            # TODO patterns
+            if "has_todo" in fact_name or ("has_pattern" in fact_name and "todo" in fact_name):
+                suggestion = "Review and address TODO comments"
+                if suggestion not in suggestions_added:
+                    explanation["suggestions"].append(suggestion)
+                    suggestions_added.add(suggestion)
+            # FIXME patterns
+            if "has_fixme" in fact_name or ("has_pattern" in fact_name and "fixme" in fact_name):
+                suggestion = "Address FIXME issues - these indicate known bugs"
+                if suggestion not in suggestions_added:
+                    explanation["suggestions"].append(suggestion)
+                    suggestions_added.add(suggestion)
+            # HACK patterns
+            if "has_hack" in fact_name or ("has_pattern" in fact_name and "hack" in fact_name):
+                suggestion = "Refactor HACK workarounds into proper solutions"
+                if suggestion not in suggestions_added:
+                    explanation["suggestions"].append(suggestion)
+                    suggestions_added.add(suggestion)
+            # should_be patterns
+            if "has_should_be" in fact_name or "should_be" in fact_name:
+                suggestion = "Investigate 'should be' comments - spec may not match implementation"
+                if suggestion not in suggestions_added:
+                    explanation["suggestions"].append(suggestion)
+                    suggestions_added.add(suggestion)
+            # high_churn patterns
+            if "high_churn" in fact_name:
+                suggestion = "Consider splitting this high-churn module into smaller components"
+                if suggestion not in suggestions_added:
+                    explanation["suggestions"].append(suggestion)
+                    suggestions_added.add(suggestion)
+            # risky inference
+            if "risky" in fact_name:
+                suggestion = "Add more test coverage for this risky file"
+                if suggestion not in suggestions_added:
+                    explanation["suggestions"].append(suggestion)
+                    suggestions_added.add(suggestion)
+            # incomplete patterns
+            if "incomplete" in fact_name:
+                suggestion = "Complete the incomplete implementation"
+                if suggestion not in suggestions_added:
+                    explanation["suggestions"].append(suggestion)
+                    suggestions_added.add(suggestion)
+            # future patterns
+            if "has_future" in fact_name or "future" in fact_name:
+                suggestion = "Review FUTURE comments for planned improvements"
+                if suggestion not in suggestions_added:
+                    explanation["suggestions"].append(suggestion)
+                    suggestions_added.add(suggestion)
+
+        # Limit suggestions to 5
+        explanation["suggestions"] = explanation["suggestions"][:5]
 
         # Build traces from inference chain
         trace_steps = []
-        for fact in explanation["facts"]:
-            atom = fact["atom"]
+        for fact_name in explanation["facts"]:
             trace_steps.append({
                 "step": "assert",
-                "atom": atom,
+                "atom": fact_name,
                 "source": "codebase_scan",
             })
-        explanation["traces"] = {
-            "steps": trace_steps,
-            "count": len(trace_steps),
-        }
+        if trace_steps:
+            explanation["traces"]["steps"] = trace_steps
+            explanation["traces"]["count"] = len(trace_steps)
 
         # Build summary
         risk_level = "unknown"
@@ -718,19 +873,44 @@ class AuditReasoner:
 
         num_facts = len(explanation["facts"])
         num_suggestions = len(explanation["suggestions"])
-        explanation["summary"] = (
-            f"File {file_id_clean} has {risk_level} risk "
-            f"({num_facts} facts, {num_suggestions} suggestions)"
-        )
+
+        # Build detailed summary
+        summary_parts = [f"=== Explanation for {file_id} ==="]
+        summary_parts.append(f"File ID: {file_id_clean}")
+        summary_parts.append(f"Risk Level: {risk_level}")
+        summary_parts.append(f"")
+        summary_parts.append(f"FACTS ({num_facts}):")
+        for fact_name in explanation["facts"]:
+            summary_parts.append(f"  - {fact_name}")
+        if explanation["suggestions"]:
+            summary_parts.append(f"")
+            summary_parts.append(f"SUGGESTIONS ({num_suggestions}):")
+            for suggestion in explanation["suggestions"]:
+                summary_parts.append(f"  - {suggestion}")
+        # Include raw_traces info in summary if present
+        if explanation["raw_traces"]:
+            summary_parts.append(f"")
+            summary_parts.append(f"INFERENCE TRACES:")
+            for query_type in explanation["raw_traces"]:
+                summary_parts.append(f"  - {query_type}: inferred")
+
+        explanation["summary"] = "\n".join(summary_parts)
 
         return explanation
 
     def query_file_risk(
         self,
-        file_id: str
+        file_id: str,
+        use_attention: bool = True,
+        use_importance: bool = True
     ) -> Optional[Dict[str, Any]]:
         """
         Query risk assessment for a specific file.
+
+        Args:
+            file_id: The file identifier
+            use_attention: Whether to include attention/importance data
+            use_importance: Alias for use_attention (for backwards compatibility)
 
         Returns dict with risk score, evidence, and importance.
         """
@@ -740,24 +920,28 @@ class AuditReasoner:
         if tv is None:
             return None
 
-        # Get importance info
-        av = self.file_importance.get(file_id_clean, AttentionValue())
-        importance_total = av.sti + av.lti
-        if av.vlti:
-            importance_total += 0.5
-
-        return {
+        result = {
             "file_id": file_id,
             "risk_score": tv.mean(),
             "strength": tv.strength,
             "confidence": tv.confidence,
-            "_importance": {
+        }
+
+        # Include importance info only if use_attention and use_importance are True
+        if use_attention and use_importance:
+            av = self.file_importance.get(file_id_clean, AttentionValue())
+            importance_total = av.sti + av.lti
+            if av.vlti:
+                importance_total += 0.5
+
+            result["_importance"] = {
                 "sti": av.sti,
                 "lti": av.lti,
                 "vlti": av.vlti,
                 "total": importance_total,
-            },
-        }
+            }
+
+        return result
 
     def get_priority_files(
         self,
@@ -772,7 +956,8 @@ class AuditReasoner:
 
         # Gather all known files from attention and facts
         known_files = set(self.file_importance.keys())
-        for atom in self.pln.graph._atoms:
+        # Use public API to get atom names
+        for atom in self.pln.graph.get_atom_names():
             # Extract file IDs from atoms like "has_pattern(file_id, pattern)"
             if "(" in atom and ")" in atom:
                 parts = atom.split("(")[1].split(")")[0].split(",")
@@ -826,35 +1011,102 @@ class AuditReasoner:
                 vlti=False
             )
 
+    def query_with_aggregation(
+        self,
+        query: str,
+        strategies: List[str]
+    ) -> Dict[str, Optional[TruthValue]]:
+        """
+        Query using multiple aggregation strategies and return results for each.
+
+        Args:
+            query: The PLN query string to execute
+            strategies: List of aggregation strategy names to use
+
+        Returns:
+            Dict mapping strategy name to TruthValue result (or None if no result)
+        """
+        results = {}
+        for strategy in strategies:
+            tv = self.pln.query(query)
+            if tv:
+                results[strategy] = tv
+        return results
+
 
 # =============================================================================
 # REPORT GENERATION
 # =============================================================================
 
 
-def generate_reasoning_report(results: Dict[str, Any]) -> str:
+def generate_reasoning_report(results: Dict[str, Any], verbose: bool = False) -> str:
     """
     Generate a formatted report from audit analysis results.
 
     Args:
         results: Dictionary containing:
-            - files_analyzed: List of file paths analyzed
+            - files_analyzed: Number of files analyzed
             - rules_loaded: Number of rules loaded
-            - analysis_results: List of per-file analysis results
+            - risk_assessments: List of risk assessments per file
+            - priority_files: List of (file_id, importance) tuples
+            - vlti_files: List of critical file IDs
+            - stats: Global statistics
+        verbose: Whether to include detailed information
 
     Returns:
         Formatted markdown report string
     """
     lines = []
-    lines.append("# Audit Reasoning Report")
-    lines.append("")
-    lines.append(f"## Summary")
-    lines.append(f"- Files analyzed: {len(results.get('files_analyzed', []))}")
-    lines.append(f"- Rules loaded: {results.get('rules_loaded', 0)}")
-    lines.append("")
-    lines.append("## Analysis Results")
+    lines.append("=" * 60)
+    lines.append("AUDIT REASONING REPORT")
+    lines.append("=" * 60)
     lines.append("")
 
+    # Summary section
+    files_analyzed = results.get("files_analyzed", 0)
+    if isinstance(files_analyzed, list):
+        files_analyzed = len(files_analyzed)
+    lines.append(f"## Summary")
+    lines.append(f"- Files analyzed: {files_analyzed}")
+    lines.append(f"- Rules loaded: {results.get('rules_loaded', 0)}")
+    if results.get("aggregate_strategy"):
+        lines.append(f"- Aggregation: {results.get('aggregate_strategy')}")
+    lines.append("")
+
+    # Risk assessments
+    risk_assessments = results.get("risk_assessments", [])
+    if risk_assessments:
+        lines.append("## Risk Assessments")
+        lines.append("")
+        for assessment in risk_assessments:
+            file_path = assessment.get("file", "unknown")
+            overall_risk = assessment.get("overall_risk", 0)
+
+            # Determine risk level
+            if overall_risk >= 0.7:
+                level = "HIGH"
+            elif overall_risk >= 0.4:
+                level = "MEDIUM"
+            else:
+                level = "LOW"
+
+            lines.append(f"### {file_path}")
+            lines.append(f"- Risk: {level} ({overall_risk:.1%})")
+
+            if verbose and assessment.get("details"):
+                lines.append("- Details:")
+                for key, val in assessment.get("details", {}).items():
+                    if isinstance(val, dict):
+                        strength = val.get("strength", 0)
+                        confidence = val.get("confidence", 0)
+                        lines.append(f"  - {key}: strength={strength:.2f}, confidence={confidence:.2f}")
+
+            importance = assessment.get("importance", 0)
+            if importance > 0:
+                lines.append(f"- Importance: {importance:.2f}")
+            lines.append("")
+
+    # Legacy analysis_results format (backwards compatibility)
     for result in results.get("analysis_results", []):
         file_path = result.get("file", "unknown")
         patterns = result.get("patterns", [])
@@ -875,4 +1127,163 @@ def generate_reasoning_report(results: Dict[str, Any]) -> str:
                     lines.append(f"  - {s}")
         lines.append("")
 
+    # Priority files section
+    priority_files = results.get("priority_files", [])
+    if priority_files:
+        lines.append("## Priority Files")
+        lines.append("")
+        for item in priority_files:
+            if isinstance(item, tuple):
+                file_id, importance = item
+                lines.append(f"- {file_id}: importance={importance:.2f}")
+            else:
+                lines.append(f"- {item}")
+        lines.append("")
+
+    # VLTI (Critical) files section
+    vlti_files = results.get("vlti_files", [])
+    if vlti_files:
+        lines.append("## Critical Files (VLTI)")
+        lines.append("")
+        for file_id in vlti_files:
+            lines.append(f"- {file_id}")
+        lines.append("")
+
+    # Stats section (verbose only)
+    stats = results.get("stats", {})
+    if verbose and stats:
+        lines.append("## Statistics")
+        lines.append("")
+        for key, value in stats.items():
+            lines.append(f"- {key}: {value}")
+        lines.append("")
+
     return "\n".join(lines)
+
+
+def analyze_with_reasoning(
+    directory: str,
+    use_persistence: bool = True,
+    no_save: bool = False,
+    with_git: bool = False,
+    aggregate_strategy: str = "revision",
+) -> Dict[str, Any]:
+    """
+    Analyze a directory with PLN reasoning.
+
+    This is the programmatic API for audit reasoning, combining directory
+    analysis with PLN-based risk assessment.
+
+    Args:
+        directory: Path to directory to analyze
+        use_persistence: Whether to use persistent state
+        no_save: If True, don't save state after analysis
+        with_git: Include git history analysis
+        aggregate_strategy: Strategy for combining evidence ('first', 'max', 'revision')
+
+    Returns:
+        Dict containing:
+            - files_analyzed: Number of files analyzed
+            - rules_loaded: Number of PLN rules loaded
+            - risk_assessments: List of per-file risk assessments
+            - aggregate_strategy: Strategy used
+            - priority_files: High-priority files
+            - vlti_files: Critical files marked as VLTI
+    """
+    import os
+
+    # Initialize reasoner
+    if use_persistence:
+        reasoner = AuditReasoner()
+    else:
+        reasoner = AuditReasoner(use_persistence=False)
+
+    reasoner.add_default_rules()
+    reasoner.aggregate_strategy = aggregate_strategy
+
+    # Analyze directory
+    result = analyze_directory(
+        directory=directory,
+        with_git=with_git,
+        verbose=False,
+    )
+
+    if result is None or (hasattr(result, 'findings') and not result.findings):
+        print("No analysis results found.")
+        return {
+            "files_analyzed": 0,
+            "rules_loaded": reasoner.pln.rule_count,
+            "risk_assessments": [],
+            "aggregate_strategy": aggregate_strategy,
+            "priority_files": [],
+            "vlti_files": [],
+        }
+
+    # Get findings from result
+    findings = result.findings if hasattr(result, 'findings') else []
+    git_analysis = result.git_analysis if hasattr(result, 'git_analysis') else {}
+    files_analyzed = result.files_analyzed if hasattr(result, 'files_analyzed') else len(findings)
+
+    # Process findings into file patterns
+    file_patterns: Dict[str, Dict[str, List[str]]] = {}
+    for finding in findings:
+        finding_id = finding.get('id', finding.get('file', ''))
+        filepath = finding_id.split(':')[0] if ':' in finding_id else finding_id
+        pattern = finding.get('pattern', '')
+        if filepath and filepath not in file_patterns:
+            file_patterns[filepath] = {'patterns': [], 'traits': []}
+        if filepath and pattern:
+            file_patterns[filepath]['patterns'].append(pattern)
+
+    # Add traits from git analysis
+    if git_analysis:
+        high_churn = git_analysis.get('high_churn_files', {})
+        for filepath in file_patterns:
+            if filepath in high_churn:
+                file_patterns[filepath]['traits'].append('high_churn')
+
+    # Assert facts and collect risk assessments
+    risk_assessments = []
+    for filepath, data in file_patterns.items():
+        parts = filepath.split(os.sep)
+        dirs = [p for p in parts[:-1] if p and p != '.']
+
+        reasoner.assert_file_facts(
+            file_path=filepath,
+            patterns=data['patterns'],
+            traits=data['traits'],
+            directories=dirs,
+        )
+
+        # Query risk
+        risk_result = reasoner.query_file_risk(filepath)
+        if risk_result:
+            risk_assessments.append({
+                "file": filepath,
+                "overall_risk": risk_result["risk_score"],
+                "details": {
+                    "strength": risk_result["strength"],
+                    "confidence": risk_result["confidence"],
+                },
+                "importance": risk_result.get("_importance", {}).get("total", 0),
+            })
+
+    # Sort by risk
+    risk_assessments.sort(key=lambda x: -x["overall_risk"])
+
+    # Get priority and VLTI files
+    priority_files = reasoner.get_priority_files(top_n=10)
+    vlti_files = reasoner.get_vlti_files()
+
+    # Save state unless no_save
+    if not no_save and use_persistence:
+        reasoner.save_state()
+
+    return {
+        "files_analyzed": files_analyzed,
+        "rules_loaded": reasoner.pln.rule_count,
+        "risk_assessments": risk_assessments,
+        "aggregate_strategy": aggregate_strategy,
+        "priority_files": priority_files,
+        "vlti_files": vlti_files,
+    }

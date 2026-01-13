@@ -1,0 +1,27 @@
+Grounded Cognitive Architecture Design Principles
+
+The foundation of any robust cognitive architecture rests on grounding: every component must have a mathematical or algorithmic basis that can be formally specified, analyzed, and verified. A grounded system does not invoke vague notions of understanding or awareness; instead, it defines precise computational operations that transform inputs to outputs through well-understood mechanisms.
+
+This leads to a critical discipline: no metaphors without mechanisms. When we say a system "learns" or "remembers," we must specify the exact update rules, storage formats, and retrieval algorithms that implement these capabilities. Anthropomorphic language serves as shorthand, never as explanation. The phrase "the system feels uncertain" means nothing unless accompanied by a probability distribution or confidence score with defined semantics.
+
+Cognitive architectures often draw from biological systems, but the distinction between bio-inspired and bio-mimetic matters enormously. Bio-inspired design extracts functional principles from neural or cognitive systems and reinterprets them using computer science primitives. Bio-mimetic design attempts faithful replication of biological mechanisms. The former yields practical systems; the latter often produces brittle simulations. We take inspiration from how biological systems solve problems while implementing solutions through algorithms optimized for digital computation.
+
+First principles thinking demands that we start from fundamental constraints and derive complexity rather than importing it wholesale from existing systems. What are the minimal operations required for a given capability? What invariants must hold? What are the performance bounds? By building upward from axioms rather than downward from assumptions, we create architectures that are both simpler and more powerful.
+
+Testability requires dependency injection at every level of the architecture. Components receive their collaborators through explicit interfaces rather than instantiating them directly. This enables isolation during testing, substitution during experimentation, and reconfiguration during deployment. A cognitive module that cannot be tested in isolation is a liability, not an asset.
+
+Separation of concerns ensures that each layer and module has exactly one clear responsibility. Storage knows nothing about reasoning. Indexing knows nothing about presentation. Event sourcing knows nothing about query optimization. When responsibilities blur, bugs proliferate and changes ripple unpredictably through the system.
+
+Observable internals transform a black box into a glass box. Every significant state transition, decision point, and resource allocation should emit events that external tools can capture and analyze. Debugging a cognitive system requires understanding its moment-to-moment operation, not just its final outputs. Hooks for introspection are not optional luxuries; they are essential infrastructure.
+
+Minimal viable complexity guides design choices toward the simplest solution that actually works. Complexity is a cost to be minimized, not a feature to be maximized. A two-layer network that solves the problem is superior to a twelve-layer network that also solves the problem. Every additional component must justify its existence through measurable improvement.
+
+Explicit parameters replace hidden magic numbers throughout the architecture. When a threshold, weight, or constant affects behavior, it should be named, documented, and configurable. Hidden constants become buried assumptions that future developers cannot understand or adjust. Transparency in parameterization enables systematic optimization and prevents cargo cult engineering.
+
+Finally, the scientific method governs development itself. Every significant change begins as a hypothesis about improved behavior. Implementation translates that hypothesis into code. Testing provides empirical evidence for or against the hypothesis. Iteration refines the approach based on observations. This cycle repeats continuously, ensuring that the architecture evolves through evidence rather than intuition alone.
+
+These ten principles reinforce each other in practice. Grounding enables testing because mathematical specifications yield testable predictions. Dependency injection supports observability because swappable components can include instrumentation. Separation of concerns enables minimal complexity because isolated modules can be evaluated independently. First principles thinking prevents metaphor abuse because derivation from fundamentals requires precision.
+
+The interplay between bio-inspired design and explicit parameterization deserves special attention. Biological systems evolved their parameters through millions of years of selection pressure. Engineered cognitive systems must discover appropriate parameters through systematic experimentation. Making parameters explicit accelerates this discovery process and documents the decisions made along the way.
+
+These principles are not arbitrary constraints but hard-won lessons from decades of artificial intelligence research. Systems that violate them tend toward opacity, fragility, and stagnation. Systems that embody them remain comprehensible, adaptable, and improvable across their operational lifetime. The grounded cognitive architecture is not merely a technical achievement but a commitment to intellectual honesty about what our systems actually do.

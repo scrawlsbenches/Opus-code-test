@@ -1,0 +1,58 @@
+{
+  "_checksum": "63b822a3509df5d0",
+  "_written_at": "2026-01-13T02:02:06.520890+00:00",
+  "data": {
+    "accepted_at": "2026-01-13T01:28:24.348991+00:00",
+    "artifacts": [],
+    "completed_at": "2026-01-13T02:02:06.506649+00:00",
+    "context": {
+      "blockers": [
+        "max_vocab_size not enforced in incremental mode",
+        "hub atoms dominate graph traversal",
+        "procedural generation pipeline not implemented"
+      ],
+      "current_branch": "claude/fix-agent-lockup-z8w5h",
+      "files_modified": [
+        "got/entities/_version.json",
+        ".got/entities/wal/_sequence.json",
+        ".got/entities/wal/current.wal",
+        ".got/entities/KT-20260113-012200-21a3d561.json",
+        ".got/entities/_history/KT-20260113-012200-21a3d561.jsonl"
+      ],
+      "kt_id": "KT-20260113-012200-21a3d561",
+      "notes": "",
+      "recent_commits": [
+        "84dd5f4f Merge pull request #281 from scrawlsbenches/claude/procedural-generation-analysis-VWji6",
+        "9aca534a Merge pull request #280 from scrawlsbenches/claude/validate-knowledge-transfer-vczOH",
+        "a2139eba docs(cognitive): Add procedural generation analysis for training corpus",
+        "b68ed831 chore(got): Update entities from handoff system validation",
+        "f86dc126 chore(cognitive): Update trained model with new documents"
+      ],
+      "session_id": ""
+    },
+    "created_at": "2026-01-13T01:24:41.168078+00:00",
+    "entity_type": "handoff",
+    "id": "H-20260113-012441-24a1c5a7",
+    "initiated_at": "2026-01-13T01:24:41.168089+00:00",
+    "instructions": "Analyzed cognitive agent training data issues. Found hub atoms (common words with 1000+ links), vocabulary overflow (30k vs 10k limit), code token pollution. Proposal doc is NOT implemented. User wants link limiting proportional to semantic depth. Deep dive on text_bridge.py required before any changes.",
+    "modified_at": "2026-01-13T02:02:06.520809+00:00",
+    "properties": {},
+    "reject_reason": "",
+    "rejected_at": "",
+    "result": {
+      "changes": [
+        "Fixed link count persistence by computing on load",
+        "Added regression test for link count computation"
+      ],
+      "commits": [
+        "d0485770"
+      ],
+      "status": "done"
+    },
+    "source_agent": "cli",
+    "status": "completed",
+    "target_agent": "next-agent",
+    "task_id": "",
+    "version": 5
+  }
+}

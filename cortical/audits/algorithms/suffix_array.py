@@ -414,6 +414,7 @@ Comment 5: See: docs/design/cdg-transactional-indexing-design.md
         return False
 
 
+# Demo/test cases - this module doesn't use DI so standalone execution is safe
 if __name__ == "__main__":
     success = run_all_tests()
 

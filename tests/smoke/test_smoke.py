@@ -19,14 +19,16 @@ Systems with smoke tests:
     ✅ Cortical Core (CorticalTextProcessor, layers, search)
     ✅ GoT (Graph of Thought - task management, transactions)
     ✅ CDG (Core Data Graph - entity storage)
+    ✅ BaseGraph (Unified graph architecture - SimpleGraph, DAGGraph, WeightedGraph)
+    ✅ CognitiveGraph (Hypergraph with Atoms - nodes, links, meta-reasoning)
     ⚡ Hubris (MoE system - import check only, still evolving)
     ⚡ CEL (Event sourcing - import check only, still developing)
 
 Systems intentionally without smoke tests:
-    ⏸️ Cognitive (WovenMind, cognitive_bootstrap) - orchestration layer, let it stabilize
+    ⏸️ WovenMind (cognitive_bootstrap) - orchestration layer, let it stabilize
     ⏸️ Spark (language models) - experimental, tested via behavioral
 
-Last manifest review: 2026-01-02
+Last manifest review: 2026-01-13
 """
 
 import pytest
@@ -379,3 +381,200 @@ class TestCELImports:
         from cortical.cel import CognitiveEvent, EventStore
         assert CognitiveEvent is not None
         assert EventStore is not None
+
+
+# =============================================================================
+# BaseGraph (Unified Graph Architecture) Smoke Tests
+# =============================================================================
+
+class TestBaseGraphImports:
+    """Verify BaseGraph modules can be imported."""
+
+    def test_import_graph_package(self):
+        """Graph package imports successfully."""
+        from cortical import graph
+        assert hasattr(graph, 'BaseGraph')
+        assert hasattr(graph, 'SimpleGraph')
+        assert hasattr(graph, 'DAGGraph')
+        assert hasattr(graph, 'WeightedGraph')
+
+    def test_import_protocols(self):
+        """Graph protocols import."""
+        from cortical.graph import NodeBase, EdgeBase, NodeProtocol, EdgeProtocol
+        assert NodeBase is not None
+        assert EdgeBase is not None
+        assert NodeProtocol is not None
+        assert EdgeProtocol is not None
+
+    def test_import_storage(self):
+        """Graph storage imports."""
+        from cortical.graph import InMemoryGraphStorage
+        assert InMemoryGraphStorage is not None
+
+    def test_import_algorithms(self):
+        """Algorithm mixins import."""
+        from cortical.graph import (
+            PageRankMixin,
+            ClusteringMixin,
+            SpreadingActivationMixin,
+            CentralityMixin,
+        )
+        assert PageRankMixin is not None
+        assert ClusteringMixin is not None
+        assert SpreadingActivationMixin is not None
+        assert CentralityMixin is not None
+
+
+class TestBaseGraphBasicOperations:
+    """Verify BaseGraph can create nodes and edges."""
+
+    def test_create_simple_graph(self):
+        """SimpleGraph can be instantiated."""
+        from cortical.graph import SimpleGraph
+        graph = SimpleGraph()
+        assert graph is not None
+        assert graph.node_count == 0
+
+    def test_add_nodes_and_edges(self):
+        """Nodes and edges can be added."""
+        from cortical.graph import SimpleGraph
+        graph = SimpleGraph()
+
+        graph.add_node("A", content="Node A")
+        graph.add_node("B", content="Node B")
+        graph.add_edge("A", "B", edge_type="CONNECTS")
+
+        assert graph.node_count == 2
+        assert graph.edge_count == 1
+
+    def test_basic_traversal(self):
+        """BFS traversal works."""
+        from cortical.graph import SimpleGraph
+        graph = SimpleGraph()
+
+        graph.add_node("A")
+        graph.add_node("B")
+        graph.add_node("C")
+        graph.add_edge("A", "B")
+        graph.add_edge("B", "C")
+
+        order = graph.bfs("A")
+        assert order == ["A", "B", "C"]
+
+    def test_dag_cycle_prevention(self):
+        """DAGGraph prevents cycles."""
+        from cortical.graph import DAGGraph
+        import pytest
+
+        dag = DAGGraph()
+        dag.add_node("A")
+        dag.add_node("B")
+        dag.add_edge("A", "B")
+
+        with pytest.raises(ValueError, match="cycle"):
+            dag.add_edge("B", "A")
+
+    def test_weighted_dijkstra(self):
+        """WeightedGraph Dijkstra works."""
+        from cortical.graph import WeightedGraph
+        graph = WeightedGraph()
+
+        graph.add_node("A")
+        graph.add_node("B")
+        graph.add_node("C")
+        graph.add_edge("A", "B", cost=1)
+        graph.add_edge("B", "C", cost=2)
+
+        path, cost = graph.dijkstra("A", "C")
+        assert path == ["A", "B", "C"]
+        assert cost == 3
+
+
+# =============================================================================
+# CognitiveGraph (Hypergraph with Atoms) Smoke Tests
+# =============================================================================
+
+class TestCognitiveGraphImports:
+    """Verify CognitiveGraph modules can be imported."""
+
+    def test_import_cognitive_graph(self):
+        """CognitiveGraph imports successfully."""
+        from cortical.cognitive.graph import CognitiveGraph
+        assert CognitiveGraph is not None
+
+    def test_import_atom_types(self):
+        """Atom and AtomType import."""
+        from cortical.cognitive.graph import Atom, AtomType, TruthValue
+        assert Atom is not None
+        assert AtomType is not None
+        assert TruthValue is not None
+
+    def test_import_storage_backend(self):
+        """Storage backend imports."""
+        from cortical.cognitive.graph import InMemoryStorage, StorageBackend
+        assert InMemoryStorage is not None
+        assert StorageBackend is not None
+
+
+class TestCognitiveGraphBasicOperations:
+    """Verify CognitiveGraph can create atoms and links."""
+
+    def test_create_cognitive_graph(self):
+        """CognitiveGraph can be instantiated."""
+        from cortical.cognitive.graph import CognitiveGraph
+        graph = CognitiveGraph()
+        assert graph is not None
+
+    def test_create_nodes(self):
+        """Node atoms can be created."""
+        from cortical.cognitive.graph import CognitiveGraph, AtomType
+        graph = CognitiveGraph()
+
+        cat = graph.node("cat", AtomType.CONCEPT)
+        assert cat is not None
+        assert cat.name == "cat"
+        assert cat.is_node()
+
+    def test_create_links(self):
+        """Link atoms can be created (hypergraph capability)."""
+        from cortical.cognitive.graph import CognitiveGraph, AtomType
+        graph = CognitiveGraph()
+
+        cat = graph.node("cat")
+        animal = graph.node("animal")
+
+        # Links are atoms too - hypergraph semantics
+        link = graph.link(AtomType.INHERITANCE, [cat, animal])
+        assert link is not None
+        assert link.is_link()
+        assert len(link.outgoing) == 2
+
+    def test_truth_values(self):
+        """TruthValue probabilistic logic works."""
+        from cortical.cognitive.graph import TruthValue
+
+        tv1 = TruthValue(strength=0.9, confidence=0.8)
+        tv2 = TruthValue(strength=0.7, confidence=0.6)
+
+        merged = tv1.merge(tv2)
+        assert 0 <= merged.strength <= 1
+        assert 0 <= merged.confidence <= 1
+
+    def test_meta_links(self):
+        """Links can point to other links (meta-reasoning)."""
+        from cortical.cognitive.graph import CognitiveGraph, AtomType
+        graph = CognitiveGraph()
+
+        # Create a statement: "cats are animals"
+        cat = graph.node("cat")
+        animal = graph.node("animal")
+        statement = graph.link(AtomType.INHERITANCE, [cat, animal])
+
+        # Create a meta-statement: "John believes cats are animals"
+        john = graph.node("john", AtomType.PERSON)
+        belief = graph.link(AtomType.BELIEVES, [john, statement])
+
+        assert belief is not None
+        assert belief.is_link()
+        # The belief links to the statement (which is itself a link)
+        assert statement.id in belief.outgoing

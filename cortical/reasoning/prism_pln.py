@@ -1044,6 +1044,14 @@ class PLNGraph:
         atom = self._atoms.get(name)
         return atom.truth_value if atom else None
 
+    def iter_atoms(self):
+        """Iterate over all atoms as (name, atom) pairs."""
+        yield from self._atoms.items()
+
+    def get_atom_names(self):
+        """Get all atom names."""
+        return list(self._atoms.keys())
+
     def add_implication(
         self,
         antecedent: str,
@@ -1341,10 +1349,10 @@ class PLNReasoner:
         self.graph.add_implication(antecedent, consequent, tv)
         self._rules[(antecedent, consequent)] = tv
 
-        # Ensure atoms exist
-        if antecedent not in self.graph._atoms:
+        # Ensure atoms exist (using public API for encapsulation)
+        if self.graph.get_atom(antecedent) is None:
             self.graph.add_atom(antecedent, TruthValue(1.0, 1.0))
-        if consequent not in self.graph._atoms:
+        if self.graph.get_atom(consequent) is None:
             self.graph.add_atom(consequent, TruthValue(1.0, 1.0))
 
     def get_rule_truth(self, antecedent: str, consequent: str) -> Optional[TruthValue]:

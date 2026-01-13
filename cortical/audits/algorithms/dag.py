@@ -1,214 +1,178 @@
 """
-TaskDAG Implementation for GoT Task Dependencies
-Implements a Directed Acyclic Graph with cycle detection.
+TaskDAG Implementation for GoT Task Dependencies.
+
+This module provides a TaskDAG class built on top of DAGGraph from the
+unified graph architecture. It maintains full backward compatibility
+with the original TaskDAG API while leveraging the BaseGraph infrastructure.
+
+Migration: 2026-01-13 - Migrated from standalone implementation to DAGGraph wrapper.
 """
 
-from typing import Dict, List, Set, Optional
+from typing import List, Set
+
+from cortical.graph.implementations import DAGGraph
 
 
 class TaskDAG:
-    def __init__(self):
+    """
+    Directed Acyclic Graph for task dependencies.
+
+    This class wraps DAGGraph to provide a task-oriented API:
+    - add_task() instead of add_node()
+    - add_dependency() returns bool instead of raising on cycle
+    - has_dependency() for edge queries
+    - roots() and leaves() for graph analysis
+
+    Example:
+        dag = TaskDAG()
+        dag.add_task("design")
+        dag.add_task("implement")
+        dag.add_dependency("design", "implement")  # design blocks implement
+
+        order = dag.topological_sort()  # ["design", "implement"]
+        ready = dag.ready_tasks({"design"})  # {"design", "implement"}
+    """
+
+    def __init__(self) -> None:
         """Initialize empty DAG."""
-        self._nodes: Set[str] = set()
-        self._edges: Dict[str, Set[str]] = {}  # from -> {to, ...}
-        self._reverse: Dict[str, Set[str]] = {}  # to -> {from, ...}
+        self._graph = DAGGraph()
 
     def add_task(self, task_id: str) -> None:
-        """Add a task to the graph. No-op if already exists."""
-        if task_id not in self._nodes:
-            self._nodes.add(task_id)
-            self._edges[task_id] = set()
-            self._reverse[task_id] = set()
+        """
+        Add a task to the graph. No-op if already exists.
+
+        Args:
+            task_id: Unique identifier for the task
+        """
+        if not self._graph.has_node(task_id):
+            self._graph.add_node(task_id)
 
     def add_dependency(self, from_task: str, to_task: str) -> bool:
         """
         Add dependency: from_task must complete before to_task can start.
+
         Edge direction: from_task -> to_task (from_task blocks to_task)
 
         Auto-creates tasks if they don't exist.
-        Returns False if edge would create a cycle, True otherwise.
+        Returns False if edge would create a cycle or self-loop, True otherwise.
         If False, the edge is NOT added.
+
+        Args:
+            from_task: The blocking task (must complete first)
+            to_task: The blocked task (waits for from_task)
+
+        Returns:
+            True if edge was added, False if rejected (cycle/self-loop)
         """
         # Auto-create tasks if they don't exist
         self.add_task(from_task)
         self.add_task(to_task)
 
-        # Self-loop detection (a task cannot depend on itself)
-        if from_task == to_task:
-            return False
-
-        # If edge already exists, it's idempotent - return True
-        if to_task in self._edges[from_task]:
+        try:
+            self._graph.add_edge(from_task, to_task)
             return True
-
-        # Cycle detection: Check if adding this edge would create a cycle
-        # If there's already a path from to_task to from_task, adding
-        # from_task -> to_task would create a cycle
-        if self._has_path(to_task, from_task):
+        except ValueError:
+            # DAGGraph raises ValueError for cycles and self-loops
             return False
-
-        # Safe to add the edge
-        self._edges[from_task].add(to_task)
-        self._reverse[to_task].add(from_task)
-        return True
-
-    def _has_path(self, start: str, end: str) -> bool:
-        """
-        Check if there's a path from start to end using DFS.
-        Used for cycle detection.
-        """
-        if start not in self._nodes or end not in self._nodes:
-            return False
-
-        if start == end:
-            return True
-
-        visited = set()
-        stack = [start]
-
-        while stack:
-            current = stack.pop()
-            if current == end:
-                return True
-
-            if current in visited:
-                continue
-
-            visited.add(current)
-
-            # Add all neighbors to stack
-            for neighbor in self._edges.get(current, set()):
-                if neighbor not in visited:
-                    stack.append(neighbor)
-
-        return False
 
     def has_dependency(self, from_task: str, to_task: str) -> bool:
-        """Check if direct dependency edge exists."""
-        if from_task not in self._edges:
-            return False
-        return to_task in self._edges[from_task]
+        """
+        Check if direct dependency edge exists.
+
+        Args:
+            from_task: Source task
+            to_task: Target task
+
+        Returns:
+            True if from_task directly blocks to_task
+        """
+        return self._graph.get_edge(from_task, to_task) is not None
 
     def topological_sort(self) -> List[str]:
         """
         Return tasks in topological order (dependencies before dependents).
+
         If A -> B, then A appears before B in result.
         Handles disconnected components.
-        Raises ValueError if graph has cycle (shouldn't happen if add_dependency works).
 
-        Uses Kahn's algorithm with a heap for O(V + E log V) complexity
-        and deterministic ordering (lexicographically smallest node processed first).
+        Returns:
+            List of task IDs in dependency order
+
+        Raises:
+            ValueError: If graph contains a cycle (shouldn't happen)
         """
-        import heapq
-
-        if not self._nodes:
-            return []
-
-        # Kahn's algorithm using in-degree with heap for deterministic ordering
-        in_degree = {node: len(self._reverse[node]) for node in self._nodes}
-        # Use a min-heap for O(log n) insertion and O(log n) extraction
-        # This gives deterministic ordering (smallest node ID first) efficiently
-        heap = [node for node in self._nodes if in_degree[node] == 0]
-        heapq.heapify(heap)  # O(n)
-        result = []
-
-        while heap:
-            # Pop smallest node - O(log n) vs O(n) for list.pop(0)
-            current = heapq.heappop(heap)
-            result.append(current)
-
-            # Reduce in-degree for all neighbors
-            for neighbor in self._edges[current]:
-                in_degree[neighbor] -= 1
-                if in_degree[neighbor] == 0:
-                    heapq.heappush(heap, neighbor)  # O(log n) vs O(n log n) for sort
-
-        # If not all nodes processed, there's a cycle
-        if len(result) != len(self._nodes):
-            raise ValueError("Graph contains a cycle")
-
-        return result
+        return self._graph.topological_sort()
 
     def blocked_by(self, task_id: str) -> Set[str]:
         """
         Return all tasks that must complete before this one (transitive).
+
         This is all predecessors in the dependency graph.
+
+        Args:
+            task_id: The task to check
+
+        Returns:
+            Set of all blocking task IDs
         """
-        if task_id not in self._nodes:
-            return set()
-
-        result = set()
-        visited = set()
-        stack = list(self._reverse[task_id])
-
-        while stack:
-            current = stack.pop()
-            if current in visited:
-                continue
-
-            visited.add(current)
-            result.add(current)
-
-            # Add all tasks that block the current task
-            for blocker in self._reverse.get(current, set()):
-                if blocker not in visited:
-                    stack.append(blocker)
-
-        return result
+        return self._graph.blocked_by(task_id)
 
     def blocks(self, task_id: str) -> Set[str]:
         """
         Return all tasks that are waiting on this one (transitive).
+
         This is all successors in the dependency graph.
+
+        Args:
+            task_id: The task to check
+
+        Returns:
+            Set of all blocked task IDs
         """
-        if task_id not in self._nodes:
-            return set()
-
-        result = set()
-        visited = set()
-        stack = list(self._edges[task_id])
-
-        while stack:
-            current = stack.pop()
-            if current in visited:
-                continue
-
-            visited.add(current)
-            result.add(current)
-
-            # Add all tasks that current blocks
-            for blocked in self._edges.get(current, set()):
-                if blocked not in visited:
-                    stack.append(blocked)
-
-        return result
+        return self._graph.blocks(task_id)
 
     def ready_tasks(self, completed: Set[str]) -> Set[str]:
         """
         Given set of completed task IDs, return tasks that are now ready.
+
         A task is ready if all its dependencies are in completed set.
+
+        Args:
+            completed: Set of completed task IDs
+
+        Returns:
+            Set of task IDs that can be started
         """
-        ready = set()
-
-        for task in self._nodes:
-            # A task is ready if:
-            # 1. All its dependencies (tasks that block it) are completed
-            # 2. It can be completed (or already completed)
-            dependencies = self._reverse[task]
-            if dependencies.issubset(completed):
-                ready.add(task)
-
-        return ready
+        return self._graph.ready_tasks(completed)
 
     def roots(self) -> Set[str]:
-        """Return tasks with no incoming dependencies (can start immediately)."""
-        return {task for task in self._nodes if len(self._reverse[task]) == 0}
+        """
+        Return tasks with no incoming dependencies (can start immediately).
+
+        Returns:
+            Set of root task IDs
+        """
+        result = set()
+        for node in self._graph.nodes:
+            if not list(self._graph.neighbors(node.id, "in")):
+                result.add(node.id)
+        return result
 
     def leaves(self) -> Set[str]:
-        """Return tasks with no outgoing dependencies (nothing depends on them)."""
-        return {task for task in self._nodes if len(self._edges[task]) == 0}
+        """
+        Return tasks with no outgoing dependencies (nothing depends on them).
+
+        Returns:
+            Set of leaf task IDs
+        """
+        result = set()
+        for node in self._graph.nodes:
+            if not list(self._graph.neighbors(node.id, "out")):
+                result.add(node.id)
+        return result
 
 
+# Demo/test cases - this module doesn't use DI so standalone execution is safe
 if __name__ == "__main__":
     # Run all test cases
     print("Running TaskDAG Test Suite...")

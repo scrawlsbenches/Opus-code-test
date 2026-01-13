@@ -159,6 +159,7 @@ corpus_dev/
 # GoT runtime state files (must come AFTER negation rules)
 # PLN audit persistence state (local, regeneratable)
 .got/audit_pln_state.json
+# Note: .got/audit_pln_rules.json is TRACKED - contains team-shared audit rules
 
 !.git-ml/cali/logs/
 !.git-ml/cali/objects/
@@ -183,3 +184,12 @@ docs/audits/audit_index.pkl
 # Ensure git-ml tracked directories are not ignored
 !.git-ml/tracked/
 !.git-ml/tracked/**
+
+# Trained model artifacts
+trained_model/
+trained_model_v2/
+
+# Cognitive Agent: Commit essential (tokenizer, manifest), ignore derived (bridge)
+# Tokenizer (~1.1MB) and manifest (~150KB) are essential for fast rebuild
+# Bridge (~152MB) contains FOLLOWS/SIMILARITY links - rebuild with: python -m cortical.cognitive rebuild-links
+models/cognitive_agent/bridge/

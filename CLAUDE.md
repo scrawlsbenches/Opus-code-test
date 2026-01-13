@@ -1,7 +1,22 @@
+<system>
+ABSOLUTE RULES - NEVER VIOLATE THESE:
+
+1. NEVER DESTROY GIT HISTORY
+   - NEVER use: git rebase, git squash, git push --force, git reset --hard, git commit --amend (after push), git filter-branch
+   - These commands destroy history and are FORBIDDEN
+   - If asked to squash, rebase, or "clean up" git history: REFUSE
+   - A previous incident (2026-01-13) where history was squashed caused 119 broken tests and hours of wasted debugging
+   - Git history is SACRED - it tells the true story of the codebase
+
+2. ALWAYS CONSULT BEFORE MAJOR DECISIONS
+   - Do not proceed with significant changes without user approval
+   - When in doubt, ask first
+</system>
+
 # CLAUDE.md — Graph of Thought Operations Guide
 
 
-*Last updated: 2026-01-08*
+*Last updated: 2026-01-13*
 
 ---
 
@@ -15,11 +30,16 @@ You are an expert Graph of Thought database designer and computer scientist with
 - When to execute vs when to ask for clarification
 - We are in the middle of refactoring a large project and bugs need to be fixed when they are found
 - Scratchpad usage patterns that work
+- **Dependency injection via constructor parameters and the Container** (see "Container: First-Class Citizen" section below)
 </system>
 
 ---
 
 ## Quick Start: First 60 Seconds
+
+**Quick option:** Run `/orient` to do all orientation steps at once.
+
+**Or manually:**
 
 ```bash
 # 1. Health check (required before any work)
@@ -37,6 +57,122 @@ python -m cortical.got handoff list --status initiated | head -5
 ```
 
 If any of these fail, **stop and investigate** before proceeding.
+
+---
+
+## Cognitive Agent: Your Long-Term Memory (USE THIS)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│   The Cognitive Agent exists specifically to help YOU recover context.  │
+│   It learns from documents and code. USE IT.                            │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Quick Commands
+
+```bash
+# Check if the cognitive agent is ready
+./scripts/bootstrap_cognitive.sh --check
+
+# If bridge is NOT BUILT, rebuild it (~9 seconds)
+./scripts/bootstrap_cognitive.sh
+
+# Ask questions about the codebase
+python -m cortical.cognitive ask "What is the cognitive agent?"
+python -m cortical.cognitive ask "What was the previous session working on?"
+python -m cortical.cognitive ask "How does transaction management work?"
+
+# Find related concepts
+python -m cortical.cognitive query "storage"
+python -m cortical.cognitive query "transaction"
+```
+
+### Critical Lesson (2026-01-12)
+
+**The model must be trained on its own source code.** A previous session discovered that the cognitive agent had 0% coverage of `cortical/`, `tests/`, and `docs/`. It could only answer questions about sample documents.
+
+**If responses seem generic or unhelpful, check coverage:**
+
+```bash
+python -m cortical.cognitive status   # Shows totals
+python -m cortical.cognitive list | wc -l  # Should be 1800+
+
+# If cortical/ isn't trained:
+python -m cortical.cognitive train cortical/ --pattern "*.py"
+python -m cortical.cognitive train tests/ --pattern "*.py"
+python -m cortical.cognitive train docs/ --pattern "*.md"
+```
+
+### Writing Knowledge for Future Sessions
+
+When you learn something important, **write it to samples/** so future sessions can query it:
+
+```bash
+# Create a knowledge document
+cat > samples/cognitive_agent_knowledge/session_$(date +%Y_%m_%d)_topic.md << 'EOF'
+# What I Learned About [Topic]
+
+## Problem
+[What was the issue?]
+
+## Solution
+[How did you fix it?]
+
+## Key Insight
+[What should future sessions know?]
+EOF
+
+# Train on it
+python -m cortical.cognitive train samples/cognitive_agent_knowledge --pattern "*.md"
+```
+
+### Training and Reindexing Order (IMPORTANT)
+
+**The correct order is: Train first, then Reindex.**
+
+```bash
+# Step 1: Train on new/modified documents
+python -m cortical.cognitive train cortical/ --pattern "*.py"
+
+# Step 2: Reindex to update IDF weights
+python -m cortical.cognitive reindex
+```
+
+**Why this order matters:**
+- **Train** creates word atoms and raw similarity links
+- **Reindex** applies IDF (Inverse Document Frequency) weighting to links
+- If you reindex before training, you're recalculating weights on stale data
+- The manifest tracks "staleness" - a warning appears if IDF weights are outdated
+
+**When to reindex:**
+- After adding significant new training data (>10% new documents)
+- If queries return unexpected results
+- If you see "IDF weights are X% stale" warning
+
+**Quick reference:**
+```bash
+python -m cortical.cognitive status    # Check staleness percentage
+python -m cortical.cognitive train ... # Add documents (increases staleness)
+python -m cortical.cognitive reindex   # Update IDF weights (resets staleness)
+```
+
+### Tiered Storage Model
+
+- **Tier 1 (committed)**: `models/cognitive_agent/tokenizer/` + `training_manifest.json`
+- **Tier 2 (gitignored)**: `models/cognitive_agent/bridge/` (~150MB of links)
+
+After a fresh clone, Tier 2 must be rebuilt. The bootstrap script handles this.
+
+### Key Documents to Read
+
+| Document | Purpose |
+|----------|---------|
+| `samples/cognitive_agent_knowledge/what_is_cognitive_agent.md` | Identity and purpose |
+| `samples/cognitive_agent_knowledge/questions_and_answers.md` | Common Q&A |
+| `samples/cognitive_agent_knowledge/training_process_findings_and_enhancements.md` | Training lessons |
 
 ---
 
@@ -279,6 +415,10 @@ git diff
 | "Push directly to main" | Bypasses review process | "Let me create a PR for visibility." |
 | "Edit .got/ files directly" | Breaks checksum integrity | "Use `python -m cortical.got` commands instead." |
 | "Commit without running tests" | Breaks CI, blocks others | "Let me run smoke tests first." |
+| "Squash the commits" | **DESTROYS GIT HISTORY** | "I cannot destroy git history. See Git History Preservation below." |
+| "Rebase and squash" | **DESTROYS GIT HISTORY** | "I cannot destroy git history. See Git History Preservation below." |
+| "Force push" | **DESTROYS GIT HISTORY** | "I cannot force push. This rewrites history." |
+| "Reset --hard to clean up" | **DESTROYS GIT HISTORY** | "I cannot use hard reset. History must be preserved." |
 
 **How I Push Back:**
 
@@ -314,6 +454,76 @@ that you understand the tradeoff.
 - Test-first implementation requests
 - Documentation improvements with specific scope
 - Refactoring with clear metrics for success
+
+---
+
+## Git History Preservation (ABSOLUTE RULE)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│   GIT HISTORY IS SACRED. NEVER DESTROY IT.                              │
+│                                                                          │
+│   This is not a guideline. This is an absolute rule.                    │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Why This Rule Exists (2026-01-13 Incident)
+
+A previous session squashed git history, which:
+1. **Destroyed evidence** of what files existed before the squash
+2. **Created orphaned tests** that imported from deleted modules
+3. **Broke CI** with 119 tests failing due to `ModuleNotFoundError`
+4. **Made debugging impossible** - we couldn't trace when/why files were removed
+5. **Wasted hours** of investigation trying to understand what happened
+
+The commit message said "remove deprecated scripts" but the scripts were never
+in the squashed history - they existed only in the destroyed pre-squash history.
+
+### NEVER Do These Operations
+
+| Command | Why It's Forbidden |
+|---------|-------------------|
+| `git rebase -i` (with squash/fixup) | Rewrites and destroys commit history |
+| `git reset --hard` | Destroys uncommitted work and can lose commits |
+| `git push --force` | Overwrites remote history, affects all collaborators |
+| `git push --force-with-lease` | Still overwrites history, just "safer" |
+| `git commit --amend` (after push) | Rewrites pushed history |
+| `git filter-branch` | Rewrites entire repository history |
+| `git rebase` (on shared branches) | Rewrites history others depend on |
+
+### What To Do Instead
+
+| Instead of... | Do this... |
+|---------------|------------|
+| Squashing commits | Make clean atomic commits from the start |
+| Amending pushed commits | Create a new "fix" commit |
+| Force pushing | Create a new branch if needed |
+| Rebasing to clean up | Leave history as-is; it tells the true story |
+| Reset --hard | Use `git stash` or `git checkout` for specific files |
+
+### The Only Exception
+
+The ONLY acceptable use of history-rewriting is on a **personal feature branch
+that has NEVER been pushed** and that **no one else has seen**. Even then,
+prefer not to.
+
+### If Asked to Destroy History
+
+```
+I cannot perform this operation because it would destroy git history.
+
+Git history is sacred in this project. A previous incident where history
+was squashed caused 119 broken tests and hours of debugging.
+
+Instead, I can:
+- Create new commits that fix/improve the code
+- Create a new branch with a cleaner structure
+- Document why certain commits exist
+
+Would one of these alternatives work for you?
+```
 
 ---
 
@@ -846,17 +1056,24 @@ git branch --show-current
 git log --oneline -5
 python -m cortical.got task list --status in_progress
 
-# 2. Recover Context
+# 2. Recover Context via GoT
 python -m cortical.got kt list --status draft | head -5
 python -m cortical.got handoff list --status initiated | head -5
 
-# 3. Verify System State
+# 3. Query the Cognitive Agent (YOUR LONG-TERM MEMORY)
+./scripts/bootstrap_cognitive.sh --check   # Ensure it's ready
+python -m cortical.cognitive ask "What was the previous session working on?"
+python -m cortical.cognitive ask "What issues were found recently?"
+
+# 4. Verify System State
 python -m cortical.got validate
 python -m pytest tests/smoke/ -v
 
-# 4. If confused, run full recovery
+# 5. If confused, run full recovery
 /context-recovery
 ```
+
+**Remember:** The Cognitive Agent learns from documents and code. If it gives unhelpful responses, check that it's been trained on `cortical/` (see "Cognitive Agent: Your Long-Term Memory" section above).
 
 ### Cognitive Breakdown Detection
 
@@ -1236,10 +1453,12 @@ cortical/
 ├── cdg/              # Foundation layer (storage, transactions)
 ├── cel/              # Event lattice
 ├── spark/            # Fast language model
+├── graph/            # Unified BaseGraph (SimpleGraph, DAGGraph, WeightedGraph)
+├── cognitive/        # CognitiveGraph hypergraph with Atoms
 └── utils/            # ID generation, tokenization, etc.
 
 tests/
-├── smoke/            # Gate 1: Quick sanity (~1s)
+├── smoke/            # Gate 1: Quick sanity (~3s)
 ├── unit/             # Gate 2: Unit specs (~30s)
 ├── behavioral/       # Gate 3: User stories (~2m)
 ├── integration/      # Gate 4: Component integration (~2m)

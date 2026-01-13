@@ -1,0 +1,46 @@
+Atom Types and Link Types in CognitiveGraph
+
+Location: cortical/cognitive/graph.py - AtomType enum
+
+Node atom types (entities):
+  WORD        - vocabulary word from training text
+  FILE        - Python source file
+  CLASS       - Python class definition
+  FUNCTION    - Python function or method
+  MODULE      - External module reference
+  CONCEPT     - Abstract concept
+  DOCUMENT    - Training document
+
+Link atom types (relationships):
+  SIMILARITY  - semantic similarity between WORDs (bidirectional)
+  FOLLOWS     - word A follows word B in text (directional)
+  CALLS       - function A calls function B
+  INHERITANCE - class A inherits from class B
+  DEFINES     - file defines class/function
+  CONTAINS    - class contains method
+  REFERS_TO   - vocabulary word refers to code entity
+
+How links work:
+  Links are atoms with outgoing list containing related atom IDs.
+  SIMILARITY link: outgoing = [word_a_id, word_b_id]
+  CALLS link: outgoing = [caller_id, callee_id]
+
+Creating atoms:
+  graph.node(AtomType.WORD, "neural")  # creates node atom
+  graph.link(AtomType.SIMILARITY, [atom_a, atom_b], truth_value)  # creates link
+
+Truth values:
+  TruthValue(strength, confidence) - probabilistic truth
+  strength: 0.0 to 1.0, how true
+  confidence: 0.0 to 1.0, how certain
+
+Metadata:
+  Atoms have metadata dict for extra info.
+  Code atoms store: file_path, lineno, docstring
+  Links store: idf_strength, raw_strength, count
+
+Querying:
+  graph.get_node(name)           - find by name
+  graph.get_atom(id)             - find by ID
+  graph.find_by_type(AtomType)   - all atoms of type
+  graph.get_incoming(atom_id)    - links pointing to atom

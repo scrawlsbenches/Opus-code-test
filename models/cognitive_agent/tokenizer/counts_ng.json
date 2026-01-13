@@ -1,0 +1,7 @@
+{
+  "ngrams": 3,
+  "ngram": 25,
+  "ngrammodel": 26,
+  "ngramorder": 1,
+  "ngp": 2
+}

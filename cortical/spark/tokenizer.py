@@ -8,7 +8,7 @@ Unlike natural language tokenizers, this is designed specifically for source cod
 Features:
 - Preserves punctuation: . ( ) [ ] { } : , ; @ #
 - Preserves operators: == != >= <= += -= etc.
-- Splits camelCase and snake_case identifiers
+- Splits camelCase and underscore_style identifiers
 - Optionally includes string literal contents
 
 Example:
@@ -28,7 +28,7 @@ class CodeTokenizer:
     Unlike natural language tokenizers, this:
     - Keeps . ( ) [ ] { } : , as separate tokens
     - Preserves operators: == != >= <= += -= etc.
-    - Splits camelCase and snake_case
+    - Splits camelCase and underscore_style
     - Keeps string literals as single tokens (optionally)
     """
 
@@ -50,7 +50,7 @@ class CodeTokenizer:
         Initialize code tokenizer.
 
         Args:
-            split_identifiers: Split camelCase/snake_case into parts
+            split_identifiers: Split camelCase/underscore_style into parts
             preserve_case: Keep original case (default: lowercase)
             include_strings: Include string literal contents
         """
@@ -159,7 +159,7 @@ class CodeTokenizer:
         return result
 
     def _split_identifier(self, ident: str) -> List[str]:
-        """Split camelCase and snake_case identifiers."""
+        """Split camelCase and underscore_style identifiers."""
         result = []
 
         # First add the full identifier
