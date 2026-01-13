@@ -55,6 +55,75 @@ def persistence_backend():
     return InMemoryPersistenceBackend()
 
 
+@pytest.fixture
+def mock_persistence_file(tmp_path, monkeypatch):
+    """Create mock persistence file for file-based persistence testing.
+
+    Creates a temp file and patches DEFAULT_PERSISTENCE_FILE so that
+    AuditReasoner(use_persistence=True) will use this file.
+    """
+    got_dir = tmp_path / ".got"
+    got_dir.mkdir(exist_ok=True)
+    persistence_file = got_dir / "audit_pln_state.json"
+
+    # Patch the default paths in both modules
+    monkeypatch.setattr(
+        "cortical.audits.persistence.DEFAULT_PERSISTENCE_FILE",
+        persistence_file
+    )
+    monkeypatch.setattr(
+        "cortical.audits.reasoning.DEFAULT_WOVEN_MIND_FILE",
+        got_dir / "woven_audit_mind.json"
+    )
+
+    # Also patch Path.cwd() to return tmp_path for relative path resolution
+    monkeypatch.setattr(Path, "cwd", lambda: tmp_path)
+
+    return persistence_file
+
+
+@pytest.fixture
+def mock_rules_file(tmp_path, monkeypatch):
+    """Create mock rules file for file-based persistence testing.
+
+    Creates a temp file and patches DEFAULT_RULES_FILE so that
+    persistence backends will use this file for rules.
+    """
+    got_dir = tmp_path / ".got"
+    got_dir.mkdir(exist_ok=True)
+    rules_file = got_dir / "audit_pln_rules.json"
+
+    monkeypatch.setattr(
+        "cortical.audits.persistence.DEFAULT_RULES_FILE",
+        rules_file
+    )
+
+    return rules_file
+
+
+@pytest.fixture
+def mock_woven_mind_file(tmp_path, monkeypatch):
+    """Create mock woven mind file for WovenMind integration testing.
+
+    Creates a temp file and patches DEFAULT_WOVEN_MIND_FILE so that
+    load_woven_mind_abstractions() will use this file.
+    """
+    got_dir = tmp_path / ".got"
+    got_dir.mkdir(exist_ok=True)
+    woven_file = got_dir / "woven_audit_mind.json"
+
+    monkeypatch.setattr(
+        "cortical.audits.persistence.DEFAULT_WOVEN_MIND_FILE",
+        woven_file
+    )
+    monkeypatch.setattr(
+        "cortical.audits.reasoning.DEFAULT_WOVEN_MIND_FILE",
+        woven_file
+    )
+
+    return woven_file
+
+
 # =============================================================================
 # DATA CLASSES
 # =============================================================================
@@ -1516,7 +1585,9 @@ class TestEdgeCasesAndBranches:
 
         assert isinstance(results, dict)
 
-    def test_get_importance_trend_no_history(self):
+    def test_get_importance_trend_no_history(
+        self, mock_persistence_file, mock_rules_file
+    ):
         from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(use_persistence=False)
