@@ -1,7 +1,7 @@
 # CLAUDE.md — Graph of Thought Operations Guide
 
 
-*Last updated: 2026-01-08*
+*Last updated: 2026-01-13*
 
 ---
 
@@ -400,6 +400,10 @@ git diff
 | "Push directly to main" | Bypasses review process | "Let me create a PR for visibility." |
 | "Edit .got/ files directly" | Breaks checksum integrity | "Use `python -m cortical.got` commands instead." |
 | "Commit without running tests" | Breaks CI, blocks others | "Let me run smoke tests first." |
+| "Squash the commits" | **DESTROYS GIT HISTORY** | "I cannot destroy git history. See Git History Preservation below." |
+| "Rebase and squash" | **DESTROYS GIT HISTORY** | "I cannot destroy git history. See Git History Preservation below." |
+| "Force push" | **DESTROYS GIT HISTORY** | "I cannot force push. This rewrites history." |
+| "Reset --hard to clean up" | **DESTROYS GIT HISTORY** | "I cannot use hard reset. History must be preserved." |
 
 **How I Push Back:**
 
@@ -435,6 +439,76 @@ that you understand the tradeoff.
 - Test-first implementation requests
 - Documentation improvements with specific scope
 - Refactoring with clear metrics for success
+
+---
+
+## Git History Preservation (ABSOLUTE RULE)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│   GIT HISTORY IS SACRED. NEVER DESTROY IT.                              │
+│                                                                          │
+│   This is not a guideline. This is an absolute rule.                    │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Why This Rule Exists (2026-01-13 Incident)
+
+A previous session squashed git history, which:
+1. **Destroyed evidence** of what files existed before the squash
+2. **Created orphaned tests** that imported from deleted modules
+3. **Broke CI** with 119 tests failing due to `ModuleNotFoundError`
+4. **Made debugging impossible** - we couldn't trace when/why files were removed
+5. **Wasted hours** of investigation trying to understand what happened
+
+The commit message said "remove deprecated scripts" but the scripts were never
+in the squashed history - they existed only in the destroyed pre-squash history.
+
+### NEVER Do These Operations
+
+| Command | Why It's Forbidden |
+|---------|-------------------|
+| `git rebase -i` (with squash/fixup) | Rewrites and destroys commit history |
+| `git reset --hard` | Destroys uncommitted work and can lose commits |
+| `git push --force` | Overwrites remote history, affects all collaborators |
+| `git push --force-with-lease` | Still overwrites history, just "safer" |
+| `git commit --amend` (after push) | Rewrites pushed history |
+| `git filter-branch` | Rewrites entire repository history |
+| `git rebase` (on shared branches) | Rewrites history others depend on |
+
+### What To Do Instead
+
+| Instead of... | Do this... |
+|---------------|------------|
+| Squashing commits | Make clean atomic commits from the start |
+| Amending pushed commits | Create a new "fix" commit |
+| Force pushing | Create a new branch if needed |
+| Rebasing to clean up | Leave history as-is; it tells the true story |
+| Reset --hard | Use `git stash` or `git checkout` for specific files |
+
+### The Only Exception
+
+The ONLY acceptable use of history-rewriting is on a **personal feature branch
+that has NEVER been pushed** and that **no one else has seen**. Even then,
+prefer not to.
+
+### If Asked to Destroy History
+
+```
+I cannot perform this operation because it would destroy git history.
+
+Git history is sacred in this project. A previous incident where history
+was squashed caused 119 broken tests and hours of debugging.
+
+Instead, I can:
+- Create new commits that fix/improve the code
+- Create a new branch with a cleaner structure
+- Document why certain commits exist
+
+Would one of these alternatives work for you?
+```
 
 ---
 
