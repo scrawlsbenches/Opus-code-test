@@ -636,6 +636,21 @@ class AuditReasoner:
             return self._persistence_state.file_importance[file_id].history
         return []
 
+    def get_stats(self) -> Dict[str, Any]:
+        """
+        Return statistics about the reasoner state.
+
+        Returns dict with:
+        - facts: Number of facts asserted in PLN graph
+        - rules: Number of rules in the reasoner
+        - aggregate_strategy: Current aggregation strategy
+        """
+        return {
+            "facts": self.pln.fact_count,
+            "rules": self.pln.rule_count,
+            "aggregate_strategy": self.aggregate_strategy
+        }
+
     def explain_file_risk(
         self,
         file_id: str,
