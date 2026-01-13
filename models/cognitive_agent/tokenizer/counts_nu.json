@@ -1,10 +1,10 @@
 {
-  "null": 19,
+  "null": 20,
   "numbers": 60,
-  "number": 134,
-  "numeric": 6,
+  "number": 189,
+  "numeric": 7,
   "numpy": 1,
-  "num": 5,
+  "num": 85,
   "numbering": 3,
   "numexchanges": 1,
   "numerous": 21,
@@ -49,5 +49,13 @@
   "nudge": 19,
   "nudges": 6,
   "nucleotides": 2,
-  "numa": 2
+  "numa": 2,
+  "numclusters": 10,
+  "numworkers": 4,
+  "numdocs": 26,
+  "numerator": 4,
+  "nullpersistencebackend": 1,
+  "numhashes": 18,
+  "numbands": 18,
+  "numtransitions": 4
 }

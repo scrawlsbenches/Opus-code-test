@@ -1,10 +1,10 @@
 {
   "runtime": 57,
-  "running": 63,
-  "run": 356,
+  "running": 72,
+  "run": 394,
   "runs": 73,
-  "rule": 103,
-  "rules": 178,
+  "rule": 104,
+  "rules": 181,
   "runtimeerror": 11,
   "rubber": 7,
   "runrebuildlinks": 2,
@@ -15,7 +15,7 @@
   "runtests": 16,
   "runner": 63,
   "rungit": 1,
-  "runinexecutor": 1,
+  "runinexecutor": 8,
   "runners": 14,
   "runnable": 1,
   "rust": 5,
@@ -58,5 +58,6 @@
   "ruck": 9,
   "rucks": 1,
   "ruby": 1,
-  "rustic": 1
+  "rustic": 1,
+  "runningtasks": 1
 }

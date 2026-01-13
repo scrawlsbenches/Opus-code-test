@@ -1,11 +1,11 @@
 {
-  "build": 207,
+  "build": 241,
   "business": 170,
-  "but": 820,
+  "but": 824,
   "built": 82,
-  "building": 183,
+  "building": 186,
   "bugs": 122,
-  "bug": 167,
+  "bug": 170,
   "builds": 76,
   "busy": 2,
   "bus": 6,
@@ -16,7 +16,7 @@
   "buggy": 2,
   "budgets": 19,
   "burden": 17,
-  "buildconceptclusters": 1,
+  "buildconceptclusters": 5,
   "buttons": 1,
   "buildsearchindex": 3,
   "builder": 32,
@@ -39,7 +39,7 @@
   "buying": 3,
   "buyers": 4,
   "bullish": 5,
-  "bucket": 1,
+  "bucket": 21,
   "burst": 3,
   "burials": 11,
   "burial": 19,
@@ -112,5 +112,8 @@
   "buildable": 1,
   "butternut": 1,
   "butcher": 1,
-  "burn": 1
+  "burn": 1,
+  "buildtree": 3,
+  "buckets": 21,
+  "buckethash": 8
 }

@@ -1,12 +1,12 @@
 {
   "occurring": 23,
   "occurred": 35,
-  "occur": 119,
+  "occur": 121,
   "occurs": 110,
-  "occurrence": 91,
+  "occurrence": 131,
   "ocbe": 5,
   "ocean": 5,
-  "occurrences": 8,
+  "occurrences": 13,
   "occasional": 8,
   "occupancy": 9,
   "occupation": 9,
@@ -25,5 +25,7 @@
   "oceanic": 1,
   "occasion": 1,
   "occasions": 1,
-  "occupants": 1
+  "occupants": 1,
+  "occurrencecount": 16,
+  "occ": 2
 }

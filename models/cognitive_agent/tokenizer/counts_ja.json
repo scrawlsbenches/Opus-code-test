@@ -3,8 +3,8 @@
   "jan": 4,
   "jargon": 5,
   "javascript": 17,
-  "java": 25,
-  "jaccard": 8,
+  "java": 26,
+  "jaccard": 35,
   "japanese": 21,
   "jars": 1,
   "jackets": 1,
@@ -29,5 +29,6 @@
   "jacobian": 5,
   "janis": 1,
   "jackal": 2,
-  "janka": 2
+  "janka": 2,
+  "jaccardsimilarity": 6
 }

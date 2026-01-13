@@ -1,6 +1,6 @@
 {
-  "fp": 3,
-  "fprate": 1,
+  "fp": 16,
+  "fprate": 6,
   "fpgas": 1,
   "fpg": 1,
   "fpga": 2,

@@ -1,6 +1,6 @@
 {
-  "custom": 45,
-  "current": 393,
+  "custom": 46,
+  "current": 458,
   "cutting": 67,
   "curve": 19,
   "culture": 104,
@@ -116,5 +116,10 @@
   "cushioning": 1,
   "cupping": 1,
   "cutterhead": 4,
-  "curly": 1
+  "curly": 1,
+  "currentcomm": 12,
+  "currentlabel": 5,
+  "currentweight": 3,
+  "currentmembers": 4,
+  "currentpr": 3
 }

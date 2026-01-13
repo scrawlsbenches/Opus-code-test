@@ -1,6 +1,6 @@
 {
   "role": 78,
-  "root": 174,
+  "root": 175,
   "rollout": 5,
   "router": 39,
   "roadmap": 40,
@@ -26,7 +26,7 @@
   "robustness": 47,
   "roads": 7,
   "routeboth": 1,
-  "roots": 16,
+  "roots": 24,
   "roundtrip": 8,
   "rotation": 37,
   "rollbackincompletetransactions": 1,
@@ -38,7 +38,7 @@
   "romanization": 2,
   "rock": 20,
   "roundhouses": 1,
-  "rows": 9,
+  "rows": 30,
   "road": 6,
   "room": 26,
   "rovs": 1,
@@ -90,11 +90,11 @@
   "rollouts": 5,
   "ronneberger": 1,
   "roi": 1,
-  "rolling": 6,
+  "rolling": 10,
   "rollbacks": 1,
   "routines": 2,
   "robinson": 1,
-  "row": 31,
+  "row": 85,
   "roku": 1,
   "roasted": 1,
   "roast": 1,
@@ -137,5 +137,6 @@
   "rosetta": 1,
   "rorschach": 1,
   "routers": 3,
-  "roundover": 1
+  "roundover": 1,
+  "rowsperband": 7
 }

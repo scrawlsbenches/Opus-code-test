@@ -1,16 +1,16 @@
 {
-  "types": 435,
-  "type": 677,
+  "types": 442,
+  "type": 705,
   "typos": 7,
   "typeddict": 3,
   "typed": 33,
   "typevar": 1,
-  "typing": 14,
+  "typing": 30,
   "typechecking": 3,
   "typeerror": 8,
   "typo": 2,
-  "typically": 180,
-  "typical": 57,
+  "typically": 183,
+  "typical": 63,
   "typedconnections": 3,
   "typeerrors": 1,
   "typedconndata": 1,
@@ -33,5 +33,6 @@
   "typecheck": 2,
   "typeconstraint": 1,
   "typescript": 1,
-  "typographic": 2
+  "typographic": 2,
+  "typemultiplier": 3
 }

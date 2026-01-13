@@ -1,5 +1,5 @@
 {
-  "my": 120,
+  "my": 135,
   "mytests": 1,
   "myclass": 9,
   "myconfig": 1,
@@ -31,5 +31,8 @@
   "mysticism": 16,
   "mystics": 10,
   "mysterium": 1,
-  "mypy": 1
+  "mypy": 1,
+  "mycluster": 7,
+  "myclusternodes": 4,
+  "mydocs": 4
 }

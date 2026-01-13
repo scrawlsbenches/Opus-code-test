@@ -1,10 +1,10 @@
 {
   "model_version": "1.0",
-  "last_training": "2026-01-13T03:54:22.919572",
-  "total_documents": 534,
+  "last_training": "2026-01-13T04:00:20.429360",
+  "total_documents": 554,
   "vocabulary_size": 10000,
-  "last_reindex_doc_count": 50,
-  "idf_epoch": 1,
+  "last_reindex_doc_count": 534,
+  "idf_epoch": 2,
   "documents": {
     "alignment/definitions.md": {
       "path": "alignment/definitions.md",
@@ -3209,6 +3209,126 @@
       "content_hash": "21199e3d8ac4328f",
       "trained_at": "2026-01-13T03:54:22.919547",
       "word_count": 312
+    },
+    "__init__.py": {
+      "path": "__init__.py",
+      "content_hash": "9784374b5b937395",
+      "trained_at": "2026-01-13T03:59:38.213181",
+      "word_count": 276
+    },
+    "analysis/__init__.py": {
+      "path": "analysis/__init__.py",
+      "content_hash": "b64a68080297a840",
+      "trained_at": "2026-01-13T03:59:38.280895",
+      "word_count": 316
+    },
+    "analysis/activation.py": {
+      "path": "analysis/activation.py",
+      "content_hash": "3c199d96b954ad9e",
+      "trained_at": "2026-01-13T03:59:38.350552",
+      "word_count": 316
+    },
+    "analysis/clustering.py": {
+      "path": "analysis/clustering.py",
+      "content_hash": "2a7d484e28475cc6",
+      "trained_at": "2026-01-13T03:59:38.593339",
+      "word_count": 3183
+    },
+    "analysis/connections.py": {
+      "path": "analysis/connections.py",
+      "content_hash": "a1d372b9aca41fab",
+      "trained_at": "2026-01-13T03:59:38.779028",
+      "word_count": 2642
+    },
+    "analysis/pagerank.py": {
+      "path": "analysis/pagerank.py",
+      "content_hash": "95c46d54d8b52988",
+      "trained_at": "2026-01-13T03:59:38.916895",
+      "word_count": 2172
+    },
+    "analysis/parallel.py": {
+      "path": "analysis/parallel.py",
+      "content_hash": "723c5c8c255d3ca6",
+      "trained_at": "2026-01-13T03:59:39.005357",
+      "word_count": 1002
+    },
+    "analysis/quality.py": {
+      "path": "analysis/quality.py",
+      "content_hash": "c093a69270310510",
+      "trained_at": "2026-01-13T03:59:39.134485",
+      "word_count": 1871
+    },
+    "analysis/tfidf.py": {
+      "path": "analysis/tfidf.py",
+      "content_hash": "4cf717d377ddaabc",
+      "trained_at": "2026-01-13T03:59:39.220883",
+      "word_count": 1210
+    },
+    "analysis/utils.py": {
+      "path": "analysis/utils.py",
+      "content_hash": "a43afc45465e0f49",
+      "trained_at": "2026-01-13T03:59:39.295169",
+      "word_count": 629
+    },
+    "async_api.py": {
+      "path": "async_api.py",
+      "content_hash": "60bd1699420e1896",
+      "trained_at": "2026-01-13T04:00:19.471702",
+      "word_count": 2176
+    },
+    "audits/__init__.py": {
+      "path": "audits/__init__.py",
+      "content_hash": "a4f0e2814c673645",
+      "trained_at": "2026-01-13T04:00:19.574434",
+      "word_count": 572
+    },
+    "audits/algorithms/__init__.py": {
+      "path": "audits/algorithms/__init__.py",
+      "content_hash": "bb534ad7e48dfc94",
+      "trained_at": "2026-01-13T04:00:19.635392",
+      "word_count": 255
+    },
+    "audits/algorithms/bloom_filter.py": {
+      "path": "audits/algorithms/bloom_filter.py",
+      "content_hash": "375ec9dc37c9373a",
+      "trained_at": "2026-01-13T04:00:19.744189",
+      "word_count": 922
+    },
+    "audits/algorithms/count_min_sketch.py": {
+      "path": "audits/algorithms/count_min_sketch.py",
+      "content_hash": "77db1005bdad8b76",
+      "trained_at": "2026-01-13T04:00:19.846809",
+      "word_count": 920
+    },
+    "audits/algorithms/dag.py": {
+      "path": "audits/algorithms/dag.py",
+      "content_hash": "0bcf3a826192319a",
+      "trained_at": "2026-01-13T04:00:19.999759",
+      "word_count": 2007
+    },
+    "audits/algorithms/decision_tree.py": {
+      "path": "audits/algorithms/decision_tree.py",
+      "content_hash": "74f26d425077d92a",
+      "trained_at": "2026-01-13T04:00:20.110161",
+      "word_count": 1055
+    },
+    "audits/algorithms/inverted_index.py": {
+      "path": "audits/algorithms/inverted_index.py",
+      "content_hash": "33fb21191c3796be",
+      "trained_at": "2026-01-13T04:00:20.202190",
+      "word_count": 1016
+    },
+    "audits/algorithms/lsh.py": {
+      "path": "audits/algorithms/lsh.py",
+      "content_hash": "7dc1e11a6e9896ba",
+      "trained_at": "2026-01-13T04:00:20.353252",
+      "word_count": 1920
+    },
+    "audits/algorithms/markov_chain.py": {
+      "path": "audits/algorithms/markov_chain.py",
+      "content_hash": "c213f63c1b18b681",
+      "trained_at": "2026-01-13T04:00:20.429304",
+      "word_count": 710
     }
   }
 }

@@ -1,16 +1,16 @@
 {
-  "about": 747,
-  "absence": 12,
-  "abstraction": 155,
+  "about": 749,
+  "absence": 13,
+  "abstraction": 157,
   "ability": 90,
   "abstract": 168,
   "absolute": 45,
-  "abstractions": 59,
+  "abstractions": 60,
   "abandoned": 17,
   "abandonment": 14,
   "above": 63,
   "abort": 3,
-  "abs": 15,
+  "abs": 19,
   "abundance": 7,
   "abbreviation": 2,
   "abilities": 47,
@@ -86,5 +86,7 @@
   "abused": 2,
   "aboard": 1,
   "aba": 4,
-  "abu": 1
+  "abu": 1,
+  "ab": 3,
+  "abstractiontorule": 1
 }

@@ -1,6 +1,6 @@
 {
   "glob": 5,
-  "global": 120,
+  "global": 148,
   "glue": 20,
   "glitch": 1,
   "glove": 9,
@@ -45,5 +45,8 @@
   "globalized": 1,
   "glutamic": 1,
   "glides": 1,
-  "gluing": 1
+  "gluing": 1,
+  "globaliterations": 3,
+  "globaliter": 3,
+  "globaltfidf": 4
 }

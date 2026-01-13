@@ -20,5 +20,6 @@
   "cmdsprintcreate": 1,
   "cmdsprintlist": 1,
   "cmdtaskimport": 2,
-  "cmyk": 4
+  "cmyk": 4,
+  "cms": 6
 }

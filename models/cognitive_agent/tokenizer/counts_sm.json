@@ -1,10 +1,10 @@
 {
-  "small": 205,
+  "small": 210,
   "smells": 8,
   "smell": 4,
   "smoke": 64,
   "smoothed": 4,
-  "smaller": 56,
+  "smaller": 59,
   "smarter": 3,
   "smallprocessor": 9,
   "smallcorpus": 1,
@@ -38,5 +38,5 @@
   "smuggling": 1,
   "smalltalk": 3,
   "smartism": 1,
-  "smallest": 1
+  "smallest": 7
 }

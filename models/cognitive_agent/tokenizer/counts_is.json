@@ -1,17 +1,17 @@
 {
-  "is": 2526,
+  "is": 2645,
   "isolation": 98,
-  "isolated": 44,
-  "isinstance": 7,
+  "isolated": 51,
+  "isinstance": 10,
   "isolate": 22,
   "issue": 122,
   "islink": 1,
   "isvalid": 4,
   "isupper": 1,
   "isn": 22,
-  "issues": 288,
+  "issues": 289,
   "isclose": 1,
-  "isa": 8,
+  "isa": 10,
   "isfile": 4,
   "ish": 1,
   "issuer": 6,
@@ -54,5 +54,8 @@
   "israeli": 1,
   "iskcon": 2,
   "isaac": 1,
-  "israelite": 1
+  "israelite": 1,
+  "isset": 6,
+  "isnaturallanguagequery": 1,
+  "issubset": 1
 }

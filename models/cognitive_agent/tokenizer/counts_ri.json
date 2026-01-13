@@ -1,5 +1,5 @@
 {
-  "right": 177,
+  "right": 191,
   "risk": 520,
   "risky": 18,
   "rich": 41,
@@ -80,5 +80,7 @@
   "rip": 1,
   "ripping": 3,
   "riving": 1,
-  "rightward": 1
+  "rightward": 1,
+  "rightcomponentindex": 1,
+  "rightindex": 6
 }

@@ -1,13 +1,13 @@
 {
-  "our": 314,
+  "our": 316,
   "ourselves": 23,
   "outcome": 70,
-  "output": 154,
+  "output": 155,
   "outcomes": 252,
   "outrank": 1,
   "outlast": 2,
-  "out": 169,
-  "outgoing": 55,
+  "out": 171,
+  "outgoing": 77,
   "outperform": 19,
   "outside": 54,
   "outputs": 53,
@@ -54,5 +54,6 @@
   "outmaneuver": 1,
   "outweigh": 1,
   "outfeed": 1,
-  "outlining": 2
+  "outlining": 2,
+  "outgoingsum": 16
 }

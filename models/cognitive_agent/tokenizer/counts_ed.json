@@ -1,7 +1,7 @@
 {
-  "edge": 543,
+  "edge": 586,
   "education": 79,
-  "edges": 235,
+  "edges": 274,
   "edgetype": 52,
   "edit": 9,
   "educational": 34,
@@ -38,5 +38,6 @@
   "edundant": 1,
   "edmund": 3,
   "editors": 1,
-  "edged": 1
+  "edged": 1,
+  "edgeswithrelations": 6
 }

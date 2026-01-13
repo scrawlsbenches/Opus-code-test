@@ -1,5 +1,5 @@
 {
-  "vocabulary": 169,
+  "vocabulary": 170,
   "vocab": 24,
   "volatile": 8,
   "vocabularysize": 1,
@@ -20,7 +20,7 @@
   "votive": 1,
   "voltage": 6,
   "voluntary": 21,
-  "vote": 3,
+  "vote": 8,
   "void": 4,
   "voluntarily": 3,
   "vocal": 3,
@@ -47,5 +47,6 @@
   "volt": 1,
   "volleys": 3,
   "volleyball": 19,
-  "voc": 2
+  "voc": 2,
+  "votes": 10
 }

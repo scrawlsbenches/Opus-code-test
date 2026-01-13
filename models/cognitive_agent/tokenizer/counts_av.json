@@ -1,9 +1,9 @@
 {
-  "avoid": 117,
-  "available": 185,
+  "avoid": 132,
+  "available": 188,
   "avoiding": 41,
-  "average": 76,
-  "avg": 15,
+  "average": 91,
+  "avg": 49,
   "avoids": 21,
   "avgcycledurationms": 1,
   "avgtimems": 1,
@@ -27,5 +27,16 @@
   "avoidance": 12,
   "avatars": 3,
   "avl": 2,
-  "aversions": 2
+  "aversions": 2,
+  "avgmemberspercluster": 1,
+  "avgmembers": 1,
+  "avgdocs": 1,
+  "avgclustersize": 1,
+  "avgsemantic": 2,
+  "avgscore": 2,
+  "avgdegree": 2,
+  "avgpagerank": 1,
+  "avgdoclength": 16,
+  "avgdist": 2,
+  "avgtf": 3
 }

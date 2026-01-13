@@ -1,13 +1,13 @@
 {
   "emojis": 1,
-  "empty": 52,
+  "empty": 85,
   "emitter": 1,
-  "embeddings": 44,
+  "embeddings": 56,
   "embedded": 25,
   "empirical": 40,
   "embodied": 130,
   "empathy": 41,
-  "embedding": 16,
+  "embedding": 35,
   "emitters": 1,
   "emerge": 70,
   "emerging": 42,
@@ -92,5 +92,9 @@
   "emboldens": 1,
   "embarrassment": 1,
   "emulation": 1,
-  "emerald": 1
+  "emerald": 1,
+  "embeddingthreshold": 3,
+  "embeddingconnections": 5,
+  "emb": 2,
+  "emptysim": 3
 }
