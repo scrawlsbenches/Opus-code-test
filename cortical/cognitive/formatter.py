@@ -400,29 +400,43 @@ class ResponseFormatter:
         """Format semantic/association query results."""
         lines = []
 
-        # Extract question type for context (available for future use)
+        # Extract question type for context
         parsed = query.parsed
+        question_type = ""
         if isinstance(parsed, QueryIntent):
-            # TODO: Use question_type and concepts for smarter formatting
-            pass
-        # question_type = query.metadata.get("question_type", "general")
+            question_type = parsed.question_type
 
         count = len(result.items)
         lines.append(f"Results for: {query.raw_question}")
-        lines.append(f"Found {count} related items:")
+        lines.append(f"Found {count} related documents:")
         lines.append("")
 
         for i, item in enumerate(result.items[:self.config.max_items_shown], 1):
-            # Semantic items have doc_id, similarity, associations
+            # Semantic items have doc_id, score, excerpt from SemanticExecutor
             doc_id = item.get("doc_id", item.get("name", item.get("id", "unknown")))
-            similarity = item.get("similarity", item.get("_score", 0))
+            score = item.get("score", item.get("similarity", item.get("_score", 0)))
+            excerpt = item.get("excerpt", "")
 
+            # Show document header with optional score
             if self.config.show_scores:
-                lines.append(f"  {i}. {doc_id} (relevance: {similarity:.2f})")
+                lines.append(f"  {i}. {doc_id} (relevance: {score:.2f})")
             else:
                 lines.append(f"  {i}. {doc_id}")
 
-            # Show associations if available
+            # Always show excerpt if available - this is the useful content!
+            if excerpt:
+                # Indent and wrap excerpt lines
+                excerpt_lines = excerpt.split("\n")
+                for j, exc_line in enumerate(excerpt_lines[:5]):  # Limit to 5 lines
+                    # Trim long lines
+                    trimmed = exc_line.strip()[:100]
+                    if trimmed:
+                        lines.append(f"       {trimmed}")
+                if len(excerpt_lines) > 5:
+                    lines.append("       ...")
+                lines.append("")  # Blank line between items
+
+            # Show associations if verbose (in addition to excerpt)
             if self.config.verbose:
                 associations = item.get("associations", [])
                 if associations:
@@ -430,7 +444,7 @@ class ResponseFormatter:
                     lines.append(f"       Related: {assoc_str}")
 
         if count > self.config.max_items_shown:
-            lines.append(f"  ... and {count - self.config.max_items_shown} more")
+            lines.append(f"  ... and {count - self.config.max_items_shown} more documents")
 
         # Add explanation from aggregator
         if result.explanation and self.config.verbose:

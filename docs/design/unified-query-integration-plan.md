@@ -250,3 +250,65 @@ def ask(self, question: str) -> str:
 | Phase 3 | Complete | 2026-01-13 | ResultAggregator with 38 tests (merge, best, weighted strategies) |
 | Phase 4 | Complete | 2026-01-13 | ResponseFormatter with 47 tests |
 | Phase 5 | Complete | 2026-01-13 | NLQuery integration, CLI --unified flag, 25 integration tests |
+
+---
+
+## Post-MVP Issues & Notes
+
+*Issues discovered during Phase 5 testing that need addressing.*
+
+### Issue 1: Semantic Formatter Doesn't Display Excerpts
+
+**Status:** Fixed (2026-01-13)
+
+**Problem:**
+When testing `python -m cortical.cognitive ask "what is cognitive agent" --unified`, the semantic
+executor correctly finds documents and extracts excerpts, but the formatter only displays file paths.
+The output shows:
+```
+Results for: what is cognitive agent
+Found 10 related items:
+
+  1. cognitive_agent_knowledge/what_is_cognitive_agent.md
+  2. cognitive_agent_knowledge/questions_and_answers.md
+  ...
+```
+
+This is useless - the user wanted an answer, not a list of file names.
+
+**Root Cause:**
+`_format_semantic_response()` in `formatter.py` lines 415-423 only shows `doc_id` and `similarity`,
+ignoring the `excerpt` field that `SemanticExecutor` provides.
+
+**Fix:**
+Update `_format_semantic_response` to display excerpts for semantic results. The excerpt should be
+the primary content shown, not just the document ID.
+
+### Issue 2: Legacy vs Unified Mode Behavior
+
+**Observation:**
+Legacy mode (`python -m cortical.cognitive ask "what is cognitive agent"` without --unified) actually
+produces MORE useful output - it returns word associations from the cognitive graph:
+```
+cognitive: [(agent, 0.85), (context, 0.72), ...]
+```
+
+**Thoughts:**
+- The unified pipeline routes to the correct executor but the formatter output is suboptimal
+- For "what is X" questions, the semantic executor finds relevant documents but we need to SHOW the content
+- Consider merging legacy word association output with unified document excerpts
+
+### Issue 3: Other Query Types Return Empty
+
+**Observation:**
+- Audit query: "No audit results found" - expected if audit analyze hasn't run
+- CDG query: "No matching entities found" - expected if no CDG data indexed
+- Code query: "No code locations found" - CodeExecutor may need CodeBridge setup
+
+These are NOT bugs - they require data to be indexed first. The empty responses are correct.
+
+### Future Enhancements
+
+1. **Excerpt Summarization:** For "what is X" questions, consider summarizing excerpts into a direct answer
+2. **Multi-executor Results:** For broader questions, run semantic + code executors in parallel
+3. **Confidence Fallback:** If primary executor returns low confidence, try secondary executor

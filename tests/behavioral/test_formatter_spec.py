@@ -148,6 +148,27 @@ def semantic_result():
 
 
 @pytest.fixture
+def semantic_result_with_excerpts():
+    """Sample semantic result with excerpts from document content."""
+    return AggregatedResult(
+        items=[
+            {
+                "doc_id": "what_is_cognitive_agent.md",
+                "score": 0.92,
+                "excerpt": "The Cognitive Agent is your long-term memory.\nIt learns from documents and code to help you recover context.",
+            },
+            {
+                "doc_id": "cognitive_bridge.py",
+                "score": 0.78,
+                "excerpt": "class CognitiveBridge:\n    '''Bridge between code indexer and cognitive graph.'''",
+            },
+        ],
+        sources=["semantic"],
+        total_confidence=0.7,
+    )
+
+
+@pytest.fixture
 def pln_explanation_result():
     """Sample PLN explanation result for 'why' questions."""
     return AggregatedResult(
@@ -357,10 +378,10 @@ class TestSemanticFormatting:
         assert "what is cognitive agent" in response
 
     def test_given_semantic_results_when_formatted_then_shows_related_count(self, formatter, semantic_query, semantic_result):
-        """Semantic response should show count of related items."""
+        """Semantic response should show count of related documents."""
         response = formatter.format(semantic_query, semantic_result)
 
-        assert "Found 2 related items:" in response
+        assert "Found 2 related documents:" in response
 
     def test_given_semantic_results_when_formatted_then_shows_doc_ids(self, formatter, semantic_query, semantic_result):
         """Semantic response should show document IDs."""
@@ -387,6 +408,26 @@ class TestSemanticFormatting:
         response = verbose_formatter.format(semantic_query, result)
 
         assert "relevance: 0.00" in response
+
+    def test_given_semantic_results_with_excerpts_when_formatted_then_shows_excerpts(
+        self, formatter, semantic_query, semantic_result_with_excerpts
+    ):
+        """Semantic results should display document excerpts - the useful content."""
+        response = formatter.format(semantic_query, semantic_result_with_excerpts)
+
+        # Excerpt content should be visible, not just file names
+        assert "long-term memory" in response
+        assert "CognitiveBridge" in response
+
+    def test_given_multiline_excerpt_when_formatted_then_shows_multiple_lines(
+        self, formatter, semantic_query, semantic_result_with_excerpts
+    ):
+        """Multiline excerpts should show multiple lines."""
+        response = formatter.format(semantic_query, semantic_result_with_excerpts)
+
+        # Both lines of the first excerpt should be present
+        assert "Cognitive Agent is your long-term memory" in response
+        assert "documents and code" in response
 
 
 # =============================================================================
