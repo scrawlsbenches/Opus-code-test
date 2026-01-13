@@ -60,7 +60,7 @@ Workflow:
     )
 
     # Import command modules and set up parsers
-    from . import generate, train, scan, patterns, similar, index, health, reason, discover
+    from . import generate, train, scan, patterns, similar, index, health, reason, discover, pattern
 
     generate.setup_args(audit_subparsers)
     train.setup_args(audit_subparsers)
@@ -71,6 +71,7 @@ Workflow:
     health.setup_args(audit_subparsers)
     reason.setup_args(audit_subparsers)
     discover.setup_args(audit_subparsers)
+    pattern.setup_args(audit_subparsers)
 
 
 def handle_command(args: Any) -> int:
@@ -89,7 +90,7 @@ def handle_command(args: Any) -> int:
         return 1
 
     # Import command modules
-    from . import generate, train, scan, patterns, similar, index, health, reason, discover
+    from . import generate, train, scan, patterns, similar, index, health, reason, discover, pattern
 
     command_handlers = {
         'generate': generate.run,
@@ -101,6 +102,7 @@ def handle_command(args: Any) -> int:
         'health': health.run,
         'reason': reason.run,
         'discover': discover.run,
+        'pattern': pattern.run,
     }
 
     handler = command_handlers.get(args.audit_command)

@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "created": "2026-01-13T16:00:00.000000",
+  "description": "Team-shared PLN audit rules for code quality assessment",
+  "rules": [],
+  "manual_rules": [
+    {
+      "antecedent": "has_pattern(X, hack)",
+      "consequent": "needs_review(X)",
+      "strength": 0.8,
+      "confidence": 0.9,
+      "description": "HACK comments indicate workarounds needing attention"
+    },
+    {
+      "antecedent": "has_pattern(X, fixme)",
+      "consequent": "has_known_issue(X)",
+      "strength": 0.7,
+      "confidence": 0.85,
+      "description": "FIXME indicates known bugs or issues"
+    },
+    {
+      "antecedent": "has_pattern(X, xxx)",
+      "consequent": "needs_urgent_review(X)",
+      "strength": 0.85,
+      "confidence": 0.9,
+      "description": "XXX typically marks dangerous or temporary code"
+    },
+    {
+      "antecedent": "has_pattern(X, security)",
+      "consequent": "security_sensitive(X)",
+      "strength": 0.75,
+      "confidence": 0.8,
+      "description": "Security comments indicate sensitive code areas"
+    },
+    {
+      "antecedent": "has_pattern(X, deprecated)",
+      "consequent": "technical_debt(X)",
+      "strength": 0.7,
+      "confidence": 0.85,
+      "description": "Deprecated code should be removed or updated"
+    },
+    {
+      "antecedent": "has_pattern(X, monkeypatch)",
+      "consequent": "needs_di_review(X)",
+      "strength": 0.6,
+      "confidence": 0.9,
+      "description": "Monkeypatching may indicate missing dependency injection"
+    }
+  ],
+  "derived_rules": [],
+  "updated": "2026-01-13T16:00:00.000000"
+}
