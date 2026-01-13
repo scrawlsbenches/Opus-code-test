@@ -310,6 +310,8 @@ class TestFileLoading:
         When: Loaded
         Then: Returns file content as string
         """
+        from cortical.common.filesystem import RealFileSystem
+
         # Given
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
             f.write("Hello, world!")
@@ -317,7 +319,8 @@ class TestFileLoading:
 
         try:
             # When
-            content = load_text_file(path)
+            filesystem = RealFileSystem(path.parent)
+            content = load_text_file(path, filesystem)
 
             # Then
             assert content == "Hello, world!"
@@ -330,6 +333,8 @@ class TestFileLoading:
         When: Iterated
         Then: Yields (path, content) tuples
         """
+        from cortical.common.filesystem import RealFileSystem
+
         # Given
         with tempfile.TemporaryDirectory() as tmpdir:
             dir_path = Path(tmpdir)
@@ -340,7 +345,8 @@ class TestFileLoading:
             (dir_path / "not_text.md").write_text("Markdown")
 
             # When
-            results = list(iter_text_files(dir_path, pattern="*.txt", recursive=False))
+            filesystem = RealFileSystem(dir_path)
+            results = list(iter_text_files(dir_path, filesystem, pattern="*.txt", recursive=False))
 
             # Then
             assert len(results) == 2
@@ -354,19 +360,22 @@ class TestFileLoading:
         When: Loaded to bridge
         Then: Graph is populated with atoms and links
         """
+        from cortical.common.filesystem import RealFileSystem
+
         # Given
         graph = CognitiveGraph()
         bridge = TextToAtomsBridge(graph)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             dir_path = Path(tmpdir)
+            filesystem = RealFileSystem(dir_path)
 
             # Create test files
             (dir_path / "doc1.txt").write_text("The cat sat on the mat.")
             (dir_path / "doc2.txt").write_text("The dog ran in the park.")
 
             # When
-            stats = load_directory_to_bridge(dir_path, bridge)
+            stats = load_directory_to_bridge(dir_path, bridge, filesystem)
 
             # Then
             assert stats["files_processed"] == 2

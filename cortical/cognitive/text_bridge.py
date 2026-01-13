@@ -339,10 +339,10 @@ class BPETokenizer:
                 merged = f"{pair[0]}_{pair[1]}"
                 self.merges.append((pair, merged))
 
-        # Limit vocabulary size (only in non-incremental mode)
-        # In incremental mode, we trust the existing vocab was already limited,
-        # and adding a few new words won't cause unbounded growth
-        if not incremental and len(self.vocab) > self.max_vocab_size:
+        # Limit vocabulary size (in both incremental and non-incremental modes)
+        # Without this check, incremental training can cause unbounded vocabulary growth
+        # This was a bug: vocabulary grew from 10k to 30k+ across multiple incremental sessions
+        if len(self.vocab) > self.max_vocab_size:
             top_words = [w for w, _ in self._word_counts.most_common(self.max_vocab_size)]
             self.vocab = set(top_words)
 
@@ -471,10 +471,20 @@ class TextToAtomsBridge:
     min_link_strength: float = 0.1
     max_links_per_doc: int = 500  # Limit links per document for performance
 
+    # IDF-based relative link limiting
+    # Base limit for atoms with maximum IDF (rare, semantically rich words)
+    base_max_links: int = 500
+    # Minimum links allowed even for low-IDF words (ubiquitous words)
+    min_links_floor: int = 50
+
     # Statistics tracking
     _documents_fed: int = 0
     _atoms_created: int = 0
     _links_created: int = 0
+    _links_skipped_by_limit: int = 0
+
+    # Link count tracking per atom (atom_id -> current link count)
+    _atom_link_counts: Dict[str, int] = field(default_factory=dict)
 
     def learn_vocabulary(self, texts: List[str], n_merges: int = 100, incremental: bool = False) -> None:
         """
@@ -489,6 +499,66 @@ class TextToAtomsBridge:
             incremental: If True, add to existing vocabulary instead of replacing
         """
         self.tokenizer.learn_from_texts(texts, n_merges, incremental=incremental)
+
+    def get_max_links_for_word(self, word: str) -> int:
+        """
+        Calculate maximum allowed links for a word based on its IDF.
+
+        Words with high IDF (rare, semantically rich) get more links.
+        Words with low IDF (ubiquitous like 'the', 'and') get fewer links.
+
+        This implements relative link limiting proportional to semantic depth,
+        preventing hub atoms from dominating graph traversal while preserving
+        them for natural language generation.
+
+        Formula:
+            max_links = min_links_floor + (base_max_links - min_links_floor) * normalized_idf
+
+        Where normalized_idf = idf / max_possible_idf
+
+        Args:
+            word: The word to calculate limit for
+
+        Returns:
+            Maximum number of links this word's atom should have
+        """
+        idf = self.tokenizer.get_idf(word)
+
+        # Calculate max possible IDF for normalization
+        # max_idf = log((N + 1) / 2) where N = total docs
+        # This occurs for a word appearing in exactly 1 document
+        total_docs = self.tokenizer._total_docs or 1
+        max_idf = math.log((total_docs + 1) / 2) if total_docs > 1 else 1.0
+
+        # Normalize IDF to [0, 1] range
+        normalized_idf = min(1.0, idf / max_idf) if max_idf > 0 else 0.0
+
+        # Calculate max links: low IDF gets min_links_floor, high IDF gets base_max_links
+        max_links = int(
+            self.min_links_floor +
+            (self.base_max_links - self.min_links_floor) * normalized_idf
+        )
+
+        return max_links
+
+    def _can_add_link_to_atom(self, atom_id: str, word: str) -> bool:
+        """
+        Check if we can add another link to this atom based on IDF limit.
+
+        Args:
+            atom_id: The atom's ID
+            word: The word this atom represents
+
+        Returns:
+            True if link can be added, False if at limit
+        """
+        current_count = self._atom_link_counts.get(atom_id, 0)
+        max_allowed = self.get_max_links_for_word(word)
+        return current_count < max_allowed
+
+    def _increment_atom_link_count(self, atom_id: str) -> None:
+        """Increment the link count for an atom."""
+        self._atom_link_counts[atom_id] = self._atom_link_counts.get(atom_id, 0) + 1
 
     def feed_text(
         self,
@@ -611,7 +681,6 @@ class TextToAtomsBridge:
 
         # LTI: frequent words get higher importance (capped at 0.8)
         # Formula: log-scaled frequency, normalized
-        import math
         lti = min(0.8, math.log1p(freq) / math.log1p(total_words) + 0.1)
 
         # Create WORD atom with computed importance
@@ -630,7 +699,7 @@ class TextToAtomsBridge:
         atom1: 'Atom',
         atom2: 'Atom',
         base_strength: float = 0.3,
-    ) -> 'Atom':
+    ) -> Optional['Atom']:
         """
         Create or strengthen SIMILARITY link between atoms.
 
@@ -642,25 +711,39 @@ class TextToAtomsBridge:
             - idf_strength: raw_strength * min(idf_word1, idf_word2)
             - idf_epoch: Training epoch when IDF was computed
 
+        IDF-based link limiting:
+            Each atom has a maximum link count based on its IDF value.
+            Low-IDF words (ubiquitous like 'the', 'and') get fewer links.
+            High-IDF words (rare, semantically rich) get more links.
+            This prevents hub atoms from dominating graph traversal.
+
         Args:
             atom1: First atom
             atom2: Second atom
             base_strength: Base strength for new links
 
         Returns:
-            The SIMILARITY link atom
+            The SIMILARITY link atom, or None if skipped
         """
         # Canonicalize atom order for SIMILARITY (bidirectional) links
         # This ensures [A,B] and [B,A] map to the same link
         if atom1.name > atom2.name:
             atom1, atom2 = atom2, atom1
 
+        # Check IDF-based link limits for both atoms
+        # Only create link if BOTH atoms can accept more links
+        can_add_1 = self._can_add_link_to_atom(atom1.id, atom1.name)
+        can_add_2 = self._can_add_link_to_atom(atom2.id, atom2.name)
+
+        if not (can_add_1 and can_add_2):
+            self._links_skipped_by_limit += 1
+            return None
+
         # Calculate strength based on co-occurrence frequency
         pair_freq = self.tokenizer.get_pair_frequency(atom1.name, atom2.name)
         pair_freq += self.tokenizer.get_pair_frequency(atom2.name, atom1.name)
 
         # Strength scales with frequency (capped)
-        import math
         raw_strength = min(0.9, base_strength + math.log1p(pair_freq) * 0.1)
 
         if raw_strength < self.min_link_strength:
@@ -687,6 +770,10 @@ class TextToAtomsBridge:
         # Save the updated link with metadata
         self.graph._storage.save(link)
 
+        # Update link counts for both atoms
+        self._increment_atom_link_count(atom1.id)
+        self._increment_atom_link_count(atom2.id)
+
         self._links_created += 1
         return link
 
@@ -706,12 +793,15 @@ class TextToAtomsBridge:
         - No IDF weighting (we care about transition frequency)
         - Strength represents transition probability
 
+        IDF-based link limiting also applies to FOLLOWS links to prevent
+        hub atoms from accumulating excessive transition links.
+
         Args:
             from_atom: The preceding word atom
             to_atom: The following word atom
 
         Returns:
-            The FOLLOWS link atom, or None if below threshold
+            The FOLLOWS link atom, or None if below threshold or at limit
         """
         # Check for existing FOLLOWS link (directional - order matters)
         # Use find_link_by_outgoing with [from_id, to_id] - order matters
@@ -721,15 +811,22 @@ class TextToAtomsBridge:
         )
 
         if existing:
-            # Strengthen existing link
+            # Strengthen existing link (no limit check for strengthening)
             link = existing
             link.metadata['count'] = link.metadata.get('count', 1) + 1
             # Increase strength with each observation (diminishing returns)
-            import math
             count = link.metadata['count']
             link.tv.strength = min(0.95, 0.3 + math.log1p(count) * 0.1)
             self.graph._storage.save(link)
             return link
+
+        # Check IDF-based link limits for both atoms before creating NEW link
+        can_add_from = self._can_add_link_to_atom(from_atom.id, from_atom.name)
+        can_add_to = self._can_add_link_to_atom(to_atom.id, to_atom.name)
+
+        if not (can_add_from and can_add_to):
+            self._links_skipped_by_limit += 1
+            return None
 
         # Create new FOLLOWS link
         tv = TruthValue(strength=0.3, confidence=0.2)  # Start uncertain
@@ -740,6 +837,11 @@ class TextToAtomsBridge:
         link.metadata['direction'] = 'forward'  # Explicit direction marker
 
         self.graph._storage.save(link)
+
+        # Update link counts for both atoms
+        self._increment_atom_link_count(from_atom.id)
+        self._increment_atom_link_count(to_atom.id)
+
         self._links_created += 1
         return link
 
@@ -749,6 +851,7 @@ class TextToAtomsBridge:
             "documents_fed": self._documents_fed,
             "atoms_created": self._atoms_created,
             "links_created": self._links_created,
+            "links_skipped_by_limit": self._links_skipped_by_limit,
             "vocabulary_size": len(self.tokenizer.vocab),
             "learned_merges": len(self.tokenizer.merges),
         }

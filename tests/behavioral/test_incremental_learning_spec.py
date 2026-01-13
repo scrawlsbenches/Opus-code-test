@@ -333,11 +333,14 @@ class TestQueryDeduplication:
 class TestPerformanceTuning:
     """Performance parameter behavior."""
 
-    def test_given_max_links_limit_when_feeding_text_then_links_capped(self):
+    def test_given_max_links_limit_when_feeding_text_then_similarity_links_capped(self):
         """
         Given: A bridge with max_links_per_doc limit
-        When: Feeding text that would create more links
-        Then: Link creation stops at the limit
+        When: Feeding text that would create more SIMILARITY links
+        Then: SIMILARITY link creation stops at the limit
+
+        Note: max_links_per_doc only applies to SIMILARITY links.
+        FOLLOWS links are created unconditionally for complete sequence prediction.
         """
         # Given
         agent = CognitiveAgent()
@@ -350,9 +353,12 @@ class TestPerformanceTuning:
         # When
         bridge.feed_text(text, doc_id="test")
 
-        # Then
-        stats = bridge.get_statistics()
-        assert stats["links_created"] <= 5
+        # Then - count SIMILARITY links specifically
+        from cortical.cognitive.graph import AtomType
+        similarity_links = [
+            a for a in agent.graph._storage.find_by_type(AtomType.SIMILARITY)
+        ]
+        assert len(similarity_links) <= 5
 
     def test_given_small_window_size_when_feeding_text_then_fewer_links_created(self):
         """
