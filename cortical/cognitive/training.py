@@ -1282,6 +1282,13 @@ def _run_generate(trainer: 'IncrementalTrainer', args) -> None:
     # Track predictions for JSON output
     predictions = []
 
+    # N-gram repeat detection to break generation loops
+    # Default: detect repeating 3-grams (trigrams)
+    ngram_size = getattr(args, 'ngram_size', 3)
+    seen_ngrams: set = set()
+    loop_detected_count = 0
+    max_loops_before_stop = 3  # Stop after 3 loop detections
+
     # Generate tokens
     for i in range(args.max_tokens):
         pred = agent.predict_next(current_word)
@@ -1341,11 +1348,48 @@ def _run_generate(trainer: 'IncrementalTrainer', args) -> None:
                     next_word = word
                     break
 
+        # N-gram repeat detection: check if adding this word creates a loop
+        if len(generated) >= ngram_size - 1:
+            # Build the n-gram that would result from adding next_word
+            test_ngram = tuple(generated[-(ngram_size-1):] + [next_word])
+
+            if test_ngram in seen_ngrams:
+                loop_detected_count += 1
+                pred_record["loop_detected"] = True
+
+                # Strategy: try next candidate if available
+                if len(pred.candidates) > 1:
+                    # Find alternative that doesn't create loop
+                    for alt_word, alt_prob in pred.candidates[1:]:
+                        alt_ngram = tuple(generated[-(ngram_size-1):] + [alt_word])
+                        if alt_ngram not in seen_ngrams:
+                            next_word = alt_word
+                            pred_record["loop_escaped"] = True
+                            pred_record["original_selection"] = pred_record.get("selected", next_word)
+                            break
+                    else:
+                        # All candidates create loops
+                        if loop_detected_count >= max_loops_before_stop:
+                            pred_record["result"] = "[LOOP_BREAK]"
+                            predictions.append(pred_record)
+                            break
+                else:
+                    # No alternatives, stop if we've hit too many loops
+                    if loop_detected_count >= max_loops_before_stop:
+                        pred_record["result"] = "[LOOP_BREAK]"
+                        predictions.append(pred_record)
+                        break
+
         pred_record["selected"] = next_word
         predictions.append(pred_record)
 
         generated.append(next_word)
         current_word = next_word
+
+        # Track the n-gram we just created
+        if len(generated) >= ngram_size:
+            new_ngram = tuple(generated[-ngram_size:])
+            seen_ngrams.add(new_ngram)
 
     # Output results
     if args.json:
@@ -1354,6 +1398,7 @@ def _run_generate(trainer: 'IncrementalTrainer', args) -> None:
             "generated_text": " ".join(generated),
             "token_count": len(generated),
             "temperature": args.temperature,
+            "loops_detected": loop_detected_count,
             "predictions": predictions,
         }
         print(json_module.dumps(result, indent=2))

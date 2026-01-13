@@ -47,6 +47,7 @@ if TYPE_CHECKING:
 # Import at runtime to avoid circular imports
 from cortical.cognitive.graph import AtomType, TruthValue
 from cortical.common.filesystem import FileSystem
+from cortical.tokenizer import split_identifier
 
 
 # =============================================================================
@@ -223,16 +224,42 @@ class BPETokenizer:
         """
         Normalize text for consistent tokenization.
 
-        Currently:
-            - Lowercase
-            - Remove excessive whitespace
+        Uses cortical.tokenizer.split_identifier to properly handle:
+            - CamelCase (TextToAtomsBridge -> text to atoms bridge)
+            - PascalCase (UserCredentials -> user credentials)
+            - underscore_style (get_user_data -> get user data)
+            - Acronyms (XMLParser -> xml parser, parseHTTPResponse -> parse http response)
 
-        Future extensions:
-            - Unicode normalization
-            - Accent handling
-            - Custom normalization rules
+        Why split identifiers?
+            Code class names like "TextToAtomsBridge" become isolated tokens that
+            have no semantic links. Splitting them allows queries for "bridge" or
+            "atoms" to find the class. This significantly improves code search.
         """
-        return text.lower().strip()
+        # Find identifier-like patterns (CamelCase, underscore_style, etc.)
+        # Pattern matches: word2vec, getUserData, get_user_data, XMLParser
+        identifier_pattern = re.compile(r'\b_*[a-zA-Z][a-zA-Z0-9_]*\b')
+
+        def replace_identifier(match: re.Match) -> str:
+            """Replace identifier with full form AND split components.
+
+            We preserve BOTH:
+            - Full identifier (texttoatomsbridge) for exact matches
+            - Split parts (text to atoms bridge) for semantic search
+
+            This allows queries for either "TextToAtomsBridge" or "atoms bridge"
+            to find the same code.
+            """
+            identifier = match.group(0)
+            # Check if it looks like an identifier (has underscore or internal capitals)
+            if '_' in identifier or any(c.isupper() for c in identifier[1:]):
+                parts = split_identifier(identifier)
+                full_lower = identifier.lower().replace('_', '')
+                # Include both: full identifier AND split parts
+                return f"{full_lower} {' '.join(parts)}"
+            return identifier.lower()
+
+        text = identifier_pattern.sub(replace_identifier, text)
+        return text.strip()
 
     def _split_words(self, text: str) -> List[str]:
         """

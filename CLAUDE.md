@@ -22,6 +22,10 @@ You are an expert Graph of Thought database designer and computer scientist with
 
 ## Quick Start: First 60 Seconds
 
+**Quick option:** Run `/orient` to do all orientation steps at once.
+
+**Or manually:**
+
 ```bash
 # 1. Health check (required before any work)
 python -m cortical.got validate
@@ -108,6 +112,36 @@ EOF
 
 # Train on it
 python -m cortical.cognitive train samples/cognitive_agent_knowledge --pattern "*.md"
+```
+
+### Training and Reindexing Order (IMPORTANT)
+
+**The correct order is: Train first, then Reindex.**
+
+```bash
+# Step 1: Train on new/modified documents
+python -m cortical.cognitive train cortical/ --pattern "*.py"
+
+# Step 2: Reindex to update IDF weights
+python -m cortical.cognitive reindex
+```
+
+**Why this order matters:**
+- **Train** creates word atoms and raw similarity links
+- **Reindex** applies IDF (Inverse Document Frequency) weighting to links
+- If you reindex before training, you're recalculating weights on stale data
+- The manifest tracks "staleness" - a warning appears if IDF weights are outdated
+
+**When to reindex:**
+- After adding significant new training data (>10% new documents)
+- If queries return unexpected results
+- If you see "IDF weights are X% stale" warning
+
+**Quick reference:**
+```bash
+python -m cortical.cognitive status    # Check staleness percentage
+python -m cortical.cognitive train ... # Add documents (increases staleness)
+python -m cortical.cognitive reindex   # Update IDF weights (resets staleness)
 ```
 
 ### Tiered Storage Model
