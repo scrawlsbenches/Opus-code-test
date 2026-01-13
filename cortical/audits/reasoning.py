@@ -111,12 +111,11 @@ def translate_audit_query(query: str) -> AuditQuery:
         result.target_file = explain_match.group(1)
         result.explain = True
 
-    # Scope Extraction
+    # Scope Extraction - order matters: more specific patterns first
     dir_patterns = [
-        r'in\s+(\S+/)',
-        r'in\s+(\S+)',
-        r'^(\S+/)\s',
-        r'^(\S+/?)$',
+        r'in\s+(\S+)',      # Captures full path like "cortical/audits"
+        r'^(\S+/)\s',       # Path at start followed by space
+        r'^(\S+/?)$',       # Path alone (with or without trailing /)
     ]
 
     for pattern in dir_patterns:

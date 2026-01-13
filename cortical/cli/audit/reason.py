@@ -372,8 +372,15 @@ def run(args: Any) -> None:
     else:
         for filepath, risk, patterns in risky_files[:20]:
             if filepath:
-                rel_path = os.path.relpath(filepath, directory)
-                print(f"\n  {rel_path}")
+                # Build readable path: prepend directory if filepath is just a filename
+                if os.path.isabs(filepath):
+                    display_path = os.path.relpath(filepath, directory)
+                elif os.sep not in filepath and '/' not in filepath:
+                    # Just a filename - prepend directory for context
+                    display_path = os.path.join(directory, filepath)
+                else:
+                    display_path = filepath
+                print(f"\n  {display_path}")
             else:
                 print(f"\n  (unknown file)")
             print(f"    Risk: {risk:.1%}")

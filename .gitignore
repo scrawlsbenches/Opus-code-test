@@ -159,7 +159,7 @@ corpus_dev/
 # GoT runtime state files (must come AFTER negation rules)
 # PLN audit persistence state (local, regeneratable)
 .got/audit_pln_state.json
-.got/audit_pln_rules.json
+# Note: .got/audit_pln_rules.json is TRACKED - contains team-shared audit rules
 
 !.git-ml/cali/logs/
 !.git-ml/cali/objects/
