@@ -263,13 +263,12 @@ def run(args: Any) -> None:
     if args.explain:
         print(f"\nExplaining risk for: {args.explain}")
         print_separator()
-        explanation = reasoner.explain_file_risk(args.explain)
+        explanation = reasoner.explain_file_risk(args.explain, verbose=verbose)
 
         if explanation['facts']:
             print("\nFacts:")
-            for fact in explanation['facts']:
-                print(f"  {fact['atom']}")
-                print(f"    strength={fact['strength']:.2f}, confidence={fact['confidence']:.2f}")
+            for fact_name in explanation['facts']:
+                print(f"  • {fact_name}")
 
         if explanation['risk_level']:
             rl = explanation['risk_level']
@@ -280,6 +279,14 @@ def run(args: Any) -> None:
             print("\nSuggestions:")
             for sugg in explanation['suggestions']:
                 print(f"  • {sugg}")
+
+        if verbose and explanation.get('raw_traces'):
+            print("\nInference Traces:")
+            for query_type, trace_data in explanation['raw_traces'].items():
+                print(f"  {query_type}:")
+                if isinstance(trace_data, dict) and trace_data.get('final_result'):
+                    fr = trace_data['final_result']
+                    print(f"    Result: {fr.get('strength', 0):.2%} (conf: {fr.get('confidence', 0):.2%})")
 
         return
 
