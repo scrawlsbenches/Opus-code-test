@@ -349,13 +349,39 @@ class DAGGraph(BaseGraph[SimpleNode, SimpleEdge]):
 
         Returns:
             Set of task IDs that can now be started
+
+        Performance: O(V + E) where V = nodes, E = edges
+            Optimized with direct storage access and early-exit checks.
         """
         ready: Set[str] = set()
 
-        for node in self.nodes:
-            dependencies = set(self.neighbors(node.id, "in"))
-            if dependencies.issubset(completed):
-                ready.add(node.id)
+        # Direct access to storage edge index for O(1) lookup per node
+        edges_by_target = getattr(self._storage, '_edges_by_target', None)
+
+        if edges_by_target is not None:
+            # Fast path: direct index access (InMemoryGraphStorage)
+            for node in self._storage.all_nodes():
+                node_id = node.id
+                incoming_edges = edges_by_target.get(node_id)
+
+                if incoming_edges is None or len(incoming_edges) == 0:
+                    # No dependencies - always ready
+                    ready.add(node_id)
+                else:
+                    # Check if all dependencies are completed (early exit on first miss)
+                    is_ready = True
+                    for edge in incoming_edges:
+                        if edge.source_id not in completed:
+                            is_ready = False
+                            break
+                    if is_ready:
+                        ready.add(node_id)
+        else:
+            # Fallback: use neighbors() for other storage backends
+            for node in self.nodes:
+                dependencies = set(self.neighbors(node.id, "in"))
+                if dependencies.issubset(completed):
+                    ready.add(node.id)
 
         return ready
 
