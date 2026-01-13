@@ -438,6 +438,16 @@ class AuditReasoner:
                     history=[],
                 )
 
+        # TODO(encapsulation): Accessing internal _focused dict violates encapsulation.
+        # PROBLEM: AttentionalFocus._focused is a private attribute. If the class
+        #          internals change (e.g., _focused becomes a set, or uses different
+        #          storage), this code breaks silently.
+        # PUBLIC API EXISTS: AttentionalFocus.get_focused_atoms() returns exactly
+        #          list(self._focused.keys()) - see prism_pln.py:770-772
+        # FIX: Replace `list(self.attention_focus._focused.keys())` with
+        #      `self.attention_focus.get_focused_atoms()`
+        # FIX: Replace `len(self.attention_focus._focused)` with
+        #      `len(self.attention_focus.get_focused_atoms())`
         self._persistence_state.attention_focus = list(self.attention_focus._focused.keys())
         self._persistence_state.global_stats = {
             "last_aggregate_strategy": self.aggregate_strategy,
@@ -663,6 +673,20 @@ class AuditReasoner:
         }
 
         # Gather facts
+        # TODO(encapsulation): Accessing internal _atoms dict violates encapsulation.
+        # PROBLEM: PLNGraph._atoms is a private attribute. We're iterating over
+        #          all atoms to find ones matching this file_id. If PLNGraph
+        #          changes its storage (e.g., uses a database, changes dict structure),
+        #          this breaks.
+        # PUBLIC API MISSING: PLNGraph only has get_atom(name) for single lookups.
+        #          There's no iter_atoms() or get_all_atoms() method.
+        # SIMILAR PATTERN: cortical/cognitive/training.py:1274 uses
+        #          graph._storage.all_atoms() - suggesting a storage-level API exists
+        #          but PLNGraph doesn't expose it.
+        # OPTIONS:
+        #   1. Add PLNGraph.iter_atoms() -> Iterator[Tuple[str, Atom]]
+        #   2. Add PLNGraph.find_atoms_matching(pattern) for this use case
+        #   3. Accept this as cross-module coupling (same reasoning subsystem)
         for atom_name, atom_obj in self.pln.graph._atoms.items():
             if file_id_clean in atom_name:
                 tv = atom_obj.truth_value
@@ -772,6 +796,14 @@ class AuditReasoner:
 
         # Gather all known files from attention and facts
         known_files = set(self.file_importance.keys())
+        # TODO(encapsulation): Same issue as explain_risk() - accessing _atoms directly.
+        # PROBLEM: Iterating over internal _atoms dict to extract file IDs from
+        #          atom names like "has_pattern(file_id, pattern)".
+        # COUPLING: This parses atom naming conventions, creating tight coupling
+        #          between this code and how atoms are named elsewhere.
+        # BETTER DESIGN: PLNGraph could track atoms by type/category, allowing
+        #          queries like graph.find_atoms_of_type("has_pattern") or
+        #          graph.get_atom_names() for just the keys.
         for atom in self.pln.graph._atoms:
             # Extract file IDs from atoms like "has_pattern(file_id, pattern)"
             if "(" in atom and ")" in atom:

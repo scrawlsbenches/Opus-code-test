@@ -1342,6 +1342,15 @@ class PLNReasoner:
         self._rules[(antecedent, consequent)] = tv
 
         # Ensure atoms exist
+        # TODO(encapsulation): Using internal _atoms dict instead of public API.
+        # PROBLEM: PLNReasoner accesses PLNGraph._atoms directly, but PLNGraph
+        #          provides get_atom(name) which returns None if not found.
+        # SAME FILE: Both classes are in prism_pln.py, so this is less severe
+        #          than cross-module violations, but still inconsistent.
+        # FIX: Replace `antecedent not in self.graph._atoms` with
+        #      `self.graph.get_atom(antecedent) is None`
+        # RATIONALE: Using public API means if PLNGraph internals change
+        #          (e.g., lazy loading, caching), this code still works.
         if antecedent not in self.graph._atoms:
             self.graph.add_atom(antecedent, TruthValue(1.0, 1.0))
         if consequent not in self.graph._atoms:
