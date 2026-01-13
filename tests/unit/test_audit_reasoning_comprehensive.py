@@ -1516,9 +1516,7 @@ class TestEdgeCasesAndBranches:
 
         assert isinstance(results, dict)
 
-    def test_get_importance_trend_no_history(
-        self, mock_persistence_file, mock_rules_file
-    ):
+    def test_get_importance_trend_no_history(self):
         from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(use_persistence=False)

@@ -667,6 +667,39 @@ class AuditReasoner:
             av.decay_sti(sti_decay)
             av.decay_lti(lti_decay)
 
+    def get_importance_trend(self, file_id: str) -> Optional[str]:
+        """
+        Analyze importance history to determine trend direction.
+
+        Compares first and last history entries to determine if file
+        importance is increasing, decreasing, or stable over time.
+
+        Args:
+            file_id: The file identifier to analyze
+
+        Returns:
+            "increasing" - Total importance has grown since first tracked
+            "decreasing" - Total importance has declined since first tracked
+            "stable" - Total importance unchanged
+            None - No history available (fewer than 2 entries)
+        """
+        history = self.get_importance_history(file_id)
+        if len(history) < 2:
+            return None
+
+        first = history[0]
+        last = history[-1]
+
+        first_total = first.get("sti", 0) + first.get("lti", 0)
+        last_total = last.get("sti", 0) + last.get("lti", 0)
+
+        if last_total > first_total:
+            return "increasing"
+        elif last_total < first_total:
+            return "decreasing"
+        else:
+            return "stable"
+
     def explain_file_risk(
         self,
         file_id: str,
