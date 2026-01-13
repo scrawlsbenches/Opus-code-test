@@ -1,6 +1,6 @@
 # Base Graph Class Design
 
-**Status**: Proposed
+**Status**: Implemented (PR #283 merged 2026-01-13)
 **Author**: Claude
 **Date**: 2026-01-13
 **Task**: Unify all graph implementations under a common base
@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-This document proposes a unified `BaseGraph` architecture to consolidate the 12+ graph implementations in the Cortical codebase. The design provides:
+This document describes the unified `BaseGraph` architecture that consolidates graph implementations in the Cortical codebase. The design provides:
 
 1. **Protocol-based node/edge abstractions** - Type-safe, extensible contracts
 2. **Pluggable storage backends** - In-memory, file-based, or database
@@ -1416,6 +1416,128 @@ class CustomGraph(BaseGraph):
             return None
         return super().add_edge(source_id, target_id, **kwargs)
 ```
+
+---
+
+## Graph Selection Guide: BaseGraph vs CognitiveGraph
+
+The codebase has two primary graph architectures serving different purposes:
+
+### When to Use BaseGraph (cortical/graph/)
+
+Use `BaseGraph` and its implementations when you need:
+
+| Use Case | Recommended Class |
+|----------|-------------------|
+| General-purpose graph operations | `SimpleGraph` |
+| Task dependencies with cycle prevention | `DAGGraph` |
+| Weighted shortest path (routing, costs) | `WeightedGraph` |
+| Domain-specific nodes/edges | Subclass `BaseGraph` |
+| PageRank, clustering, centrality | Any with algorithm mixins |
+
+**Characteristics:**
+- Traditional graph model (nodes + edges as separate types)
+- Composable algorithm mixins (opt-in features)
+- Pluggable storage backends via DI
+- Type-safe with generics: `BaseGraph[NodeType, EdgeType]`
+- Serializable to dict/JSON
+
+**Example:**
+```python
+from cortical.graph import SimpleGraph
+
+graph = SimpleGraph()
+graph.add_node("A", content="Start")
+graph.add_node("B", content="End")
+graph.add_edge("A", "B", edge_type="CONNECTS", weight=0.9)
+path = graph.shortest_path("A", "B")
+```
+
+### When to Use CognitiveGraph (cortical/cognitive/)
+
+Use `CognitiveGraph` when you need:
+
+| Use Case | Why CognitiveGraph |
+|----------|-------------------|
+| Meta-reasoning (statements about statements) | Links are atoms that can be linked to |
+| Probabilistic truth values | TruthValue with strength + confidence |
+| Attention dynamics | STI (short-term importance) spreading |
+| Hebbian learning | Links strengthen with co-activation |
+| NLP word associations | WORD atoms with SIMILARITY links |
+| Code-to-concept bridging | REFERS_TO links between words and code |
+
+**Characteristics:**
+- Hypergraph model (links ARE atoms, can point to other links)
+- Probabilistic logic (strength, confidence per atom)
+- Content-addressed (same content = same atom)
+- Attention economy (STI decay and spreading)
+- Bio-inspired (Hebbian learning, attention)
+
+**Example:**
+```python
+from cortical.cognitive.graph import CognitiveGraph, AtomType, TruthValue
+
+graph = CognitiveGraph()
+
+# Create concepts
+cat = graph.node("cat", AtomType.CONCEPT)
+animal = graph.node("animal", AtomType.CONCEPT)
+
+# Create relationship (link is an atom)
+inheritance = graph.link(AtomType.INHERITANCE, [cat, animal],
+                         tv=TruthValue(0.95, 0.9))
+
+# Meta-reasoning: "John believes cats are animals"
+john = graph.node("john", AtomType.PERSON)
+belief = graph.link(AtomType.BELIEVES, [john, inheritance])
+```
+
+### Decision Matrix
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     WHICH GRAPH SHOULD I USE?                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  Need to make statements ABOUT relationships?                           │
+│  ├─ YES → CognitiveGraph (hypergraph semantics)                         │
+│  └─ NO  → BaseGraph                                                     │
+│                                                                          │
+│  Need probabilistic truth values?                                       │
+│  ├─ YES → CognitiveGraph (TruthValue with strength/confidence)          │
+│  └─ NO  → BaseGraph (boolean existence)                                 │
+│                                                                          │
+│  Need attention dynamics / Hebbian learning?                            │
+│  ├─ YES → CognitiveGraph (STI, attention spreading)                     │
+│  └─ NO  → BaseGraph                                                     │
+│                                                                          │
+│  Need cycle prevention (DAG)?                                           │
+│  ├─ YES → DAGGraph                                                      │
+│  └─ NO  → Continue                                                      │
+│                                                                          │
+│  Need weighted shortest paths?                                          │
+│  ├─ YES → WeightedGraph                                                 │
+│  └─ NO  → SimpleGraph                                                   │
+│                                                                          │
+│  Need custom node/edge types with standard algorithms?                  │
+│  └─ Subclass BaseGraph with algorithm mixins                            │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Can They Interoperate?
+
+Currently, `BaseGraph` and `CognitiveGraph` are **separate implementations** with different storage backends:
+
+- `BaseGraph` uses `InMemoryGraphStorage` (cortical/graph/storage.py)
+- `CognitiveGraph` uses `InMemoryStorage` (cortical/cognitive/graph.py)
+
+**Future integration possibilities:**
+1. Adapter to expose CognitiveGraph as BaseGraph for algorithm reuse
+2. Shared storage protocol with type conversion
+3. Bridge layer for cross-graph queries
+
+For now, choose based on your requirements and use one consistently within a component.
 
 ---
 

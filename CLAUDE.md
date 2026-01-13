@@ -1364,10 +1364,12 @@ cortical/
 ├── cdg/              # Foundation layer (storage, transactions)
 ├── cel/              # Event lattice
 ├── spark/            # Fast language model
+├── graph/            # Unified BaseGraph (SimpleGraph, DAGGraph, WeightedGraph)
+├── cognitive/        # CognitiveGraph hypergraph with Atoms
 └── utils/            # ID generation, tokenization, etc.
 
 tests/
-├── smoke/            # Gate 1: Quick sanity (~1s)
+├── smoke/            # Gate 1: Quick sanity (~3s)
 ├── unit/             # Gate 2: Unit specs (~30s)
 ├── behavioral/       # Gate 3: User stories (~2m)
 ├── integration/      # Gate 4: Component integration (~2m)
