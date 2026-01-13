@@ -738,40 +738,41 @@ class AuditReasoner:
     def explain_file_risk(
         self,
         file_id: str,
+        verbose: bool = False,
     ) -> Dict[str, Any]:
         """
         Explain why a file is flagged as risky.
 
         Returns dict with:
-        - facts: List of facts asserted for this file
-        - inferences: Inference chains that fired
-        - risk_level: Overall risk assessment
-        - traces: Reasoning traces (inference chains)
+        - file: Original filename
+        - file_id: Normalized file identifier
+        - facts: Dict mapping fact names to their presence (fact_name -> fact_name)
+        - traces: Dict of inference traces
+        - raw_traces: Raw inference trace data
         - summary: Brief summary of the risk assessment
+        - suggestions: List of actionable suggestions
         """
         # Normalize file_id the same way as assert_file_facts
         file_id_clean = Path(file_id).name.replace(".", "_")
 
         explanation = {
+            "file": file_id,
             "file_id": file_id_clean,
-            "facts": [],
+            "facts": {},
             "inferences": [],
             "risk_level": None,
             "suggestions": [],
             "traces": {},
+            "raw_traces": {},
             "summary": "",
         }
 
-        # Gather facts
-        # Use public API to iterate atoms
+        # Gather facts - store as dict with fact names as keys
         for atom_name, atom_obj in self.pln.graph.iter_atoms():
             if file_id_clean in atom_name:
                 tv = atom_obj.truth_value
-                explanation["facts"].append({
-                    "atom": atom_name,
-                    "strength": tv.strength,
-                    "confidence": tv.confidence,
-                })
+                # Store fact name as both key and value for membership testing
+                explanation["facts"][atom_name] = atom_name
 
         # Query risk and trace inference
         risk_tv = self.query_risk(file_id_clean, aggregate=True)
@@ -782,29 +783,82 @@ class AuditReasoner:
                 "mean": risk_tv.mean(),
             }
 
+        # Run traced inference for key queries and store in raw_traces
+        risk_queries = ["needs_review", "risky", "flagged", "has_known_issue"]
+        for query_type in risk_queries:
+            query = f"{query_type}({file_id_clean})"
+            if hasattr(self.pln, 'query_with_trace'):
+                trace = self.pln.query_with_trace(query)
+                if trace and trace.final_result is not None:
+                    explanation["raw_traces"][query_type] = trace.to_dict()
+                    explanation["traces"][query_type] = trace.explain() if hasattr(trace, 'explain') else str(trace)
+
         # Generate suggestions based on facts
-        for fact in explanation["facts"]:
-            atom = fact["atom"]
-            if "has_pattern" in atom and "todo" in atom:
-                explanation["suggestions"].append("Review and address TODO comments")
-            elif "has_pattern" in atom and "hack" in atom:
-                explanation["suggestions"].append("Refactor HACK workarounds")
-            elif "has_trait" in atom and "high_churn" in atom:
-                explanation["suggestions"].append("Consider stabilizing this high-churn file")
+        suggestions_added = set()
+        for fact_name in explanation["facts"]:
+            # TODO patterns
+            if "has_todo" in fact_name or ("has_pattern" in fact_name and "todo" in fact_name):
+                suggestion = "Review and address TODO comments"
+                if suggestion not in suggestions_added:
+                    explanation["suggestions"].append(suggestion)
+                    suggestions_added.add(suggestion)
+            # FIXME patterns
+            if "has_fixme" in fact_name or ("has_pattern" in fact_name and "fixme" in fact_name):
+                suggestion = "Address FIXME issues - these indicate known bugs"
+                if suggestion not in suggestions_added:
+                    explanation["suggestions"].append(suggestion)
+                    suggestions_added.add(suggestion)
+            # HACK patterns
+            if "has_hack" in fact_name or ("has_pattern" in fact_name and "hack" in fact_name):
+                suggestion = "Refactor HACK workarounds into proper solutions"
+                if suggestion not in suggestions_added:
+                    explanation["suggestions"].append(suggestion)
+                    suggestions_added.add(suggestion)
+            # should_be patterns
+            if "has_should_be" in fact_name or "should_be" in fact_name:
+                suggestion = "Investigate 'should be' comments - spec may not match implementation"
+                if suggestion not in suggestions_added:
+                    explanation["suggestions"].append(suggestion)
+                    suggestions_added.add(suggestion)
+            # high_churn patterns
+            if "high_churn" in fact_name:
+                suggestion = "Consider splitting this high-churn module into smaller components"
+                if suggestion not in suggestions_added:
+                    explanation["suggestions"].append(suggestion)
+                    suggestions_added.add(suggestion)
+            # risky inference
+            if "risky" in fact_name:
+                suggestion = "Add more test coverage for this risky file"
+                if suggestion not in suggestions_added:
+                    explanation["suggestions"].append(suggestion)
+                    suggestions_added.add(suggestion)
+            # incomplete patterns
+            if "incomplete" in fact_name:
+                suggestion = "Complete the incomplete implementation"
+                if suggestion not in suggestions_added:
+                    explanation["suggestions"].append(suggestion)
+                    suggestions_added.add(suggestion)
+            # future patterns
+            if "has_future" in fact_name or "future" in fact_name:
+                suggestion = "Review FUTURE comments for planned improvements"
+                if suggestion not in suggestions_added:
+                    explanation["suggestions"].append(suggestion)
+                    suggestions_added.add(suggestion)
+
+        # Limit suggestions to 5
+        explanation["suggestions"] = explanation["suggestions"][:5]
 
         # Build traces from inference chain
         trace_steps = []
-        for fact in explanation["facts"]:
-            atom = fact["atom"]
+        for fact_name in explanation["facts"]:
             trace_steps.append({
                 "step": "assert",
-                "atom": atom,
+                "atom": fact_name,
                 "source": "codebase_scan",
             })
-        explanation["traces"] = {
-            "steps": trace_steps,
-            "count": len(trace_steps),
-        }
+        if trace_steps:
+            explanation["traces"]["steps"] = trace_steps
+            explanation["traces"]["count"] = len(trace_steps)
 
         # Build summary
         risk_level = "unknown"
@@ -819,10 +873,28 @@ class AuditReasoner:
 
         num_facts = len(explanation["facts"])
         num_suggestions = len(explanation["suggestions"])
-        explanation["summary"] = (
-            f"File {file_id_clean} has {risk_level} risk "
-            f"({num_facts} facts, {num_suggestions} suggestions)"
-        )
+
+        # Build detailed summary
+        summary_parts = [f"=== Explanation for {file_id} ==="]
+        summary_parts.append(f"File ID: {file_id_clean}")
+        summary_parts.append(f"Risk Level: {risk_level}")
+        summary_parts.append(f"")
+        summary_parts.append(f"FACTS ({num_facts}):")
+        for fact_name in explanation["facts"]:
+            summary_parts.append(f"  - {fact_name}")
+        if explanation["suggestions"]:
+            summary_parts.append(f"")
+            summary_parts.append(f"SUGGESTIONS ({num_suggestions}):")
+            for suggestion in explanation["suggestions"]:
+                summary_parts.append(f"  - {suggestion}")
+        # Include raw_traces info in summary if present
+        if explanation["raw_traces"]:
+            summary_parts.append(f"")
+            summary_parts.append(f"INFERENCE TRACES:")
+            for query_type in explanation["raw_traces"]:
+                summary_parts.append(f"  - {query_type}: inferred")
+
+        explanation["summary"] = "\n".join(summary_parts)
 
         return explanation
 
