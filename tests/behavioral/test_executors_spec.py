@@ -278,19 +278,17 @@ class TestCodeExecutorBehavior:
         """
         Given: No CodeBridge available
         When: Executed
-        Then: Returns unavailable message
+        Then: Returns unavailable message with helpful information
         """
-        executor = CodeExecutor(code_bridge=None)
-        executor._code_bridge = None  # Force no bridge
-
-        query = {"action": "call", "subject": "test_func"}
-
         # Mock the lazy loading to return None
         with patch.object(CodeExecutor, 'code_bridge', new_callable=lambda: property(lambda self: None)):
             executor = CodeExecutor()
+            query = {"action": "call", "subject": "test_func"}
             result = executor.execute(query)
 
-        # The result depends on whether code_bridge could be lazy-loaded
+        # Should return a result indicating code bridge is unavailable
+        assert result.source == "code"
+        assert result.is_empty or result.confidence < 0.5  # Low confidence when bridge unavailable
 
     def test_given_callers_query_when_bridge_available_then_queries_callers(self):
         """

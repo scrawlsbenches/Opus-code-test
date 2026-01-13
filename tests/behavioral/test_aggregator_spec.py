@@ -142,6 +142,8 @@ class TestMergeStrategy:
         # Should have only one item (deduplicated)
         assert len(result.items) == 1
         assert result.items[0]["file"] == "same.py"
+        # Should keep highest scored: 0.9 * 0.8 = 0.72 > 0.5 * 0.6 = 0.30
+        assert result.items[0]["_score"] == pytest.approx(0.72, rel=0.01)
 
     def test_given_results_when_merged_then_sorts_by_score(self):
         """
@@ -287,8 +289,9 @@ class TestWeightedStrategy:
         aggregator = ResultAggregator(strategy="weighted")
         result = aggregator.aggregate([r1, r2])
 
-        # Weighted average: (0.8^2 + 0.4^2) / (0.8 + 0.4) = 0.8 / 1.2 ≈ 0.67
-        assert result.total_confidence > 0.5
+        # Weighted average: (0.8^2 + 0.4^2) / (0.8 + 0.4) = (0.64 + 0.16) / 1.2 ≈ 0.667
+        expected = (0.8**2 + 0.4**2) / (0.8 + 0.4)
+        assert result.total_confidence == pytest.approx(expected, rel=0.01)
 
 
 # =============================================================================
@@ -493,8 +496,9 @@ class TestDeduplicationFixes:
 
         # Should have only one item with higher score
         assert len(aggregated.items) == 1
-        # The item should be from the higher confidence/score source
-        assert aggregated.items[0]["_score"] > 0.3 * 0.5  # Higher than low score * low conf
+        # The item should be from the higher confidence/score source: 0.9 * 0.9 = 0.81
+        # NOT from lower: 0.3 * 0.5 = 0.15
+        assert aggregated.items[0]["_score"] == pytest.approx(0.81, rel=0.01)
 
     def test_cross_source_deduplication_by_file_path(self):
         """Same file from different sources is deduplicated."""
@@ -514,8 +518,10 @@ class TestDeduplicationFixes:
         aggregated = aggregator.aggregate([audit_result, code_result])
 
         # Should deduplicate based on file path
-        # Higher scored item should be kept
+        # Higher scored item should be kept: audit 0.5*0.8=0.40 > code 0.3*0.6=0.18
         assert len(aggregated.items) == 1
+        assert aggregated.items[0]["_source"] == "audit"
+        assert aggregated.items[0]["_score"] == pytest.approx(0.40, rel=0.01)
 
     def test_best_strategy_includes_score_field(self):
         """Best strategy items include _score for consistency."""
@@ -612,8 +618,10 @@ class TestFullPipelineIntegration:
         # Aggregate (single source)
         aggregated = aggregate_results([exec_result])
 
-        assert "audit" in aggregated.sources
-        assert aggregated.total_confidence >= 0.0
+        # Verify aggregation worked correctly
+        assert aggregated.sources == ["audit"]  # Exactly one source
+        assert exec_result.confidence == aggregated.total_confidence  # Single source = same confidence
+        assert aggregated.source_results.get("audit") is exec_result  # Original result preserved
 
     def test_router_to_executor_to_aggregator_semantic_query(self):
         """
@@ -637,7 +645,10 @@ class TestFullPipelineIntegration:
         # Aggregate
         aggregated = aggregate_results([exec_result])
 
-        assert "semantic" in aggregated.sources
+        # Verify aggregation worked correctly
+        assert aggregated.sources == ["semantic"]  # Exactly one source
+        assert exec_result.confidence == aggregated.total_confidence
+        assert aggregated.source_results.get("semantic") is exec_result
 
     def test_multi_executor_aggregation(self):
         """
@@ -673,9 +684,20 @@ class TestFullPipelineIntegration:
             strategy="merge"
         )
 
-        # Should have results from sources that returned data
-        assert len(aggregated.sources) >= 1
-        assert aggregated.total_confidence >= 0.0
+        # All three sources should be represented (even if some have no items)
+        # Sources are only included if they have confidence >= min_confidence (0.2)
+        valid_results = [r for r in [audit_result, semantic_result, code_result]
+                        if r.confidence >= 0.2]
+        assert len(aggregated.sources) == len(valid_results)
+
+        # Confidence should be average of included sources
+        if valid_results:
+            expected_conf = sum(r.confidence for r in valid_results) / len(valid_results)
+            assert aggregated.total_confidence == pytest.approx(expected_conf, rel=0.01)
+
+        # All source results should be preserved
+        for source in aggregated.sources:
+            assert source in aggregated.source_results
 
     def test_aggregation_strategies_produce_different_results(self):
         """
