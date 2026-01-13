@@ -438,20 +438,11 @@ class AuditReasoner:
                     history=[],
                 )
 
-        # TODO(encapsulation): Accessing internal _focused dict violates encapsulation.
-        # PROBLEM: AttentionalFocus._focused is a private attribute. If the class
-        #          internals change (e.g., _focused becomes a set, or uses different
-        #          storage), this code breaks silently.
-        # PUBLIC API EXISTS: AttentionalFocus.get_focused_atoms() returns exactly
-        #          list(self._focused.keys()) - see prism_pln.py:770-772
-        # FIX: Replace `list(self.attention_focus._focused.keys())` with
-        #      `self.attention_focus.get_focused_atoms()`
-        # FIX: Replace `len(self.attention_focus._focused)` with
-        #      `len(self.attention_focus.get_focused_atoms())`
-        self._persistence_state.attention_focus = list(self.attention_focus._focused.keys())
+        # Use public API for encapsulation
+        self._persistence_state.attention_focus = self.attention_focus.get_focused_atoms()
         self._persistence_state.global_stats = {
             "last_aggregate_strategy": self.aggregate_strategy,
-            "files_in_focus": len(self.attention_focus._focused),
+            "files_in_focus": len(self.attention_focus.get_focused_atoms()),
             "total_files_tracked": len(self.file_importance),
             "vlti_files": len(self.get_vlti_files()),
         }
