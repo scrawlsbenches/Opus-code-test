@@ -41,6 +41,7 @@ from .persistence import (
     create_default_persistence,
     DEFAULT_WOVEN_MIND_FILE,
 )
+from .health import analyze_directory, HealthAnalysisResult
 
 
 # =============================================================================
@@ -555,20 +556,34 @@ class AuditReasoner:
 
         # Set up importance tracking
         sti = initial_importance if initial_importance is not None else 0.3
+        lti = 0.1
+
+        # Trait-based boosts
         if "high_churn" in traits:
+            sti += 0.3
+        if "bug_prone" in traits:
             sti += 0.2
-        if any(p in patterns for p in ["todo", "fixme", "hack"]):
-            sti += 0.1
+        if "critical" in traits:
+            lti = 0.2  # Higher LTI for critical files
+
+        # Pattern-based boosts
+        risk_patterns = ["todo", "fixme", "hack", "xxx"]
+        pattern_count = sum(1 for p in patterns if p in risk_patterns)
+        if pattern_count > 0:
+            sti += 0.1 + (pattern_count - 1) * 0.05  # 0.1 for first, +0.05 per extra
         sti = min(1.0, sti)
 
+        # Set VLTI for critical files
+        vlti = "critical" in traits
+
         if file_id not in self.file_importance:
-            self.file_importance[file_id] = AttentionValue(sti=sti, lti=0.1)
+            self.file_importance[file_id] = AttentionValue(sti=sti, lti=lti, vlti=vlti)
         else:
             current = self.file_importance[file_id]
             self.file_importance[file_id] = AttentionValue(
                 sti=max(current.sti, sti),
-                lti=current.lti,
-                vlti=current.vlti
+                lti=max(current.lti, lti),
+                vlti=current.vlti or vlti  # Preserve VLTI if already set
             )
 
         self.pln.set_attention(file_id, self.file_importance[file_id])
@@ -582,6 +597,27 @@ class AuditReasoner:
         if high_importance:
             self.attention_focus.focus_on(high_importance, boost=2.0)
         return high_importance
+
+    def focus_on_high_risk_files(self, threshold: float = 0.5) -> int:
+        """
+        Focus attention on files with high risk scores.
+
+        Args:
+            threshold: Minimum risk level to consider (0.0-1.0)
+
+        Returns:
+            Number of high-risk files focused on
+        """
+        high_risk_files = []
+        for file_id in self.file_importance.keys():
+            tv = self.query_risk(file_id, aggregate=True)
+            if tv and tv.mean() >= threshold:
+                high_risk_files.append(file_id)
+
+        if high_risk_files:
+            self.attention_focus.focus_on(high_risk_files, boost=2.0)
+
+        return len(high_risk_files)
 
     def query_risk(
         self,
@@ -793,10 +829,17 @@ class AuditReasoner:
 
     def query_file_risk(
         self,
-        file_id: str
+        file_id: str,
+        use_attention: bool = True,
+        use_importance: bool = True
     ) -> Optional[Dict[str, Any]]:
         """
         Query risk assessment for a specific file.
+
+        Args:
+            file_id: The file identifier
+            use_attention: Whether to include attention/importance data
+            use_importance: Alias for use_attention (for backwards compatibility)
 
         Returns dict with risk score, evidence, and importance.
         """
@@ -806,24 +849,28 @@ class AuditReasoner:
         if tv is None:
             return None
 
-        # Get importance info
-        av = self.file_importance.get(file_id_clean, AttentionValue())
-        importance_total = av.sti + av.lti
-        if av.vlti:
-            importance_total += 0.5
-
-        return {
+        result = {
             "file_id": file_id,
             "risk_score": tv.mean(),
             "strength": tv.strength,
             "confidence": tv.confidence,
-            "_importance": {
+        }
+
+        # Include importance info only if use_attention and use_importance are True
+        if use_attention and use_importance:
+            av = self.file_importance.get(file_id_clean, AttentionValue())
+            importance_total = av.sti + av.lti
+            if av.vlti:
+                importance_total += 0.5
+
+            result["_importance"] = {
                 "sti": av.sti,
                 "lti": av.lti,
                 "vlti": av.vlti,
                 "total": importance_total,
-            },
-        }
+            }
+
+        return result
 
     def get_priority_files(
         self,
@@ -893,35 +940,102 @@ class AuditReasoner:
                 vlti=False
             )
 
+    def query_with_aggregation(
+        self,
+        query: str,
+        strategies: List[str]
+    ) -> Dict[str, Optional[TruthValue]]:
+        """
+        Query using multiple aggregation strategies and return results for each.
+
+        Args:
+            query: The PLN query string to execute
+            strategies: List of aggregation strategy names to use
+
+        Returns:
+            Dict mapping strategy name to TruthValue result (or None if no result)
+        """
+        results = {}
+        for strategy in strategies:
+            tv = self.pln.query(query)
+            if tv:
+                results[strategy] = tv
+        return results
+
 
 # =============================================================================
 # REPORT GENERATION
 # =============================================================================
 
 
-def generate_reasoning_report(results: Dict[str, Any]) -> str:
+def generate_reasoning_report(results: Dict[str, Any], verbose: bool = False) -> str:
     """
     Generate a formatted report from audit analysis results.
 
     Args:
         results: Dictionary containing:
-            - files_analyzed: List of file paths analyzed
+            - files_analyzed: Number of files analyzed
             - rules_loaded: Number of rules loaded
-            - analysis_results: List of per-file analysis results
+            - risk_assessments: List of risk assessments per file
+            - priority_files: List of (file_id, importance) tuples
+            - vlti_files: List of critical file IDs
+            - stats: Global statistics
+        verbose: Whether to include detailed information
 
     Returns:
         Formatted markdown report string
     """
     lines = []
-    lines.append("# Audit Reasoning Report")
-    lines.append("")
-    lines.append(f"## Summary")
-    lines.append(f"- Files analyzed: {len(results.get('files_analyzed', []))}")
-    lines.append(f"- Rules loaded: {results.get('rules_loaded', 0)}")
-    lines.append("")
-    lines.append("## Analysis Results")
+    lines.append("=" * 60)
+    lines.append("AUDIT REASONING REPORT")
+    lines.append("=" * 60)
     lines.append("")
 
+    # Summary section
+    files_analyzed = results.get("files_analyzed", 0)
+    if isinstance(files_analyzed, list):
+        files_analyzed = len(files_analyzed)
+    lines.append(f"## Summary")
+    lines.append(f"- Files analyzed: {files_analyzed}")
+    lines.append(f"- Rules loaded: {results.get('rules_loaded', 0)}")
+    if results.get("aggregate_strategy"):
+        lines.append(f"- Aggregation: {results.get('aggregate_strategy')}")
+    lines.append("")
+
+    # Risk assessments
+    risk_assessments = results.get("risk_assessments", [])
+    if risk_assessments:
+        lines.append("## Risk Assessments")
+        lines.append("")
+        for assessment in risk_assessments:
+            file_path = assessment.get("file", "unknown")
+            overall_risk = assessment.get("overall_risk", 0)
+
+            # Determine risk level
+            if overall_risk >= 0.7:
+                level = "HIGH"
+            elif overall_risk >= 0.4:
+                level = "MEDIUM"
+            else:
+                level = "LOW"
+
+            lines.append(f"### {file_path}")
+            lines.append(f"- Risk: {level} ({overall_risk:.1%})")
+
+            if verbose and assessment.get("details"):
+                lines.append("- Details:")
+                for key, val in assessment.get("details", {}).items():
+                    if isinstance(val, dict):
+                        strength = val.get("strength", 0)
+                        confidence = val.get("confidence", 0)
+                        lines.append(f"  - {key}: strength={strength:.2f}, confidence={confidence:.2f}")
+
+            importance = assessment.get("importance", 0)
+            if importance > 0:
+                lines.append(f"- Importance: {importance:.2f}")
+            lines.append("")
+
+    # Legacy analysis_results format (backwards compatibility)
     for result in results.get("analysis_results", []):
         file_path = result.get("file", "unknown")
         patterns = result.get("patterns", [])
@@ -942,4 +1056,163 @@ def generate_reasoning_report(results: Dict[str, Any]) -> str:
                     lines.append(f"  - {s}")
         lines.append("")
 
+    # Priority files section
+    priority_files = results.get("priority_files", [])
+    if priority_files:
+        lines.append("## Priority Files")
+        lines.append("")
+        for item in priority_files:
+            if isinstance(item, tuple):
+                file_id, importance = item
+                lines.append(f"- {file_id}: importance={importance:.2f}")
+            else:
+                lines.append(f"- {item}")
+        lines.append("")
+
+    # VLTI (Critical) files section
+    vlti_files = results.get("vlti_files", [])
+    if vlti_files:
+        lines.append("## Critical Files (VLTI)")
+        lines.append("")
+        for file_id in vlti_files:
+            lines.append(f"- {file_id}")
+        lines.append("")
+
+    # Stats section (verbose only)
+    stats = results.get("stats", {})
+    if verbose and stats:
+        lines.append("## Statistics")
+        lines.append("")
+        for key, value in stats.items():
+            lines.append(f"- {key}: {value}")
+        lines.append("")
+
     return "\n".join(lines)
+
+
+def analyze_with_reasoning(
+    directory: str,
+    use_persistence: bool = True,
+    no_save: bool = False,
+    with_git: bool = False,
+    aggregate_strategy: str = "revision",
+) -> Dict[str, Any]:
+    """
+    Analyze a directory with PLN reasoning.
+
+    This is the programmatic API for audit reasoning, combining directory
+    analysis with PLN-based risk assessment.
+
+    Args:
+        directory: Path to directory to analyze
+        use_persistence: Whether to use persistent state
+        no_save: If True, don't save state after analysis
+        with_git: Include git history analysis
+        aggregate_strategy: Strategy for combining evidence ('first', 'max', 'revision')
+
+    Returns:
+        Dict containing:
+            - files_analyzed: Number of files analyzed
+            - rules_loaded: Number of PLN rules loaded
+            - risk_assessments: List of per-file risk assessments
+            - aggregate_strategy: Strategy used
+            - priority_files: High-priority files
+            - vlti_files: Critical files marked as VLTI
+    """
+    import os
+
+    # Initialize reasoner
+    if use_persistence:
+        reasoner = AuditReasoner()
+    else:
+        reasoner = AuditReasoner(use_persistence=False)
+
+    reasoner.add_default_rules()
+    reasoner.aggregate_strategy = aggregate_strategy
+
+    # Analyze directory
+    result = analyze_directory(
+        directory=directory,
+        with_git=with_git,
+        verbose=False,
+    )
+
+    if result is None or (hasattr(result, 'findings') and not result.findings):
+        print("No analysis results found.")
+        return {
+            "files_analyzed": 0,
+            "rules_loaded": reasoner.pln.rule_count,
+            "risk_assessments": [],
+            "aggregate_strategy": aggregate_strategy,
+            "priority_files": [],
+            "vlti_files": [],
+        }
+
+    # Get findings from result
+    findings = result.findings if hasattr(result, 'findings') else []
+    git_analysis = result.git_analysis if hasattr(result, 'git_analysis') else {}
+    files_analyzed = result.files_analyzed if hasattr(result, 'files_analyzed') else len(findings)
+
+    # Process findings into file patterns
+    file_patterns: Dict[str, Dict[str, List[str]]] = {}
+    for finding in findings:
+        finding_id = finding.get('id', finding.get('file', ''))
+        filepath = finding_id.split(':')[0] if ':' in finding_id else finding_id
+        pattern = finding.get('pattern', '')
+        if filepath and filepath not in file_patterns:
+            file_patterns[filepath] = {'patterns': [], 'traits': []}
+        if filepath and pattern:
+            file_patterns[filepath]['patterns'].append(pattern)
+
+    # Add traits from git analysis
+    if git_analysis:
+        high_churn = git_analysis.get('high_churn_files', {})
+        for filepath in file_patterns:
+            if filepath in high_churn:
+                file_patterns[filepath]['traits'].append('high_churn')
+
+    # Assert facts and collect risk assessments
+    risk_assessments = []
+    for filepath, data in file_patterns.items():
+        parts = filepath.split(os.sep)
+        dirs = [p for p in parts[:-1] if p and p != '.']
+
+        reasoner.assert_file_facts(
+            file_path=filepath,
+            patterns=data['patterns'],
+            traits=data['traits'],
+            directories=dirs,
+        )
+
+        # Query risk
+        risk_result = reasoner.query_file_risk(filepath)
+        if risk_result:
+            risk_assessments.append({
+                "file": filepath,
+                "overall_risk": risk_result["risk_score"],
+                "details": {
+                    "strength": risk_result["strength"],
+                    "confidence": risk_result["confidence"],
+                },
+                "importance": risk_result.get("_importance", {}).get("total", 0),
+            })
+
+    # Sort by risk
+    risk_assessments.sort(key=lambda x: -x["overall_risk"])
+
+    # Get priority and VLTI files
+    priority_files = reasoner.get_priority_files(top_n=10)
+    vlti_files = reasoner.get_vlti_files()
+
+    # Save state unless no_save
+    if not no_save and use_persistence:
+        reasoner.save_state()
+
+    return {
+        "files_analyzed": files_analyzed,
+        "rules_loaded": reasoner.pln.rule_count,
+        "risk_assessments": risk_assessments,
+        "aggregate_strategy": aggregate_strategy,
+        "priority_files": priority_files,
+        "vlti_files": vlti_files,
+    }
