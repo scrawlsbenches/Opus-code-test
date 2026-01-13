@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Set, Tuple, Optional, Any
 from collections import defaultdict
 from dataclasses import dataclass, field
+import json
 
 from cortical.audits.algorithms.trie import CommentMarkerTrie
 from cortical.audits.algorithms.inverted_index import AuditInvertedIndex
@@ -31,13 +32,79 @@ from cortical.common.filesystem import FileSystem, RealFileSystem
 # CONSTANTS
 # =============================================================================
 
-# Default suspicious patterns to detect
+# Default suspicious patterns to detect (legacy - comment scope only)
 DEFAULT_SUSPICIOUS_PATTERNS = [
     "FUTURE:", "TODO:", "FIXME:", "HACK:", "XXX:",
     "will be", "should be", "planned to", "eventually",
     "See:", "see docs/", "See docs/",
-    "monkeypatch",  # Test isolation concern - may need DI refactor
 ]
+
+# Default pattern file location
+DEFAULT_PATTERNS_FILE = Path(".got/audit_patterns.json")
+
+
+@dataclass
+class AuditPattern:
+    """A pattern to detect in code with scope control."""
+    id: str
+    match: str
+    scope: str = "comments"  # "comments", "code", or "all"
+    implies: str = ""
+    strength: float = 0.5
+    regex: bool = False
+    description: str = ""
+    _compiled: Optional[re.Pattern] = field(default=None, repr=False)
+
+    def __post_init__(self):
+        if self.regex:
+            try:
+                self._compiled = re.compile(self.match, re.IGNORECASE)
+            except re.error:
+                self._compiled = None
+
+    def matches(self, text: str) -> bool:
+        """Check if pattern matches text."""
+        if self.regex and self._compiled:
+            return bool(self._compiled.search(text))
+        return self.match.lower() in text.lower()
+
+
+def load_custom_patterns(patterns_file: Optional[Path] = None) -> List[AuditPattern]:
+    """Load custom patterns from JSON file."""
+    path = patterns_file or DEFAULT_PATTERNS_FILE
+    if not path.exists():
+        return []
+
+    try:
+        with open(path, 'r') as f:
+            data = json.load(f)
+
+        patterns = []
+        for p in data.get('patterns', []):
+            patterns.append(AuditPattern(
+                id=p.get('id', ''),
+                match=p.get('match', ''),
+                scope=p.get('scope', 'comments'),
+                implies=p.get('implies', ''),
+                strength=p.get('strength', 0.5),
+                regex=p.get('regex', False),
+                description=p.get('description', ''),
+            ))
+        return patterns
+    except (json.JSONDecodeError, KeyError):
+        return []
+
+
+def get_all_patterns(patterns_file: Optional[Path] = None) -> List[AuditPattern]:
+    """Get combined default and custom patterns."""
+    # Convert legacy patterns to AuditPattern (comments scope)
+    patterns = [
+        AuditPattern(id=p.replace(':', '').lower(), match=p, scope="comments")
+        for p in DEFAULT_SUSPICIOUS_PATTERNS
+    ]
+    # Add custom patterns
+    patterns.extend(load_custom_patterns(patterns_file))
+    return patterns
 
 # Patterns in commit messages that indicate potential issues
 COMMIT_SUSPICIOUS_PATTERNS = [
@@ -571,7 +638,7 @@ def _analyze_comments(
     with_git: bool,
     verbose: bool
 ) -> None:
-    """Run comment analysis and update result."""
+    """Run comment and code analysis with scope-aware pattern detection."""
     # Initialize data structures
     marker_trie = CommentMarkerTrie()
     pattern_freq = PatternFrequencySketch(width=1000, depth=5)
@@ -581,31 +648,43 @@ def _analyze_comments(
     all_comments_text = []
     findings = []
 
+    # Load all patterns (default + custom)
+    all_patterns = get_all_patterns()
+
+    # Separate patterns by scope for efficiency
+    comment_patterns = [p for p in all_patterns if p.scope in ("comments", "all")]
+    code_patterns = [p for p in all_patterns if p.scope in ("code", "all")]
+
     # Process each file
     comment_count = 0
     for py_file in py_files:
         rel_path = py_file.relative_to(root)
-        comments = _extract_comments_from_file(py_file)
 
+        # Extract both comments and code in one pass
+        comments, code_lines = _extract_all_lines_from_file(py_file)
+
+        # Check comments against comment-scope patterns
         for line_no, comment in comments:
             comment_count += 1
             finding_id = f"{rel_path}:{line_no}"
-
             all_comments_text.append(comment)
 
-            # Check for markers
-            for pattern in DEFAULT_SUSPICIOUS_PATTERNS:
-                if pattern.lower() in comment.lower():
-                    marker_trie.insert(pattern, accumulate=True)
-                    pattern_freq.add(pattern.lower())
+            for pattern in comment_patterns:
+                if pattern.matches(comment):
+                    marker_trie.insert(pattern.match, accumulate=True)
+                    pattern_freq.add(pattern.id)
 
                     finding = {
                         'id': finding_id,
                         'file': str(rel_path),
                         'line': line_no,
-                        'pattern': pattern,
-                        'comment': comment[:100]
+                        'pattern': pattern.match,
+                        'comment': comment[:100],
+                        'scope': 'comment',
                     }
+                    if pattern.implies:
+                        finding['implies'] = pattern.implies
+                        finding['strength'] = pattern.strength
 
                     # Add git blame info if enabled
                     if with_git:
@@ -615,7 +694,7 @@ def _analyze_comments(
                         if blame_info:
                             finding['age_days'] = blame_info.get('age_days', 0)
                             finding['author'] = blame_info.get('author', 'unknown')
-                            if pattern in ['TODO:', 'FIXME:'] and finding['age_days'] > 180:
+                            if pattern.match in ['TODO:', 'FIXME:'] and finding['age_days'] > 180:
                                 finding['stale'] = True
 
                     findings.append(finding)
@@ -626,24 +705,47 @@ def _analyze_comments(
                 lsh.add(finding_id, tokens)
                 clusters.make_set(finding_id)
 
+        # Check code lines against code-scope patterns
+        for line_no, code_line in code_lines:
+            finding_id = f"{rel_path}:{line_no}"
+
+            for pattern in code_patterns:
+                if pattern.matches(code_line):
+                    pattern_freq.add(pattern.id)
+
+                    finding = {
+                        'id': finding_id,
+                        'file': str(rel_path),
+                        'line': line_no,
+                        'pattern': pattern.match,
+                        'comment': code_line[:100],
+                        'scope': 'code',
+                    }
+                    if pattern.implies:
+                        finding['implies'] = pattern.implies
+                        finding['strength'] = pattern.strength
+
+                    findings.append(finding)
+
     result.comments_analyzed = comment_count
     result.findings = findings
 
     if verbose:
-        print(f"Processed {comment_count} comments")
+        print(f"Processed {comment_count} comments, {len(code_patterns)} code patterns")
         print()
 
-    # Pattern frequency
+    # Pattern frequency - check all patterns
     if verbose:
         print("PATTERN FREQUENCY (Count-Min Sketch)")
         print("-" * 40)
 
-    for pattern in DEFAULT_SUSPICIOUS_PATTERNS:
-        count = pattern_freq.query(pattern.lower())
+    for pattern in all_patterns:
+        count = pattern_freq.query(pattern.id)
         if count > 0:
-            result.pattern_counts[pattern] = count
+            result.pattern_counts[pattern.match] = count
+            scope_marker = f"[{pattern.scope}]" if pattern.scope != "comments" else ""
             if verbose:
-                print(f"  {pattern:<15} ~ {count} occurrences")
+                print(f"  {pattern.match:<20} ~ {count} occurrences {scope_marker}")
 
     if verbose:
         print()
@@ -754,3 +856,41 @@ def _extract_comments_from_file(filepath: Path) -> List[Tuple[int, str]]:
     except Exception:
         pass
     return comments
+
+
+def _extract_code_lines_from_file(filepath: Path) -> List[Tuple[int, str]]:
+    """Extract non-comment code lines from a Python file with line numbers."""
+    code_lines = []
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            for line_no, line in enumerate(f, 1):
+                stripped = line.strip()
+                # Skip empty lines and pure comments
+                if stripped and not stripped.startswith('#'):
+                    code_lines.append((line_no, stripped))
+    except Exception:
+        pass
+    return code_lines
+
+
+def _extract_all_lines_from_file(filepath: Path) -> Tuple[List[Tuple[int, str]], List[Tuple[int, str]]]:
+    """Extract both comments and code lines from a Python file.
+
+    Returns:
+        Tuple of (comments, code_lines)
+    """
+    comments = []
+    code_lines = []
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            for line_no, line in enumerate(f, 1):
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                if stripped.startswith('#'):
+                    comments.append((line_no, stripped[1:].strip()))
+                else:
+                    code_lines.append((line_no, stripped))
+    except Exception:
+        pass
+    return comments, code_lines

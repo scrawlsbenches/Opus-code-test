@@ -10,7 +10,7 @@ Usage:
 import argparse
 import sys
 
-from . import generate, train, scan, patterns, similar, index, health, reason, discover
+from . import generate, train, scan, patterns, similar, index, health, reason, discover, pattern
 
 
 def main():
@@ -50,6 +50,7 @@ Workflow:
     health.setup_args(subparsers)
     reason.setup_args(subparsers)
     discover.setup_args(subparsers)
+    pattern.setup_args(subparsers)
 
     args = parser.parse_args()
 
@@ -68,6 +69,7 @@ Workflow:
         'health': health.run,
         'reason': reason.run,
         'discover': discover.run,
+        'pattern': pattern.run,
     }
 
     handler = command_handlers.get(args.command)
