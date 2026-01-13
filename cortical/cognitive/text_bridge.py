@@ -1126,6 +1126,16 @@ class TextToAtomsBridge:
         bridge._atoms_created = stats.get("atoms_created", 0)
         bridge._links_created = stats.get("links_created", 0)
 
+        # Compute atom link counts from the loaded graph
+        # This ensures IDF-based link limiting works correctly after reload
+        # (Consistent with Tier 2 rebuildable philosophy - compute from graph, don't persist)
+        bridge._atom_link_counts = {}
+        for atom_data in links:
+            for old_id in atom_data.get("outgoing", []):
+                if old_id in id_map:
+                    new_atom = id_map[old_id]
+                    bridge._atom_link_counts[new_atom.id] = bridge._atom_link_counts.get(new_atom.id, 0) + 1
+
         print(f"Loaded bridge from {path}/")
         print(f"  Nodes: {len(nodes)}, Links: {len(links)}")
         return bridge
