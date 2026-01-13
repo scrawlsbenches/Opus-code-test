@@ -1,0 +1,51 @@
+{
+  "version": 2,
+  "description": "Custom audit patterns - extends default detection with scope control",
+  "patterns": [
+    {
+      "id": "monkeypatch",
+      "match": "monkeypatch",
+      "scope": "code",
+      "implies": "needs_di_review",
+      "strength": 0.6,
+      "description": "Monkeypatching may indicate missing dependency injection"
+    },
+    {
+      "id": "eval_call",
+      "match": "\\beval\\s*\\(",
+      "scope": "code",
+      "regex": true,
+      "implies": "security_risk",
+      "strength": 0.9,
+      "description": "eval() is a security risk - consider alternatives"
+    },
+    {
+      "id": "exec_call",
+      "match": "\\bexec\\s*\\(",
+      "scope": "code",
+      "regex": true,
+      "implies": "security_risk",
+      "strength": 0.85,
+      "description": "exec() is a security risk - consider alternatives"
+    },
+    {
+      "id": "shell_true",
+      "match": "shell\\s*=\\s*True",
+      "scope": "code",
+      "regex": true,
+      "implies": "security_risk",
+      "strength": 0.8,
+      "description": "shell=True enables shell injection vulnerabilities"
+    },
+    {
+      "id": "pickle_load",
+      "match": "pickle\\.load",
+      "scope": "code",
+      "implies": "security_risk",
+      "strength": 0.75,
+      "description": "pickle.load can execute arbitrary code"
+    }
+  ],
+  "created": "2026-01-13T17:00:00.000000",
+  "updated": "2026-01-13T17:57:40.229961"
+}

@@ -67,10 +67,49 @@ def setup_args(subparsers) -> None:
         action='store_true',
         help='Show detailed output'
     )
+    parser.add_argument(
+        '--show-rules',
+        action='store_true',
+        help='Display all PLN rules (default, manual, and derived)'
+    )
+    parser.add_argument(
+        '--show-state',
+        action='store_true',
+        help='Show persistence state (session count, file importance, etc.)'
+    )
+    parser.add_argument(
+        '--clear-state',
+        action='store_true',
+        help='Clear persistence state and start fresh'
+    )
+    parser.add_argument(
+        '--file-history',
+        type=str,
+        metavar='FILE',
+        help='Show importance history for a specific file'
+    )
+    parser.add_argument(
+        '--add-rule',
+        nargs=3,
+        metavar=('ANTECEDENT', 'CONSEQUENT', 'STRENGTH'),
+        help='Add a manual PLN rule (e.g., --add-rule "test(X)" "flagged(X)" "0.8")'
+    )
+    parser.add_argument(
+        '--aggregate',
+        type=str,
+        choices=['mean', 'max', 'min', 'product'],
+        help='Set aggregation strategy for combining evidence'
+    )
+    parser.add_argument(
+        '--no-save',
+        action='store_true',
+        help='Do not save state after execution'
+    )
 
 
 def run(args: Any) -> None:
     """Execute the reason command."""
+    import json
     from cortical.audits import (
         AuditReasoner,
         AuditQuery,
@@ -78,9 +117,25 @@ def run(args: Any) -> None:
         is_natural_language_query,
         analyze_directory,
     )
+    from cortical.audits.persistence import FilePersistenceBackend
 
     verbose = getattr(args, 'verbose', False)
     threshold = getattr(args, 'threshold', 0.3)
+
+    # Handle --clear-state before initializing reasoner
+    if getattr(args, 'clear_state', False):
+        from pathlib import Path
+        from cortical.audits.persistence import DEFAULT_PERSISTENCE_FILE
+
+        print("PLN AUDIT STATE")
+        print_separator()
+        persistence_file = Path.cwd() / DEFAULT_PERSISTENCE_FILE
+        if persistence_file.exists():
+            persistence_file.unlink()
+            print("Persistence state cleared.")
+        else:
+            print("No persistence state to clear.")
+        return
 
     print("PLN Audit Reasoning")
     print_separator()
@@ -88,6 +143,109 @@ def run(args: Any) -> None:
     # Initialize reasoner
     reasoner = AuditReasoner()
     reasoner.add_default_rules()
+
+    # Handle --show-rules
+    if getattr(args, 'show_rules', False):
+        print("\nPLN AUDIT RULES")
+        print_separator()
+
+        stats = reasoner.get_stats()
+        print(f"Total rules: {stats['rules']}")
+        print(f"Aggregate strategy: {stats['aggregate_strategy']}")
+
+        rules_config = reasoner.rules_config
+        manual_rules = rules_config.get("manual_rules", [])
+        derived_rules = rules_config.get("derived_rules", [])
+
+        if manual_rules:
+            print("\nManual Rules:")
+            for rule in manual_rules:
+                print(f"  {rule['antecedent']} → {rule['consequent']} (strength={rule.get('strength', 0.7):.2f})")
+
+        if derived_rules:
+            print("\nDerived Rules (from WovenMind):")
+            for rule in derived_rules[:10]:
+                print(f"  {rule.get('antecedent', '?')} → {rule.get('consequent', '?')} (strength={rule.get('strength', 0.7):.2f})")
+            if len(derived_rules) > 10:
+                print(f"  ... and {len(derived_rules) - 10} more")
+
+        return
+
+    # Handle --show-state
+    if getattr(args, 'show_state', False):
+        print("\nAUDIT PLN PERSISTENCE STATE")
+        print_separator()
+
+        state = reasoner._persistence_state
+        if state:
+            print(f"Session count: {state.session_count}")
+            print(f"Created: {state.created}")
+            print(f"Updated: {state.updated}")
+            print(f"Files tracked: {len(state.file_importance)}")
+
+            if state.global_stats:
+                print("\nGlobal Stats:")
+                for key, value in state.global_stats.items():
+                    print(f"  {key}: {value}")
+
+            if state.attention_focus:
+                print(f"\nAttention focus: {len(state.attention_focus)} atoms")
+        else:
+            print("No persistence state loaded.")
+
+        return
+
+    # Handle --file-history
+    if getattr(args, 'file_history', None):
+        file_path = args.file_history
+        # Normalize file path to ID format
+        file_id = file_path.replace('.', '_').replace('/', '_').replace('\\', '_')
+
+        print(f"\nImportance History for: {file_path}")
+        print_separator()
+
+        history = reasoner.get_importance_history(file_id)
+        if history:
+            print(f"File ID: {file_id}")
+            for entry in history:
+                print(f"  {entry.get('timestamp', 'unknown')}: STI={entry.get('sti', 0):.2f}, LTI={entry.get('lti', 0):.2f}")
+
+            trend = reasoner.get_importance_trend(file_id)
+            if trend:
+                print(f"\nTrend: {trend}")
+        else:
+            print(f"No history found for {file_path}")
+
+        return
+
+    # Handle --add-rule
+    if getattr(args, 'add_rule', None):
+        antecedent, consequent, strength_str = args.add_rule
+        strength = float(strength_str)
+
+        print(f"\nAdding rule: {antecedent} → {consequent} (strength={strength:.2f})")
+
+        # Add to rules config
+        if "manual_rules" not in reasoner.rules_config:
+            reasoner.rules_config["manual_rules"] = []
+
+        reasoner.rules_config["manual_rules"].append({
+            "antecedent": antecedent,
+            "consequent": consequent,
+            "strength": strength,
+            "confidence": 0.8
+        })
+
+        # Save to persistence
+        reasoner._persistence.save_rules(reasoner.rules_config)
+        print(f"Added rule and saved to persistence.")
+
+        return
+
+    # Set aggregate strategy if specified
+    if getattr(args, 'aggregate', None):
+        reasoner.aggregate_strategy = args.aggregate
+        print(f"Using aggregation strategy: {args.aggregate}")
 
     # Load WovenMind rules if requested
     if getattr(args, 'load_rules', False):
@@ -214,8 +372,15 @@ def run(args: Any) -> None:
     else:
         for filepath, risk, patterns in risky_files[:20]:
             if filepath:
-                rel_path = os.path.relpath(filepath, directory)
-                print(f"\n  {rel_path}")
+                # Build readable path: prepend directory if filepath is just a filename
+                if os.path.isabs(filepath):
+                    display_path = os.path.relpath(filepath, directory)
+                elif os.sep not in filepath and '/' not in filepath:
+                    # Just a filename - prepend directory for context
+                    display_path = os.path.join(directory, filepath)
+                else:
+                    display_path = filepath
+                print(f"\n  {display_path}")
             else:
                 print(f"\n  (unknown file)")
             print(f"    Risk: {risk:.1%}")
@@ -231,10 +396,13 @@ def run(args: Any) -> None:
     if focused and verbose:
         print(f"\nAttention focused on {len(focused)} high-importance files")
 
-    # Save state if requested
-    if getattr(args, 'save_state', False):
+    # Save state (unless --no-save is specified)
+    no_save = getattr(args, 'no_save', False)
+    save_state = getattr(args, 'save_state', False)
+    if save_state or (not no_save):
         reasoner.save_state()
-        print("\nState saved to persistence")
+        if verbose:
+            print("\nState saved to persistence")
 
     print_separator()
     print("Reasoning complete!")
