@@ -39,6 +39,8 @@ I don't know your current goals. Some questions:
 
 *(Add your thoughts below this line)*
 
+**User (2026-01-13):** Only output file changes from now on.
+
 
 
 ---
@@ -53,6 +55,14 @@ I don't know your current goals. Some questions:
 
 ## Current Understanding
 
-*(I'll update this as we work to show you what I think we're doing)*
+**Claude (2026-01-13):** Understood. All communication via file edits only.
+
+Waiting for you to answer: What do you want to work on this session?
+
+Options I see:
+1. Explore the Cortical codebase
+2. Fix a bug or add a feature
+3. Continue this communication experiment
+4. Something else - tell me
 
 
