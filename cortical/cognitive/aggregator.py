@@ -56,6 +56,8 @@ class ResultAggregator:
         aggregated = aggregator.aggregate(results)
     """
 
+    VALID_STRATEGIES = {"merge", "best", "weighted"}
+
     def __init__(
         self,
         strategy: str = "merge",
@@ -69,7 +71,15 @@ class ResultAggregator:
             strategy: Aggregation strategy (merge, best, weighted)
             min_confidence: Minimum confidence to include result
             max_items: Maximum items in final result
+
+        Raises:
+            ValueError: If strategy is not valid
         """
+        if strategy not in self.VALID_STRATEGIES:
+            raise ValueError(
+                f"Invalid strategy '{strategy}'. "
+                f"Must be one of: {', '.join(sorted(self.VALID_STRATEGIES))}"
+            )
         self.strategy = strategy
         self.min_confidence = min_confidence
         self.max_items = max_items
@@ -139,21 +149,34 @@ class ResultAggregator:
                 item_score = self._get_item_score(item) * result.confidence
                 all_items.append((normalized, item_score, source))
 
-        # Deduplicate by key
+        # Sort by score descending FIRST, then deduplicate
+        # This ensures we keep the highest-scored item for each key
+        all_items.sort(key=lambda x: x[1], reverse=True)
+
+        # Deduplicate by key (keeping first = highest scored due to sort above)
+        # Use both source-specific keys AND universal keys for cross-source dedup
         seen_keys: Set[str] = set()
+        seen_universal: Set[str] = set()
         deduplicated: List[Tuple[Dict[str, Any], float, str]] = []
 
         for item, score, source in all_items:
+            # Get source-specific key
             key = self._get_item_key(item, source)
-            if key and key not in seen_keys:
-                seen_keys.add(key)
-                deduplicated.append((item, score, source))
-            elif not key:
-                # No key means can't deduplicate, include anyway
-                deduplicated.append((item, score, source))
+            # Get universal key for cross-source deduplication
+            universal_key = self._get_universal_key(item)
 
-        # Sort by score descending
-        deduplicated.sort(key=lambda x: x[1], reverse=True)
+            # Check if we've seen this item (by either key)
+            is_duplicate = (
+                (key and key in seen_keys) or
+                (universal_key and universal_key in seen_universal)
+            )
+
+            if not is_duplicate:
+                if key:
+                    seen_keys.add(key)
+                if universal_key:
+                    seen_universal.add(universal_key)
+                deduplicated.append((item, score, source))
 
         # Take top items
         final_items = [
@@ -192,11 +215,16 @@ class ResultAggregator:
         # Find highest confidence result
         best_result = max(results, key=lambda r: r.confidence)
 
-        # Normalize items
-        items = [
-            {**self._normalize_item(item, best_result.source), "_source": best_result.source}
-            for item in best_result.items[:self.max_items]
-        ]
+        # Normalize items and add metadata (consistent with merge/weighted)
+        items = []
+        for item in best_result.items[:self.max_items]:
+            normalized = self._normalize_item(item, best_result.source)
+            item_score = self._get_item_score(item) * best_result.confidence
+            items.append({
+                **normalized,
+                "_score": item_score,
+                "_source": best_result.source
+            })
 
         return AggregatedResult(
             items=items,
@@ -235,20 +263,34 @@ class ResultAggregator:
                 item_score = self._get_item_score(item) * weight
                 all_items.append((normalized, item_score, source))
 
-        # Deduplicate
+        # Sort by score descending FIRST, then deduplicate
+        # This ensures we keep the highest-scored item for each key
+        all_items.sort(key=lambda x: x[1], reverse=True)
+
+        # Deduplicate by key (keeping first = highest scored due to sort above)
+        # Use both source-specific keys AND universal keys for cross-source dedup
         seen_keys: Set[str] = set()
+        seen_universal: Set[str] = set()
         deduplicated: List[Tuple[Dict[str, Any], float, str]] = []
 
         for item, score, source in all_items:
+            # Get source-specific key
             key = self._get_item_key(item, source)
-            if key and key not in seen_keys:
-                seen_keys.add(key)
-                deduplicated.append((item, score, source))
-            elif not key:
-                deduplicated.append((item, score, source))
+            # Get universal key for cross-source deduplication
+            universal_key = self._get_universal_key(item)
 
-        # Sort and limit
-        deduplicated.sort(key=lambda x: x[1], reverse=True)
+            # Check if we've seen this item (by either key)
+            is_duplicate = (
+                (key and key in seen_keys) or
+                (universal_key and universal_key in seen_universal)
+            )
+
+            if not is_duplicate:
+                if key:
+                    seen_keys.add(key)
+                if universal_key:
+                    seen_universal.add(universal_key)
+                deduplicated.append((item, score, source))
 
         final_items = [
             {**item, "_score": score, "_source": source}
@@ -320,7 +362,8 @@ class ResultAggregator:
         """
         Get a unique key for an item for deduplication.
 
-        Uses source-specific extractors when available.
+        Uses source-specific extractors when available, then falls back
+        to cross-source universal key extraction.
         """
         extractor = self._key_extractors.get(source)
         if extractor:
@@ -332,6 +375,31 @@ class ResultAggregator:
         for key_field in ["id", "file", "doc_id", "name", "file_path"]:
             if key_field in item:
                 return str(item[key_field])
+
+        return None
+
+    def _get_universal_key(self, item: Dict[str, Any]) -> Optional[str]:
+        """
+        Get a universal key that works across sources for cross-source deduplication.
+
+        This handles cases where the same file appears in different sources
+        with different field names (e.g., 'file' vs 'file_path').
+        """
+        # Extract file path from any known field
+        file_path = (
+            item.get("file") or
+            item.get("file_path") or
+            item.get("doc_id") or
+            item.get("path")
+        )
+        if file_path:
+            # Normalize: remove leading ./ and trailing whitespace
+            normalized = str(file_path).lstrip("./").strip()
+            return f"file:{normalized}"
+
+        # For non-file items, use id
+        if "id" in item:
+            return f"id:{item['id']}"
 
         return None
 

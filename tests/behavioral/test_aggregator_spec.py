@@ -453,6 +453,86 @@ class TestExplanationBuilding:
 # =============================================================================
 
 
+class TestStrategyValidation:
+    """Tests for strategy validation."""
+
+    def test_invalid_strategy_raises_value_error(self):
+        """Invalid strategy raises ValueError with helpful message."""
+        import pytest
+        with pytest.raises(ValueError) as exc_info:
+            ResultAggregator(strategy="invalid_strategy")
+        assert "invalid_strategy" in str(exc_info.value).lower()
+        assert "merge" in str(exc_info.value)  # Shows valid options
+
+    def test_valid_strategies_accepted(self):
+        """All valid strategies are accepted."""
+        for strategy in ["merge", "best", "weighted"]:
+            aggregator = ResultAggregator(strategy=strategy)
+            assert aggregator.strategy == strategy
+
+
+class TestDeduplicationFixes:
+    """Tests for deduplication behavior fixes."""
+
+    def test_deduplication_keeps_highest_scored_item(self):
+        """When duplicates exist, highest scored is kept."""
+        # Create results with same item at different scores
+        result1 = ExecutionResult(
+            items=[{"file": "same.py", "score": 0.3}],
+            confidence=0.5,
+            source="audit",
+        )
+        result2 = ExecutionResult(
+            items=[{"file": "same.py", "score": 0.9}],
+            confidence=0.9,
+            source="audit",
+        )
+
+        aggregator = ResultAggregator(strategy="merge")
+        aggregated = aggregator.aggregate([result1, result2])
+
+        # Should have only one item with higher score
+        assert len(aggregated.items) == 1
+        # The item should be from the higher confidence/score source
+        assert aggregated.items[0]["_score"] > 0.3 * 0.5  # Higher than low score * low conf
+
+    def test_cross_source_deduplication_by_file_path(self):
+        """Same file from different sources is deduplicated."""
+        # Audit uses 'file', code uses 'file_path'
+        audit_result = ExecutionResult(
+            items=[{"file": "module.py", "score": 0.5}],
+            confidence=0.8,
+            source="audit",
+        )
+        code_result = ExecutionResult(
+            items=[{"file_path": "module.py", "name": "func", "score": 0.3}],
+            confidence=0.6,
+            source="code",
+        )
+
+        aggregator = ResultAggregator(strategy="merge")
+        aggregated = aggregator.aggregate([audit_result, code_result])
+
+        # Should deduplicate based on file path
+        # Higher scored item should be kept
+        assert len(aggregated.items) == 1
+
+    def test_best_strategy_includes_score_field(self):
+        """Best strategy items include _score for consistency."""
+        result = ExecutionResult(
+            items=[{"id": "1", "score": 0.8}],
+            confidence=0.9,
+            source="audit",
+        )
+
+        aggregator = ResultAggregator(strategy="best")
+        aggregated = aggregator.aggregate([result])
+
+        assert len(aggregated.items) == 1
+        assert "_score" in aggregated.items[0]
+        assert "_source" in aggregated.items[0]
+
+
 class TestEdgeCases:
     """Tests for edge cases and error handling."""
 
