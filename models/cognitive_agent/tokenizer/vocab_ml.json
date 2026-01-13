@@ -1,8 +1,8 @@
 {
-  "ml": 15213,
-  "mlintelligencegenerator": 15214,
-  "mlp": 15215,
-  "mlr": 15216,
-  "mlsessioncollector": 15217,
-  "mlstore": 15218
+  "ml": 5665,
+  "mlcollector": 5666,
+  "mldatacollector": 5667,
+  "mlexperiments": 5668,
+  "mlfileprediction": 5669,
+  "mlintelligencegenerator": 5670
 }

@@ -1,12 +1,3 @@
 {
-  "fs": 9926,
-  "fsc": 9927,
-  "fse": 9928,
-  "fsm": 9929,
-  "fspath": 9930,
-  "fsync": 9931,
-  "fsynced": 9932,
-  "fsyncgate": 9933,
-  "fsyncing": 9934,
-  "fsyncs": 9935
+  "fsync": 3781
 }

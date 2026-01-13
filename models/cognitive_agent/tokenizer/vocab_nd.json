@@ -1,21 +1,3 @@
 {
-  "nd": 15880,
-  "ndarray": 15881,
-  "ndata": 15882,
-  "ndcg": 15883,
-  "ndecision": 15884,
-  "ndecisions": 15885,
-  "ndef": 15886,
-  "ndeleting": 15887,
-  "ndepends": 15888,
-  "ndescription": 15889,
-  "ndetails": 15890,
-  "ndetector": 15891,
-  "ndid": 15892,
-  "ndocument": 15893,
-  "ndocuments": 15894,
-  "ndone": 15895,
-  "ndouble": 15896,
-  "ndrilling": 15897,
-  "ndry": 15898
+  "ndcg": 5858
 }
