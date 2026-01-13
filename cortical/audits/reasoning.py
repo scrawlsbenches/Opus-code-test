@@ -438,10 +438,11 @@ class AuditReasoner:
                     history=[],
                 )
 
-        self._persistence_state.attention_focus = list(self.attention_focus._focused.keys())
+        # Use public API for encapsulation
+        self._persistence_state.attention_focus = self.attention_focus.get_focused_atoms()
         self._persistence_state.global_stats = {
             "last_aggregate_strategy": self.aggregate_strategy,
-            "files_in_focus": len(self.attention_focus._focused),
+            "files_in_focus": len(self.attention_focus.get_focused_atoms()),
             "total_files_tracked": len(self.file_importance),
             "vlti_files": len(self.get_vlti_files()),
         }
@@ -663,7 +664,8 @@ class AuditReasoner:
         }
 
         # Gather facts
-        for atom_name, atom_obj in self.pln.graph._atoms.items():
+        # Use public API to iterate atoms
+        for atom_name, atom_obj in self.pln.graph.iter_atoms():
             if file_id_clean in atom_name:
                 tv = atom_obj.truth_value
                 explanation["facts"].append({
@@ -772,7 +774,8 @@ class AuditReasoner:
 
         # Gather all known files from attention and facts
         known_files = set(self.file_importance.keys())
-        for atom in self.pln.graph._atoms:
+        # Use public API to get atom names
+        for atom in self.pln.graph.get_atom_names():
             # Extract file IDs from atoms like "has_pattern(file_id, pattern)"
             if "(" in atom and ")" in atom:
                 parts = atom.split("(")[1].split(")")[0].split(",")

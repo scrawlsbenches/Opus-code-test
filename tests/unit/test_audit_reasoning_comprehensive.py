@@ -37,14 +37,14 @@ def temp_got_dir(tmp_path):
 @pytest.fixture
 def null_persistence():
     """Create a NullPersistenceBackend for isolated tests."""
-    from scripts.audit_reasoning import NullPersistenceBackend
+    from cortical.audits.reasoning import NullPersistenceBackend
     return NullPersistenceBackend()
 
 
 @pytest.fixture
 def memory_persistence():
     """Create an InMemoryPersistenceBackend for tests that need to verify persistence."""
-    from scripts.audit_reasoning import InMemoryPersistenceBackend
+    from cortical.audits.reasoning import InMemoryPersistenceBackend
     return InMemoryPersistenceBackend()
 
 
@@ -84,7 +84,7 @@ class TestFileImportanceRecord:
     """Tests for FileImportanceRecord dataclass."""
 
     def test_creation_with_all_fields(self):
-        from scripts.audit_reasoning import FileImportanceRecord
+        from cortical.audits.reasoning import FileImportanceRecord
 
         record = FileImportanceRecord(
             file_id="test_py",
@@ -101,7 +101,7 @@ class TestFileImportanceRecord:
         assert record.vlti is True
 
     def test_to_dict(self):
-        from scripts.audit_reasoning import FileImportanceRecord
+        from cortical.audits.reasoning import FileImportanceRecord
 
         record = FileImportanceRecord(
             file_id="module_py",
@@ -121,7 +121,7 @@ class TestFileImportanceRecord:
         assert d["history"] == []
 
     def test_to_dict_truncates_history_to_50(self):
-        from scripts.audit_reasoning import FileImportanceRecord
+        from cortical.audits.reasoning import FileImportanceRecord
 
         # Create record with 100 history entries
         history = [{"timestamp": f"entry_{i}"} for i in range(100)]
@@ -141,7 +141,7 @@ class TestFileImportanceRecord:
         assert d["history"][0]["timestamp"] == "entry_50"
 
     def test_from_dict(self):
-        from scripts.audit_reasoning import FileImportanceRecord
+        from cortical.audits.reasoning import FileImportanceRecord
 
         data = {
             "file_id": "loaded_py",
@@ -160,7 +160,7 @@ class TestFileImportanceRecord:
         assert record.vlti is True
 
     def test_from_dict_with_defaults(self):
-        from scripts.audit_reasoning import FileImportanceRecord
+        from cortical.audits.reasoning import FileImportanceRecord
 
         # Minimal data - should use defaults
         data = {"file_id": "minimal_py"}
@@ -177,7 +177,7 @@ class TestAuditPersistenceState:
     """Tests for AuditPersistenceState dataclass."""
 
     def test_create_new(self):
-        from scripts.audit_reasoning import AuditPersistenceState
+        from cortical.audits.reasoning import AuditPersistenceState
 
         state = AuditPersistenceState.create_new()
 
@@ -188,7 +188,7 @@ class TestAuditPersistenceState:
         assert state.global_stats == {}
 
     def test_to_dict(self):
-        from scripts.audit_reasoning import AuditPersistenceState, FileImportanceRecord
+        from cortical.audits.reasoning import AuditPersistenceState, FileImportanceRecord
 
         record = FileImportanceRecord(
             file_id="test_py", sti=0.5, lti=0.2, vlti=False,
@@ -213,7 +213,7 @@ class TestAuditPersistenceState:
         assert d["attention_focus"] == ["test_py"]
 
     def test_from_dict(self):
-        from scripts.audit_reasoning import AuditPersistenceState
+        from cortical.audits.reasoning import AuditPersistenceState
 
         data = {
             "version": 3,
@@ -239,7 +239,7 @@ class TestAuditQuery:
     """Tests for AuditQuery dataclass."""
 
     def test_default_values(self):
-        from scripts.audit_reasoning import AuditQuery
+        from cortical.audits.reasoning import AuditQuery
 
         query = AuditQuery()
 
@@ -252,7 +252,7 @@ class TestAuditQuery:
         assert query.explain is False
 
     def test_post_init_initializes_lists(self):
-        from scripts.audit_reasoning import AuditQuery
+        from cortical.audits.reasoning import AuditQuery
 
         # Create without explicit lists
         query = AuditQuery(directory="test/")
@@ -272,119 +272,119 @@ class TestTranslateAuditQuery:
     """Tests for translate_audit_query function."""
 
     def test_simple_directory(self):
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("cortical/")
 
         assert query.directory == "cortical/"
 
     def test_directory_with_in_keyword(self):
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("in reasoning/")
 
         assert query.directory == "reasoning/"
 
     def test_negation_with_not(self):
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("cortical/ not tests")
 
         assert "tests" in query.negations
 
     def test_negation_with_without(self):
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("without legacy")
 
         assert "legacy" in query.negations
 
     def test_negation_with_exclude(self):
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("exclude utils")
 
         assert "utils" in query.negations
 
     def test_negation_with_excluding(self):
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("excluding vendor")
 
         assert "vendor" in query.negations
 
     def test_trait_with_high_churn(self):
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("files with high_churn")
 
         assert "high_churn" in query.include_traits
 
     def test_trait_with_todo(self):
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("files with todo")
 
         assert "todo" in query.include_traits
 
     def test_trait_with_has(self):
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("has fixme")
 
         assert "fixme" in query.include_traits
 
     def test_trait_with_having(self):
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("having hack")
 
         assert "hack" in query.include_traits
 
     def test_risk_level_critical(self):
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("critical files")
 
         assert query.min_risk == 0.9
 
     def test_risk_level_high(self):
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("high risk files")
 
         assert query.min_risk == 0.7
 
     def test_risk_level_risky(self):
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("risky files")
 
         assert query.min_risk == 0.5
 
     def test_risk_level_medium(self):
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("medium risk files")
 
         assert query.min_risk == 0.4
 
     def test_result_limit_top_n(self):
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("top 5 risky")
 
         assert query.max_results == 5
 
     def test_result_limit_first_n(self):
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("first 10 files")
 
         assert query.max_results == 10
 
     def test_why_is_flagged_intent(self):
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("why is auth.py flagged")
 
@@ -393,7 +393,7 @@ class TestTranslateAuditQuery:
         assert query.explain is True
 
     def test_why_is_risky_intent(self):
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("why is module.py risky")
 
@@ -401,7 +401,7 @@ class TestTranslateAuditQuery:
         assert query.target_file == "module.py"
 
     def test_why_is_marked_intent(self):
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("why is test.py marked")
 
@@ -409,7 +409,7 @@ class TestTranslateAuditQuery:
         assert query.target_file == "test.py"
 
     def test_explain_intent(self):
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("explain storage.py")
 
@@ -417,7 +417,7 @@ class TestTranslateAuditQuery:
         assert query.target_file == "storage.py"
 
     def test_complex_query_combination(self):
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("cortical/ not tests with high_churn top 10 risky")
 
@@ -428,7 +428,7 @@ class TestTranslateAuditQuery:
         assert query.min_risk == 0.5
 
     def test_directory_scope_with_explain(self):
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("cortical/ why is storage.py flagged")
 
@@ -437,7 +437,7 @@ class TestTranslateAuditQuery:
         assert query.target_file == "storage.py"
 
     def test_normalizes_traits(self):
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         # "todos" should normalize to "todo"
         query = translate_audit_query("with todos")
@@ -452,23 +452,23 @@ class TestIsNaturalLanguageQuery:
     """Tests for is_natural_language_query function."""
 
     def test_flag_is_not_nlu(self):
-        from scripts.audit_reasoning import is_natural_language_query
+        from cortical.audits.reasoning import is_natural_language_query
 
         assert is_natural_language_query("--help") is False
         assert is_natural_language_query("-v") is False
 
     def test_query_with_spaces_is_nlu(self):
-        from scripts.audit_reasoning import is_natural_language_query
+        from cortical.audits.reasoning import is_natural_language_query
 
         assert is_natural_language_query("files with todo") is True
 
     def test_query_with_why_is_nlu(self):
-        from scripts.audit_reasoning import is_natural_language_query
+        from cortical.audits.reasoning import is_natural_language_query
 
         assert is_natural_language_query("whyfile") is True  # Contains 'why'
 
     def test_simple_path_is_not_nlu(self, tmp_path):
-        from scripts.audit_reasoning import is_natural_language_query
+        from cortical.audits.reasoning import is_natural_language_query
 
         # Create an actual directory
         test_dir = tmp_path / "testdir"
@@ -487,7 +487,7 @@ class TestPersistenceIO:
     """Tests for persistence load/save functions."""
 
     def test_load_persistence_state_creates_new_when_missing(self, mock_persistence_file):
-        from scripts.audit_reasoning import load_persistence_state
+        from cortical.audits.reasoning import load_persistence_state
 
         state = load_persistence_state()
 
@@ -495,7 +495,7 @@ class TestPersistenceIO:
         assert state.session_count == 0
 
     def test_load_persistence_state_reads_existing(self, mock_persistence_file):
-        from scripts.audit_reasoning import load_persistence_state
+        from cortical.audits.reasoning import load_persistence_state
 
         # Write a state file
         state_data = {
@@ -515,7 +515,7 @@ class TestPersistenceIO:
         assert state.session_count == 15
 
     def test_load_persistence_state_handles_invalid_json(self, mock_persistence_file, capsys):
-        from scripts.audit_reasoning import load_persistence_state
+        from cortical.audits.reasoning import load_persistence_state
 
         mock_persistence_file.write_text("not valid json")
 
@@ -527,7 +527,7 @@ class TestPersistenceIO:
         assert "Warning" in captured.out
 
     def test_save_persistence_state(self, mock_persistence_file):
-        from scripts.audit_reasoning import save_persistence_state, AuditPersistenceState
+        from cortical.audits.reasoning import save_persistence_state, AuditPersistenceState
 
         state = AuditPersistenceState.create_new()
         state.session_count = 5
@@ -540,7 +540,7 @@ class TestPersistenceIO:
         assert "updated" in data
 
     def test_clear_persistence_state_removes_file(self, mock_persistence_file, capsys):
-        from scripts.audit_reasoning import clear_persistence_state
+        from cortical.audits.reasoning import clear_persistence_state
 
         mock_persistence_file.write_text("{}")
 
@@ -551,7 +551,7 @@ class TestPersistenceIO:
         assert "cleared" in captured.out
 
     def test_clear_persistence_state_no_file(self, mock_persistence_file, capsys):
-        from scripts.audit_reasoning import clear_persistence_state
+        from cortical.audits.reasoning import clear_persistence_state
 
         # File doesn't exist
         clear_persistence_state()
@@ -560,7 +560,7 @@ class TestPersistenceIO:
         assert "No persistence state" in captured.out
 
     def test_show_persistence_status(self, mock_persistence_file, capsys):
-        from scripts.audit_reasoning import show_persistence_status
+        from cortical.audits.reasoning import show_persistence_status
 
         # Create a state file
         state_data = {
@@ -600,7 +600,7 @@ class TestRulesIO:
     """Tests for rules load/save functions."""
 
     def test_load_rules_creates_default_when_missing(self, mock_rules_file):
-        from scripts.audit_reasoning import load_rules
+        from cortical.audits.reasoning import load_rules
 
         rules = load_rules()
 
@@ -609,7 +609,7 @@ class TestRulesIO:
         assert "manual_rules" in rules
 
     def test_load_rules_reads_existing(self, mock_rules_file):
-        from scripts.audit_reasoning import load_rules
+        from cortical.audits.reasoning import load_rules
 
         rules_data = {
             "version": 2,
@@ -624,7 +624,7 @@ class TestRulesIO:
         assert len(rules["manual_rules"]) == 1
 
     def test_load_rules_handles_invalid_json(self, mock_rules_file):
-        from scripts.audit_reasoning import load_rules
+        from cortical.audits.reasoning import load_rules
 
         mock_rules_file.write_text("invalid json")
 
@@ -634,7 +634,7 @@ class TestRulesIO:
         assert rules["version"] == 1
 
     def test_save_rules(self, mock_rules_file):
-        from scripts.audit_reasoning import save_rules
+        from cortical.audits.reasoning import save_rules
 
         rules = {
             "version": 1,
@@ -658,7 +658,7 @@ class TestAbstractionToRule:
     """Tests for abstraction_to_rule function."""
 
     def test_converts_valid_abstraction(self):
-        from scripts.audit_reasoning import abstraction_to_rule
+        from cortical.audits.reasoning import abstraction_to_rule
 
         abstraction = {
             "id": "abs_1",
@@ -676,7 +676,7 @@ class TestAbstractionToRule:
         assert rule["source"] == "abs_1"
 
     def test_returns_none_for_single_node(self):
-        from scripts.audit_reasoning import abstraction_to_rule
+        from cortical.audits.reasoning import abstraction_to_rule
 
         abstraction = {
             "source_nodes": ["dir:legacy"],
@@ -688,7 +688,7 @@ class TestAbstractionToRule:
         assert rule is None
 
     def test_returns_none_for_empty_nodes(self):
-        from scripts.audit_reasoning import abstraction_to_rule
+        from cortical.audits.reasoning import abstraction_to_rule
 
         abstraction = {"source_nodes": [], "frequency": 5}
 
@@ -697,7 +697,7 @@ class TestAbstractionToRule:
         assert rule is None
 
     def test_skips_file_nodes(self):
-        from scripts.audit_reasoning import abstraction_to_rule
+        from cortical.audits.reasoning import abstraction_to_rule
 
         abstraction = {
             "source_nodes": ["file:auth.py", "pattern:todo", "file:utils.py"],
@@ -709,7 +709,7 @@ class TestAbstractionToRule:
         assert rule is None
 
     def test_includes_trait_nodes(self):
-        from scripts.audit_reasoning import abstraction_to_rule
+        from cortical.audits.reasoning import abstraction_to_rule
 
         abstraction = {
             "source_nodes": ["trait:high_churn", "pattern:fixme"],
@@ -723,7 +723,7 @@ class TestAbstractionToRule:
         assert "has_trait(X, high_churn)" in rule["antecedent"]
 
     def test_confidence_scales_with_frequency(self):
-        from scripts.audit_reasoning import abstraction_to_rule
+        from cortical.audits.reasoning import abstraction_to_rule
 
         low_freq = {"source_nodes": ["dir:a", "pattern:b"], "frequency": 1}
         high_freq = {"source_nodes": ["dir:a", "pattern:b"], "frequency": 100}
@@ -738,14 +738,14 @@ class TestLoadWovenMindAbstractions:
     """Tests for load_woven_mind_abstractions function."""
 
     def test_returns_empty_when_missing(self, mock_woven_mind_file):
-        from scripts.audit_reasoning import load_woven_mind_abstractions
+        from cortical.audits.reasoning import load_woven_mind_abstractions
 
         result = load_woven_mind_abstractions()
 
         assert result == []
 
     def test_loads_abstractions_from_file(self, mock_woven_mind_file):
-        from scripts.audit_reasoning import load_woven_mind_abstractions
+        from cortical.audits.reasoning import load_woven_mind_abstractions
 
         woven_data = {
             "mind": {
@@ -778,7 +778,7 @@ class TestLoadWovenMindAbstractions:
         assert result[0]["strength"] == 0.8
 
     def test_handles_invalid_json(self, mock_woven_mind_file, capsys):
-        from scripts.audit_reasoning import load_woven_mind_abstractions
+        from cortical.audits.reasoning import load_woven_mind_abstractions
 
         mock_woven_mind_file.write_text("invalid")
 
@@ -798,7 +798,7 @@ class TestAuditReasonerInit:
     """Tests for AuditReasoner initialization."""
 
     def test_basic_initialization(self, mock_persistence_file, mock_rules_file):
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(use_persistence=False)
 
@@ -806,14 +806,14 @@ class TestAuditReasonerInit:
         assert reasoner.aggregate_strategy == "revision"
 
     def test_initialization_with_custom_strategy(self, mock_persistence_file, mock_rules_file):
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(aggregate_strategy="max", use_persistence=False)
 
         assert reasoner.aggregate_strategy == "max"
 
     def test_initialization_loads_persistence(self):
-        from scripts.audit_reasoning import (
+        from cortical.audits.reasoning import (
             AuditReasoner, InMemoryPersistenceBackend,
             AuditPersistenceState, FileImportanceRecord
         )
@@ -842,7 +842,7 @@ class TestAuditReasonerMethods:
     """Tests for AuditReasoner methods."""
 
     def test_add_default_rules(self, mock_persistence_file, mock_rules_file):
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(use_persistence=False)
         reasoner.add_default_rules()
@@ -851,7 +851,7 @@ class TestAuditReasonerMethods:
         assert reasoner.pln.rule_count > 0
 
     def test_load_manual_rules(self):
-        from scripts.audit_reasoning import (
+        from cortical.audits.reasoning import (
             AuditReasoner, InMemoryPersistenceBackend
         )
 
@@ -871,7 +871,7 @@ class TestAuditReasonerMethods:
         assert count == 1
 
     def test_assert_file_facts(self, mock_persistence_file, mock_rules_file):
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(use_persistence=False)
 
@@ -888,7 +888,7 @@ class TestAuditReasonerMethods:
         assert "test_py" in reasoner.file_importance
 
     def test_assert_file_facts_with_initial_importance(self, mock_persistence_file, mock_rules_file):
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(use_persistence=False)
 
@@ -905,7 +905,7 @@ class TestAuditReasonerMethods:
     def test_assert_file_facts_calculates_importance_from_traits(
         self, mock_persistence_file, mock_rules_file
     ):
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(use_persistence=False)
 
@@ -921,7 +921,7 @@ class TestAuditReasonerMethods:
         assert reasoner.file_importance["risky_py"].sti >= 0.7
 
     def test_focus_on_high_risk_files(self, mock_persistence_file, mock_rules_file):
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
         from cortical.reasoning.prism_pln import AttentionValue
 
         reasoner = AuditReasoner(use_persistence=False)
@@ -935,7 +935,7 @@ class TestAuditReasonerMethods:
         assert count == 1  # Only high_py
 
     def test_query_file_risk(self, mock_persistence_file, mock_rules_file):
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(use_persistence=False)
         reasoner.add_default_rules()
@@ -954,7 +954,7 @@ class TestAuditReasonerMethods:
         assert "_importance" in results
 
     def test_query_with_aggregation(self, mock_persistence_file, mock_rules_file):
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(use_persistence=False)
         reasoner.add_default_rules()
@@ -968,7 +968,7 @@ class TestAuditReasonerMethods:
         assert "first" in results or "max" in results
 
     def test_collect_rent(self, mock_persistence_file, mock_rules_file):
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
         from cortical.reasoning.prism_pln import AttentionValue
 
         reasoner = AuditReasoner(use_persistence=False)
@@ -981,7 +981,7 @@ class TestAuditReasonerMethods:
         assert reasoner.file_importance["decay_py"].lti == 0.9
 
     def test_stimulate_file(self, mock_persistence_file, mock_rules_file):
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
         from cortical.reasoning.prism_pln import AttentionValue
 
         reasoner = AuditReasoner(use_persistence=False)
@@ -992,7 +992,7 @@ class TestAuditReasonerMethods:
         assert reasoner.file_importance["stim_py"].sti == 0.8
 
     def test_get_priority_files(self, mock_persistence_file, mock_rules_file):
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
         from cortical.reasoning.prism_pln import AttentionValue
 
         reasoner = AuditReasoner(use_persistence=False)
@@ -1006,7 +1006,7 @@ class TestAuditReasonerMethods:
         assert priority[0][0] == "high_py"  # Highest first
 
     def test_get_vlti_files(self, mock_persistence_file, mock_rules_file):
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
         from cortical.reasoning.prism_pln import AttentionValue
 
         reasoner = AuditReasoner(use_persistence=False)
@@ -1019,7 +1019,7 @@ class TestAuditReasonerMethods:
         assert "normal_py" not in vlti
 
     def test_get_importance_history(self):
-        from scripts.audit_reasoning import (
+        from cortical.audits.reasoning import (
             AuditReasoner, InMemoryPersistenceBackend,
             AuditPersistenceState, FileImportanceRecord
         )
@@ -1045,7 +1045,7 @@ class TestAuditReasonerMethods:
         assert history[0]["sti"] == 0.4
 
     def test_get_importance_trend(self):
-        from scripts.audit_reasoning import (
+        from cortical.audits.reasoning import (
             AuditReasoner, InMemoryPersistenceBackend,
             AuditPersistenceState, FileImportanceRecord
         )
@@ -1073,7 +1073,7 @@ class TestAuditReasonerMethods:
         assert trend == "increasing"
 
     def test_get_importance_trend_decreasing(self):
-        from scripts.audit_reasoning import (
+        from cortical.audits.reasoning import (
             AuditReasoner, InMemoryPersistenceBackend,
             AuditPersistenceState, FileImportanceRecord
         )
@@ -1100,7 +1100,7 @@ class TestAuditReasonerMethods:
         assert trend == "decreasing"
 
     def test_get_importance_trend_stable(self):
-        from scripts.audit_reasoning import (
+        from cortical.audits.reasoning import (
             AuditReasoner, InMemoryPersistenceBackend,
             AuditPersistenceState, FileImportanceRecord
         )
@@ -1127,7 +1127,7 @@ class TestAuditReasonerMethods:
         assert trend == "stable"
 
     def test_get_stats(self, mock_persistence_file, mock_rules_file):
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(use_persistence=False)
         reasoner.add_default_rules()
@@ -1139,7 +1139,7 @@ class TestAuditReasonerMethods:
         assert "aggregate_strategy" in stats
 
     def test_save_state(self):
-        from scripts.audit_reasoning import (
+        from cortical.audits.reasoning import (
             AuditReasoner, InMemoryPersistenceBackend
         )
         from cortical.reasoning.prism_pln import AttentionValue
@@ -1160,7 +1160,7 @@ class TestAuditReasonerPersistenceDecay:
     """Tests for importance decay based on time."""
 
     def test_decay_applies_based_on_time_elapsed(self):
-        from scripts.audit_reasoning import (
+        from cortical.audits.reasoning import (
             AuditReasoner, InMemoryPersistenceBackend,
             AuditPersistenceState, FileImportanceRecord
         )
@@ -1186,7 +1186,7 @@ class TestAuditReasonerPersistenceDecay:
         assert reasoner.file_importance["old_py"].sti < 0.5
 
     def test_no_decay_when_disabled(self):
-        from scripts.audit_reasoning import (
+        from cortical.audits.reasoning import (
             AuditReasoner, InMemoryPersistenceBackend,
             AuditPersistenceState, FileImportanceRecord
         )
@@ -1220,7 +1220,7 @@ class TestGenerateReasoningReport:
     """Tests for generate_reasoning_report function."""
 
     def test_generates_report_with_results(self):
-        from scripts.audit_reasoning import generate_reasoning_report
+        from cortical.audits.reasoning import generate_reasoning_report
 
         results = {
             "files_analyzed": 10,
@@ -1252,7 +1252,7 @@ class TestGenerateReasoningReport:
         assert "AUDIT REASONING" in report
 
     def test_generates_empty_report_when_no_results(self):
-        from scripts.audit_reasoning import generate_reasoning_report
+        from cortical.audits.reasoning import generate_reasoning_report
 
         results = {
             "files_analyzed": 0,
@@ -1277,7 +1277,7 @@ class TestLoadRulesFromWovenMind:
     def test_loads_compound_rules_from_abstractions(
         self, mock_persistence_file, mock_rules_file, mock_woven_mind_file
     ):
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         woven_data = {
             "mind": {
@@ -1315,7 +1315,7 @@ class TestAnalyzeWithReasoning:
     def test_analyze_with_empty_analysis(
         self, mock_persistence_file, mock_rules_file, monkeypatch, capsys
     ):
-        from scripts.audit_reasoning import analyze_with_reasoning
+        from cortical.audits.reasoning import analyze_with_reasoning
 
         # Mock analyze_directory to return empty
         monkeypatch.setattr(
@@ -1332,7 +1332,7 @@ class TestAnalyzeWithReasoning:
     def test_analyze_with_findings(
         self, mock_persistence_file, mock_rules_file, monkeypatch, capsys
     ):
-        from scripts.audit_reasoning import analyze_with_reasoning
+        from cortical.audits.reasoning import analyze_with_reasoning
 
         # Mock analyze_directory to return findings
         mock_analysis = {
@@ -1363,7 +1363,7 @@ class TestAnalyzeWithReasoning:
     def test_analyze_with_git_analysis(
         self, mock_persistence_file, mock_rules_file, monkeypatch
     ):
-        from scripts.audit_reasoning import analyze_with_reasoning
+        from cortical.audits.reasoning import analyze_with_reasoning
 
         mock_analysis = {
             "findings": [
@@ -1391,7 +1391,7 @@ class TestAnalyzeWithReasoning:
         assert len(results["risk_assessments"]) >= 0
 
     def test_analyze_with_persistence(self, monkeypatch):
-        from scripts.audit_reasoning import (
+        from cortical.audits.reasoning import (
             analyze_with_reasoning, InMemoryPersistenceBackend, NullPersistenceBackend
         )
 
@@ -1415,7 +1415,7 @@ class TestAnalyzeWithReasoning:
     def test_analyze_with_aggregation_strategies(
         self, mock_persistence_file, mock_rules_file, monkeypatch
     ):
-        from scripts.audit_reasoning import analyze_with_reasoning
+        from cortical.audits.reasoning import analyze_with_reasoning
 
         mock_analysis = {
             "findings": [{"id": "agg.py:1", "pattern": "should_be", "message": "Check"}],
@@ -1445,7 +1445,7 @@ class TestGenerateReportVerbose:
     """Tests for verbose report generation."""
 
     def test_verbose_report_includes_details(self):
-        from scripts.audit_reasoning import generate_reasoning_report
+        from cortical.audits.reasoning import generate_reasoning_report
 
         results = {
             "files_analyzed": 5,
@@ -1473,7 +1473,7 @@ class TestGenerateReportVerbose:
         assert "Risk:" in report or "HIGH" in report
 
     def test_report_with_priority_files(self):
-        from scripts.audit_reasoning import generate_reasoning_report
+        from cortical.audits.reasoning import generate_reasoning_report
 
         results = {
             "files_analyzed": 3,
@@ -1493,7 +1493,7 @@ class TestGenerateReportVerbose:
         assert "important_py" in report
 
     def test_report_with_vlti_files(self):
-        from scripts.audit_reasoning import generate_reasoning_report
+        from cortical.audits.reasoning import generate_reasoning_report
 
         results = {
             "files_analyzed": 2,
@@ -1521,7 +1521,7 @@ class TestEdgeCasesAndBranches:
     def test_query_file_risk_with_attention_focus(
         self, mock_persistence_file, mock_rules_file
     ):
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(use_persistence=False)
         reasoner.add_default_rules()
@@ -1537,7 +1537,7 @@ class TestEdgeCasesAndBranches:
     def test_query_file_risk_without_attention_and_importance(
         self, mock_persistence_file, mock_rules_file
     ):
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(use_persistence=False)
         reasoner.add_default_rules()
@@ -1554,7 +1554,7 @@ class TestEdgeCasesAndBranches:
     def test_get_importance_trend_no_history(
         self, mock_persistence_file, mock_rules_file
     ):
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(use_persistence=False)
 
@@ -1563,7 +1563,7 @@ class TestEdgeCasesAndBranches:
         assert trend is None
 
     def test_save_state_updates_existing_file(self):
-        from scripts.audit_reasoning import (
+        from cortical.audits.reasoning import (
             AuditReasoner, InMemoryPersistenceBackend
         )
         from cortical.reasoning.prism_pln import AttentionValue
@@ -1591,7 +1591,7 @@ class TestEdgeCasesAndBranches:
     def test_focus_on_high_risk_empty(
         self, mock_persistence_file, mock_rules_file
     ):
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(use_persistence=False)
 
@@ -1603,7 +1603,7 @@ class TestEdgeCasesAndBranches:
     def test_stimulate_new_file(
         self, mock_persistence_file, mock_rules_file
     ):
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(use_persistence=False)
 
@@ -1616,7 +1616,7 @@ class TestEdgeCasesAndBranches:
     def test_woven_mind_single_antecedent_rules(
         self, mock_persistence_file, mock_rules_file, mock_woven_mind_file
     ):
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         # Single node abstraction (less than 2 valid parts after filtering)
         woven_data = {
@@ -1643,14 +1643,14 @@ class TestEdgeCasesAndBranches:
         assert count >= 0
 
     def test_translate_query_with_highchurn_variant(self):
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("files with highchurn")
 
         assert "high_churn" in query.include_traits
 
     def test_is_nlu_existing_path_with_keyword(self, tmp_path):
-        from scripts.audit_reasoning import is_natural_language_query
+        from cortical.audits.reasoning import is_natural_language_query
 
         # Create a directory that looks like it could be NLU
         test_dir = tmp_path / "risky_module"
@@ -1661,7 +1661,7 @@ class TestEdgeCasesAndBranches:
         assert result is True
 
     def test_persistence_with_invalid_timestamp(self):
-        from scripts.audit_reasoning import (
+        from cortical.audits.reasoning import (
             AuditReasoner, InMemoryPersistenceBackend,
             AuditPersistenceState, FileImportanceRecord
         )
@@ -1687,7 +1687,7 @@ class TestEdgeCasesAndBranches:
     def test_assert_file_facts_with_critical_trait(
         self, mock_persistence_file, mock_rules_file
     ):
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(use_persistence=False)
 
@@ -1715,7 +1715,7 @@ class TestCLIMain:
         self, mock_persistence_file, mock_rules_file, mock_woven_mind_file,
         monkeypatch, capsys
     ):
-        from scripts.audit_reasoning import main
+        from cortical.audits.reasoning import main
 
         # Set up command line args
         monkeypatch.setattr("sys.argv", ["audit_reasoning.py", "--show-rules"])
@@ -1737,7 +1737,7 @@ class TestCLIMain:
     def test_main_show_state(
         self, mock_persistence_file, mock_rules_file, monkeypatch, capsys
     ):
-        from scripts.audit_reasoning import main
+        from cortical.audits.reasoning import main
 
         monkeypatch.setattr("sys.argv", ["audit_reasoning.py", "--show-state"])
 
@@ -1758,7 +1758,7 @@ class TestCLIMain:
     def test_main_clear_state(
         self, mock_persistence_file, mock_rules_file, monkeypatch, capsys
     ):
-        from scripts.audit_reasoning import main
+        from cortical.audits.reasoning import main
 
         monkeypatch.setattr("sys.argv", ["audit_reasoning.py", "--clear-state"])
         mock_persistence_file.write_text("{}")
@@ -1772,7 +1772,7 @@ class TestCLIMain:
     def test_main_file_history(
         self, mock_persistence_file, mock_rules_file, monkeypatch, capsys
     ):
-        from scripts.audit_reasoning import main
+        from cortical.audits.reasoning import main
 
         monkeypatch.setattr(
             "sys.argv",
@@ -1801,7 +1801,7 @@ class TestCLIMain:
     def test_main_file_history_not_found(
         self, mock_persistence_file, mock_rules_file, monkeypatch, capsys
     ):
-        from scripts.audit_reasoning import main
+        from cortical.audits.reasoning import main
 
         monkeypatch.setattr(
             "sys.argv",
@@ -1822,7 +1822,7 @@ class TestCLIMain:
     def test_main_add_rule(
         self, mock_persistence_file, mock_rules_file, monkeypatch, capsys
     ):
-        from scripts.audit_reasoning import main
+        from cortical.audits.reasoning import main
 
         monkeypatch.setattr(
             "sys.argv",
@@ -1842,7 +1842,7 @@ class TestCLIMain:
     def test_main_with_nlu_query(
         self, mock_persistence_file, mock_rules_file, monkeypatch, capsys
     ):
-        from scripts.audit_reasoning import main
+        from cortical.audits.reasoning import main
 
         monkeypatch.setattr(
             "sys.argv",
@@ -1867,7 +1867,7 @@ class TestCLIMain:
     def test_main_with_explain_query(
         self, mock_persistence_file, mock_rules_file, monkeypatch, capsys
     ):
-        from scripts.audit_reasoning import main
+        from cortical.audits.reasoning import main
 
         monkeypatch.setattr(
             "sys.argv",
@@ -1891,7 +1891,7 @@ class TestCLIMain:
     def test_main_with_aggregation_flag(
         self, mock_persistence_file, mock_rules_file, monkeypatch, capsys
     ):
-        from scripts.audit_reasoning import main
+        from cortical.audits.reasoning import main
 
         monkeypatch.setattr(
             "sys.argv",
@@ -1923,7 +1923,7 @@ class TestMoreBranchCoverage:
     """Additional tests for branch coverage."""
 
     def test_report_with_low_risk_file(self):
-        from scripts.audit_reasoning import generate_reasoning_report
+        from cortical.audits.reasoning import generate_reasoning_report
 
         results = {
             "files_analyzed": 1,
@@ -1947,7 +1947,7 @@ class TestMoreBranchCoverage:
         assert "LOW" in report
 
     def test_report_with_medium_risk_file(self):
-        from scripts.audit_reasoning import generate_reasoning_report
+        from cortical.audits.reasoning import generate_reasoning_report
 
         results = {
             "files_analyzed": 1,
@@ -1971,7 +1971,7 @@ class TestMoreBranchCoverage:
         assert "MEDIUM" in report
 
     def test_abstraction_to_rule_with_all_file_nodes(self):
-        from scripts.audit_reasoning import abstraction_to_rule
+        from cortical.audits.reasoning import abstraction_to_rule
 
         # All file: nodes should be skipped
         abstraction = {
@@ -1984,7 +1984,7 @@ class TestMoreBranchCoverage:
         assert rule is None
 
     def test_translate_query_fallback_directory(self, tmp_path):
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         # Create an actual directory
         test_dir = tmp_path / "mycode"
@@ -1998,7 +1998,7 @@ class TestMoreBranchCoverage:
     def test_analyze_with_attention_disabled(
         self, mock_persistence_file, mock_rules_file, monkeypatch
     ):
-        from scripts.audit_reasoning import analyze_with_reasoning
+        from cortical.audits.reasoning import analyze_with_reasoning
 
         mock_analysis = {
             "findings": [{"id": "noatt.py:1", "pattern": "fixme", "message": "Bug"}],
@@ -2022,7 +2022,7 @@ class TestMoreBranchCoverage:
     def test_analyze_verbose_output(
         self, mock_persistence_file, mock_rules_file, monkeypatch, capsys
     ):
-        from scripts.audit_reasoning import analyze_with_reasoning
+        from cortical.audits.reasoning import analyze_with_reasoning
 
         mock_analysis = {
             "findings": [{"id": "verb.py:1", "pattern": "todo", "message": "Task"}],
@@ -2047,7 +2047,7 @@ class TestMoreBranchCoverage:
     def test_woven_mind_with_multiple_compound_parts(
         self, mock_persistence_file, mock_rules_file, mock_woven_mind_file
     ):
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         woven_data = {
             "mind": {
@@ -2078,7 +2078,7 @@ class TestMoreBranchCoverage:
     def test_persistence_restore_attention_focus(
         self, mock_persistence_file, mock_rules_file
     ):
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         state_data = {
             "version": 1, "created": "now", "updated": "now", "session_count": 1,

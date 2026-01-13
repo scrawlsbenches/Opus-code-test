@@ -1,34 +1,76 @@
 """
-Semantic Knowledge Graph: Unified Orchestrator for Cognitive Architecture.
+Graph Package: Unified Graph Architecture for Cortical.
 
-The graph package provides the SemanticKnowledgeGraph, which integrates
-all components of the cognitive architecture into a unified knowledge
-representation.
+This package provides both the SemanticKnowledgeGraph (domain-specific)
+and a composable BaseGraph architecture for building custom graphs.
 
-Components:
-    - SemanticKnowledgeGraph: Main orchestrator
+BaseGraph Architecture (NEW):
+    - BaseGraph: Abstract base class for custom graph implementations
+    - NodeBase, EdgeBase: Protocol-based node/edge contracts
+    - InMemoryGraphStorage: High-performance in-memory storage
+    - Algorithm mixins: PageRank, Clustering, SpreadingActivation
+
+    Example:
+        >>> from cortical.graph import SimpleGraph
+        >>> graph = SimpleGraph()
+        >>> graph.add_node("A", content="Concept A")
+        >>> graph.add_node("B", content="Concept B")
+        >>> graph.add_edge("A", "B", edge_type="related")
+        >>> pagerank = graph.compute_pagerank()
+
+SemanticKnowledgeGraph (Existing):
+    - SemanticKnowledgeGraph: Unified orchestrator for cognitive architecture
     - GraphNode: Node in the knowledge graph
     - GraphEdge: Edge with semantic relation
-    - ConnectionType: Types of connections (Lateral, Feedforward, Feedback, Semantic)
-    - RelationType: Semantic relation types
+    - Integration with CEL, GoT, WovenMind, PRISM, SparkSLM
 
-Integration Points:
-    - Core: Minicolumn, Edge, Layers
-    - Algorithms: PageRank, TF-IDF, BM25
-    - Semantics: IsA, PartOf, HasA, SimilarTo, etc.
-    - CEL: Event sourcing and persistence
-    - GoT: Task and decision tracking
-    - WovenMind: Dual-process cognition
-    - PRISM: Attention and plasticity
-    - SparkSLM: Prediction
+    Example:
+        >>> from cortical.graph import SemanticKnowledgeGraph
+        >>> skg = SemanticKnowledgeGraph()
+        >>> skg.add_document("intro", "Machine learning enables AI.")
+        >>> skg.build()
+        >>> results = skg.search("artificial intelligence")
 
-Example:
-    >>> from cortical.graph import SemanticKnowledgeGraph
-    >>> skg = SemanticKnowledgeGraph()
-    >>> skg.add_document("intro", "Machine learning enables AI.")
-    >>> skg.build()
-    >>> results = skg.search("artificial intelligence")
+See docs/base-graph-design.md for the BaseGraph architecture.
 """
+
+# =============================================================================
+# BaseGraph Architecture (NEW)
+# =============================================================================
+
+from .protocols import (
+    NodeBase,
+    EdgeBase,
+    NodeProtocol,
+    EdgeProtocol,
+)
+
+from .storage import (
+    GraphStorage,
+    InMemoryGraphStorage,
+)
+
+from .base import BaseGraph
+
+from .algorithms import (
+    PageRankMixin,
+    ClusteringMixin,
+    SpreadingActivationMixin,
+    CentralityMixin,
+)
+
+from .implementations import (
+    SimpleNode,
+    SimpleEdge,
+    SimpleGraph,
+    DAGGraph,
+    WeightedEdge,
+    WeightedGraph,
+)
+
+# =============================================================================
+# SemanticKnowledgeGraph (Existing)
+# =============================================================================
 
 from .knowledge_graph import (
     SemanticKnowledgeGraph,
@@ -59,7 +101,25 @@ from .integrations import (
 )
 
 __all__ = [
-    # Core
+    # BaseGraph Architecture (NEW)
+    'NodeBase',
+    'EdgeBase',
+    'NodeProtocol',
+    'EdgeProtocol',
+    'GraphStorage',
+    'InMemoryGraphStorage',
+    'BaseGraph',
+    'PageRankMixin',
+    'ClusteringMixin',
+    'SpreadingActivationMixin',
+    'CentralityMixin',
+    'SimpleNode',
+    'SimpleEdge',
+    'SimpleGraph',
+    'DAGGraph',
+    'WeightedEdge',
+    'WeightedGraph',
+    # SemanticKnowledgeGraph (Existing)
     'SemanticKnowledgeGraph',
     'GraphNode',
     'GraphEdge',
