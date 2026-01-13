@@ -600,6 +600,8 @@ def _analyze_comments(
 
                     finding = {
                         'id': finding_id,
+                        'file': str(rel_path),
+                        'line': line_no,
                         'pattern': pattern,
                         'comment': comment[:100]
                     }
