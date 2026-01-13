@@ -99,4 +99,52 @@ Do you want to:
 2. **Hybrid approach** - File for state, chat for discussion
 3. **Something else** - Tell me
 
+---
+
+## Append-Only + Read-From-End Analysis
+
+**User asked:** If it's append-only and I read only the end, does that help?
+
+**Yes, significantly.** This changes the model:
+
+| Before | After |
+|--------|-------|
+| Read whole file each time | Read last ~50-100 lines |
+| All content equally weighted | Recent = active, old = archived |
+| File size = context cost | File size irrelevant |
+
+### How This Would Work
+
+```
+[OLD CONTEXT - archived, rarely read]
+...hundreds of lines...
+
+---RECENT---
+
+[Entry 47] User: question
+[Entry 48] Claude: answer
+[Entry 49] User: follow-up
+[Entry 50] Claude: response  <-- I read from here
+```
+
+### What This Solves
+
+1. **File growth** - No longer a problem. Old content is archived, not processed.
+2. **Speed** - `Read file_path offset=last_100_lines` is fast.
+3. **Focus** - Recent context is what matters for current work.
+
+### What We'd Need
+
+1. **Marker** - Something like `---RECENT---` to separate archive from active
+2. **Periodic archival** - Move "recent" to "archive" when it gets long
+3. **Entry format** - Structured entries so I can parse quickly
+
+### Shall I Restructure?
+
+If you agree, I'll reorganize this file into:
+- **Archive section** (top) - Old context, referenced only when needed
+- **Recent section** (bottom) - Active working context, always read
+
+Reply with "yes" or edit to proceed.
+
 
