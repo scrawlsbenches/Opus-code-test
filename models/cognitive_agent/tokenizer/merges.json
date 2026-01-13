@@ -1,143 +1,178 @@
 [
   [
     [
-      "if",
-      "not"
+      "in",
+      "self"
     ],
-    "if_not"
+    "in_self"
   ],
   [
     [
-      "cortical",
-      "cognitive"
+      "add",
+      "dependency"
     ],
-    "cortical_cognitive"
+    "add_dependency"
   ],
   [
     [
-      "idf",
-      "idf"
+      "adddependency",
+      "add"
     ],
-    "idf_idf"
+    "adddependency_add"
   ],
   [
     [
-      "show",
-      "progress"
+      "dag",
+      "adddependency"
     ],
-    "show_progress"
+    "dag_adddependency"
   ],
   [
     [
-      "atomdata",
-      "atom"
+      "findingid",
+      "finding"
     ],
-    "atomdata_atom"
+    "findingid_finding"
   ],
   [
     [
-      "atom",
-      "data"
+      "finding",
+      "id"
     ],
-    "atom_data"
+    "finding_id"
   ],
   [
     [
-      "from",
-      "cortical"
+      "not",
+      "in"
     ],
-    "from_cortical"
+    "not_in"
   ],
   [
     [
-      "links",
-      "created"
+      "number",
+      "of"
     ],
-    "links_created"
+    "number_of"
   ],
   [
     [
-      "data",
-      "get"
+      "term",
+      "to"
     ],
-    "data_get"
+    "term_to"
   ],
   [
     [
-      "showprogress",
-      "show"
+      "assert",
+      "dag"
     ],
-    "showprogress_show"
+    "assert_dag"
   ],
   [
     [
-      "vocabulary",
+      "topn",
+      "top"
+    ],
+    "topn_top"
+  ],
+  [
+    [
+      "dict",
+      "str"
+    ],
+    "dict_str"
+  ],
+  [
+    [
+      "task",
+      "dag"
+    ],
+    "task_dag"
+  ],
+  [
+    [
+      "self",
+      "transitions"
+    ],
+    "self_transitions"
+  ],
+  [
+    [
+      "transitions",
+      "transitions"
+    ],
+    "transitions_transitions"
+  ],
+  [
+    [
+      "valueerror",
+      "value"
+    ],
+    "valueerror_value"
+  ],
+  [
+    [
+      "value",
+      "error"
+    ],
+    "value_error"
+  ],
+  [
+    [
+      "taskdag",
+      "task"
+    ],
+    "taskdag_task"
+  ],
+  [
+    [
+      "async",
+      "def"
+    ],
+    "async_def"
+  ],
+  [
+    [
+      "self",
+      "termtofindings"
+    ],
+    "self_termtofindings"
+  ],
+  [
+    [
+      "termtofindings",
+      "term"
+    ],
+    "termtofindings_term"
+  ],
+  [
+    [
+      "to",
+      "findings"
+    ],
+    "to_findings"
+  ],
+  [
+    [
+      "progress",
+      "callback"
+    ],
+    "progress_callback"
+  ],
+  [
+    [
+      "chunksize",
+      "chunk"
+    ],
+    "chunksize_chunk"
+  ],
+  [
+    [
+      "chunk",
       "size"
     ],
-    "vocabulary_size"
-  ],
-  [
-    [
-      "self",
-      "bridge"
-    ],
-    "self_bridge"
-  ],
-  [
-    [
-      "model",
-      "dir"
-    ],
-    "model_dir"
-  ],
-  [
-    [
-      "content",
-      "hash"
-    ],
-    "content_hash"
-  ],
-  [
-    [
-      "modeldir",
-      "model"
-    ],
-    "modeldir_model"
-  ],
-  [
-    [
-      "self",
-      "manifest"
-    ],
-    "self_manifest"
-  ],
-  [
-    [
-      "vocabularysize",
-      "vocabulary"
-    ],
-    "vocabularysize_vocabulary"
-  ],
-  [
-    [
-      "atomtype",
-      "atom"
-    ],
-    "atomtype_atom"
-  ],
-  [
-    [
-      "atom",
-      "type"
-    ],
-    "atom_type"
-  ],
-  [
-    [
-      "incremental",
-      "trainer"
-    ],
-    "incremental_trainer"
+    "chunk_size"
   ],
   [
     [
@@ -148,129 +183,213 @@
   ],
   [
     [
-      "linkscreated",
-      "links"
+      "progresscallback",
+      "progress"
     ],
-    "linkscreated_links"
+    "progresscallback_progress"
   ],
   [
     [
-      "incrementaltrainer",
-      "incremental"
+      "if",
+      "not"
     ],
-    "incrementaltrainer_incremental"
+    "if_not"
   ],
   [
     [
-      "file",
-      "system"
+      "in",
+      "range"
     ],
-    "file_system"
+    "in_range"
   ],
   [
     [
-      "cognitive",
-      "graph"
+      "print",
+      "ntest"
     ],
-    "cognitive_graph"
+    "print_ntest"
   ],
   [
     [
-      "text",
-      "to"
+      "ntest",
+      "test"
     ],
-    "text_to"
+    "ntest_test"
   ],
   [
     [
-      "cognitive",
-      "agent"
+      "hash",
+      "functions"
     ],
-    "cognitive_agent"
+    "hash_functions"
   ],
   [
     [
-      "contenthash",
-      "content"
+      "hash",
+      "function"
     ],
-    "contenthash_content"
+    "hash_function"
   ],
   [
     [
-      "args",
-      "quiet"
+      "tests",
+      "passed"
     ],
-    "args_quiet"
+    "tests_passed"
   ],
   [
     [
-      "idf",
-      "epoch"
+      "numhashes",
+      "num"
     ],
-    "idf_epoch"
+    "numhashes_num"
   ],
   [
     [
-      "not",
-      "args"
+      "num",
+      "hashes"
     ],
-    "not_args"
+    "num_hashes"
   ],
   [
     [
-      "to",
-      "atoms"
+      "numbands",
+      "num"
     ],
-    "to_atoms"
+    "numbands_num"
   ],
   [
     [
-      "atoms",
-      "bridge"
+      "num",
+      "bands"
     ],
-    "atoms_bridge"
+    "num_bands"
   ],
   [
     [
-      "atoms",
-      "created"
+      "from",
+      "word"
     ],
-    "atoms_created"
+    "from_word"
   ],
   [
     [
-      "graph",
-      "storage"
+      "list",
+      "of"
     ],
-    "graph_storage"
+    "list_of"
   ],
   [
     [
-      "similarity",
-      "similarity"
+      "list",
+      "str"
     ],
-    "similarity_similarity"
+    "list_str"
   ],
   [
     [
-      "path",
-      "path"
+      "set",
+      "str"
     ],
-    "path_path"
+    "set_str"
   ],
   [
     [
-      "atomscreated",
-      "atoms"
+      "testspassed",
+      "tests"
     ],
-    "atomscreated_atoms"
+    "testspassed_tests"
   ],
   [
     [
-      "cognitiveagent",
-      "cognitive"
+      "fromword",
+      "from"
     ],
-    "cognitiveagent_cognitive"
+    "fromword_from"
+  ],
+  [
+    [
+      "asyncproc",
+      "async"
+    ],
+    "asyncproc_async"
+  ],
+  [
+    [
+      "async",
+      "proc"
+    ],
+    "async_proc"
+  ],
+  [
+    [
+      "similar",
+      "comment"
+    ],
+    "similar_comment"
+  ],
+  [
+    [
+      "for",
+      "each"
+    ],
+    "for_each"
+  ],
+  [
+    [
+      "will",
+      "be"
+    ],
+    "will_be"
+  ],
+  [
+    [
+      "fromtask",
+      "from"
+    ],
+    "fromtask_from"
+  ],
+  [
+    [
+      "from",
+      "task"
+    ],
+    "from_task"
+  ],
+  [
+    [
+      "testsfailed",
+      "tests"
+    ],
+    "testsfailed_tests"
+  ],
+  [
+    [
+      "tests",
+      "failed"
+    ],
+    "tests_failed"
+  ],
+  [
+    [
+      "dag",
+      "taskdag"
+    ],
+    "dag_taskdag"
+  ],
+  [
+    [
+      "error",
+      "if"
+    ],
+    "error_if"
+  ],
+  [
+    [
+      "raise",
+      "valueerror"
+    ],
+    "raise_valueerror"
   ],
   [
     [
@@ -288,415 +407,296 @@
   ],
   [
     [
-      "filesystem",
-      "file"
+      "minhash",
+      "min"
     ],
-    "filesystem_file"
+    "minhash_min"
   ],
   [
     [
-      "filesystem",
-      "filesystem"
+      "min",
+      "hash"
     ],
-    "filesystem_filesystem"
-  ],
-  [
-    [
-      "total",
-      "documents"
-    ],
-    "total_documents"
-  ],
-  [
-    [
-      "idfepoch",
-      "idf"
-    ],
-    "idfepoch_idf"
-  ],
-  [
-    [
-      "bridgedir",
-      "bridge"
-    ],
-    "bridgedir_bridge"
-  ],
-  [
-    [
-      "bridge",
-      "dir"
-    ],
-    "bridge_dir"
-  ],
-  [
-    [
-      "return",
-      "if"
-    ],
-    "return_if"
-  ],
-  [
-    [
-      "cognitive",
-      "training"
-    ],
-    "cognitive_training"
-  ],
-  [
-    [
-      "to",
-      "train"
-    ],
-    "to_train"
-  ],
-  [
-    [
-      "similarity",
-      "links"
-    ],
-    "similarity_links"
-  ],
-  [
-    [
-      "texttoatomsbridge",
-      "text"
-    ],
-    "texttoatomsbridge_text"
-  ],
-  [
-    [
-      "doc",
-      "frequency"
-    ],
-    "doc_frequency"
-  ],
-  [
-    [
-      "meta",
-      "json"
-    ],
-    "meta_json"
-  ],
-  [
-    [
-      "last",
-      "training"
-    ],
-    "last_training"
-  ],
-  [
-    [
-      "checkpoint",
-      "interval"
-    ],
-    "checkpoint_interval"
-  ],
-  [
-    [
-      "quiet",
-      "print"
-    ],
-    "quiet_print"
-  ],
-  [
-    [
-      "predrecord",
-      "pred"
-    ],
-    "predrecord_pred"
-  ],
-  [
-    [
-      "pred",
-      "record"
-    ],
-    "pred_record"
-  ],
-  [
-    [
-      "python",
-      "cortical"
-    ],
-    "python_cortical"
-  ],
-  [
-    [
-      "training",
-      "manifest"
-    ],
-    "training_manifest"
-  ],
-  [
-    [
-      "sys",
-      "stderr"
-    ],
-    "sys_stderr"
-  ],
-  [
-    [
-      "word",
-      "counts"
-    ],
-    "word_counts"
-  ],
-  [
-    [
-      "docfrequency",
-      "doc"
-    ],
-    "docfrequency_doc"
-  ],
-  [
-    [
-      "total",
-      "docs"
-    ],
-    "total_docs"
-  ],
-  [
-    [
-      "len",
-      "self"
-    ],
-    "len_self"
-  ],
-  [
-    [
-      "for",
-      "path"
-    ],
-    "for_path"
-  ],
-  [
-    [
-      "path",
-      "in"
-    ],
-    "path_in"
-  ],
-  [
-    [
-      "bridge",
-      "tokenizer"
-    ],
-    "bridge_tokenizer"
-  ],
-  [
-    [
-      "basedir",
-      "base"
-    ],
-    "basedir_base"
-  ],
-  [
-    [
-      "base",
-      "dir"
-    ],
-    "base_dir"
-  ],
-  [
-    [
-      "truth",
-      "value"
-    ],
-    "truth_value"
-  ],
-  [
-    [
-      "feedtext",
-      "feed"
-    ],
-    "feedtext_feed"
-  ],
-  [
-    [
-      "feed",
-      "text"
-    ],
-    "feed_text"
-  ],
-  [
-    [
-      "time",
-      "time"
-    ],
-    "time_time"
-  ],
-  [
-    [
-      "wordcounts",
-      "word"
-    ],
-    "wordcounts_word"
-  ],
-  [
-    [
-      "totaldocs",
-      "total"
-    ],
-    "totaldocs_total"
+    "min_hash"
   ],
   [
     [
       "self",
-      "tokenizer"
+      "nodes"
     ],
-    "self_tokenizer"
+    "self_nodes"
   ],
   [
     [
-      "follows",
-      "follows"
+      "nodes",
+      "nodes"
     ],
-    "follows_follows"
+    "nodes_nodes"
   ],
   [
     [
-      "tv",
-      "strength"
+      "totask",
+      "to"
     ],
-    "tv_strength"
+    "totask_to"
+  ],
+  [
+    [
+      "to",
+      "task"
+    ],
+    "to_task"
+  ],
+  [
+    [
+      "asyncio",
+      "cancellederror"
+    ],
+    "asyncio_cancellederror"
+  ],
+  [
+    [
+      "cancellederror",
+      "cancelled"
+    ],
+    "cancellederror_cancelled"
+  ],
+  [
+    [
+      "cancelled",
+      "error"
+    ],
+    "cancelled_error"
+  ],
+  [
+    [
+      "similarcommentfinder",
+      "similar"
+    ],
+    "similarcommentfinder_similar"
+  ],
+  [
+    [
+      "comment",
+      "finder"
+    ],
+    "comment_finder"
+  ],
+  [
+    [
+      "dependency",
+      "dag"
+    ],
+    "dependency_dag"
   ],
   [
     [
       "if",
-      "showprogress"
+      "self"
     ],
-    "if_showprogress"
+    "if_self"
   ],
   [
     [
-      "file",
-      "sys"
+      "pattern",
+      "frequency"
     ],
-    "file_sys"
+    "pattern_frequency"
   ],
   [
     [
-      "totaldocuments",
-      "total"
+      "bit",
+      "array"
     ],
-    "totaldocuments_total"
+    "bit_array"
   ],
   [
     [
-      "path",
-      "content"
+      "check",
+      "if"
     ],
-    "path_content"
+    "check_if"
   ],
   [
     [
-      "print",
-      "print"
+      "findings",
+      "term"
     ],
-    "print_print"
+    "findings_term"
   ],
   [
     [
-      "truthvalue",
-      "truth"
+      "minhashsignature",
+      "minhash"
     ],
-    "truthvalue_truth"
+    "minhashsignature_minhash"
   ],
   [
     [
-      "cli",
-      "cli"
+      "minhash",
+      "signature"
     ],
-    "cli_cli"
+    "minhash_signature"
   ],
   [
     [
-      "trainingmanifest",
-      "training"
+      "bandidx",
+      "band"
     ],
-    "trainingmanifest_training"
+    "bandidx_band"
   ],
   [
     [
-      "trainingstats",
-      "training"
+      "band",
+      "idx"
     ],
-    "trainingstats_training"
+    "band_idx"
   ],
   [
     [
-      "training",
-      "stats"
+      "future",
+      "when"
     ],
-    "training_stats"
+    "future_when"
   ],
   [
     [
-      "word",
+      "next",
       "word"
     ],
-    "word_word"
+    "next_word"
   ],
   [
     [
-      "learn",
-      "vocabulary"
+      "return",
+      "result"
     ],
-    "learn_vocabulary"
-  ],
-  [
-    [
-      "metapath",
-      "meta"
-    ],
-    "metapath_meta"
-  ],
-  [
-    [
-      "meta",
-      "path"
-    ],
-    "meta_path"
-  ],
-  [
-    [
-      "wordcount",
-      "word"
-    ],
-    "wordcount_word"
-  ],
-  [
-    [
-      "word",
-      "count"
-    ],
-    "word_count"
-  ],
-  [
-    [
-      "lasttraining",
-      "last"
-    ],
-    "lasttraining_last"
-  ],
-  [
-    [
-      "totrain",
-      "to"
-    ],
-    "totrain_to"
-  ],
-  [
-    [
-      "start",
-      "time"
-    ],
-    "start_time"
+    "return_result"
   ],
   [
     [
       "str",
-      "str"
+      "float"
     ],
-    "str_str"
+    "str_float"
+  ],
+  [
+    [
+      "dag",
+      "dag"
+    ],
+    "dag_dag"
+  ],
+  [
+    [
+      "self",
+      "edges"
+    ],
+    "self_edges"
+  ],
+  [
+    [
+      "edges",
+      "edges"
+    ],
+    "edges_edges"
+  ],
+  [
+    [
+      "taskid",
+      "task"
+    ],
+    "taskid_task"
+  ],
+  [
+    [
+      "task",
+      "id"
+    ],
+    "task_id"
+  ],
+  [
+    [
+      "failed",
+      "test"
+    ],
+    "failed_test"
+  ],
+  [
+    [
+      "try",
+      "dag"
+    ],
+    "try_dag"
+  ],
+  [
+    [
+      "print",
+      "pass"
+    ],
+    "print_pass"
+  ],
+  [
+    [
+      "pass",
+      "pass"
+    ],
+    "pass_pass"
+  ],
+  [
+    [
+      "pass",
+      "testspassed"
+    ],
+    "pass_testspassed"
+  ],
+  [
+    [
+      "passed",
+      "except"
+    ],
+    "passed_except"
+  ],
+  [
+    [
+      "except",
+      "assertionerror"
+    ],
+    "except_assertionerror"
+  ],
+  [
+    [
+      "assertionerror",
+      "assertion"
+    ],
+    "assertionerror_assertion"
+  ],
+  [
+    [
+      "assertion",
+      "error"
+    ],
+    "assertion_error"
+  ],
+  [
+    [
+      "error",
+      "as"
+    ],
+    "error_as"
+  ],
+  [
+    [
+      "as",
+      "print"
+    ],
+    "as_print"
+  ],
+  [
+    [
+      "print",
+      "fail"
+    ],
+    "print_fail"
   ]
 ]

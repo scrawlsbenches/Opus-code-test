@@ -149,6 +149,53 @@ class TestModelPersistence:
         assert "data" in word_names
 
 
+class TestLinkCountPersistence:
+    """Link count computation on load behavior."""
+
+    def test_given_saved_bridge_when_loaded_then_link_counts_recomputed(self, tmp_path):
+        """
+        Given: A bridge with atoms and links saved to disk
+        When: Loaded back
+        Then: _atom_link_counts is recomputed from existing graph
+
+        This ensures IDF-based link limiting works correctly after reload.
+        Regression test for bug: link counts weren't persisted, causing
+        limits to reset after reload.
+        """
+        from cortical.common.filesystem import InMemoryFileSystem
+
+        # Given - Create bridge with multiple links
+        agent = CognitiveAgent()
+        bridge = TextToAtomsBridge(agent.graph, window_size=3)
+        bridge.learn_vocabulary(["the cat sat on the mat and the dog ran"])
+        bridge.feed_text("the cat sat on the mat and the dog ran", doc_id="test1")
+
+        # Track original link counts
+        original_link_counts = dict(bridge._atom_link_counts)
+        assert len(original_link_counts) > 0, "Should have link counts tracked"
+
+        # When - Save using sharded storage
+        filesystem = InMemoryFileSystem(tmp_path)
+        filesystem.mkdir(tmp_path, parents=True, exist_ok=True)
+        bridge.save(tmp_path, filesystem)
+
+        # Load into new graph
+        new_agent = CognitiveAgent()
+        loaded_bridge = TextToAtomsBridge.load(tmp_path, new_agent.graph, filesystem)
+
+        # Then - Link counts should be recomputed
+        assert len(loaded_bridge._atom_link_counts) > 0, "Link counts should be recomputed on load"
+
+        # Verify counts are reasonable (each link contributes to 2 atoms)
+        total_link_count = sum(loaded_bridge._atom_link_counts.values())
+        link_atoms = [a for a in new_agent.graph._storage.all_atoms() if a.outgoing]
+        expected_total = len(link_atoms) * 2  # Each link connects 2 atoms
+
+        assert total_link_count == expected_total, (
+            f"Total link counts ({total_link_count}) should equal links*2 ({expected_total})"
+        )
+
+
 # =============================================================================
 # Incremental Learning Specs
 # =============================================================================
@@ -333,11 +380,14 @@ class TestQueryDeduplication:
 class TestPerformanceTuning:
     """Performance parameter behavior."""
 
-    def test_given_max_links_limit_when_feeding_text_then_links_capped(self):
+    def test_given_max_links_limit_when_feeding_text_then_similarity_links_capped(self):
         """
         Given: A bridge with max_links_per_doc limit
-        When: Feeding text that would create more links
-        Then: Link creation stops at the limit
+        When: Feeding text that would create more SIMILARITY links
+        Then: SIMILARITY link creation stops at the limit
+
+        Note: max_links_per_doc only applies to SIMILARITY links.
+        FOLLOWS links are created unconditionally for complete sequence prediction.
         """
         # Given
         agent = CognitiveAgent()
@@ -350,9 +400,12 @@ class TestPerformanceTuning:
         # When
         bridge.feed_text(text, doc_id="test")
 
-        # Then
-        stats = bridge.get_statistics()
-        assert stats["links_created"] <= 5
+        # Then - count SIMILARITY links specifically
+        from cortical.cognitive.graph import AtomType
+        similarity_links = [
+            a for a in agent.graph._storage.find_by_type(AtomType.SIMILARITY)
+        ]
+        assert len(similarity_links) <= 5
 
     def test_given_small_window_size_when_feeding_text_then_fewer_links_created(self):
         """

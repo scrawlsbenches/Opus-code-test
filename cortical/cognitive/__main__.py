@@ -277,6 +277,11 @@ def main() -> int:
         action="store_true",
         help="Show detailed query information",
     )
+    ask_parser.add_argument(
+        "--unified", "-u",
+        action="store_true",
+        help="Use unified query pipeline (routes to audit, cdg, code, or semantic backend)",
+    )
 
     # Rebuild-links command (fast rebuild from committed vocabulary)
     rebuild_links_parser = subparsers.add_parser(

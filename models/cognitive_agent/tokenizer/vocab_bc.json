@@ -1,15 +1,3 @@
 {
-  "bc": 2135,
-  "bce": 2136,
-  "bclarify": 2137,
-  "bclass": 2138,
-  "bclean": 2139,
-  "bcode": 2140,
-  "bcomment": 2141,
-  "bcorrect": 2142,
-  "bcoverage": 2143,
-  "bcrash": 2144,
-  "bcreate": 2145,
-  "bcrypt": 2146,
-  "bcustom": 2147
+  "bce": 864
 }

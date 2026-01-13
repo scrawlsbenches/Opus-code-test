@@ -1,0 +1,19 @@
+{
+  "ml": 447,
+  "mlregression": 2,
+  "mlguide": 1,
+  "mlintro": 1,
+  "mlstorage": 3,
+  "mlexperiments": 13,
+  "mldatacollector": 34,
+  "mlfileprediction": 15,
+  "mlsuggestenabled": 2,
+  "mlsuggestthreshold": 2,
+  "mlsuggestblocking": 2,
+  "mlsuggesttopn": 2,
+  "mlcollectionenabled": 2,
+  "mlcollector": 16,
+  "mlintelligencegenerator": 4,
+  "mlintelligence": 1,
+  "mlp": 4
+}

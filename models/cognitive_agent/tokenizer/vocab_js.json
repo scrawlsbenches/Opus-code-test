@@ -1,11 +1,4 @@
 {
-  "js": 13038,
-  "json": 13039,
-  "jsonb": 13040,
-  "jsondecodeerror": 13041,
-  "jsonencoder": 13042,
-  "jsonify": 13043,
-  "jsonl": 13044,
-  "jsonmodule": 13045,
-  "jsx": 13046
+  "json": 5206,
+  "jsonl": 5207
 }

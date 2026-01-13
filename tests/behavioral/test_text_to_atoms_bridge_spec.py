@@ -310,19 +310,19 @@ class TestFileLoading:
         When: Loaded
         Then: Returns file content as string
         """
-        # Given
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
-            f.write("Hello, world!")
-            path = Path(f.name)
+        from cortical.common.filesystem import InMemoryFileSystem
 
-        try:
-            # When
-            content = load_text_file(path)
+        # Given - use in-memory filesystem for fast testing
+        filesystem = InMemoryFileSystem(Path("/test"))
+        filesystem.mkdir(filesystem.base_dir, parents=True, exist_ok=True)
+        path = filesystem.base_dir / "test.txt"
+        filesystem.write_text(path, "Hello, world!")
 
-            # Then
-            assert content == "Hello, world!"
-        finally:
-            path.unlink()
+        # When
+        content = load_text_file(path, filesystem)
+
+        # Then
+        assert content == "Hello, world!"
 
     def test_given_directory_when_iterated_then_yields_text_files(self):
         """
@@ -330,23 +330,26 @@ class TestFileLoading:
         When: Iterated
         Then: Yields (path, content) tuples
         """
-        # Given
-        with tempfile.TemporaryDirectory() as tmpdir:
-            dir_path = Path(tmpdir)
+        from cortical.common.filesystem import InMemoryFileSystem
 
-            # Create test files
-            (dir_path / "file1.txt").write_text("Content 1")
-            (dir_path / "file2.txt").write_text("Content 2")
-            (dir_path / "not_text.md").write_text("Markdown")
+        # Given - use in-memory filesystem for fast testing
+        filesystem = InMemoryFileSystem(Path("/test"))
+        dir_path = filesystem.base_dir
+        filesystem.mkdir(dir_path, parents=True, exist_ok=True)
 
-            # When
-            results = list(iter_text_files(dir_path, pattern="*.txt", recursive=False))
+        # Create test files in memory
+        filesystem.write_text(dir_path / "file1.txt", "Content 1")
+        filesystem.write_text(dir_path / "file2.txt", "Content 2")
+        filesystem.write_text(dir_path / "not_text.md", "Markdown")
 
-            # Then
-            assert len(results) == 2
-            paths = [r[0].name for r in results]
-            assert "file1.txt" in paths
-            assert "file2.txt" in paths
+        # When
+        results = list(iter_text_files(dir_path, filesystem, pattern="*.txt", recursive=False))
+
+        # Then
+        assert len(results) == 2
+        paths = [r[0].name for r in results]
+        assert "file1.txt" in paths
+        assert "file2.txt" in paths
 
     def test_given_directory_when_loaded_to_bridge_then_populates_graph(self):
         """
@@ -354,26 +357,28 @@ class TestFileLoading:
         When: Loaded to bridge
         Then: Graph is populated with atoms and links
         """
-        # Given
+        from cortical.common.filesystem import InMemoryFileSystem
+
+        # Given - use in-memory filesystem for fast testing
         graph = CognitiveGraph()
         bridge = TextToAtomsBridge(graph)
+        filesystem = InMemoryFileSystem(Path("/test"))
+        dir_path = filesystem.base_dir
+        filesystem.mkdir(dir_path, parents=True, exist_ok=True)
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            dir_path = Path(tmpdir)
+        # Create test files in memory
+        filesystem.write_text(dir_path / "doc1.txt", "The cat sat on the mat.")
+        filesystem.write_text(dir_path / "doc2.txt", "The dog ran in the park.")
 
-            # Create test files
-            (dir_path / "doc1.txt").write_text("The cat sat on the mat.")
-            (dir_path / "doc2.txt").write_text("The dog ran in the park.")
+        # When
+        stats = load_directory_to_bridge(dir_path, bridge, filesystem)
 
-            # When
-            stats = load_directory_to_bridge(dir_path, bridge)
+        # Then
+        assert stats["files_processed"] == 2
+        assert stats["atoms_created"] > 0
 
-            # Then
-            assert stats["files_processed"] == 2
-            assert stats["atoms_created"] > 0
-
-            word_atoms = graph.find_by_type(AtomType.WORD)
-            assert len(word_atoms) > 0
+        word_atoms = graph.find_by_type(AtomType.WORD)
+        assert len(word_atoms) > 0
 
 
 # =============================================================================

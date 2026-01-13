@@ -1,10 +1,4 @@
 {
-  "bpatch": 2716,
-  "bpe": 2717,
-  "bpetokenizer": 2718,
-  "bpp": 2719,
-  "bpr": 2720,
-  "bpretend": 2721,
-  "bpull": 2722,
-  "bpytest": 2723
+  "bpe": 1066,
+  "bpetokenizer": 1067
 }

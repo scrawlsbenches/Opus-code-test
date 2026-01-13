@@ -1,0 +1,17 @@
+{
+  "cdg": 371,
+  "cdgstore": 22,
+  "cdgmodule": 3,
+  "cdgtransactionmanager": 11,
+  "cdgrecoverymanager": 10,
+  "cdgerror": 5,
+  "cdgwalmanager": 8,
+  "cdgwal": 8,
+  "cd": 4,
+  "cdgconfig": 23,
+  "cdgstoragestories": 1,
+  "cdgtx": 4,
+  "cdrh": 2,
+  "cder": 2,
+  "cdc": 2
+}
