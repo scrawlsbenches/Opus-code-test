@@ -25,7 +25,7 @@ This document describes the unified `BaseGraph` architecture that consolidates g
 | `ThoughtGraph` | reasoning/thought_graph.py | ThoughtNode | ThoughtEdge | Dict | Clusters, visualization |
 | `SemanticKnowledgeGraph` | graph/knowledge_graph.py | GraphNode | GraphEdge | Dict + WAL | PageRank, BM25, layers |
 | `CognitiveGraph` | cognitive/graph.py | Atom | Atom (links) | Pluggable | Hypergraph, attention |
-| `TaskDAG` | audits/algorithms/dag.py | str | Set[str] | Dict | Cycle detection, toposort |
+| `TaskDAG` | audits/algorithms/dag.py | str | Set[str] | DAGGraph | ✅ Migrated 2026-01-13 |
 | `SynapticMemoryGraph` | reasoning/prism_got.py | ThoughtNode | SynapticEdge | Dict | Hebbian learning |
 | `CausalGraph` | reasoning/prism_causal.py | str | CausalEdge | Dict | Evidence tracking |
 | `PLNGraph` | reasoning/prism_pln.py | HiveNode | HiveEdge | Dict | Probabilistic logic |
@@ -1301,51 +1301,50 @@ class ThoughtGraphV2(
 
 ### Phase 3: Incremental Migration
 
-#### First Target: TaskDAG → DAGGraph (RECOMMENDED)
+#### First Target: TaskDAG → DAGGraph ✅ COMPLETED (2026-01-13)
 
-**Location:** `cortical/audits/algorithms/dag.py` (459 lines)
+**Location:** `cortical/audits/algorithms/dag.py` (173 lines, down from 459)
 
-**Analysis (2026-01-13):** TaskDAG is functionally identical to DAGGraph:
+**Migration Summary:**
+- TaskDAG now wraps DAGGraph internally (composition over inheritance)
+- All 11 built-in tests pass
+- Full backward compatibility maintained
+- Lines reduced: **-286 lines** (62% reduction)
 
-| TaskDAG Method | DAGGraph Method | Status |
-|----------------|-----------------|--------|
-| `add_task(id)` | `add_node(id)` | ✅ Identical |
-| `add_dependency(from, to)` | `add_edge(from, to)` | ⚠️ Returns bool vs raises ValueError |
-| `_has_path(start, end)` | `_has_path(start, end)` | ✅ Identical DFS |
-| `topological_sort()` | `topological_sort()` | ✅ Both use Kahn's algorithm |
-| `blocked_by(id)` | `blocked_by(id)` | ✅ Identical |
-| `blocks(id)` | `blocks(id)` | ✅ Identical |
-| `ready_tasks(completed)` | `ready_tasks(completed)` | ✅ Identical |
-| `roots()` | `find_roots()` | ✅ Same logic |
-| `leaves()` | `find_leaves()` | ✅ Same logic |
-| `has_dependency(from, to)` | `has_edge(from, to)` | ✅ Identical |
+**Performance validation (before migration):**
+| Scale | Nodes  | TaskDAG (old) | DAGGraph | Ratio | Status |
+|-------|--------|---------------|----------|-------|--------|
+| 1x    | 1000   | 0.052ms       | 0.176ms  | 3.35x | Constant factor |
+| 8x    | 8000   | 0.874ms       | 2.390ms  | 2.74x | Stable |
+| 16x   | 16000  | 2.091ms       | 5.427ms  | 2.60x | Stable |
+| 32x   | 32000  | 5.084ms       | 16.888ms | 3.32x | Acceptable |
 
-**Migration steps:**
+**Key optimization:** `DAGGraph.ready_tasks()` was optimized from 7.26x overhead to ~3x by direct storage access (`_edges_by_target` index).
 
-1. **Add compatibility wrapper** (if needed for `add_dependency` return type):
-   ```python
-   # In cortical/audits/algorithms/dag.py (temporary)
-   from cortical.graph import DAGGraph as _DAGGraph
+**API compatibility layer:**
+```python
+# cortical/audits/algorithms/dag.py
+from cortical.graph.implementations import DAGGraph
 
-   class TaskDAG(_DAGGraph):
-       """Compatibility wrapper during migration."""
+class TaskDAG:
+    """Wraps DAGGraph with task-oriented API."""
 
-       def add_task(self, task_id: str) -> None:
-           self.add_node(task_id)
+    def __init__(self):
+        self._graph = DAGGraph()
 
-       def add_dependency(self, from_task: str, to_task: str) -> bool:
-           try:
-               self.add_edge(from_task, to_task)
-               return True
-           except ValueError:
-               return False
-   ```
+    def add_task(self, task_id: str) -> None:
+        if not self._graph.has_node(task_id):
+            self._graph.add_node(task_id)
 
-2. **Update call sites** to use DAGGraph directly (grep for `TaskDAG`)
+    def add_dependency(self, from_task: str, to_task: str) -> bool:
+        try:
+            self._graph.add_edge(from_task, to_task)
+            return True
+        except ValueError:
+            return False  # Cycle or self-loop detected
 
-3. **Delete** the 459-line TaskDAG implementation
-
-**Expected outcome:** -450+ lines of duplicate code
+    # ... delegates to DAGGraph for blocked_by, blocks, ready_tasks, etc.
+```
 
 #### Subsequent Migrations
 
