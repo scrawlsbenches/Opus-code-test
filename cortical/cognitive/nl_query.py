@@ -4,12 +4,20 @@ Natural Language Query Interface for CognitiveAgent.
 Takes natural language questions and generates complete answers
 using trained knowledge and code structure.
 
+Supports two modes:
+- Legacy: Uses word associations and code bridge (original behavior)
+- Unified: Uses QueryRouter → Executors → Aggregator → Formatter pipeline
+
 Usage:
     from cortical.cognitive.nl_query import NLQuery
 
+    # Legacy mode (default)
     nl = NLQuery(agent)
     response = nl.ask("How does code indexing work?")
-    print(response)
+
+    # Unified pipeline mode
+    nl = NLQuery(agent, use_unified=True)
+    response = nl.ask("risky files in cortical/")
 """
 
 import re
@@ -76,12 +84,17 @@ class NLQuery:
     Natural language query interface.
 
     Parses questions, gathers knowledge, generates responses.
+
+    Supports two modes:
+    - Legacy (default): Uses word associations and code bridge
+    - Unified: Uses QueryRouter → Executors → Aggregator → Formatter
     """
 
     def __init__(
         self,
         agent: "CognitiveAgent",
-        registry: Optional[ToolRegistry] = None
+        registry: Optional[ToolRegistry] = None,
+        use_unified: bool = False,
     ):
         """
         Initialize NLQuery.
@@ -89,9 +102,17 @@ class NLQuery:
         Args:
             agent: CognitiveAgent with trained knowledge
             registry: Optional custom ToolRegistry (creates default if None)
+            use_unified: If True, use unified query pipeline (Phase 5)
         """
         self.agent = agent
         self.registry = registry or self._create_default_registry()
+        self.use_unified = use_unified
+
+        # Initialize unified pipeline components lazily
+        self._router = None
+        self._executors = None
+        self._aggregator = None
+        self._formatter = None
 
     def _create_default_registry(self) -> ToolRegistry:
         """Create registry with default cognitive tools."""
@@ -566,12 +587,37 @@ class NLQuery:
             return f"The {subject_title} is a concept in this system."
 
     # =========================================================================
-    # Main Entry Point
+    # Unified Pipeline Support (Phase 5)
     # =========================================================================
 
-    def ask(self, question: str) -> str:
+    def _init_unified_pipeline(self) -> None:
+        """Initialize unified pipeline components lazily."""
+        if self._router is not None:
+            return  # Already initialized
+
+        from cortical.cognitive.unified_query import QueryRouter
+        from cortical.cognitive.executors import (
+            AuditExecutor,
+            SemanticExecutor,
+            CodeExecutor,
+            CDGExecutor,
+        )
+        from cortical.cognitive.aggregator import ResultAggregator
+        from cortical.cognitive.formatter import ResponseFormatter
+
+        self._router = QueryRouter()
+        self._executors = {
+            "audit": AuditExecutor(),
+            "semantic": SemanticExecutor(agent=self.agent),
+            "code": CodeExecutor(),
+            "cdg": CDGExecutor(),
+        }
+        self._aggregator = ResultAggregator(strategy="merge")
+        self._formatter = ResponseFormatter()
+
+    def _ask_unified(self, question: str) -> str:
         """
-        Ask a natural language question and get a complete answer.
+        Ask using unified pipeline (QueryRouter → Executor → Aggregator → Formatter).
 
         Args:
             question: Natural language question
@@ -579,13 +625,49 @@ class NLQuery:
         Returns:
             Formatted answer string
         """
-        # Parse intent
+        self._init_unified_pipeline()
+
+        # 1. Route the question to appropriate backend
+        unified_query = self._router.route(question)
+
+        # 2. Get the executor for this query type
+        executor = self._executors.get(unified_query.query_type)
+        if not executor:
+            return f"No executor available for query type: {unified_query.query_type}"
+
+        # 3. Execute the query
+        result = executor.execute(unified_query.parsed)
+
+        # 4. Aggregate results (single source, but normalizes format)
+        aggregated = self._aggregator.aggregate([result])
+
+        # 5. Format the response
+        response = self._formatter.format(unified_query, aggregated)
+
+        return response
+
+    # =========================================================================
+    # Main Entry Point
+    # =========================================================================
+
+    def ask(self, question: str) -> str:
+        """
+        Ask a natural language question and get a complete answer.
+
+        Uses unified pipeline if use_unified=True, otherwise uses legacy mode.
+
+        Args:
+            question: Natural language question
+
+        Returns:
+            Formatted answer string
+        """
+        if self.use_unified:
+            return self._ask_unified(question)
+
+        # Legacy mode: Parse intent, gather knowledge, generate response
         intent = self.parse_intent(question)
-
-        # Gather knowledge
         knowledge = self.gather_knowledge(intent)
-
-        # Generate response
         response = self.generate_response(intent, knowledge)
 
         return response

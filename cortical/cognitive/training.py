@@ -1609,25 +1609,40 @@ def _run_ask(trainer: 'IncrementalTrainer', args) -> None:
     Uses NLQuery to parse the question, gather knowledge from
     trained vocabulary and indexed code, and generate a response.
 
+    Supports two modes:
+    - Legacy (default): Word associations + code bridge
+    - Unified (--unified): Routes to audit, cdg, code, or semantic backend
+
     Args:
         trainer: The IncrementalTrainer with loaded model
-        args: CLI arguments with question, verbose options
+        args: CLI arguments with question, verbose, unified options
     """
     from cortical.cognitive.nl_query import NLQuery
 
+    # Check if unified mode requested
+    use_unified = getattr(args, 'unified', False)
+
     # Create NLQuery with the trainer's agent
-    nl = NLQuery(trainer.agent)
+    nl = NLQuery(trainer.agent, use_unified=use_unified)
 
-    # Get the answer
-    response = nl.ask(args.question)
-
-    # Show verbose info if requested
-    if getattr(args, 'verbose', False):
+    # Show verbose info for legacy mode
+    if getattr(args, 'verbose', False) and not use_unified:
         intent = nl.parse_intent(args.question)
         print(f"Question type: {intent.question_type}")
         print(f"Concepts: {', '.join(intent.concepts)}")
         print(f"Strategy: {', '.join(intent.query_strategy)}")
         print("-" * 40)
+    elif getattr(args, 'verbose', False) and use_unified:
+        # For unified mode, show routing info
+        from cortical.cognitive.unified_query import QueryRouter
+        router = QueryRouter()
+        unified = router.route(args.question)
+        print(f"Routed to: {unified.query_type}")
+        print(f"Confidence: {unified.confidence:.2f}")
+        print("-" * 40)
+
+    # Get the answer
+    response = nl.ask(args.question)
 
     # Print the response
     print(response)
