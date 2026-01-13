@@ -400,11 +400,8 @@ class ResponseFormatter:
         """Format semantic/association query results."""
         lines = []
 
-        # Extract question type for context
-        parsed = query.parsed
-        question_type = ""
-        if isinstance(parsed, QueryIntent):
-            question_type = parsed.question_type
+        # Note: query.parsed contains QueryIntent with question_type and concepts
+        # These could be used for smarter formatting in future enhancements
 
         count = len(result.items)
         lines.append(f"Results for: {query.raw_question}")
@@ -427,7 +424,7 @@ class ResponseFormatter:
             if excerpt:
                 # Indent and wrap excerpt lines
                 excerpt_lines = excerpt.split("\n")
-                for j, exc_line in enumerate(excerpt_lines[:5]):  # Limit to 5 lines
+                for exc_line in excerpt_lines[:5]:  # Limit to 5 lines
                     # Trim long lines
                     trimmed = exc_line.strip()[:100]
                     if trimmed:
