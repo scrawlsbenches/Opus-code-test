@@ -38,6 +38,13 @@
       "strength": 0.7,
       "confidence": 0.85,
       "description": "Deprecated code should be removed or updated"
+    },
+    {
+      "antecedent": "has_pattern(X, monkeypatch)",
+      "consequent": "needs_di_review(X)",
+      "strength": 0.6,
+      "confidence": 0.9,
+      "description": "Monkeypatching may indicate missing dependency injection"
     }
   ],
   "derived_rules": [],

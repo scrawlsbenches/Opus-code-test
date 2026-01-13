@@ -35,7 +35,8 @@ from cortical.common.filesystem import FileSystem, RealFileSystem
 DEFAULT_SUSPICIOUS_PATTERNS = [
     "FUTURE:", "TODO:", "FIXME:", "HACK:", "XXX:",
     "will be", "should be", "planned to", "eventually",
-    "See:", "see docs/", "See docs/"
+    "See:", "see docs/", "See docs/",
+    "monkeypatch",  # Test isolation concern - may need DI refactor
 ]
 
 # Patterns in commit messages that indicate potential issues
