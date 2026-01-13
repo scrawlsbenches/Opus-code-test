@@ -492,6 +492,36 @@ class ShardedTokenizerStorage:
                 json.dumps(doc_freq, indent=2)
             )
 
+        # Save word counts (critical for vocabulary limiting in incremental mode)
+        # Without this, vocabulary is limited based only on current batch frequencies
+        word_counts = getattr(tokenizer, '_word_counts', {})
+        if word_counts:
+            # Group counts by prefix (same as vocab)
+            counts_by_prefix: Dict[str, Dict[str, int]] = {}
+            for word, count in word_counts.items():
+                prefix = self._get_prefix(word)
+                if prefix not in counts_by_prefix:
+                    counts_by_prefix[prefix] = {}
+                counts_by_prefix[prefix][word] = count
+
+            # Save ALL count shards (counts change even for "clean" vocab shards)
+            # Word counts are smaller than vocab data, so saving all is acceptable
+            for prefix, counts in counts_by_prefix.items():
+                counts_filename = f"counts_{prefix}.json"
+                counts_path = tokenizer_dir / counts_filename
+                self.filesystem.write_text(
+                    counts_path,
+                    json.dumps(counts, indent=2)
+                )
+
+            # Clean up orphaned count files (prefixes no longer in vocabulary)
+            existing_counts = list(tokenizer_dir.glob("counts_*.json"))
+            valid_prefixes = set(counts_by_prefix.keys())
+            for counts_file in existing_counts:
+                prefix = counts_file.stem.replace("counts_", "")
+                if prefix not in valid_prefixes:
+                    self.filesystem.unlink(counts_file)
+
         # Update cache
         self._loaded_shards = all_shards
 
