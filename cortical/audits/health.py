@@ -548,7 +548,7 @@ def _analyze_git(
 
     # Find most depended-upon files
     dep_counts = {}
-    for node in dag._nodes:
+    for node in dag.topological_sort():
         blocked = dag.blocks(node)
         if blocked:
             dep_counts[node] = len(blocked)
@@ -600,6 +600,8 @@ def _analyze_comments(
 
                     finding = {
                         'id': finding_id,
+                        'file': str(rel_path),
+                        'line': line_no,
                         'pattern': pattern,
                         'comment': comment[:100]
                     }

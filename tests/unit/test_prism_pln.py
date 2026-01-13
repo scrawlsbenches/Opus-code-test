@@ -339,6 +339,38 @@ class TestPLNReasoner:
 
         assert reasoner.rule_count >= 1
 
+    def test_assert_rule_creates_atoms_for_antecedent_and_consequent(self):
+        """Assert rule auto-creates atoms for antecedent and consequent if missing.
+
+        This ensures the public API (get_atom) is used correctly for checking
+        atom existence, rather than accessing internal _atoms dict directly.
+        """
+        from cortical.reasoning.prism_pln import PLNReasoner
+
+        reasoner = PLNReasoner()
+
+        # Before asserting rule, atoms shouldn't exist
+        assert reasoner.graph.get_atom("new_premise(X)") is None
+        assert reasoner.graph.get_atom("new_conclusion(X)") is None
+
+        # Assert rule with atoms that don't exist yet
+        reasoner.assert_rule(
+            antecedent="new_premise(X)",
+            consequent="new_conclusion(X)",
+            strength=0.8
+        )
+
+        # After asserting rule, atoms should be auto-created
+        antecedent_atom = reasoner.graph.get_atom("new_premise(X)")
+        consequent_atom = reasoner.graph.get_atom("new_conclusion(X)")
+
+        assert antecedent_atom is not None, "Antecedent atom should be auto-created"
+        assert consequent_atom is not None, "Consequent atom should be auto-created"
+
+        # Atoms should have default truth values (1.0, 1.0)
+        assert antecedent_atom.truth_value.strength == 1.0
+        assert antecedent_atom.truth_value.confidence == 1.0
+
     def test_query(self):
         """Query the reasoner."""
         from cortical.reasoning.prism_pln import PLNReasoner

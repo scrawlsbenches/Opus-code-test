@@ -134,7 +134,7 @@ def run(args: Any) -> None:
             high_churn = result.git_analysis['high_churn_files']
             print(f"  High churn files: {len(high_churn)}")
             if verbose and high_churn:
-                for f, count in list(high_churn.items())[:5]:
+                for f, count in high_churn[:5]:
                     print(f"    {f}: {count} changes")
 
         if 'stale_todos' in result.git_analysis:
