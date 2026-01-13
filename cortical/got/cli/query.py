@@ -537,7 +537,7 @@ def _cmd_list_fields(args) -> int:
     else:
         print(f"No schema registered for '{entity_type}'.")
         # Fall back to common fields
-        from cortical.got.expression.validator import COMMON_FIELDS
+        from cortical.cdg.query.registry import COMMON_FIELDS
         print(f"\nCommon fields (available for all entity types):")
         for field in sorted(COMMON_FIELDS):
             print(f"  {field}")

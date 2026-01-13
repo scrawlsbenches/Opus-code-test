@@ -47,7 +47,7 @@ from .lexer import Lexer, Token, TokenType, tokenize
 from .parser import Parser, parse
 from .planner import QueryPlanner, QueryPlan, PlanStrategy, IndexLookup, plan
 from .executor import QueryExecutor, execute
-from .registry import FunctionRegistry, FunctionSignature, QueryFunction, QueryContext
+from .registry import FunctionRegistry, FunctionSignature, QueryFunction, QueryContext, COMMON_FIELDS
 
 # Import functions module to trigger registration via decorators
 from . import functions  # noqa: F401

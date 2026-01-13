@@ -13,12 +13,16 @@ See: docs/design/cdg-query-language.md
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Type, TYPE_CHECKING
+from typing import Any, Callable, Dict, List, Optional, Set, Type, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from cortical.cdg.storage import CDGStore
     from cortical.cdg.index_manager import CDGIndexManager
     from cortical.cdg.schema import SchemaRegistry
+
+
+# Common fields valid for all entity types (used by CLI --list-fields)
+COMMON_FIELDS: Set[str] = {'id', 'title', 'status', 'created_at', 'modified_at'}
 
 
 @dataclass
