@@ -49,30 +49,10 @@ def memory_persistence():
 
 
 @pytest.fixture
-def mock_persistence_file(temp_got_dir, monkeypatch):
-    """Mock the persistence file path (for backward compat tests)."""
-    persistence_file = temp_got_dir / "audit_pln_state.json"
-    import scripts.audit_reasoning as ar
-    monkeypatch.setattr(ar, "PERSISTENCE_FILE", persistence_file)
-    return persistence_file
-
-
-@pytest.fixture
-def mock_rules_file(temp_got_dir, monkeypatch):
-    """Mock the rules file path (for backward compat tests)."""
-    rules_file = temp_got_dir / "audit_pln_rules.json"
-    import scripts.audit_reasoning as ar
-    monkeypatch.setattr(ar, "RULES_FILE", rules_file)
-    return rules_file
-
-
-@pytest.fixture
-def mock_woven_mind_file(temp_got_dir, monkeypatch):
-    """Mock the WovenMind file path."""
-    woven_file = temp_got_dir / "woven_audit_mind.json"
-    import scripts.audit_reasoning as ar
-    monkeypatch.setattr(ar, "WOVEN_MIND_FILE", woven_file)
-    return woven_file
+def persistence_backend():
+    """Create InMemoryPersistenceBackend for all persistence tests."""
+    from cortical.audits.persistence import InMemoryPersistenceBackend
+    return InMemoryPersistenceBackend()
 
 
 # =============================================================================
@@ -484,111 +464,94 @@ class TestIsNaturalLanguageQuery:
 
 
 class TestPersistenceIO:
-    """Tests for persistence load/save functions."""
+    """Tests for InMemoryPersistenceBackend load/save operations."""
 
-    def test_load_persistence_state_creates_new_when_missing(self, mock_persistence_file):
-        from cortical.audits.reasoning import load_persistence_state
-
-        state = load_persistence_state()
+    def test_load_state_creates_new_when_empty(self, persistence_backend):
+        """Load returns fresh state when nothing saved."""
+        state = persistence_backend.load_state()
 
         assert state.version == 1
         assert state.session_count == 0
+        assert persistence_backend.load_state_calls == 1
 
-    def test_load_persistence_state_reads_existing(self, mock_persistence_file):
-        from cortical.audits.reasoning import load_persistence_state
+    def test_load_state_returns_saved_state(self, persistence_backend):
+        """Load returns previously saved state."""
+        from cortical.audits.persistence import AuditPersistenceState
 
-        # Write a state file
-        state_data = {
-            "version": 2,
-            "created": "2026-01-01",
-            "updated": "2026-01-08",
-            "session_count": 15,
-            "file_importance": {},
-            "attention_focus": [],
-            "global_stats": {}
-        }
-        mock_persistence_file.write_text(json.dumps(state_data))
+        # Save a state
+        state = AuditPersistenceState.create_new()
+        state.session_count = 15
+        state.version = 2
+        persistence_backend.save_state(state)
 
-        state = load_persistence_state()
+        # Load it back
+        loaded = persistence_backend.load_state()
 
-        assert state.version == 2
-        assert state.session_count == 15
+        assert loaded.version == 2
+        assert loaded.session_count == 15
 
-    def test_load_persistence_state_handles_invalid_json(self, mock_persistence_file, capsys):
-        from cortical.audits.reasoning import load_persistence_state
-
-        mock_persistence_file.write_text("not valid json")
-
-        state = load_persistence_state()
-
-        # Should return new state and print warning
-        assert state.session_count == 0
-        captured = capsys.readouterr()
-        assert "Warning" in captured.out
-
-    def test_save_persistence_state(self, mock_persistence_file):
-        from cortical.audits.reasoning import save_persistence_state, AuditPersistenceState
+    def test_save_state_increments_call_count(self, persistence_backend):
+        """Save tracks number of calls for testing."""
+        from cortical.audits.persistence import AuditPersistenceState
 
         state = AuditPersistenceState.create_new()
+        persistence_backend.save_state(state)
+        persistence_backend.save_state(state)
+
+        assert persistence_backend.save_state_calls == 2
+
+    def test_save_state_updates_timestamp(self, persistence_backend):
+        """Save updates the state's updated timestamp."""
+        from cortical.audits.persistence import AuditPersistenceState
+
+        state = AuditPersistenceState.create_new()
+        original_updated = state.updated
+
+        persistence_backend.save_state(state)
+
+        # Timestamp should be updated
+        assert state.updated >= original_updated
+
+    def test_state_roundtrip_preserves_data(self, persistence_backend):
+        """Save and load preserves all state data."""
+        from cortical.audits.persistence import AuditPersistenceState, FileImportanceRecord
+
+        # Create state with data
+        state = AuditPersistenceState.create_new()
         state.session_count = 5
+        state.attention_focus = ["file1.py", "file2.py"]
+        state.global_stats = {"total_scans": 10}
+        state.file_importance["test_py"] = FileImportanceRecord(
+            file_id="test_py",
+            sti=0.5,
+            lti=0.3,
+            vlti=True,
+            last_seen="2026-01-08",
+            history=[{"action": "stimulated"}]
+        )
 
-        save_persistence_state(state)
+        persistence_backend.save_state(state)
+        loaded = persistence_backend.load_state()
 
-        # Read back
-        data = json.loads(mock_persistence_file.read_text())
-        assert data["session_count"] == 5
-        assert "updated" in data
+        assert loaded.session_count == 5
+        assert loaded.attention_focus == ["file1.py", "file2.py"]
+        assert loaded.global_stats == {"total_scans": 10}
+        assert "test_py" in loaded.file_importance
+        assert loaded.file_importance["test_py"].vlti is True
 
-    def test_clear_persistence_state_removes_file(self, mock_persistence_file, capsys):
-        from cortical.audits.reasoning import clear_persistence_state
+    def test_null_backend_does_not_persist(self):
+        """NullPersistenceBackend discards all state."""
+        from cortical.audits.persistence import NullPersistenceBackend, AuditPersistenceState
 
-        mock_persistence_file.write_text("{}")
+        backend = NullPersistenceBackend()
+        state = AuditPersistenceState.create_new()
+        state.session_count = 100
 
-        clear_persistence_state()
+        backend.save_state(state)
+        loaded = backend.load_state()
 
-        assert not mock_persistence_file.exists()
-        captured = capsys.readouterr()
-        assert "cleared" in captured.out
-
-    def test_clear_persistence_state_no_file(self, mock_persistence_file, capsys):
-        from cortical.audits.reasoning import clear_persistence_state
-
-        # File doesn't exist
-        clear_persistence_state()
-
-        captured = capsys.readouterr()
-        assert "No persistence state" in captured.out
-
-    def test_show_persistence_status(self, mock_persistence_file, capsys):
-        from cortical.audits.reasoning import show_persistence_status
-
-        # Create a state file
-        state_data = {
-            "version": 1,
-            "created": "2026-01-01",
-            "updated": "2026-01-08",
-            "session_count": 3,
-            "file_importance": {
-                "test_py": {
-                    "file_id": "test_py",
-                    "sti": 0.5,
-                    "lti": 0.3,
-                    "vlti": False,
-                    "last_seen": "2026-01-08",
-                    "history": []
-                }
-            },
-            "attention_focus": ["test_py"],
-            "global_stats": {"key": "value"}
-        }
-        mock_persistence_file.write_text(json.dumps(state_data))
-
-        show_persistence_status()
-
-        captured = capsys.readouterr()
-        assert "AUDIT PLN PERSISTENCE STATE" in captured.out
-        assert "Session count: 3" in captured.out
-        assert "test_py" in captured.out
+        # Should be fresh state, not the saved one
+        assert loaded.session_count == 0
 
 
 # =============================================================================
@@ -597,56 +560,57 @@ class TestPersistenceIO:
 
 
 class TestRulesIO:
-    """Tests for rules load/save functions."""
+    """Tests for InMemoryPersistenceBackend rules operations."""
 
-    def test_load_rules_creates_default_when_missing(self, mock_rules_file):
-        from cortical.audits.reasoning import load_rules
-
-        rules = load_rules()
+    def test_load_rules_returns_default(self, persistence_backend):
+        """Load returns default rules structure."""
+        rules = persistence_backend.load_rules()
 
         assert rules["version"] == 1
         assert "rules" in rules
         assert "manual_rules" in rules
+        assert persistence_backend.load_rules_calls == 1
 
-    def test_load_rules_reads_existing(self, mock_rules_file):
-        from cortical.audits.reasoning import load_rules
-
-        rules_data = {
+    def test_save_rules_persists_data(self, persistence_backend):
+        """Save rules persists to memory."""
+        rules = {
             "version": 2,
             "rules": [],
-            "manual_rules": [{"antecedent": "a", "consequent": "b"}]
+            "manual_rules": [{"antecedent": "a", "consequent": "b"}],
+            "derived_rules": []
         }
-        mock_rules_file.write_text(json.dumps(rules_data))
 
-        rules = load_rules()
+        persistence_backend.save_rules(rules)
+        loaded = persistence_backend.load_rules()
 
-        assert rules["version"] == 2
-        assert len(rules["manual_rules"]) == 1
+        assert loaded["version"] == 2
+        assert len(loaded["manual_rules"]) == 1
 
-    def test_load_rules_handles_invalid_json(self, mock_rules_file):
-        from cortical.audits.reasoning import load_rules
+    def test_save_rules_adds_timestamp(self, persistence_backend):
+        """Save rules adds updated timestamp."""
+        rules = {"version": 1, "rules": [], "manual_rules": [], "derived_rules": []}
 
-        mock_rules_file.write_text("invalid json")
+        persistence_backend.save_rules(rules)
+        loaded = persistence_backend.load_rules()
 
-        rules = load_rules()
+        assert "updated" in loaded
 
-        # Should return default
-        assert rules["version"] == 1
-
-    def test_save_rules(self, mock_rules_file):
-        from cortical.audits.reasoning import save_rules
-
+    def test_rules_roundtrip(self, persistence_backend):
+        """Rules survive save/load roundtrip."""
         rules = {
-            "version": 1,
-            "rules": [],
-            "manual_rules": [{"ant": "x", "cons": "y"}]
+            "version": 3,
+            "rules": [{"name": "rule1"}],
+            "manual_rules": [{"ant": "x", "cons": "y"}],
+            "derived_rules": [{"source": "woven_mind"}]
         }
 
-        save_rules(rules)
+        persistence_backend.save_rules(rules)
+        loaded = persistence_backend.load_rules()
 
-        data = json.loads(mock_rules_file.read_text())
-        assert len(data["manual_rules"]) == 1
-        assert "updated" in data
+        assert loaded["version"] == 3
+        assert len(loaded["rules"]) == 1
+        assert len(loaded["manual_rules"]) == 1
+        assert len(loaded["derived_rules"]) == 1
 
 
 # =============================================================================
@@ -737,16 +701,18 @@ class TestAbstractionToRule:
 class TestLoadWovenMindAbstractions:
     """Tests for load_woven_mind_abstractions function."""
 
-    def test_returns_empty_when_missing(self, mock_woven_mind_file):
+    def test_returns_empty_when_missing(self, tmp_path):
         from cortical.audits.reasoning import load_woven_mind_abstractions
 
-        result = load_woven_mind_abstractions()
+        missing_file = tmp_path / "nonexistent.json"
+        result = load_woven_mind_abstractions(woven_mind_file=missing_file)
 
         assert result == []
 
-    def test_loads_abstractions_from_file(self, mock_woven_mind_file):
+    def test_loads_abstractions_from_file(self, tmp_path):
         from cortical.audits.reasoning import load_woven_mind_abstractions
 
+        woven_file = tmp_path / "woven_mind.json"
         woven_data = {
             "mind": {
                 "cortex_state": {
@@ -769,20 +735,21 @@ class TestLoadWovenMindAbstractions:
                 }
             }
         }
-        mock_woven_mind_file.write_text(json.dumps(woven_data))
+        woven_file.write_text(json.dumps(woven_data))
 
-        result = load_woven_mind_abstractions()
+        result = load_woven_mind_abstractions(woven_mind_file=woven_file)
 
         assert len(result) == 2
         # Should be sorted by strength descending
         assert result[0]["strength"] == 0.8
 
-    def test_handles_invalid_json(self, mock_woven_mind_file, capsys):
+    def test_handles_invalid_json(self, tmp_path, capsys):
         from cortical.audits.reasoning import load_woven_mind_abstractions
 
-        mock_woven_mind_file.write_text("invalid")
+        woven_file = tmp_path / "invalid.json"
+        woven_file.write_text("invalid json content")
 
-        result = load_woven_mind_abstractions()
+        result = load_woven_mind_abstractions(woven_mind_file=woven_file)
 
         assert result == []
         captured = capsys.readouterr()
@@ -797,7 +764,7 @@ class TestLoadWovenMindAbstractions:
 class TestAuditReasonerInit:
     """Tests for AuditReasoner initialization."""
 
-    def test_basic_initialization(self, mock_persistence_file, mock_rules_file):
+    def test_basic_initialization(self):
         from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(use_persistence=False)
@@ -805,7 +772,7 @@ class TestAuditReasonerInit:
         assert reasoner.pln is not None
         assert reasoner.aggregate_strategy == "revision"
 
-    def test_initialization_with_custom_strategy(self, mock_persistence_file, mock_rules_file):
+    def test_initialization_with_custom_strategy(self):
         from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(aggregate_strategy="max", use_persistence=False)
@@ -841,7 +808,7 @@ class TestAuditReasonerInit:
 class TestAuditReasonerMethods:
     """Tests for AuditReasoner methods."""
 
-    def test_add_default_rules(self, mock_persistence_file, mock_rules_file):
+    def test_add_default_rules(self):
         from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(use_persistence=False)
@@ -870,7 +837,7 @@ class TestAuditReasonerMethods:
 
         assert count == 1
 
-    def test_assert_file_facts(self, mock_persistence_file, mock_rules_file):
+    def test_assert_file_facts(self):
         from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(use_persistence=False)
@@ -887,7 +854,7 @@ class TestAuditReasonerMethods:
         # Should have set importance
         assert "test_py" in reasoner.file_importance
 
-    def test_assert_file_facts_with_initial_importance(self, mock_persistence_file, mock_rules_file):
+    def test_assert_file_facts_with_initial_importance(self):
         from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(use_persistence=False)
@@ -902,9 +869,7 @@ class TestAuditReasonerMethods:
 
         assert reasoner.file_importance["important_py"].sti == 0.9
 
-    def test_assert_file_facts_calculates_importance_from_traits(
-        self, mock_persistence_file, mock_rules_file
-    ):
+    def test_assert_file_facts_calculates_importance_from_traits(self):
         from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(use_persistence=False)
@@ -920,7 +885,7 @@ class TestAuditReasonerMethods:
         # Base 0.3 + 0.3 + 0.2 + 0.2 = 1.0 (capped)
         assert reasoner.file_importance["risky_py"].sti >= 0.7
 
-    def test_focus_on_high_risk_files(self, mock_persistence_file, mock_rules_file):
+    def test_focus_on_high_risk_files(self):
         from cortical.audits.reasoning import AuditReasoner
         from cortical.reasoning.prism_pln import AttentionValue
 
@@ -934,7 +899,7 @@ class TestAuditReasonerMethods:
 
         assert count == 1  # Only high_py
 
-    def test_query_file_risk(self, mock_persistence_file, mock_rules_file):
+    def test_query_file_risk(self):
         from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(use_persistence=False)
@@ -953,7 +918,7 @@ class TestAuditReasonerMethods:
         # Should include importance info
         assert "_importance" in results
 
-    def test_query_with_aggregation(self, mock_persistence_file, mock_rules_file):
+    def test_query_with_aggregation(self):
         from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(use_persistence=False)
@@ -967,7 +932,7 @@ class TestAuditReasonerMethods:
 
         assert "first" in results or "max" in results
 
-    def test_collect_rent(self, mock_persistence_file, mock_rules_file):
+    def test_collect_rent(self):
         from cortical.audits.reasoning import AuditReasoner
         from cortical.reasoning.prism_pln import AttentionValue
 
@@ -980,7 +945,7 @@ class TestAuditReasonerMethods:
         assert reasoner.file_importance["decay_py"].sti == 0.5
         assert reasoner.file_importance["decay_py"].lti == 0.9
 
-    def test_stimulate_file(self, mock_persistence_file, mock_rules_file):
+    def test_stimulate_file(self):
         from cortical.audits.reasoning import AuditReasoner
         from cortical.reasoning.prism_pln import AttentionValue
 
@@ -991,7 +956,7 @@ class TestAuditReasonerMethods:
 
         assert reasoner.file_importance["stim_py"].sti == 0.8
 
-    def test_get_priority_files(self, mock_persistence_file, mock_rules_file):
+    def test_get_priority_files(self):
         from cortical.audits.reasoning import AuditReasoner
         from cortical.reasoning.prism_pln import AttentionValue
 
@@ -1005,7 +970,7 @@ class TestAuditReasonerMethods:
         assert len(priority) == 2
         assert priority[0][0] == "high_py"  # Highest first
 
-    def test_get_vlti_files(self, mock_persistence_file, mock_rules_file):
+    def test_get_vlti_files(self):
         from cortical.audits.reasoning import AuditReasoner
         from cortical.reasoning.prism_pln import AttentionValue
 
@@ -1126,7 +1091,7 @@ class TestAuditReasonerMethods:
 
         assert trend == "stable"
 
-    def test_get_stats(self, mock_persistence_file, mock_rules_file):
+    def test_get_stats(self):
         from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner(use_persistence=False)
