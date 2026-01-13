@@ -651,6 +651,22 @@ class AuditReasoner:
             "aggregate_strategy": self.aggregate_strategy
         }
 
+    def collect_rent(self, sti_decay: float = 0.9, lti_decay: float = 0.95) -> None:
+        """
+        Apply attention decay to all tracked files.
+
+        Uses AttentionValue decay methods which protect VLTI files:
+        - VLTI atoms decay STI slower (max 5% per cycle)
+        - VLTI atoms don't decay LTI at all
+
+        Args:
+            sti_decay: Factor to multiply STI by (0 < factor < 1)
+            lti_decay: Factor to multiply LTI by (typically close to 1)
+        """
+        for file_id, av in self.file_importance.items():
+            av.decay_sti(sti_decay)
+            av.decay_lti(lti_decay)
+
     def explain_file_risk(
         self,
         file_id: str,
