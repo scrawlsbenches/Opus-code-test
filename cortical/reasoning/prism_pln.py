@@ -1044,6 +1044,14 @@ class PLNGraph:
         atom = self._atoms.get(name)
         return atom.truth_value if atom else None
 
+    def iter_atoms(self):
+        """Iterate over all atoms as (name, atom) pairs."""
+        yield from self._atoms.items()
+
+    def get_atom_names(self):
+        """Get all atom names."""
+        return list(self._atoms.keys())
+
     def add_implication(
         self,
         antecedent: str,
