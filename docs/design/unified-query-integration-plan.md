@@ -231,8 +231,11 @@ def ask(self, question: str) -> str:
 ## Questions to Resolve
 
 1. **Should we run multiple executors in parallel?** (e.g., semantic + code for broader coverage)
+   - **Answer:** No
 2. **How do we handle confidence thresholds?** (when to fall back to another executor)
+   - **Answer:** Deferred until MVP complete
 3. **Do we need caching?** (same question shouldn't re-execute)
+   - **Answer:** No
 
 ---
 
@@ -245,5 +248,5 @@ def ask(self, question: str) -> str:
 | Phase 1 | Complete | 2026-01-13 | QueryRouter with 16 tests |
 | Phase 2 | Complete | 2026-01-13 | AuditExecutor, SemanticExecutor, CodeExecutor, CDGExecutor with 29 tests |
 | Phase 3 | Complete | 2026-01-13 | ResultAggregator with 38 tests (merge, best, weighted strategies) |
-| Phase 4 | Pending | | |
+| Phase 4 | Complete | 2026-01-13 | ResponseFormatter with 47 tests |
 | Phase 5 | Pending | | |
