@@ -335,7 +335,7 @@ class TestAuditReasonerExplainFileRisk:
 
     def test_explain_file_risk_returns_dict_with_required_fields(self):
         """explain_file_risk returns dict with all required fields."""
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner()
         reasoner.pln.assert_fact("has_todo(test_py)", strength=0.9, confidence=0.9)
@@ -353,7 +353,7 @@ class TestAuditReasonerExplainFileRisk:
 
     def test_explain_file_risk_finds_facts_for_file(self):
         """explain_file_risk collects facts asserted about the file."""
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner()
         reasoner.pln.assert_fact("has_fixme(module_py)", strength=0.85, confidence=0.9)
@@ -371,7 +371,7 @@ class TestAuditReasonerExplainFileRisk:
 
     def test_explain_file_risk_runs_traced_inference(self):
         """explain_file_risk runs inference with traces for risk queries."""
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner()
         reasoner.pln.assert_fact("has_known_issue(critical_py)", strength=0.9, confidence=0.9)
@@ -387,7 +387,7 @@ class TestAuditReasonerExplainFileRisk:
 
     def test_explain_file_risk_generates_summary(self):
         """explain_file_risk generates human-readable summary."""
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner()
         reasoner.pln.assert_fact("has_pattern(legacy_py, should_be)", strength=0.8, confidence=0.9)
@@ -406,7 +406,7 @@ class TestAuditReasonerSuggestedActions:
 
     def test_suggestions_for_todo_pattern(self):
         """TODO pattern triggers appropriate suggestion."""
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner()
         reasoner.pln.assert_fact("has_todo(task_py)", strength=0.9, confidence=0.9)
@@ -417,7 +417,7 @@ class TestAuditReasonerSuggestedActions:
 
     def test_suggestions_for_fixme_pattern(self):
         """FIXME pattern triggers appropriate suggestion."""
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner()
         reasoner.pln.assert_fact("has_fixme(buggy_py)", strength=0.85, confidence=0.9)
@@ -428,7 +428,7 @@ class TestAuditReasonerSuggestedActions:
 
     def test_suggestions_for_hack_pattern(self):
         """HACK pattern triggers refactoring suggestion."""
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner()
         reasoner.pln.assert_fact("has_hack(workaround_py)", strength=0.8, confidence=0.9)
@@ -439,7 +439,7 @@ class TestAuditReasonerSuggestedActions:
 
     def test_suggestions_for_should_be_pattern(self):
         """'should be' pattern triggers investigation suggestion."""
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner()
         reasoner.pln.assert_fact("has_should_be(spec_py)", strength=0.75, confidence=0.85)
@@ -450,7 +450,7 @@ class TestAuditReasonerSuggestedActions:
 
     def test_suggestions_for_high_churn(self):
         """High churn triggers splitting suggestion."""
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner()
         reasoner.pln.assert_fact("high_churn(monolith_py)", strength=0.85, confidence=0.9)
@@ -461,7 +461,7 @@ class TestAuditReasonerSuggestedActions:
 
     def test_suggestions_for_risky_inference(self):
         """Inferred 'risky' triggers test suggestion."""
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner()
         reasoner.pln.assert_fact("risky(volatile_py)", strength=0.8, confidence=0.9)
@@ -472,7 +472,7 @@ class TestAuditReasonerSuggestedActions:
 
     def test_suggestions_limited_to_five(self):
         """Suggestions are capped at 5 to avoid overwhelming output."""
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner()
 
@@ -492,7 +492,7 @@ class TestAuditReasonerSuggestedActions:
 
     def test_no_suggestions_for_clean_file(self):
         """Files with no patterns have no suggestions."""
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner()
         # No facts asserted for clean_file
@@ -503,7 +503,7 @@ class TestAuditReasonerSuggestedActions:
 
     def test_suggestions_deduplicated(self):
         """Same suggestion is not repeated."""
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner()
 
@@ -528,7 +528,7 @@ class TestNLUExplainQueries:
 
     def test_translate_why_is_flagged_query(self):
         """'why is X flagged' is translated to explain intent."""
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("why is auth.py flagged")
 
@@ -537,7 +537,7 @@ class TestNLUExplainQueries:
 
     def test_translate_why_is_flagged_with_directory(self):
         """'dir/ why is X flagged' includes directory scope."""
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("cortical/ why is storage.py flagged")
 
@@ -547,7 +547,7 @@ class TestNLUExplainQueries:
 
     def test_translate_explain_query(self):
         """'explain X' is translated to explain intent."""
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("explain module.py")
 
@@ -556,7 +556,7 @@ class TestNLUExplainQueries:
 
     def test_translate_why_is_risky_query(self):
         """'why is X risky' is translated to explain intent."""
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("why is test_utils.py risky")
 
@@ -565,7 +565,7 @@ class TestNLUExplainQueries:
 
     def test_explain_query_preserves_file_extension(self):
         """File extensions are preserved in explain queries."""
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("why is config.yaml flagged")
 
@@ -573,7 +573,7 @@ class TestNLUExplainQueries:
 
     def test_explain_query_with_complex_filename(self):
         """Complex filenames with underscores/dashes are handled."""
-        from scripts.audit_reasoning import translate_audit_query
+        from cortical.audits.reasoning import translate_audit_query
 
         query = translate_audit_query("why is my_module_v2.py flagged")
 
@@ -594,7 +594,7 @@ class TestExplainabilityIntegration:
 
         Scenario: A file has TODO and high churn, should get multiple suggestions.
         """
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner()
 
@@ -630,7 +630,7 @@ class TestExplainabilityIntegration:
 
         The summary is derived from traces, so they should match.
         """
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner()
 
@@ -652,7 +652,7 @@ class TestExplainabilityIntegration:
 
         Note: This tests that verbose=True is handled (implementation may vary).
         """
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner()
         reasoner.pln.assert_fact("incomplete(wip_py)", strength=0.7, confidence=0.8)
@@ -671,7 +671,7 @@ class TestExplainabilityIntegration:
         """
         Explanation handles files with multiple facts and patterns.
         """
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner()
 
@@ -708,7 +708,7 @@ class TestExplainabilityEdgeCases:
 
     def test_explain_file_with_special_characters_in_name(self):
         """Files with special characters are handled correctly."""
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner()
 
@@ -722,7 +722,7 @@ class TestExplainabilityEdgeCases:
 
     def test_explain_file_with_no_facts_no_inference(self):
         """File with no facts produces empty but valid response."""
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner()
         # No facts added
@@ -735,7 +735,7 @@ class TestExplainabilityEdgeCases:
 
     def test_explain_handles_zero_confidence_facts(self):
         """Facts with zero confidence are handled gracefully."""
-        from scripts.audit_reasoning import AuditReasoner
+        from cortical.audits.reasoning import AuditReasoner
 
         reasoner = AuditReasoner()
         reasoner.pln.assert_fact("uncertain(maybe_py)", strength=0.5, confidence=0.0)
