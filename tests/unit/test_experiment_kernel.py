@@ -898,6 +898,52 @@ class TestExperimentKernelVocabProjection:
         assert vocab_proj.backward_called, "Vocab projection backward should be called"
         assert metrics.loss > 0, "Loss should be positive"
 
+    def test_evaluate_with_vocab_projection(self):
+        """Test that evaluate() applies vocab_projection (bug fix verification)."""
+        np.random.seed(42)
+        graph = create_causal_attention_graph(seq_len=4, embedding_dim=8, seed=42)
+        graph.forward(num_layers=1)
+
+        # Create mock vocab projection
+        vocab_proj = MockVocabProjection(embedding_dim=8, vocab_size=100)
+
+        optimizer = Adam(graph.parameters() + vocab_proj.parameters(), lr=0.01)
+        loss_fn = MSELoss()
+
+        kernel = ExperimentKernel(
+            graph=graph,
+            optimizer=optimizer,
+            loss_fn=loss_fn,
+            vocab_projection=vocab_proj,
+        )
+
+        # Target should match vocab projection output size (100, not 8)
+        targets = {"pos_3": np.ones(100)}
+
+        # Reset forward_called flag
+        vocab_proj.forward_called = False
+
+        # Call evaluate
+        loss = kernel.evaluate(targets, num_layers=1)
+
+        # Verify vocab projection forward was called during evaluate
+        assert vocab_proj.forward_called, \
+            "Vocab projection forward should be called during evaluate()"
+        assert loss > 0, "Loss should be positive"
+
+        # Verify the loss is computed on projected outputs (size 100), not raw outputs (size 8)
+        # If vocab projection wasn't applied, the loss would fail or be computed incorrectly
+        outputs = graph.forward(num_layers=1)
+        projected = vocab_proj.forward(outputs, apply_softmax=False)
+
+        expected_loss = 0.0
+        for node_id, target in targets.items():
+            if node_id in projected:
+                expected_loss += np.mean((projected[node_id] - target) ** 2)
+
+        assert abs(loss - expected_loss) < 1e-6, \
+            f"Evaluate loss {loss:.6f} should match expected {expected_loss:.6f}"
+
 
 class TestExperimentKernelNoAttentionWeights:
     """Tests for graphs without get_attention_weights method."""
