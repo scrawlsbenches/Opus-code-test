@@ -215,9 +215,143 @@ Partially. We learned:
 - The file-based communication experiment worked
 - Sometimes exploring reveals something isn't worth using
 
-### What Would Actually Be Useful?
+---
 
-I don't know your goals. What problem are you trying to solve? Let's focus on that instead of exercising random CLI tools.
+## [006] Available CLI Tools
+
+**User:** Moving on. Let's exercise some other CLI tools.
+
+### Three CLI Entry Points
+
+**1. GoT (Graph of Thought):** `python -m cortical.got`
+```
+task, sprint, epic, handoff, decision, doc, query, expr,
+blocked, active, stats, dashboard, validate, infer, export,
+backup, sync, orphan, backlog, analyze, edge, batch, kt, failure
+```
+
+**2. Cognitive:** `python -m cortical.cognitive`
+```
+train, status, list, reindex, query, demo, generate,
+index-code, ask, rebuild-links
+```
+
+**3. Audit:** `python -m cortical.cli.audit`
+```
+generate, train, scan, patterns, similar, index, health,
+reason, discover, pattern
+```
+
+### Interesting Ones to Try
+
+| Command | What It Does |
+|---------|--------------|
+| `got dashboard` | Comprehensive metrics |
+| `got analyze` | Graph analysis with fluent API |
+| `cognitive demo` | Interactive cognitive agent demo |
+| `cognitive ask` | Natural language Q&A about codebase |
+| `audit health` | Codebase health analysis |
+| `audit discover` | WovenMind pattern discovery |
+
+---
+
+## [007] CLI Exercise Results
+
+### 1. GoT Dashboard (`python -m cortical.got dashboard`)
+
+**Verdict: Actually useful**
+
+```
+GoT DASHBOARD - 483 nodes | 610 edges | 65 orphans
+
+OVERVIEW:
+  Tasks: 422 (0% complete)
+  Decisions: 61
+  Edge Density: 1.26 edges/node
+
+HEALTH INDICATORS:
+  Blocked Tasks: 0
+  Stale Tasks: 0
+  Orphan Nodes: 65
+
+AGENT PERFORMANCE:
+  next-session: 65.2% success, avg 2.9h
+  test-agent: 80.0% success, avg 29.4s
+```
+
+### 2. Audit Health (`python -m cortical.cli.audit health cortical/ --git -v`)
+
+**Verdict: Useful - comprehensive analysis**
+
+```
+Found 282 Python files, 9001 comments, 51 findings
+
+GIT HISTORY:
+  Most changed: got/api.py (81 commits!)
+  Suspicious commits: 2 (todo/hack patterns)
+
+PATTERN COUNTS:
+  should be: 20
+  will be: 11
+  TODO: 6
+  FUTURE: 6
+```
+
+### 3. GoT Analyze Summary (`python -m cortical.got analyze summary`)
+
+**Verdict: Useful**
+
+```
+TASKS BY STATUS:
+  completed: 261 (61.8%)
+  pending: 160 (37.9%)
+  blocked: 1 (0.2%)
+
+HIGH PRIORITY PENDING:
+  - Fix always-passing assertions
+  - Fix time.sleep violations
+```
+
+### 4. WovenMind Discover (`python -m cortical.cli.audit discover cortical/ -v`)
+
+**Verdict: Interesting but experimental**
+
+```
+Found 51 findings, 27 patterns observed
+Formed 10 abstractions:
+  - "reasoning with should_be" (seen 8x)
+  - "audits with should_be" (seen 7x)
+  - "got with todo" (seen 4x)
+```
+
+### 5. Cognitive Ask (`python -m cortical.cognitive ask "What is cognitive agent?"`)
+
+**Verdict: Broken - needs training on correct docs**
+
+```
+"I don't have information about cognitive_agent"
+(despite 554 documents trained)
+```
+
+### Summary
+
+| Tool | Usefulness | Notes |
+|------|------------|-------|
+| `got dashboard` | High | Real metrics, actionable |
+| `audit health` | High | Git churn + pattern analysis |
+| `got analyze summary` | High | Task status overview |
+| `audit discover` | Medium | Experimental but interesting |
+| `cognitive ask` | Low | Training seems broken |
+| `audit reason` | Low | Fancy grep (see [005]) |
+
+---
+
+## [008] What's Next?
+
+Options:
+1. Fix the cognitive agent training issue?
+2. Try more GoT commands (query, edge, handoff)?
+3. Do something else entirely?
 
 ---
 
