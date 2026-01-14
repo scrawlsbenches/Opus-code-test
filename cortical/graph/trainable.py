@@ -1406,7 +1406,9 @@ class TrainableGraph(BaseGraph[TrainableNode, TrainableEdge]):
 
         for edge in self.edges:
             if edge.weight_param is not None:
-                key = f"{edge.source_id}_{edge.target_id}"
+                # Use "::" separator to safely handle node IDs containing underscores
+                # (e.g., "pos_0::pos_1" instead of "pos_0_pos_1" which breaks on split)
+                key = f"{edge.source_id}::{edge.target_id}"
                 state["edge_weights"][key] = edge.weight_param.data.copy()
 
         for transform in self._layer_transforms:
@@ -1430,12 +1432,19 @@ class TrainableGraph(BaseGraph[TrainableNode, TrainableEdge]):
                 node.embedding.data = embedding.copy()
 
         for key, weight in state.get("edge_weights", {}).items():
-            parts = key.split("_")
-            if len(parts) >= 2:
+            # Support both new "::" separator and legacy "_" for backward compatibility
+            # New format: "pos_0::pos_1", legacy: "a_b" (only works if IDs have no underscores)
+            if "::" in key:
+                source_id, target_id = key.split("::", 1)
+            else:
+                # Legacy format - only works correctly for IDs without underscores
+                parts = key.split("_")
+                if len(parts) < 2:
+                    continue
                 source_id, target_id = parts[0], parts[1]
-                edge = self.get_edge(source_id, target_id, "")
-                if edge and edge.weight_param is not None:
-                    edge.weight_param.data = weight.copy()
+            edge = self.get_edge(source_id, target_id, "")
+            if edge and edge.weight_param is not None:
+                edge.weight_param.data = weight.copy()
 
         for i, transform in enumerate(state.get("transforms", [])):
             if i < len(self._layer_transforms):

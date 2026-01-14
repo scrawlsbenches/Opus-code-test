@@ -540,7 +540,7 @@ class TestExperimentConfigBasic:
             ExperimentConfig(
                 name="test",
                 input_path="input.txt",
-                loss_fn="cross_entropy",
+                loss_fn="invalid_loss_fn",
             )
 
 
@@ -854,10 +854,13 @@ class TestCreatePositionEncoding:
         assert result.max_len == 10
         assert result.embedding_dim == 16
 
-    def test_create_sinusoidal_not_implemented(self):
-        """Raises error for 'sinusoidal' (not yet implemented)."""
-        with pytest.raises(NotImplementedError):
-            create_position_encoding("sinusoidal", max_len=10, embedding_dim=16)
+    def test_create_sinusoidal(self):
+        """Creates sinusoidal position encoding."""
+        from cortical.experiments.position import SinusoidalPositionEncoding
+        result = create_position_encoding("sinusoidal", max_len=10, embedding_dim=16)
+        assert isinstance(result, SinusoidalPositionEncoding)
+        assert result.max_len == 10
+        assert result.embedding_dim == 16
 
     def test_create_unknown_type(self):
         """Raises error for unknown encoding type."""

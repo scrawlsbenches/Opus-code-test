@@ -42,6 +42,9 @@ class ExperimentConfig:
     # Optional features
     dropout: float = 0.0
     use_bias: bool = False
+    residual: bool = False  # Residual connections: output = attention + input
+    weight_decay: float = 0.0  # L2 regularization factor
+    val_split: float = 0.0  # Fraction of tokens for validation (0.0 = no validation)
 
     # Loss function: "mse" for embedding matching, "cross_entropy" for language modeling
     # - mse: Targets are next-token embeddings, outputs match embedding space
@@ -67,11 +70,15 @@ class ExperimentConfig:
                 f"loss_fn '{self.loss_fn}' not supported. Use 'mse' or 'cross_entropy'."
             )
 
-        if self.position_encoding not in ("none", "learned"):
-            # TODO(agent): Add "sinusoidal" when implemented
+        if self.position_encoding not in ("none", "learned", "sinusoidal"):
             raise ValueError(
                 f"position_encoding '{self.position_encoding}' not supported. "
-                "Use 'none' or 'learned'."
+                "Use 'none', 'learned', or 'sinusoidal'."
+            )
+
+        if not 0.0 <= self.val_split <= 0.5:
+            raise ValueError(
+                f"val_split must be between 0.0 and 0.5, got {self.val_split}"
             )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -123,6 +130,9 @@ class ExperimentConfig:
             seed=args.seed,
             dropout=getattr(args, "dropout", 0.0),
             use_bias=getattr(args, "use_bias", False),
+            residual=getattr(args, "residual", False),
+            weight_decay=getattr(args, "weight_decay", 0.0),
+            val_split=getattr(args, "val_split", 0.0),
             loss_fn=getattr(args, "loss_fn", "mse"),
             position_encoding=getattr(args, "position_encoding", "none"),
         )
@@ -140,11 +150,14 @@ class ExperimentConfig:
             f"  position_encoding: {self.position_encoding}",
             f"  dropout: {self.dropout}",
             f"  use_bias: {self.use_bias}",
+            f"  residual: {self.residual}",
             "",
             "Training:",
             f"  epochs: {self.epochs}",
             f"  lr: {self.lr}",
             f"  clip_grad: {self.clip_grad}",
+            f"  weight_decay: {self.weight_decay}",
+            f"  val_split: {self.val_split}",
             f"  max_tokens: {self.max_tokens}",
             f"  seed: {self.seed}",
             f"  loss_fn: {self.loss_fn}",

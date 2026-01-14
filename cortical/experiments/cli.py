@@ -103,9 +103,9 @@ def create_parser() -> argparse.ArgumentParser:
     run_parser.add_argument(
         "--position-encoding",
         type=str,
-        choices=["none", "learned"],
+        choices=["none", "learned", "sinusoidal"],
         default="none",
-        help="Position encoding type (default: none)",
+        help="Position encoding type: 'none', 'learned' (trainable), or 'sinusoidal' (fixed) (default: none)",
     )
     run_parser.add_argument(
         "--dropout",
@@ -117,6 +117,25 @@ def create_parser() -> argparse.ArgumentParser:
         "--use-bias",
         action="store_true",
         help="Enable bias in attention layers",
+    )
+    run_parser.add_argument(
+        "--residual",
+        action="store_true",
+        help="Enable residual connections (output = attention + input). "
+             "Helps gradient flow in multi-layer networks.",
+    )
+    run_parser.add_argument(
+        "--weight-decay",
+        type=float,
+        default=0.0,
+        help="Weight decay (L2 regularization) factor (default: 0.0)",
+    )
+    run_parser.add_argument(
+        "--val-split",
+        type=float,
+        default=0.0,
+        help="Fraction of tokens for validation (0.0-0.5). "
+             "If 0.0, no validation is performed. (default: 0.0)",
     )
     run_parser.add_argument(
         "--loss-fn",
@@ -211,6 +230,7 @@ def run_experiment(args: argparse.Namespace) -> int:
         seed=config.seed,
         dropout=config.dropout,
         use_bias=config.use_bias,
+        use_residual=config.residual,
     )
 
     # Prepare inputs (token embeddings)
@@ -243,7 +263,7 @@ def run_experiment(args: argparse.Namespace) -> int:
         loss_fn = CrossEntropyWithLogits()
 
         # Targets are next-token indices (as one-hot for compatibility)
-        targets = {
+        all_targets = {
             f"pos_{i}": np.eye(len(vocab))[token_ids[i + 1]]
             for i in range(len(tokens) - 1)
         }
@@ -251,12 +271,38 @@ def run_experiment(args: argparse.Namespace) -> int:
     else:
         # MSE mode: targets are next-token embeddings
         loss_fn = MSELoss()
-        targets = {
+        all_targets = {
             f"pos_{i}": embeddings[token_ids[i + 1]].copy()
             for i in range(len(tokens) - 1)
         }
 
-    optimizer = Adam(all_params, lr=config.lr)
+    # Split targets into train/val if val_split > 0
+    # We split the prediction positions, not the tokens themselves
+    train_targets = all_targets
+    val_targets = {}
+    val_positions = []
+
+    if config.val_split > 0:
+        # Get all position indices for prediction (0 to len-2)
+        all_positions = list(range(len(tokens) - 1))
+        n_val = int(len(all_positions) * config.val_split)
+
+        if n_val < 1:
+            print(f"Warning: val_split too small, no validation positions. Using all for training.")
+        else:
+            # Use last n_val positions for validation (more realistic for sequence data)
+            # This tests generalization to later positions
+            val_positions = all_positions[-n_val:]
+            train_positions = all_positions[:-n_val]
+
+            train_targets = {f"pos_{i}": all_targets[f"pos_{i}"] for i in train_positions}
+            val_targets = {f"pos_{i}": all_targets[f"pos_{i}"] for i in val_positions}
+
+            print(f"Train/val split: {len(train_targets)} train, {len(val_targets)} val positions")
+
+    targets = train_targets  # Use train_targets for training loop
+
+    optimizer = Adam(all_params, lr=config.lr, weight_decay=config.weight_decay)
     kernel = ExperimentKernel(
         graph, optimizer, loss_fn,
         profiling=False,
@@ -267,78 +313,144 @@ def run_experiment(args: argparse.Namespace) -> int:
     # Setup logging
     log = ExperimentLog(config)
 
-    # Training loop
+    # Helper function to compute loss on a set of targets
+    def compute_loss(target_dict):
+        """Compute loss on given targets without gradient updates."""
+        graph.eval()  # Disable dropout for evaluation
+        outputs = graph.forward(num_layers=config.num_layers, input_nodes=input_nodes)
+
+        total_loss = 0.0
+        count = 0
+        for node_id, target in target_dict.items():
+            if node_id in outputs:
+                if vocab_proj is not None:
+                    logits = vocab_proj.forward({node_id: outputs[node_id]}, apply_softmax=False)
+                    output = logits[node_id]
+                else:
+                    output = outputs[node_id]
+                total_loss += loss_fn(output, target)
+                count += 1
+
+        graph.train()  # Re-enable dropout
+        return total_loss / count if count > 0 else 0.0
+
+    # Helper function to compute accuracy on positions
+    def compute_accuracy(positions):
+        """Compute accuracy on given positions."""
+        graph.eval()
+        outputs = graph.forward(num_layers=config.num_layers, input_nodes=input_nodes)
+        correct = 0
+        total = 0
+
+        if config.loss_fn == "cross_entropy" and vocab_proj is not None:
+            logits = vocab_proj.forward(outputs, apply_softmax=False)
+            for i in positions:
+                node_id = f"pos_{i}"
+                if node_id in logits:
+                    predicted_id = int(np.argmax(logits[node_id]))
+                    predicted_token = id_to_token.get(predicted_id, "<UNK>")
+                    actual_token = tokens[i + 1]
+                    if predicted_token == actual_token:
+                        correct += 1
+                    total += 1
+        else:
+            for i in positions:
+                node_id = f"pos_{i}"
+                if node_id in outputs:
+                    output_vec = outputs[node_id]
+                    distances = np.linalg.norm(embeddings - output_vec, axis=1)
+                    predicted_id = np.argmin(distances)
+                    predicted_token = id_to_token.get(predicted_id, "<UNK>")
+                    actual_token = tokens[i + 1]
+                    if predicted_token == actual_token:
+                        correct += 1
+                    total += 1
+
+        graph.train()
+        return correct / total if total > 0 else 0.0, correct, total
+
+    # Training loop with optional validation
     print("Training...")
     start_time = time.time()
 
-    history = kernel.fit(
-        targets=targets,
-        epochs=config.epochs,
-        num_layers=config.num_layers,
-        clip_grad=config.clip_grad,
-        input_nodes=input_nodes,
-        verbose=args.verbose,
-    )
+    train_losses = []
+    val_losses = []
+
+    for epoch in range(config.epochs):
+        # Training step - extract loss value from StepMetrics
+        step_metrics = kernel.train_step(
+            targets=targets,
+            num_layers=config.num_layers,
+            clip_grad=config.clip_grad,
+            input_nodes=input_nodes,
+        )
+        train_loss = step_metrics.loss
+        train_losses.append(train_loss)
+
+        # Compute validation loss if we have validation data
+        val_loss = None
+        if val_targets:
+            val_loss = compute_loss(val_targets)
+            val_losses.append(val_loss)
+
+        # Log epoch
+        log.log_epoch(train_loss, val_loss=val_loss)
+
+        # Verbose output
+        if args.verbose and (epoch + 1) % max(1, config.epochs // 20) == 0:
+            msg = f"Epoch {epoch + 1}/{config.epochs}: train_loss={train_loss:.4f}"
+            if val_loss is not None:
+                msg += f", val_loss={val_loss:.4f}"
+            print(msg)
 
     training_time = time.time() - start_time
 
     # Evaluate final accuracy
-    outputs = graph.forward(num_layers=config.num_layers, input_nodes=input_nodes)
-    correct = 0
-    total = 0
+    all_positions = list(range(len(tokens) - 1))
+    train_positions = [i for i in all_positions if i not in val_positions] if val_positions else all_positions
 
-    if config.loss_fn == "cross_entropy" and vocab_proj is not None:
-        # For cross-entropy: use vocab projection to get logits, then argmax
-        logits = vocab_proj.forward(outputs, apply_softmax=False)
-        for i in range(len(tokens) - 1):
-            node_id = f"pos_{i}"
-            if node_id in logits:
-                predicted_id = int(np.argmax(logits[node_id]))
-                predicted_token = id_to_token.get(predicted_id, "<UNK>")
-                actual_token = tokens[i + 1]
-                if predicted_token == actual_token:
-                    correct += 1
-                total += 1
-    else:
-        # For MSE: find nearest embedding vector
-        for i in range(len(tokens) - 1):
-            node_id = f"pos_{i}"
-            if node_id in outputs:
-                output_vec = outputs[node_id]
-                distances = np.linalg.norm(embeddings - output_vec, axis=1)
-                predicted_id = np.argmin(distances)
-                predicted_token = id_to_token.get(predicted_id, "<UNK>")
-                actual_token = tokens[i + 1]
-                if predicted_token == actual_token:
-                    correct += 1
-                total += 1
+    train_accuracy, train_correct, train_total = compute_accuracy(train_positions)
+    accuracy = train_accuracy  # Default accuracy is train accuracy
 
-    accuracy = correct / total if total > 0 else 0.0
+    val_accuracy = None
+    val_correct = 0
+    val_total = 0
+    final_val_loss = None
+    if val_targets:
+        val_accuracy, val_correct, val_total = compute_accuracy(val_positions)
+        final_val_loss = compute_loss(val_targets)
 
-    # Log metrics
-    for loss in history.train_losses:
-        log.log_epoch(loss)
-
+    # Log final metrics
     log.finalize(
-        final_loss=history.train_losses[-1],
-        final_accuracy=accuracy,
+        final_loss=train_losses[-1],
+        final_accuracy=train_accuracy,
         training_time=training_time,
+        final_val_loss=final_val_loss,
+        final_val_accuracy=val_accuracy,
     )
 
     # Save results
     run_dir = log.save()
+
+    # Save model checkpoint
+    checkpoint_path = log.save_checkpoint(all_params)
 
     # Print results
     print()
     print("=" * 60)
     print("RESULTS")
     print("=" * 60)
-    print(f"  Final loss: {history.train_losses[-1]:.4f}")
-    print(f"  Min loss: {min(history.train_losses):.4f}")
-    print(f"  Accuracy: {accuracy:.1%} ({correct}/{total})")
+    print(f"  Final train loss: {train_losses[-1]:.4f}")
+    print(f"  Min train loss: {min(train_losses):.4f}")
+    print(f"  Train accuracy: {train_accuracy:.1%} ({train_correct}/{train_total})")
+    if val_targets:
+        print(f"  Final val loss: {final_val_loss:.4f}")
+        print(f"  Min val loss: {min(val_losses):.4f}")
+        print(f"  Val accuracy: {val_accuracy:.1%} ({val_correct}/{val_total})")
     print(f"  Training time: {training_time:.1f}s")
     print()
     print(f"Results saved to: {run_dir}")
+    print(f"Model checkpoint: {checkpoint_path}")
     print()
 
     return 0
