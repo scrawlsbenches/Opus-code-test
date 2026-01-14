@@ -26,6 +26,7 @@ from .kernel import ExperimentKernel, clip_gradients
 from .tokenizer import tokenize, build_vocab, tokens_to_ids, ids_to_tokens
 from .config import ExperimentConfig
 from .logging import ExperimentLog, ExperimentMetrics, list_experiments
+from .position import LearnedPositionEncoding, create_position_encoding
 
 __all__ = [
     # Core
@@ -45,4 +46,7 @@ __all__ = [
     "ExperimentLog",
     "ExperimentMetrics",
     "list_experiments",
+    # Position Encoding
+    "LearnedPositionEncoding",
+    "create_position_encoding",
 ]

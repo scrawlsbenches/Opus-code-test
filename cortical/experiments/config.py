@@ -48,10 +48,10 @@ class ExperimentConfig:
     # CONTEXT: Currently only "mse" is supported
     loss_fn: str = "mse"
 
-    # TODO(agent): Implement position encodings
-    # SESSION_HANDOFF: Options are "learned" (trainable embeddings) or
-    # "sinusoidal" (fixed, from Attention Is All You Need paper)
-    # BLOCKED_BY: Need to decide how to add positions to input embeddings
+    # Position encoding type: "none", "learned", or "sinusoidal"
+    # - none: No position information (default for backward compatibility)
+    # - learned: Trainable position embeddings (recommended)
+    # - sinusoidal: Fixed sin/cos patterns (TODO)
     position_encoding: str = "none"
 
     def __post_init__(self) -> None:
@@ -68,11 +68,11 @@ class ExperimentConfig:
                 f"loss_fn '{self.loss_fn}' not supported. Currently only 'mse' is available."
             )
 
-        if self.position_encoding not in ("none",):
-            # TODO(agent): Remove this check when position encodings are implemented
+        if self.position_encoding not in ("none", "learned"):
+            # TODO(agent): Add "sinusoidal" when implemented
             raise ValueError(
                 f"position_encoding '{self.position_encoding}' not supported. "
-                "Currently only 'none' is available."
+                "Use 'none' or 'learned'."
             )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -138,6 +138,7 @@ class ExperimentConfig:
             f"  embedding_dim: {self.embedding_dim}",
             f"  num_heads: {self.num_heads}",
             f"  num_layers: {self.num_layers}",
+            f"  position_encoding: {self.position_encoding}",
             f"  dropout: {self.dropout}",
             f"  use_bias: {self.use_bias}",
             "",

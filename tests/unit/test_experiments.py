@@ -760,3 +760,106 @@ class TestListExperiments:
 
             result = list_experiments(base)
             assert len(result) == 2
+
+
+# =============================================================================
+# POSITION ENCODING TESTS
+# =============================================================================
+
+from cortical.experiments.position import (
+    LearnedPositionEncoding,
+    create_position_encoding,
+)
+
+
+class TestLearnedPositionEncoding:
+    """Tests for LearnedPositionEncoding class."""
+
+    def test_initialization(self):
+        """Can create position encoding with given dimensions."""
+        pos_enc = LearnedPositionEncoding(max_len=100, embedding_dim=32)
+        assert pos_enc.max_len == 100
+        assert pos_enc.embedding_dim == 32
+        assert pos_enc.embeddings.data.shape == (100, 32)
+
+    def test_encode_single_position(self):
+        """Can encode a single position."""
+        pos_enc = LearnedPositionEncoding(max_len=10, embedding_dim=16)
+        encoding = pos_enc.encode(0)
+        assert encoding.shape == (16,)
+
+    def test_encode_different_positions(self):
+        """Different positions have different encodings."""
+        pos_enc = LearnedPositionEncoding(max_len=10, embedding_dim=16)
+        enc0 = pos_enc.encode(0)
+        enc1 = pos_enc.encode(1)
+        # Should be different (random initialization)
+        assert not np.allclose(enc0, enc1)
+
+    def test_encode_sequence(self):
+        """Can encode a sequence of positions."""
+        pos_enc = LearnedPositionEncoding(max_len=10, embedding_dim=16)
+        encodings = pos_enc.encode_sequence(5)
+        assert encodings.shape == (5, 16)
+
+    def test_encode_out_of_range(self):
+        """Raises error for position beyond max_len."""
+        pos_enc = LearnedPositionEncoding(max_len=10, embedding_dim=16)
+        with pytest.raises(ValueError, match="exceeds max_len"):
+            pos_enc.encode(10)
+
+    def test_add_to_inputs(self):
+        """Can add position encodings to input dict."""
+        pos_enc = LearnedPositionEncoding(max_len=5, embedding_dim=4)
+        inputs = {
+            "pos_0": np.zeros(4),
+            "pos_1": np.zeros(4),
+            "pos_2": np.zeros(4),
+        }
+        result = pos_enc.add_to_inputs(inputs)
+
+        # Result should have position encodings added
+        assert not np.allclose(result["pos_0"], np.zeros(4))
+        assert not np.allclose(result["pos_1"], np.zeros(4))
+        # Different positions should be different
+        assert not np.allclose(result["pos_0"], result["pos_1"])
+
+    def test_parameters(self):
+        """Returns trainable parameters."""
+        pos_enc = LearnedPositionEncoding(max_len=10, embedding_dim=16)
+        params = pos_enc.parameters()
+        assert len(params) == 1
+        assert params[0].data.shape == (10, 16)
+
+    def test_zero_grad(self):
+        """Can zero gradients."""
+        pos_enc = LearnedPositionEncoding(max_len=10, embedding_dim=16)
+        pos_enc.embeddings.grad = np.ones((10, 16))
+        pos_enc.zero_grad()
+        assert pos_enc.embeddings.grad is None
+
+
+class TestCreatePositionEncoding:
+    """Tests for create_position_encoding factory."""
+
+    def test_create_none(self):
+        """Returns None for 'none' encoding type."""
+        result = create_position_encoding("none", max_len=10, embedding_dim=16)
+        assert result is None
+
+    def test_create_learned(self):
+        """Creates LearnedPositionEncoding for 'learned' type."""
+        result = create_position_encoding("learned", max_len=10, embedding_dim=16)
+        assert isinstance(result, LearnedPositionEncoding)
+        assert result.max_len == 10
+        assert result.embedding_dim == 16
+
+    def test_create_sinusoidal_not_implemented(self):
+        """Raises error for 'sinusoidal' (not yet implemented)."""
+        with pytest.raises(NotImplementedError):
+            create_position_encoding("sinusoidal", max_len=10, embedding_dim=16)
+
+    def test_create_unknown_type(self):
+        """Raises error for unknown encoding type."""
+        with pytest.raises(ValueError, match="Unknown"):
+            create_position_encoding("unknown", max_len=10, embedding_dim=16)

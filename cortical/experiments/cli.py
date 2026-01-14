@@ -100,12 +100,18 @@ def create_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print training progress",
     )
+    run_parser.add_argument(
+        "--position-encoding",
+        type=str,
+        choices=["none", "learned"],
+        default="none",
+        help="Position encoding type (default: none)",
+    )
 
     # TODO(agent): Add these arguments when features are implemented
     # run_parser.add_argument("--dropout", type=float, default=0.0)
     # run_parser.add_argument("--use-bias", action="store_true")
     # run_parser.add_argument("--loss-fn", choices=["mse", "cross_entropy"], default="mse")
-    # run_parser.add_argument("--position-encoding", choices=["none", "learned", "sinusoidal"], default="none")
 
     # Compare command
     compare_parser = subparsers.add_parser("compare", help="Compare experiment results")
@@ -135,6 +141,7 @@ def run_experiment(args: argparse.Namespace) -> int:
     from cortical.graph.trainable import Adam, MSELoss
     from cortical.experiments.kernel import ExperimentKernel
     from cortical.experiments.tokenizer import tokenize, build_vocab, tokens_to_ids
+    from cortical.experiments.position import create_position_encoding
 
     # Create config
     config = ExperimentConfig.from_args(args)
@@ -166,6 +173,15 @@ def run_experiment(args: argparse.Namespace) -> int:
     # Create embeddings
     embeddings = np.random.randn(len(vocab), config.embedding_dim) * 0.35
 
+    # Create position encoding if requested
+    pos_encoding = create_position_encoding(
+        encoding_type=config.position_encoding,
+        max_len=len(tokens),
+        embedding_dim=config.embedding_dim,
+    )
+    if pos_encoding:
+        print(f"Using {config.position_encoding} position encoding")
+
     # Create graph
     graph = create_causal_attention_graph(
         seq_len=len(tokens),
@@ -174,11 +190,17 @@ def run_experiment(args: argparse.Namespace) -> int:
         seed=config.seed,
     )
 
-    # Prepare inputs and targets
+    # Prepare inputs (token embeddings)
     input_nodes = {
         f"pos_{i}": embeddings[token_ids[i]].copy()
         for i in range(len(tokens))
     }
+
+    # Add position encodings to inputs if enabled
+    if pos_encoding:
+        input_nodes = pos_encoding.add_to_inputs(input_nodes)
+
+    # Targets are next-token embeddings (without position encoding)
     targets = {
         f"pos_{i}": embeddings[token_ids[i + 1]].copy()
         for i in range(len(tokens) - 1)
@@ -187,8 +209,12 @@ def run_experiment(args: argparse.Namespace) -> int:
     # Initialize graph
     _ = graph.forward(num_layers=config.num_layers, input_nodes=input_nodes)
 
-    # Create optimizer and kernel
-    optimizer = Adam(graph.parameters(), lr=config.lr)
+    # Create optimizer with all trainable parameters
+    all_params = graph.parameters()
+    if pos_encoding:
+        all_params = all_params + pos_encoding.parameters()
+
+    optimizer = Adam(all_params, lr=config.lr)
     loss_fn = MSELoss()
     kernel = ExperimentKernel(graph, optimizer, loss_fn, profiling=False)
 
