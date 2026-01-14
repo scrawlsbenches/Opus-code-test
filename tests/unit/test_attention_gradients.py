@@ -1231,6 +1231,70 @@ class TestLoadStateLayerCreation:
 
         print("\n✓ load_state functionality preservation test passed")
 
+    def test_load_state_with_bias_parameters(self):
+        """
+        Test that bias parameters are correctly saved and loaded.
+
+        This is critical: if someone trains with use_bias=True and saves
+        a checkpoint, the biases MUST be restored correctly on load.
+        Silent failure here would cause "worked in training, fails in prod" bugs.
+        """
+        np.random.seed(42)
+
+        # Create graph WITH bias
+        graph1 = AttentionGraph(embedding_dim=8, use_bias=True, seed=42)
+        for i in range(3):
+            graph1.add_node(f"pos_{i}")
+        for i in range(1, 3):
+            for j in range(i):
+                graph1.add_edge(f"pos_{j}", f"pos_{i}")
+
+        # Run forward to create layers
+        graph1.forward(num_layers=1)
+
+        # Set bias parameters to known values
+        layer = graph1._attention_layers[0]
+        layer.b_q.data[:] = 1.0
+        layer.b_k.data[:] = 2.0
+        layer.b_v.data[:] = 3.0
+        layer.b_o.data[:] = 4.0
+
+        # Save state
+        state = graph1.save_state()
+
+        # Verify biases are in saved state
+        assert "b_q" in state["layers"][0], "Bias b_q should be saved"
+        assert "b_k" in state["layers"][0], "Bias b_k should be saved"
+        assert "b_v" in state["layers"][0], "Bias b_v should be saved"
+        assert "b_o" in state["layers"][0], "Bias b_o should be saved"
+
+        # Create fresh graph with bias and load state
+        graph2 = AttentionGraph(embedding_dim=8, use_bias=True, seed=123)
+        for i in range(3):
+            graph2.add_node(f"pos_{i}")
+        for i in range(1, 3):
+            for j in range(i):
+                graph2.add_edge(f"pos_{j}", f"pos_{i}")
+
+        graph2.load_state(state)
+
+        # Verify bias parameters were restored
+        layer2 = graph2._attention_layers[0]
+        assert np.allclose(layer2.b_q.data, 1.0), "Bias b_q not restored correctly"
+        assert np.allclose(layer2.b_k.data, 2.0), "Bias b_k not restored correctly"
+        assert np.allclose(layer2.b_v.data, 3.0), "Bias b_v not restored correctly"
+        assert np.allclose(layer2.b_o.data, 4.0), "Bias b_o not restored correctly"
+
+        # Verify forward pass produces same results
+        outputs1 = graph1.forward(num_layers=1)
+        outputs2 = graph2.forward(num_layers=1)
+
+        for node_id in outputs1:
+            assert np.allclose(outputs1[node_id], outputs2[node_id], atol=1e-10), \
+                f"Outputs differ after loading bias state for {node_id}"
+
+        print("\n✓ load_state with bias parameters test passed")
+
 
 # =============================================================================
 # RUN TESTS
