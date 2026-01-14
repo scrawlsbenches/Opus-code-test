@@ -209,6 +209,8 @@ def run_experiment(args: argparse.Namespace) -> int:
         embedding_dim=config.embedding_dim,
         num_heads=config.num_heads,
         seed=config.seed,
+        dropout=config.dropout,
+        use_bias=config.use_bias,
     )
 
     # Prepare inputs (token embeddings)

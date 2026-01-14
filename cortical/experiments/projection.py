@@ -191,10 +191,14 @@ class VocabProjection:
         return [self.W]
 
     def zero_grad(self) -> None:
-        """Reset gradients."""
+        """Reset gradients and clear forward pass caches."""
         self.W.zero_grad()
         if self.b is not None:
             self.b.zero_grad()
+        # Clear caches to prevent memory leak and stale values
+        self._input_cache.clear()
+        self._logits_cache.clear()
+        self._probs_cache.clear()
 
 
 class CrossEntropyWithLogits:
