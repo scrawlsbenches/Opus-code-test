@@ -432,6 +432,9 @@ def run_experiment(args: argparse.Namespace) -> int:
     # Save results
     run_dir = log.save()
 
+    # Save model checkpoint
+    checkpoint_path = log.save_checkpoint(all_params)
+
     # Print results
     print()
     print("=" * 60)
@@ -447,6 +450,7 @@ def run_experiment(args: argparse.Namespace) -> int:
     print(f"  Training time: {training_time:.1f}s")
     print()
     print(f"Results saved to: {run_dir}")
+    print(f"Model checkpoint: {checkpoint_path}")
     print()
 
     return 0
