@@ -39,7 +39,7 @@ def create_parser() -> argparse.ArgumentParser:
         "--input", "-i",
         type=str,
         required=True,
-        help="Input text file path",
+        help="Input text file or directory (loads all .txt files)",
     )
     run_parser.add_argument(
         "--name", "-n",
@@ -140,7 +140,7 @@ def run_experiment(args: argparse.Namespace) -> int:
     from cortical.graph.attention import create_causal_attention_graph
     from cortical.graph.trainable import Adam, MSELoss
     from cortical.experiments.kernel import ExperimentKernel
-    from cortical.experiments.tokenizer import tokenize, build_vocab, tokens_to_ids
+    from cortical.experiments.tokenizer import tokenize, build_vocab, tokens_to_ids, load_text
     from cortical.experiments.position import create_position_encoding
 
     # Create config
@@ -156,11 +156,18 @@ def run_experiment(args: argparse.Namespace) -> int:
     # Load and tokenize input
     input_path = Path(config.input_path)
     if not input_path.exists():
-        print(f"ERROR: Input file not found: {input_path}")
+        print(f"ERROR: Input path not found: {input_path}")
         return 1
 
-    text = input_path.read_text()
+    text = load_text(input_path)
     tokens = tokenize(text)[:config.max_tokens]
+
+    is_dir = input_path.is_dir()
+    if is_dir:
+        file_count = len(list(input_path.glob("*.txt")))
+        print(f"Loaded {file_count} files from {input_path}")
+    else:
+        print(f"Loaded from {input_path}")
     vocab, id_to_token = build_vocab(tokens)
     token_ids = tokens_to_ids(tokens, vocab)
 

@@ -7,8 +7,10 @@ For production use, consider subword tokenization (BPE, SentencePiece).
 
 from __future__ import annotations
 
+import os
 import re
-from typing import Dict, List, Optional, Tuple
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple, Union
 
 # Special tokens
 PAD_TOKEN = "<PAD>"
@@ -17,6 +19,33 @@ BOS_TOKEN = "<BOS>"
 EOS_TOKEN = "<EOS>"
 
 SPECIAL_TOKENS = [PAD_TOKEN, UNK_TOKEN, BOS_TOKEN, EOS_TOKEN]
+
+
+def load_text(path: Union[str, Path]) -> str:
+    """
+    Load text from a file or directory.
+
+    Args:
+        path: Path to a file or directory. If directory, loads all .txt files.
+
+    Returns:
+        Concatenated text content
+    """
+    path = Path(path)
+
+    if path.is_file():
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+
+    elif path.is_dir():
+        texts = []
+        for file_path in sorted(path.glob("*.txt")):
+            with open(file_path, "r", encoding="utf-8") as f:
+                texts.append(f.read())
+        return "\n\n".join(texts)
+
+    else:
+        raise FileNotFoundError(f"Path not found: {path}")
 
 
 def tokenize(text: str, lowercase: bool = True) -> List[str]:
