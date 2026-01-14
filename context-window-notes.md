@@ -103,14 +103,84 @@ RISKY FILES (threshold=50%):
 
 ---
 
-## [004] What would you like to explore?
+## [004] CLI Exercise Results
 
-Options:
-1. Add custom PLN rules (`--add-rule`)
-2. Mark files as VLTI (Very Long Term Important)
-3. Query different directories
-4. Look at the source code to understand how it works
-5. Something else?
+**User:** Exercise the CLI commands
+
+### Commands Tested
+
+**1. Query different directories:**
+```bash
+$ python -m cortical.cli.audit reason "risky files in cortical/got/" -v
+Found 36 files, 5 findings
+RISKY FILES:
+  cortical/got/validation.py  Risk: 52.8%  (should be)
+  cortical/got/api.py         Risk: 50.0%  (TODO:)
+```
+
+**2. Add custom rule:**
+```bash
+$ python -m cortical.cli.audit reason \
+    --add-rule "has_pattern(X, critical)" "requires_attention(X)" "0.90"
+Added rule and saved to persistence.
+```
+
+**3. Mark file as VLTI:**
+```bash
+$ python -m cortical.cli.audit reason --vlti cortical/got/api.py -d cortical/got/
+Marked cortical/got/api.py as Very Long Term Important
+```
+
+**4. Change aggregation strategy:**
+```bash
+$ python -m cortical.cli.audit reason "all files in cortical/cdg/" --aggregate max -v
+Using aggregation strategy: max
+Found 24 files, 2 findings
+No files exceed the risk threshold.
+```
+
+**5. Scan full codebase:**
+```bash
+$ python -m cortical.cli.audit reason "most risky files in cortical/" --threshold 0.6
+Found 282 files, 51 findings
+No files exceed 60% threshold (max is ~52.8%)
+```
+
+**6. Show updated state:**
+```bash
+$ python -m cortical.cli.audit reason --show-state
+Session count: 2
+Files tracked: 7
+vlti_files: 1
+```
+
+**7. Show all rules (including custom):**
+```bash
+$ python -m cortical.cli.audit reason --show-rules
+Total rules: 12
+Manual Rules:
+  has_pattern(X, hack) → needs_review(X) (0.80)
+  has_pattern(X, critical) → requires_attention(X) (0.90)  # <-- our rule
+  ...
+```
+
+### Observations
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Natural language queries | Works | Parses directory and intent |
+| Custom rules | Works | Persisted across sessions |
+| VLTI marking | Works | File pinned for attention |
+| Aggregation strategies | Works | max, mean, min, product, revision |
+| Explain (-e) | Partial | Output is sparse/empty |
+| File history | Partial | Shows "no history" even for tracked files |
+
+### What's Next?
+
+1. Look at source code to understand explain/history features?
+2. Try loading WovenMind rules (currently loads 0)?
+3. Test more edge cases?
+4. Something else?
 
 ---
 
