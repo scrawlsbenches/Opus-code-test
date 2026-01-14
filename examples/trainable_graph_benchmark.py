@@ -26,12 +26,13 @@ Usage:
 import argparse
 import json
 import random
+import re
 import time
 from collections import Counter
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple, Any, Set
 import pickle
 
 import numpy as np
@@ -87,6 +88,10 @@ class BenchmarkMetrics:
     val_sequences: int
     checkpoint_path: Optional[str] = None
     notes: Optional[str] = None
+
+    # Word quality metrics (for overfit experiments)
+    word_quality_rate: Optional[float] = None
+    real_words_found: Optional[List[str]] = None
 
 
 class BenchmarkLogger:
@@ -527,6 +532,38 @@ class BenchmarkHarness:
             })
         return samples
 
+    def extract_words(self, text: str) -> List[str]:
+        """Extract words from text."""
+        return re.findall(r'[a-z]+', text.lower())
+
+    def evaluate_word_quality(
+        self,
+        reference_words: Set[str],
+        prompts: List[str],
+        temperature: float = 0.5,
+    ) -> Tuple[float, List[str]]:
+        """
+        Evaluate how many real words appear in generated text.
+
+        Returns:
+            Tuple of (word_quality_rate, list of real words found)
+        """
+        all_real_words = []
+        total_words = 0
+
+        for prompt in prompts:
+            output = self.model.generate(prompt, max_length=50, temperature=temperature)
+            gen_words = self.extract_words(output)
+            total_words += len(gen_words)
+
+            for word in gen_words:
+                if word in reference_words and len(word) > 2:
+                    all_real_words.append(word)
+
+        word_rate = len(all_real_words) / max(total_words, 1)
+        unique_words = list(dict.fromkeys(all_real_words))[:20]  # Dedupe, keep order
+        return word_rate, unique_words
+
     def run_benchmark(
         self,
         mode: str = "train",
@@ -536,6 +573,7 @@ class BenchmarkHarness:
         checkpoint_path: Optional[str] = None,
         save_checkpoint: bool = True,
         notes: Optional[str] = None,
+        log_every: int = 10,
     ) -> BenchmarkMetrics:
         """Run a complete benchmark."""
 
@@ -558,16 +596,54 @@ class BenchmarkHarness:
         # Training
         train_losses = []
         total_train_time = 0.0
+        word_quality_rate = None
+        real_words_found = None
 
-        if mode in ("train", "continuous"):
+        # Build reference words for word quality evaluation
+        reference_words: Set[str] = set()
+        if mode == "overfit":
+            # For overfit mode, get words from training corpus
+            corpus_text = self.vocab.decode([
+                self.vocab.char_to_idx.get(c, 0)
+                for seq, _ in self.train_sequences[:100]
+                for c in self.vocab.decode(seq)
+            ])
+            reference_words = set(self.extract_words(corpus_text))
+            # Also add common English words for reference
+            reference_words.update(['the', 'and', 'to', 'of', 'a', 'in', 'is', 'it', 'for', 'that',
+                                    'on', 'are', 'as', 'with', 'be', 'at', 'this', 'have', 'from'])
+
+        if mode in ("train", "continuous", "overfit"):
             print(f"\nTraining for {epochs} epochs...")
+            if mode == "overfit":
+                print(f"Reference vocabulary: {len(reference_words)} words")
+                print(f"Logging every {log_every} epochs\n")
+
+            prompts = ["the ", "and ", "to ", "of ", "a "]
+
             for epoch in range(epochs):
                 loss, elapsed = self.train_epoch(optimizer, batch_size)
                 train_losses.append(loss)
                 total_train_time += elapsed
 
-                if (epoch + 1) % 5 == 0:
+                # Standard logging every 5 epochs
+                if mode != "overfit" and (epoch + 1) % 5 == 0:
                     print(f"  Epoch {epoch+1}: loss={loss:.4f}, time={elapsed:.1f}s")
+
+                # Overfit mode: detailed logging with word quality
+                if mode == "overfit" and ((epoch + 1) % log_every == 0 or epoch < 5):
+                    word_rate, words = self.evaluate_word_quality(reference_words, prompts)
+                    word_quality_rate = word_rate
+                    real_words_found = words
+
+                    print(f"Epoch {epoch+1:4d}: loss={loss:.4f}, ppl={np.exp(loss):.1f}, words={word_rate*100:.0f}%")
+
+                    # Show sample generation
+                    sample = self.model.generate("the ", max_length=50, temperature=0.5)
+                    print(f"  Sample: \"{sample}\"")
+                    if words:
+                        print(f"  Real words: {words[:10]}")
+                    print()
 
         # Evaluation
         print("\nEvaluating...")
@@ -610,6 +686,8 @@ class BenchmarkHarness:
             val_sequences=len(self.val_sequences),
             checkpoint_path=checkpoint_path,
             notes=notes,
+            word_quality_rate=word_quality_rate,
+            real_words_found=real_words_found,
         )
 
         # Log results
@@ -639,6 +717,10 @@ class BenchmarkHarness:
         print(f"  Top-5 Accuracy:  {eval_results['top5_accuracy']*100:.1f}%")
         print(f"  Train Time:      {total_train_time:.1f}s")
         print(f"  Throughput:      {samples_per_sec:.0f} samples/sec")
+        if word_quality_rate is not None:
+            print(f"  Word Quality:    {word_quality_rate*100:.1f}%")
+            if real_words_found:
+                print(f"  Words Found:     {real_words_found[:10]}")
         print(f"{'='*60}\n")
 
         return metrics
@@ -651,8 +733,8 @@ class BenchmarkHarness:
 
 def main():
     parser = argparse.ArgumentParser(description="TrainableGraph Benchmark Harness")
-    parser.add_argument("--mode", choices=["train", "eval", "continuous", "report"],
-                        default="train", help="Benchmark mode")
+    parser.add_argument("--mode", choices=["train", "eval", "continuous", "report", "overfit"],
+                        default="train", help="Benchmark mode (overfit: single-doc word learning test)")
     parser.add_argument("--epochs", type=int, default=20, help="Training epochs")
     parser.add_argument("--lr", type=float, default=0.01, help="Learning rate")
     parser.add_argument("--batch-size", type=int, default=32, help="Batch size")
@@ -664,6 +746,7 @@ def main():
     parser.add_argument("--max-sequences", type=int, default=5000, help="Max training sequences")
     parser.add_argument("--log-path", type=str, default="benchmarks/trainable_graph_benchmarks.json",
                         help="Benchmark log file")
+    parser.add_argument("--log-every", type=int, default=10, help="Log progress every N epochs (overfit mode)")
     parser.add_argument("--notes", type=str, default=None, help="Notes for this run")
 
     args = parser.parse_args()
@@ -693,6 +776,7 @@ def main():
         batch_size=args.batch_size,
         checkpoint_path=args.checkpoint,
         notes=args.notes,
+        log_every=args.log_every,
     )
 
 
