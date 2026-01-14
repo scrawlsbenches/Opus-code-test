@@ -876,3 +876,166 @@ class TestAttentionLayerIntegration:
 
         # Parameters should have changed
         assert not np.allclose(layer.W_q.data, initial_W_q, atol=1e-8)
+
+
+# =============================================================================
+# Tests for Bug Fixes
+# =============================================================================
+
+
+class TestAttentionGraphLocalRNG:
+    """Tests for local RNG (fix: global seed was affecting all random state)."""
+
+    def test_local_rng_does_not_affect_global_state(self):
+        """Test that AttentionGraph seed doesn't affect global numpy random state."""
+        from cortical.graph.attention import create_causal_attention_graph
+
+        # Set global seed and get a sequence of random numbers
+        np.random.seed(999)
+        global_seq_before = [np.random.rand() for _ in range(5)]
+
+        # Reset global seed
+        np.random.seed(999)
+
+        # Create graphs with different seeds - should NOT affect global state
+        graph1 = create_causal_attention_graph(seq_len=3, embedding_dim=8, seed=42)
+        graph2 = create_causal_attention_graph(seq_len=3, embedding_dim=8, seed=123)
+
+        # Get global random sequence again
+        global_seq_after = [np.random.rand() for _ in range(5)]
+
+        # Global sequence should be the same - graph creation didn't affect it
+        for i, (before, after) in enumerate(zip(global_seq_before, global_seq_after)):
+            assert before == after, \
+                f"Global random state was affected at position {i}: {before} != {after}"
+
+    def test_same_seed_produces_same_embeddings(self):
+        """Test that same seed produces reproducible results."""
+        from cortical.graph.attention import create_causal_attention_graph
+
+        graph1 = create_causal_attention_graph(seq_len=3, embedding_dim=8, seed=42)
+        graph2 = create_causal_attention_graph(seq_len=3, embedding_dim=8, seed=42)
+
+        # Same seed should produce same node embeddings
+        for node1, node2 in zip(graph1.nodes, graph2.nodes):
+            assert_array_almost_equal(
+                node1.embedding.data, node2.embedding.data,
+                err_msg=f"Node {node1.id} embeddings differ with same seed"
+            )
+
+    def test_different_seeds_produce_different_embeddings(self):
+        """Test that different seeds produce different results."""
+        from cortical.graph.attention import create_causal_attention_graph
+
+        graph1 = create_causal_attention_graph(seq_len=3, embedding_dim=8, seed=42)
+        graph2 = create_causal_attention_graph(seq_len=3, embedding_dim=8, seed=123)
+
+        # Different seeds should produce different embeddings
+        # (at least one should differ)
+        any_different = False
+        for node1, node2 in zip(graph1.nodes, graph2.nodes):
+            if not np.allclose(node1.embedding.data, node2.embedding.data):
+                any_different = True
+                break
+
+        assert any_different, "Different seeds should produce different embeddings"
+
+
+class TestAttentionGraphMissingNodeWarning:
+    """Tests for missing node warning (fix: silent zero fallback)."""
+
+    def test_warning_on_missing_source_node(self):
+        """Test that warning is raised when edge references non-existent node."""
+        import warnings
+
+        graph = AttentionGraph(embedding_dim=8, seed=42)
+        graph.add_node("target")
+
+        # Manually create an edge to a non-existent node (simulating a bug)
+        # This requires adding the edge directly to storage
+        bad_edge = AttentionEdge(source_id="missing_node", target_id="target")
+        graph._storage.add_edge(bad_edge)
+
+        layer = AttentionLayer(embedding_dim=8)
+        node_values = {"target": np.ones(8)}
+
+        # Should warn about missing node
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            layer.forward(node_values, graph)
+
+            # Check that a warning was raised
+            assert len(w) == 1
+            assert "non-existent node 'missing_node'" in str(w[0].message)
+            assert issubclass(w[0].category, UserWarning)
+
+
+class TestCausalGraphSelfAttention:
+    """Tests for self-attention option (fix: causal graphs couldn't self-attend)."""
+
+    def test_include_self_false_no_self_edges(self):
+        """Test that include_self=False (default) creates no self-edges."""
+        from cortical.graph.attention import create_causal_attention_graph
+
+        graph = create_causal_attention_graph(seq_len=4, embedding_dim=8, seed=42)
+
+        # Check no self-edges exist
+        for node in graph.nodes:
+            incoming = graph.edges_to(node.id)
+            source_ids = [e.source_id for e in incoming]
+            assert node.id not in source_ids, \
+                f"Node {node.id} has self-edge but include_self=False"
+
+    def test_include_self_true_creates_self_edges(self):
+        """Test that include_self=True creates self-edges for all nodes."""
+        from cortical.graph.attention import create_causal_attention_graph
+
+        graph = create_causal_attention_graph(
+            seq_len=4, embedding_dim=8, seed=42, include_self=True
+        )
+
+        # Check all nodes have self-edges
+        for node in graph.nodes:
+            incoming = graph.edges_to(node.id)
+            source_ids = [e.source_id for e in incoming]
+            assert node.id in source_ids, \
+                f"Node {node.id} missing self-edge but include_self=True"
+
+    def test_include_self_position_zero_can_attend(self):
+        """Test that position 0 can attend to itself when include_self=True."""
+        from cortical.graph.attention import create_causal_attention_graph
+
+        graph = create_causal_attention_graph(
+            seq_len=4, embedding_dim=8, seed=42, include_self=True
+        )
+
+        # Position 0 should have exactly 1 incoming edge (itself)
+        pos_0_incoming = graph.edges_to("pos_0")
+        assert len(pos_0_incoming) == 1
+        assert pos_0_incoming[0].source_id == "pos_0"
+
+    def test_include_self_attention_weights_include_self(self):
+        """Test that attention weights include self when include_self=True."""
+        from cortical.graph.attention import create_causal_attention_graph
+
+        graph = create_causal_attention_graph(
+            seq_len=3, embedding_dim=8, seed=42, include_self=True
+        )
+
+        # Run forward pass
+        outputs = graph.forward(num_layers=1)
+
+        # Check attention weights include self
+        weights = graph.get_attention_weights()
+
+        # pos_0 should attend to itself
+        assert "pos_0" in weights
+        assert "pos_0" in weights["pos_0"], \
+            "pos_0 should attend to itself when include_self=True"
+
+        # pos_2 should attend to pos_0, pos_1, and itself
+        assert "pos_2" in weights
+        assert "pos_0" in weights["pos_2"]
+        assert "pos_1" in weights["pos_2"]
+        assert "pos_2" in weights["pos_2"], \
+            "pos_2 should attend to itself when include_self=True"

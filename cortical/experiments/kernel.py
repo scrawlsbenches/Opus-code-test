@@ -350,10 +350,16 @@ class ExperimentKernel:
             input_nodes=input_nodes,
         )
 
+        # Apply vocab projection if present (consistent with train_step)
+        if self.vocab_projection is not None:
+            projected = self.vocab_projection.forward(outputs, apply_softmax=False)
+        else:
+            projected = outputs
+
         total_loss = 0.0
         for node_id, target in targets.items():
-            if node_id in outputs:
-                total_loss += self.loss_fn(outputs[node_id], target)
+            if node_id in projected:
+                total_loss += self.loss_fn(projected[node_id], target)
 
         return total_loss
 

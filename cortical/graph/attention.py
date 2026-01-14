@@ -93,6 +93,7 @@ See also:
 from __future__ import annotations
 
 import math
+import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import (
@@ -600,6 +601,7 @@ class AttentionLayer(ProcessingLayer):
         num_heads: int = 1,
         use_residual: bool = False,
         name_prefix: str = "attention",
+        rng: Optional[np.random.Generator] = None,
     ):
         """
         Initialize attention layer.
@@ -613,6 +615,8 @@ class AttentionLayer(ProcessingLayer):
                          This helps gradient flow in multi-layer networks.
                          For small graphs (1-3 layers), this is optional but still beneficial.
             name_prefix: Prefix for parameter names (e.g., "layer_0" -> "layer_0_W_q")
+            rng: Optional numpy random generator for reproducibility without affecting
+                 global state. If None, creates a new default generator.
 
         Design Decision (Residual Connections):
             We implement a simple residual: output = attention_output + input
@@ -640,6 +644,9 @@ class AttentionLayer(ProcessingLayer):
         self.use_residual = use_residual
         self._training = True
 
+        # Use local RNG to avoid affecting global random state
+        self._rng = rng if rng is not None else np.random.default_rng()
+
         # Initialize projection matrices with Xavier initialization
         # Why Xavier? It keeps variance stable across layers, preventing
         # vanishing/exploding gradients in deep networks.
@@ -647,25 +654,25 @@ class AttentionLayer(ProcessingLayer):
 
         # Query projection: "What am I looking for?"
         self.W_q = Parameter(
-            data=np.random.randn(embedding_dim, embedding_dim) * scale,
+            data=self._rng.standard_normal((embedding_dim, embedding_dim)) * scale,
             name=f"{name_prefix}_W_q",
         )
 
         # Key projection: "What do I offer?"
         self.W_k = Parameter(
-            data=np.random.randn(embedding_dim, embedding_dim) * scale,
+            data=self._rng.standard_normal((embedding_dim, embedding_dim)) * scale,
             name=f"{name_prefix}_W_k",
         )
 
         # Value projection: "What can you learn from me?"
         self.W_v = Parameter(
-            data=np.random.randn(embedding_dim, embedding_dim) * scale,
+            data=self._rng.standard_normal((embedding_dim, embedding_dim)) * scale,
             name=f"{name_prefix}_W_v",
         )
 
         # Output projection: "How do I integrate what I learned?"
         self.W_o = Parameter(
-            data=np.random.randn(embedding_dim, embedding_dim) * scale,
+            data=self._rng.standard_normal((embedding_dim, embedding_dim)) * scale,
             name=f"{name_prefix}_W_o",
         )
 
@@ -780,6 +787,21 @@ class AttentionLayer(ProcessingLayer):
                     if source_node and source_node.embedding:
                         source_val = source_node.embedding.data
                     else:
+                        # Warn about missing node - this usually indicates a bug
+                        # in graph construction (edge references non-existent node)
+                        if source_node is None:
+                            warnings.warn(
+                                f"Edge references non-existent node '{source_id}'. "
+                                f"Using zeros. This may indicate a bug in graph construction.",
+                                UserWarning,
+                                stacklevel=3,
+                            )
+                        else:
+                            warnings.warn(
+                                f"Node '{source_id}' has no embedding. Using zeros.",
+                                UserWarning,
+                                stacklevel=3,
+                            )
                         source_val = np.zeros(self.embedding_dim)
 
                 # Compute key and value for this source
@@ -857,7 +879,8 @@ class AttentionLayer(ProcessingLayer):
             # Apply dropout during training
             # IMPORTANT: Store mask for backward pass to ensure correct gradient flow
             if self._training and self.dropout > 0:
-                dropout_mask = np.random.binomial(1, 1 - self.dropout, attended.shape)
+                # Use local RNG for dropout to avoid affecting global state
+                dropout_mask = self._rng.binomial(1, 1 - self.dropout, attended.shape)
                 dropout_scale = 1.0 / (1 - self.dropout)
                 attended = attended * dropout_mask * dropout_scale
                 self._cache["dropout_mask"][node_id] = (dropout_mask, dropout_scale)
@@ -1130,8 +1153,9 @@ class AttentionGraph(BaseGraph[AttentionNode, AttentionEdge]):
         self.dropout = dropout
         self.use_residual = use_residual
 
-        if seed is not None:
-            np.random.seed(seed)
+        # Use local random generator instead of global np.random.seed()
+        # This prevents interference with other code using numpy random
+        self._rng = np.random.default_rng(seed)
 
         # Attention layers (one per num_layers in forward)
         self._attention_layers: List[AttentionLayer] = []
@@ -1151,8 +1175,9 @@ class AttentionGraph(BaseGraph[AttentionNode, AttentionEdge]):
 
         if embedding_data is None:
             # Xavier initialization for stable training
+            # Use local RNG to avoid affecting global random state
             scale = math.sqrt(2.0 / self.embedding_dim)
-            embedding_data = np.random.randn(self.embedding_dim) * scale
+            embedding_data = self._rng.standard_normal(self.embedding_dim) * scale
         elif isinstance(embedding_data, (list, tuple)):
             embedding_data = np.array(embedding_data, dtype=np.float64)
 
@@ -1205,6 +1230,7 @@ class AttentionGraph(BaseGraph[AttentionNode, AttentionEdge]):
                 num_heads=self.num_heads,
                 use_residual=self.use_residual,
                 name_prefix=f"layer_{layer_idx}",
+                rng=self._rng,
             )
             if self._training:
                 layer.train()
@@ -1461,6 +1487,7 @@ class AttentionGraph(BaseGraph[AttentionNode, AttentionEdge]):
 def create_causal_attention_graph(
     seq_len: int,
     embedding_dim: int = 64,
+    include_self: bool = False,
     **kwargs,
 ) -> AttentionGraph:
     """
@@ -1470,14 +1497,17 @@ def create_causal_attention_graph(
         For language modeling, we need each position to only see previous
         positions. This function builds that structure automatically:
 
-        Position 0: Can't see anyone (no incoming edges)
-        Position 1: Can see position 0
-        Position 2: Can see positions 0, 1
+        Position 0: Can't see anyone (no incoming edges), or just itself if include_self=True
+        Position 1: Can see position 0 (and itself if include_self=True)
+        Position 2: Can see positions 0, 1 (and itself if include_self=True)
         ...and so on.
 
     Args:
         seq_len: Number of positions in sequence
         embedding_dim: Dimension of node embeddings
+        include_self: Whether each position can attend to itself (default: False).
+                     In standard transformers, self-attention IS allowed (include_self=True).
+                     Set to True to match typical transformer behavior.
         **kwargs: Additional args for AttentionGraph
 
     Returns:
@@ -1488,6 +1518,11 @@ def create_causal_attention_graph(
     # Add position nodes
     for i in range(seq_len):
         graph.add_node(f"pos_{i}")
+
+    # Add self-attention edges if requested (standard transformer behavior)
+    if include_self:
+        for i in range(seq_len):
+            graph.add_edge(f"pos_{i}", f"pos_{i}")
 
     # Add causal edges: each position can attend to all previous positions
     for i in range(1, seq_len):
