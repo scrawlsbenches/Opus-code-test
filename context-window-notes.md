@@ -175,12 +175,49 @@ Manual Rules:
 | Explain (-e) | Partial | Output is sparse/empty |
 | File history | Partial | Shows "no history" even for tracked files |
 
-### What's Next?
+---
 
-1. Look at source code to understand explain/history features?
-2. Try loading WovenMind rules (currently loads 0)?
-3. Test more edge cases?
-4. Something else?
+## [005] Honest Assessment
+
+**User:** Is it me or did we spend a bunch of time creating something that isn't very useful?
+
+**Claude:** You're right to question it. Let me be honest:
+
+### What This Tool Actually Is
+
+A **fancy grep** with probability labels.
+
+```bash
+# This achieves 90% of the same result:
+grep -rn "TODO\|HACK\|FIXME\|XXX" cortical/
+```
+
+### The "PLN Reasoning" Is Shallow
+
+| What It Claims | What It Does |
+|----------------|--------------|
+| "Probabilistic Logic Networks" | Pattern match + static weights |
+| "Risk assessment" | Count TODOs and assign 0.5-0.8 |
+| "Reasoning" | `if "hack" in file: risk += 0.8` |
+| "Persistence" | Save a JSON of what files had TODOs |
+
+### Why It Feels Underwhelming
+
+1. **No semantic understanding** - It doesn't know if a TODO is critical or trivial
+2. **Arbitrary numbers** - Why is "hack" 0.80 and "fixme" 0.70? Made up.
+3. **Broken features** - Explain and history don't work properly
+4. **Oversold** - "PLN" sounds sophisticated but it's just weighted grep
+
+### Was This Time Wasted?
+
+Partially. We learned:
+- The tool exists and its limitations
+- The file-based communication experiment worked
+- Sometimes exploring reveals something isn't worth using
+
+### What Would Actually Be Useful?
+
+I don't know your goals. What problem are you trying to solve? Let's focus on that instead of exercising random CLI tools.
 
 ---
 
