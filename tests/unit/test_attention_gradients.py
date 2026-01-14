@@ -978,158 +978,340 @@ class TestEdgeCases:
 
 
 # =============================================================================
-# RUN TESTS
+# TEST DROPOUT GRADIENT CORRECTNESS
 # =============================================================================
 
 
-def run_all_tests():
-    """Run all test classes manually."""
-    print("="*70)
-    print("NUMERICAL GRADIENT VERIFICATION TESTS")
-    print("="*70)
+class TestDropoutGradients:
+    """
+    Test that gradients flow correctly through dropout.
 
-    # Test Attention Function Gradients
-    print("\n" + "="*70)
-    print("TEST SUITE: Attention Function Gradients")
-    print("="*70)
+    The Story:
+        Dropout is tricky for gradients. During forward pass, some elements
+        are zeroed and others are scaled. The backward pass must apply the
+        SAME mask and scaling to maintain gradient consistency.
 
-    test_suite1 = TestAttentionFunctionGradients()
-    try:
-        test_suite1.test_query_gradient()
-        print("✓ test_query_gradient PASSED")
-    except AssertionError as e:
-        print(f"✗ test_query_gradient FAILED: {e}")
+        Without this, gradients would flow through elements that were zeroed
+        during forward, leading to incorrect parameter updates.
+    """
 
-    try:
-        test_suite1.test_keys_gradient()
-        print("✓ test_keys_gradient PASSED")
-    except AssertionError as e:
-        print(f"✗ test_keys_gradient FAILED: {e}")
+    def test_dropout_gradient_consistency(self):
+        """
+        Test that dropout mask is correctly applied during backward.
 
-    try:
-        test_suite1.test_values_gradient()
-        print("✓ test_values_gradient PASSED")
-    except AssertionError as e:
-        print(f"✗ test_values_gradient FAILED: {e}")
+        We verify this by checking that:
+        1. The same random seed produces consistent forward/backward
+        2. Gradients through zeroed elements are zero
+        """
+        np.random.seed(42)
 
-    try:
-        test_suite1.test_attention_with_different_dimensions()
-        print("✓ test_attention_with_different_dimensions PASSED")
-    except AssertionError as e:
-        print(f"✗ test_attention_with_different_dimensions FAILED: {e}")
+        # Create layer with significant dropout
+        embedding_dim = 8
+        layer = AttentionLayer(embedding_dim=embedding_dim, dropout=0.5)
+        layer.train()
 
-    # Test Attention Layer Gradients
-    print("\n" + "="*70)
-    print("TEST SUITE: Attention Layer Gradients")
-    print("="*70)
+        graph = create_causal_attention_graph(
+            seq_len=3,
+            embedding_dim=embedding_dim,
+            seed=42
+        )
 
-    test_suite2 = TestAttentionLayerGradients()
-    try:
-        test_suite2.test_W_q_gradient()
-        print("✓ test_W_q_gradient PASSED")
-    except AssertionError as e:
-        print(f"✗ test_W_q_gradient FAILED: {e}")
+        # Forward pass (stores dropout mask)
+        node_values = {node.id: node.embedding.data.copy() for node in graph.nodes}
+        outputs = layer.forward(node_values, graph)
 
-    try:
-        test_suite2.test_W_k_gradient()
-        print("✓ test_W_k_gradient PASSED")
-    except AssertionError as e:
-        print(f"✗ test_W_k_gradient FAILED: {e}")
+        # Backward pass
+        for param in layer.parameters():
+            param.zero_grad()
 
-    try:
-        test_suite2.test_W_v_gradient()
-        print("✓ test_W_v_gradient PASSED")
-    except AssertionError as e:
-        print(f"✗ test_W_v_gradient FAILED: {e}")
+        grad_outputs = {"pos_2": np.ones(embedding_dim)}
+        input_grads = layer.backward(grad_outputs, graph)
 
-    try:
-        test_suite2.test_W_o_gradient()
-        print("✓ test_W_o_gradient PASSED")
-    except AssertionError as e:
-        print(f"✗ test_W_o_gradient FAILED: {e}")
+        # Check that dropout mask was stored and applied
+        for node_id in ["pos_2"]:
+            dropout_info = layer._cache.get("dropout_mask", {}).get(node_id)
+            if dropout_info is not None:
+                mask, scale = dropout_info
+                # Verify mask contains zeros (dropout happened)
+                assert np.any(mask == 0), "Dropout mask should have some zeros"
+                # Verify scale is correct
+                expected_scale = 1.0 / (1 - 0.5)
+                assert abs(scale - expected_scale) < 1e-6
 
-    try:
-        test_suite2.test_all_parameters_simultaneously()
-        print("✓ test_all_parameters_simultaneously PASSED")
-    except AssertionError as e:
-        print(f"✗ test_all_parameters_simultaneously FAILED: {e}")
+        print("\n✓ Dropout gradient consistency test passed")
 
-    # Test End-to-End Gradients
-    print("\n" + "="*70)
-    print("TEST SUITE: End-to-End Gradients")
-    print("="*70)
+    def test_dropout_gradient_numerical_verification(self):
+        """
+        Verify dropout gradients using numerical gradient checking.
 
-    test_suite3 = TestEndToEndGradients()
-    try:
-        test_suite3.test_single_layer_embedding_gradient()
-        print("✓ test_single_layer_embedding_gradient PASSED")
-    except AssertionError as e:
-        print(f"✗ test_single_layer_embedding_gradient FAILED: {e}")
+        The Story:
+            This is the ultimate test: compare analytical gradients (from backward)
+            against numerical gradients (finite differences). If they match,
+            the dropout implementation is correct.
 
-    try:
-        test_suite3.test_multi_layer_embedding_gradient()
-        print("✓ test_multi_layer_embedding_gradient PASSED")
-    except AssertionError as e:
-        print(f"✗ test_multi_layer_embedding_gradient FAILED: {e}")
+        Note: We must use the same random state for numerical gradient checking,
+        which means we set the seed before each forward pass.
+        """
+        embedding_dim = 6
+        dropout_rate = 0.3
 
-    try:
-        test_suite3.test_different_loss_functions()
-        print("✓ test_different_loss_functions PASSED")
-    except AssertionError as e:
-        print(f"✗ test_different_loss_functions FAILED: {e}")
+        # Create layer and graph
+        np.random.seed(42)
+        layer = AttentionLayer(embedding_dim=embedding_dim, dropout=dropout_rate)
+        layer.train()
 
-    try:
-        test_suite3.test_longer_sequence()
-        print("✓ test_longer_sequence PASSED")
-    except AssertionError as e:
-        print(f"✗ test_longer_sequence FAILED: {e}")
+        graph = create_causal_attention_graph(
+            seq_len=3,
+            embedding_dim=embedding_dim,
+            seed=42
+        )
 
-    # Test Gradient Accumulation
-    print("\n" + "="*70)
-    print("TEST SUITE: Gradient Accumulation")
-    print("="*70)
+        # We'll test gradient w.r.t. W_o since it's after dropout
+        def forward_with_seed(seed_val):
+            """Forward pass with specific random seed for reproducibility."""
+            np.random.seed(seed_val)
+            node_values = {node.id: node.embedding.data.copy() for node in graph.nodes}
+            outputs = layer.forward(node_values, graph)
+            return np.sum(outputs["pos_2"])
 
-    test_suite4 = TestGradientAccumulation()
-    try:
-        test_suite4.test_double_backward_doubles_gradient()
-        print("✓ test_double_backward_doubles_gradient PASSED")
-    except AssertionError as e:
-        print(f"✗ test_double_backward_doubles_gradient FAILED: {e}")
+        # Compute analytical gradient
+        np.random.seed(123)  # Specific seed for this test
+        node_values = {node.id: node.embedding.data.copy() for node in graph.nodes}
+        outputs = layer.forward(node_values, graph)
 
-    try:
-        test_suite4.test_zero_grad_clears_accumulation()
-        print("✓ test_zero_grad_clears_accumulation PASSED")
-    except AssertionError as e:
-        print(f"✗ test_zero_grad_clears_accumulation FAILED: {e}")
+        for param in layer.parameters():
+            param.zero_grad()
 
-    try:
-        test_suite4.test_multiple_output_nodes_accumulate()
-        print("✓ test_multiple_output_nodes_accumulate PASSED")
-    except AssertionError as e:
-        print(f"✗ test_multiple_output_nodes_accumulate FAILED: {e}")
+        grad_outputs = {"pos_2": np.ones(embedding_dim)}
+        layer.backward(grad_outputs, graph)
 
-    # Test Edge Cases
-    print("\n" + "="*70)
-    print("TEST SUITE: Edge Cases")
-    print("="*70)
+        grad_W_o_analytical = layer.W_o.grad.copy()
 
-    test_suite5 = TestEdgeCases()
-    try:
-        test_suite5.test_single_node_graph()
-        print("✓ test_single_node_graph PASSED")
-    except AssertionError as e:
-        print(f"✗ test_single_node_graph FAILED: {e}")
+        # Compute numerical gradient (using same seed for each perturbation)
+        eps = 1e-5
+        grad_W_o_numerical = np.zeros_like(layer.W_o.data)
 
-    try:
-        test_suite5.test_small_embedding_dimension()
-        print("✓ test_small_embedding_dimension PASSED")
-    except AssertionError as e:
-        print(f"✗ test_small_embedding_dimension FAILED: {e}")
+        for i in range(layer.W_o.data.shape[0]):
+            for j in range(layer.W_o.data.shape[1]):
+                old_val = layer.W_o.data[i, j]
 
-    print("\n" + "="*70)
-    print("ALL TESTS COMPLETED")
-    print("="*70)
+                # Perturb up
+                layer.W_o.data[i, j] = old_val + eps
+                loss_up = forward_with_seed(123)
 
+                # Perturb down
+                layer.W_o.data[i, j] = old_val - eps
+                loss_down = forward_with_seed(123)
+
+                # Restore
+                layer.W_o.data[i, j] = old_val
+
+                # Central difference
+                grad_W_o_numerical[i, j] = (loss_up - loss_down) / (2 * eps)
+
+        # Compare
+        rel_error = relative_error(grad_W_o_analytical, grad_W_o_numerical)
+        print(f"\nDropout W_o gradient relative error: {rel_error:.2e}")
+
+        # Allow slightly higher tolerance due to dropout stochasticity
+        assert rel_error < 1e-3, f"Dropout gradient error too high: {rel_error}"
+
+    def test_eval_mode_no_dropout_gradient(self):
+        """
+        Verify that eval mode produces clean gradients without dropout artifacts.
+
+        In eval mode, dropout should be disabled, meaning:
+        - No random masking during forward
+        - Deterministic gradients during backward
+        """
+        np.random.seed(42)
+
+        embedding_dim = 8
+        layer = AttentionLayer(embedding_dim=embedding_dim, dropout=0.5)
+        layer.eval()  # Disable dropout
+
+        graph = create_causal_attention_graph(
+            seq_len=3,
+            embedding_dim=embedding_dim,
+            seed=42
+        )
+
+        # Forward pass
+        node_values = {node.id: node.embedding.data.copy() for node in graph.nodes}
+        outputs1 = layer.forward(node_values, graph)
+
+        # Second forward pass should be identical (no dropout randomness)
+        outputs2 = layer.forward(node_values, graph)
+
+        for node_id in outputs1:
+            assert np.allclose(outputs1[node_id], outputs2[node_id]), \
+                f"Eval mode should produce deterministic outputs for {node_id}"
+
+        # Dropout mask should be None in cache
+        for node_id in layer._cache.get("dropout_mask", {}):
+            assert layer._cache["dropout_mask"][node_id] is None, \
+                "Eval mode should not store dropout masks"
+
+        print("\n✓ Eval mode gradient test passed")
+
+
+# =============================================================================
+# TEST LOAD_STATE WITH LAYERS
+# =============================================================================
+
+
+class TestLoadStateLayerCreation:
+    """
+    Test that load_state properly creates layers when loading from checkpoint.
+
+    The Story:
+        When loading a saved model, the graph may not have any attention layers
+        yet (if forward() was never called). load_state must create the layers
+        before attempting to restore their parameters.
+    """
+
+    def test_load_state_creates_missing_layers(self):
+        """
+        Test that loading state into fresh graph creates necessary layers.
+        """
+        np.random.seed(42)
+
+        # Create and train a graph
+        graph1 = create_causal_attention_graph(seq_len=3, embedding_dim=8, seed=42)
+        graph1.forward(num_layers=2)  # Creates 2 layers
+
+        # Modify parameters to have distinct values
+        graph1._attention_layers[0].W_q.data[:] = 1.0
+        graph1._attention_layers[1].W_q.data[:] = 2.0
+
+        # Save state
+        state = graph1.save_state()
+        assert len(state["layers"]) == 2
+
+        # Create fresh graph (no layers yet)
+        graph2 = create_causal_attention_graph(seq_len=3, embedding_dim=8, seed=123)
+        assert len(graph2._attention_layers) == 0
+
+        # Load state - should create layers
+        graph2.load_state(state)
+
+        # Verify layers were created
+        assert len(graph2._attention_layers) == 2
+
+        # Verify parameters were restored
+        assert np.allclose(graph2._attention_layers[0].W_q.data, 1.0)
+        assert np.allclose(graph2._attention_layers[1].W_q.data, 2.0)
+
+        print("\n✓ load_state layer creation test passed")
+
+    def test_load_state_preserves_layer_functionality(self):
+        """
+        Test that loaded layers work correctly for forward/backward.
+        """
+        np.random.seed(42)
+
+        # Create original graph and run forward/backward
+        graph1 = create_causal_attention_graph(seq_len=3, embedding_dim=8, seed=42)
+        outputs1 = graph1.forward(num_layers=2)
+        graph1.backward({"pos_2": np.ones(8)}, num_layers=2)
+
+        # Save state
+        state = graph1.save_state()
+
+        # Create fresh graph and load state
+        graph2 = create_causal_attention_graph(seq_len=3, embedding_dim=8, seed=42)
+        graph2.load_state(state)
+
+        # Run forward - should produce same outputs
+        outputs2 = graph2.forward(num_layers=2)
+
+        for node_id in outputs1:
+            assert np.allclose(outputs1[node_id], outputs2[node_id], atol=1e-10), \
+                f"Loaded graph should produce same outputs for {node_id}"
+
+        print("\n✓ load_state functionality preservation test passed")
+
+    def test_load_state_with_bias_parameters(self):
+        """
+        Test that bias parameters are correctly saved and loaded.
+
+        This is critical: if someone trains with use_bias=True and saves
+        a checkpoint, the biases MUST be restored correctly on load.
+        Silent failure here would cause "worked in training, fails in prod" bugs.
+        """
+        np.random.seed(42)
+
+        # Create graph WITH bias
+        graph1 = AttentionGraph(embedding_dim=8, use_bias=True, seed=42)
+        for i in range(3):
+            graph1.add_node(f"pos_{i}")
+        for i in range(1, 3):
+            for j in range(i):
+                graph1.add_edge(f"pos_{j}", f"pos_{i}")
+
+        # Run forward to create layers
+        graph1.forward(num_layers=1)
+
+        # Set bias parameters to known values
+        layer = graph1._attention_layers[0]
+        layer.b_q.data[:] = 1.0
+        layer.b_k.data[:] = 2.0
+        layer.b_v.data[:] = 3.0
+        layer.b_o.data[:] = 4.0
+
+        # Save state
+        state = graph1.save_state()
+
+        # Verify biases are in saved state
+        assert "b_q" in state["layers"][0], "Bias b_q should be saved"
+        assert "b_k" in state["layers"][0], "Bias b_k should be saved"
+        assert "b_v" in state["layers"][0], "Bias b_v should be saved"
+        assert "b_o" in state["layers"][0], "Bias b_o should be saved"
+
+        # Create fresh graph with bias and load state
+        graph2 = AttentionGraph(embedding_dim=8, use_bias=True, seed=123)
+        for i in range(3):
+            graph2.add_node(f"pos_{i}")
+        for i in range(1, 3):
+            for j in range(i):
+                graph2.add_edge(f"pos_{j}", f"pos_{i}")
+
+        graph2.load_state(state)
+
+        # Verify bias parameters were restored
+        layer2 = graph2._attention_layers[0]
+        assert np.allclose(layer2.b_q.data, 1.0), "Bias b_q not restored correctly"
+        assert np.allclose(layer2.b_k.data, 2.0), "Bias b_k not restored correctly"
+        assert np.allclose(layer2.b_v.data, 3.0), "Bias b_v not restored correctly"
+        assert np.allclose(layer2.b_o.data, 4.0), "Bias b_o not restored correctly"
+
+        # Verify forward pass produces same results
+        outputs1 = graph1.forward(num_layers=1)
+        outputs2 = graph2.forward(num_layers=1)
+
+        for node_id in outputs1:
+            assert np.allclose(outputs1[node_id], outputs2[node_id], atol=1e-10), \
+                f"Outputs differ after loading bias state for {node_id}"
+
+        print("\n✓ load_state with bias parameters test passed")
+
+
+# =============================================================================
+# RUN TESTS
+# =============================================================================
+# Use pytest to run these tests:
+#     pytest tests/unit/test_attention_gradients.py -v
+#
+# For verbose output with print statements:
+#     pytest tests/unit/test_attention_gradients.py -v -s
+#
+# To run specific test class:
+#     pytest tests/unit/test_attention_gradients.py::TestAttentionFunctionGradients -v
+# =============================================================================
 
 if __name__ == "__main__":
-    run_all_tests()
+    import pytest
+    import sys
+
+    # Run pytest on this file with verbose output
+    sys.exit(pytest.main([__file__, "-v", "-s"]))

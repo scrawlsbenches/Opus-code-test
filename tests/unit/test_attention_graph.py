@@ -832,12 +832,33 @@ class TestVisualization:
         assert len(viz) > 0
 
     def test_visualize_attention_contains_source_ids(self, graph_with_attention):
-        """Test visualization contains source node IDs."""
+        """Test visualization contains source node IDs.
+
+        Node C has incoming edges from A and B, so the visualization
+        should clearly identify both source nodes with their attention weights.
+        """
         viz = graph_with_attention.visualize_attention("C")
 
-        # Should mention sources A and B
-        assert "A" in viz or "pos_0" in viz or "source" in viz.lower()
-        assert "B" in viz or "pos_1" in viz or "source" in viz.lower()
+        # Get actual attention weights to verify visualization accuracy
+        node_c = graph_with_attention.get_node("C")
+        assert node_c is not None, "Node C should exist"
+
+        # Visualization MUST contain both source node identifiers
+        # These are the actual node IDs that C attends to
+        assert "A" in viz, (
+            f"Visualization should contain source 'A'. Got: {viz}"
+        )
+        assert "B" in viz, (
+            f"Visualization should contain source 'B'. Got: {viz}"
+        )
+
+        # Additionally verify the visualization includes attention weight info
+        # It should contain some numeric value (the weight)
+        import re
+        has_numeric = bool(re.search(r'\d+\.?\d*', viz))
+        assert has_numeric, (
+            f"Visualization should include attention weights (numbers). Got: {viz}"
+        )
 
     def test_visualize_attention_nonexistent_node(self, graph_with_attention):
         """Test visualize_attention with nonexistent node."""

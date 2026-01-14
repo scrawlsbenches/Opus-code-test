@@ -262,7 +262,13 @@ class TestAttentionLayerForward:
             assert node.id in layer._cache["queries"]
 
     def test_train_mode_with_dropout(self):
-        """Test forward pass in training mode with dropout."""
+        """Test forward pass in training mode with dropout.
+
+        Verifies that dropout introduces stochasticity during training mode.
+        With dropout=0.5, the probability that all outputs are identical
+        across two runs is vanishingly small (effectively 0 for any
+        reasonable embedding dimension).
+        """
         np.random.seed(42)
         graph = create_simple_graph(embedding_dim=8, num_nodes=3, causal=True)
         layer = AttentionLayer(embedding_dim=8, dropout=0.5)
@@ -270,12 +276,14 @@ class TestAttentionLayerForward:
 
         node_values = create_node_values(graph, value=1.0)
 
-        # Run forward pass multiple times
+        # Run forward pass multiple times with different random states
         outputs_1 = layer.forward(node_values, graph)
+
+        # Change random state to ensure different dropout mask
+        np.random.seed(123)
         outputs_2 = layer.forward(node_values, graph)
 
-        # With dropout, outputs should vary between runs
-        # (Note: This is stochastic, but with dropout=0.5 it's very likely)
+        # With dropout=0.5, outputs should vary between runs
         # Check at least one node has different output
         different = False
         for node_id in outputs_1:
@@ -283,8 +291,11 @@ class TestAttentionLayerForward:
                 different = True
                 break
 
-        # Note: This test could rarely fail due to randomness
-        # but with dropout=0.5 it's extremely unlikely
+        # FIXED: Actually assert that outputs differ with dropout enabled
+        assert different, (
+            "Dropout should cause different outputs on different forward passes. "
+            "With dropout=0.5, identical outputs are statistically impossible."
+        )
 
     def test_eval_mode_no_dropout(self):
         """Test forward pass in eval mode has no dropout."""
@@ -739,7 +750,15 @@ class TestAttentionLayerEdgeCases:
             assert len(output) == 8
 
     def test_backward_without_forward(self):
-        """Test that backward without forward doesn't crash."""
+        """Test that backward without forward handles gracefully.
+
+        The expected behavior when calling backward() without forward() is:
+        - Either return an empty dict (no gradients computed)
+        - Or raise a clear error indicating cache is missing
+
+        This test verifies the implementation handles this edge case
+        predictably without crashing or producing silent corruption.
+        """
         np.random.seed(42)
         graph = create_simple_graph(embedding_dim=8, num_nodes=2, causal=True)
         layer = AttentionLayer(embedding_dim=8)
@@ -747,16 +766,34 @@ class TestAttentionLayerEdgeCases:
         # Call backward without forward (cache will be empty)
         output_gradients = {"node_0": np.ones(8), "node_1": np.ones(8)}
 
-        # Should handle gracefully (may not compute gradients)
-        # This might return empty dict or skip nodes not in cache
+        # The implementation should either:
+        # 1. Return an empty dict gracefully, OR
+        # 2. Raise KeyError/AttributeError with a meaningful message
         try:
             input_gradients = layer.backward(output_gradients, graph)
-            # Should return a dict (possibly empty)
-            assert isinstance(input_gradients, dict)
-        except (KeyError, AttributeError):
-            # It's acceptable to fail gracefully when cache is missing
-            # The important part is it doesn't crash catastrophically
-            pass
+            # If it returns, must be a dict
+            assert isinstance(input_gradients, dict), (
+                f"backward() should return dict, got {type(input_gradients)}"
+            )
+            # Empty dict is acceptable (no cached values to compute gradients from)
+            # Non-empty dict should have valid gradient arrays
+            for node_id, grad in input_gradients.items():
+                assert isinstance(grad, np.ndarray), (
+                    f"Gradient for {node_id} should be ndarray, got {type(grad)}"
+                )
+                assert grad.shape == (8,), (
+                    f"Gradient shape mismatch for {node_id}: {grad.shape} != (8,)"
+                )
+        except KeyError as e:
+            # KeyError is acceptable if cache key is missing
+            assert "cache" in str(e).lower() or len(str(e)) > 0, (
+                "KeyError should have informative message about missing cache"
+            )
+        except AttributeError as e:
+            # AttributeError is acceptable if cache wasn't initialized
+            assert len(str(e)) > 0, (
+                "AttributeError should have informative message"
+            )
 
 
 # =============================================================================

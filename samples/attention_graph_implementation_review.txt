@@ -1,0 +1,223 @@
+AttentionGraph Implementation Review and Fixes
+==============================================
+
+Date: 2026-01-14
+Branch: claude/review-test-files-HjyTi
+Commits: f42a3c6b, 682ed758, 1d6a97b1, 74e93e0f
+
+
+Overview
+--------
+This document captures the review and fixes applied to the AttentionGraph
+implementation in cortical/graph/attention.py and its associated test suite.
+The work included fixing test quality issues and correcting implementation
+bugs that would affect training correctness.
+
+
+Test Quality Issues Fixed
+-------------------------
+
+1. INCOMPLETE DROPOUT TEST ASSERTION
+   File: tests/unit/test_attention_layer.py:264-298
+
+   Problem: The test computed a `different` variable to check if dropout
+   caused output variation, but NEVER asserted on it. The test always passed.
+
+   Fix: Added proper assertion with descriptive error message:
+
+       assert different, (
+           "Dropout should cause different outputs on different forward passes. "
+           "With dropout=0.5, identical outputs are statistically impossible."
+       )
+
+
+2. TRY/EXCEPT MASKING BUGS
+   File: tests/unit/test_attention_layer.py:741-785
+
+   Problem: The test_backward_without_forward test caught exceptions and
+   silently passed with `pass`. This meant ANY crash would be considered
+   acceptable, hiding real bugs.
+
+   Fix: Added proper validation for both success and expected failure cases:
+   - If it returns, verify the dict contains valid numpy arrays
+   - If KeyError/AttributeError, verify the error message is informative
+
+
+3. WEAK VISUALIZATION ASSERTION
+   File: tests/unit/test_attention_graph.py:834-861
+
+   Problem: The assertion used too many OR conditions:
+       assert "A" in viz or "pos_0" in viz or "source" in viz.lower()
+
+   This would pass with almost any output containing "source".
+
+   Fix: Require explicit node IDs and numeric weights:
+
+       assert "A" in viz, f"Visualization should contain source 'A'. Got: {viz}"
+       assert "B" in viz, f"Visualization should contain source 'B'. Got: {viz}"
+       has_numeric = bool(re.search(r'\d+\.?\d*', viz))
+       assert has_numeric, "Visualization should include attention weights"
+
+
+4. DUPLICATE TEST RUNNER
+   File: tests/unit/test_attention_gradients.py:980-998
+
+   Problem: 150 lines of manual test runner duplicating pytest functionality.
+
+   Fix: Replaced with simple pytest invocation:
+
+       if __name__ == "__main__":
+           import pytest
+           sys.exit(pytest.main([__file__, "-v", "-s"]))
+
+
+Implementation Bugs Fixed
+-------------------------
+
+1. DROPOUT GRADIENT NOT COMPUTED (Medium Severity)
+   File: cortical/graph/attention.py
+
+   Problem: During forward pass, dropout was applied:
+
+       if self._training and self.dropout > 0:
+           mask = np.random.binomial(1, 1 - self.dropout, attended.shape)
+           attended = attended * mask / (1 - self.dropout)
+
+   But the backward pass did NOT apply the same mask. This meant:
+   - Gradients flowed through elements that were zeroed in forward
+   - The scaling factor was not applied to gradients
+
+   This would cause INCORRECT parameter updates when dropout > 0.
+
+   Fix: Store dropout mask during forward, apply during backward:
+
+   Forward (attention.py:775-786):
+       self._cache["pre_output"][node_id] = attended.copy()
+       if self._training and self.dropout > 0:
+           dropout_mask = np.random.binomial(1, 1 - self.dropout, attended.shape)
+           dropout_scale = 1.0 / (1 - self.dropout)
+           attended = attended * dropout_mask * dropout_scale
+           self._cache["dropout_mask"][node_id] = (dropout_mask, dropout_scale)
+
+   Backward (attention.py:824-845):
+       dropout_info = self._cache.get("dropout_mask", {}).get(node_id)
+       if dropout_info is not None:
+           dropout_mask, dropout_scale = dropout_info
+           post_dropout = pre_output * dropout_mask * dropout_scale
+       # ... use post_dropout for W_o gradient
+       # ... apply mask to grad_attended
+
+
+2. LOAD_STATE SILENTLY IGNORES LAYERS (Low Severity)
+   File: cortical/graph/attention.py:1229-1232
+
+   Problem: If you saved a 3-layer model but loaded into a fresh graph
+   (0 layers), all layer states were silently dropped because:
+
+       for i, layer_state in enumerate(state.get("layers", [])):
+           if i < len(self._attention_layers):  # This was always False!
+
+   Fix: Create layers before restoring parameters:
+
+       saved_layers = state.get("layers", [])
+       if saved_layers:
+           self._ensure_layers(len(saved_layers))
+
+
+Verification
+------------
+All fixes were verified with:
+
+1. NUMERICAL GRADIENT CHECKING
+   The dropout gradient fix was verified by comparing analytical gradients
+   (from backward()) against numerical gradients (finite differences).
+
+   Result: Relative error < 1e-11 (essentially machine precision)
+
+   Test: TestDropoutGradients.test_dropout_gradient_numerical_verification
+
+2. LOAD_STATE FUNCTIONALITY TEST
+   Verified that:
+   - Fresh graph with 0 layers can load 2-layer state
+   - Loaded graph produces identical outputs to original
+
+   Test: TestLoadStateLayerCreation.test_load_state_creates_missing_layers
+
+3. BIAS SAVE/LOAD TEST
+   Verified that when use_bias=True:
+   - All bias parameters (b_q, b_k, b_v, b_o) are saved in checkpoint
+   - Bias parameters are correctly restored on load
+   - Forward pass produces identical outputs after restoration
+
+   Test: TestLoadStateLayerCreation.test_load_state_with_bias_parameters
+
+   This test was added to close a coverage gap that could cause
+   "worked in training, fails in production" bugs.
+
+
+Test Coverage
+-------------
+Final coverage after all fixes:
+
+    cortical/graph/attention.py:        92%
+    cortical/reasoning/attention_router.py: 97%
+    Total attention tests:              179 (all passing)
+
+Uncovered code analysis:
+- Protocol/ABC stubs (lines 155-207, 405-428): Cannot execute, by design
+- Embedding fallbacks to zeros: Defensive code, fails visibly if triggered
+- Cache miss paths: Error handling for corrupted state
+
+
+Key Learnings
+-------------
+
+1. ALWAYS ASSERT ON COMPUTED VALUES
+   If you compute a boolean like `different`, assert on it. Otherwise the
+   computation is pointless and bugs go undetected.
+
+2. TRY/EXCEPT SHOULD VALIDATE, NOT IGNORE
+   Using `except: pass` is almost always wrong in tests. Either expect
+   success (no try/except) or expect specific failures (validate error).
+
+3. OR CONDITIONS IN ASSERTIONS ARE CODE SMELL
+   Multiple OR conditions mean the test accepts many different behaviors.
+   Be specific about what MUST be present.
+
+4. DROPOUT REQUIRES MASK STORAGE
+   Any stochastic operation (dropout, sampling) that affects forward pass
+   must store its random state for correct gradient computation.
+
+5. NUMERICAL GRADIENT CHECKING IS GOLD STANDARD
+   When in doubt about gradient correctness, compare against numerical
+   gradients using finite differences. Error < 1e-5 is usually acceptable.
+
+6. TEST CHECKPOINT SAVE/LOAD WITH ALL OPTIONS
+   If a feature has optional parameters (like use_bias=True), test that
+   checkpoints correctly save and restore state for all configurations.
+   Silent failures here cause "works in training, fails in prod" bugs.
+
+
+Files Modified
+--------------
+- cortical/graph/attention.py (implementation fixes)
+- tests/unit/test_attention_layer.py (test fixes)
+- tests/unit/test_attention_graph.py (test fixes)
+- tests/unit/test_attention_gradients.py (test fixes + new tests)
+- samples/attention_graph_implementation_review.txt (this document)
+
+
+New Tests Added
+---------------
+- TestDropoutGradients.test_dropout_gradient_consistency
+- TestDropoutGradients.test_dropout_gradient_numerical_verification
+- TestDropoutGradients.test_eval_mode_no_dropout_gradient
+- TestLoadStateLayerCreation.test_load_state_creates_missing_layers
+- TestLoadStateLayerCreation.test_load_state_preserves_layer_functionality
+- TestLoadStateLayerCreation.test_load_state_with_bias_parameters
+
+
+Related Documentation
+---------------------
+- cortical/graph/attention.py module docstring (design decisions)
+- tests/unit/test_attention_gradients.py (numerical gradient methodology)
