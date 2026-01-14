@@ -108,6 +108,17 @@ def create_parser() -> argparse.ArgumentParser:
         help="Position encoding type (default: none)",
     )
     run_parser.add_argument(
+        "--dropout",
+        type=float,
+        default=0.0,
+        help="Dropout rate (default: 0.0)",
+    )
+    run_parser.add_argument(
+        "--use-bias",
+        action="store_true",
+        help="Enable bias in attention layers",
+    )
+    run_parser.add_argument(
         "--loss-fn",
         type=str,
         choices=["mse", "cross_entropy"],

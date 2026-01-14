@@ -253,6 +253,8 @@ Additional features implemented:
 - [x] Checkpoint saving/loading using pickle format
 - [x] Compare command for experiment comparison
 - [x] List command to show all experiments
+- [x] Dropout rate CLI argument (`--dropout`)
+- [x] Attention bias CLI argument (`--use-bias`)
 
 ## Testing Strategy
 
