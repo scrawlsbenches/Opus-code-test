@@ -599,6 +599,7 @@ class AttentionLayer(ProcessingLayer):
         dropout: float = 0.0,
         num_heads: int = 1,
         use_residual: bool = False,
+        name_prefix: str = "attention",
     ):
         """
         Initialize attention layer.
@@ -611,6 +612,7 @@ class AttentionLayer(ProcessingLayer):
             use_residual: Whether to add residual connection (output = attention + input)
                          This helps gradient flow in multi-layer networks.
                          For small graphs (1-3 layers), this is optional but still beneficial.
+            name_prefix: Prefix for parameter names (e.g., "layer_0" -> "layer_0_W_q")
 
         Design Decision (Residual Connections):
             We implement a simple residual: output = attention_output + input
@@ -646,33 +648,33 @@ class AttentionLayer(ProcessingLayer):
         # Query projection: "What am I looking for?"
         self.W_q = Parameter(
             data=np.random.randn(embedding_dim, embedding_dim) * scale,
-            name="attention_W_q",
+            name=f"{name_prefix}_W_q",
         )
 
         # Key projection: "What do I offer?"
         self.W_k = Parameter(
             data=np.random.randn(embedding_dim, embedding_dim) * scale,
-            name="attention_W_k",
+            name=f"{name_prefix}_W_k",
         )
 
         # Value projection: "What can you learn from me?"
         self.W_v = Parameter(
             data=np.random.randn(embedding_dim, embedding_dim) * scale,
-            name="attention_W_v",
+            name=f"{name_prefix}_W_v",
         )
 
         # Output projection: "How do I integrate what I learned?"
         self.W_o = Parameter(
             data=np.random.randn(embedding_dim, embedding_dim) * scale,
-            name="attention_W_o",
+            name=f"{name_prefix}_W_o",
         )
 
         # Optional biases
         if use_bias:
-            self.b_q = Parameter(data=np.zeros(embedding_dim), name="attention_b_q")
-            self.b_k = Parameter(data=np.zeros(embedding_dim), name="attention_b_k")
-            self.b_v = Parameter(data=np.zeros(embedding_dim), name="attention_b_v")
-            self.b_o = Parameter(data=np.zeros(embedding_dim), name="attention_b_o")
+            self.b_q = Parameter(data=np.zeros(embedding_dim), name=f"{name_prefix}_b_q")
+            self.b_k = Parameter(data=np.zeros(embedding_dim), name=f"{name_prefix}_b_k")
+            self.b_v = Parameter(data=np.zeros(embedding_dim), name=f"{name_prefix}_b_v")
+            self.b_o = Parameter(data=np.zeros(embedding_dim), name=f"{name_prefix}_b_o")
 
         # Cache for backward pass
         self._cache: Dict[str, Any] = {}
@@ -1195,12 +1197,14 @@ class AttentionGraph(BaseGraph[AttentionNode, AttentionEdge]):
     def _ensure_layers(self, num_layers: int) -> None:
         """Ensure we have enough attention layers."""
         while len(self._attention_layers) < num_layers:
+            layer_idx = len(self._attention_layers)
             layer = AttentionLayer(
                 embedding_dim=self.embedding_dim,
                 use_bias=self.use_bias,
                 dropout=self.dropout,
                 num_heads=self.num_heads,
                 use_residual=self.use_residual,
+                name_prefix=f"layer_{layer_idx}",
             )
             if self._training:
                 layer.train()
