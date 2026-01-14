@@ -12,13 +12,18 @@ Based on the architecture from "Attention Is All You Need" (Vaswani et al., 2017
 and "Language Models are Unsupervised Multitask Learners" (Radford et al., 2019).
 """
 
+import logging
 import math
+import os
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -32,6 +37,7 @@ class GPTConfig:
     n_embd: int = 768        # Embedding dimension
     dropout: float = 0.1     # Dropout probability
     bias: bool = True        # Use bias in Linear layers and LayerNorms
+    use_flash_attention: bool = True  # Use Flash Attention if available
 
     def __post_init__(self):
         assert self.n_embd % self.n_head == 0, \
@@ -43,8 +49,8 @@ class CausalSelfAttention(nn.Module):
     Multi-head causal self-attention mechanism.
 
     Implements scaled dot-product attention with a causal mask to prevent
-    tokens from attending to future positions. Uses a single linear projection
-    for Q, K, V followed by splitting into heads.
+    tokens from attending to future positions. Uses Flash Attention when
+    available for better performance.
     """
 
     def __init__(self, config: GPTConfig):
@@ -65,13 +71,20 @@ class CausalSelfAttention(nn.Module):
         self.attn_dropout = nn.Dropout(config.dropout)
         self.resid_dropout = nn.Dropout(config.dropout)
 
-        # Causal mask: lower triangular matrix to prevent attending to future tokens
-        # Registered as buffer (not a parameter) so it's moved with the model
-        self.register_buffer(
-            "causal_mask",
-            torch.tril(torch.ones(config.block_size, config.block_size))
-            .view(1, 1, config.block_size, config.block_size)
+        # Check if Flash Attention is available
+        self.use_flash = (
+            config.use_flash_attention and
+            hasattr(F, 'scaled_dot_product_attention')
         )
+
+        if not self.use_flash:
+            # Causal mask for manual attention (only needed without Flash Attention)
+            # Registered as buffer (not a parameter) so it's moved with the model
+            self.register_buffer(
+                "causal_mask",
+                torch.tril(torch.ones(config.block_size, config.block_size))
+                .view(1, 1, config.block_size, config.block_size)
+            )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -94,19 +107,29 @@ class CausalSelfAttention(nn.Module):
         k = k.view(B, T, self.n_head, self.head_dim).transpose(1, 2)
         v = v.view(B, T, self.n_head, self.head_dim).transpose(1, 2)
 
-        # Scaled dot-product attention
-        # att = (Q @ K^T) / sqrt(d_k)
-        att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(self.head_dim))
+        if self.use_flash:
+            # Use Flash Attention (PyTorch 2.0+)
+            # Handles causal masking and scaling internally
+            y = F.scaled_dot_product_attention(
+                q, k, v,
+                attn_mask=None,
+                dropout_p=self.dropout if self.training else 0.0,
+                is_causal=True
+            )
+        else:
+            # Manual attention implementation (fallback)
+            # Scaled dot-product attention: att = (Q @ K^T) / sqrt(d_k)
+            att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(self.head_dim))
 
-        # Apply causal mask: set future positions to -inf before softmax
-        att = att.masked_fill(self.causal_mask[:, :, :T, :T] == 0, float('-inf'))
+            # Apply causal mask: set future positions to -inf before softmax
+            att = att.masked_fill(self.causal_mask[:, :, :T, :T] == 0, float('-inf'))
 
-        # Softmax and dropout
-        att = F.softmax(att, dim=-1)
-        att = self.attn_dropout(att)
+            # Softmax and dropout
+            att = F.softmax(att, dim=-1)
+            att = self.attn_dropout(att)
 
-        # Apply attention to values: (B, n_head, T, T) @ (B, n_head, T, head_dim)
-        y = att @ v
+            # Apply attention to values
+            y = att @ v
 
         # Reshape back: (B, n_head, T, head_dim) -> (B, T, C)
         y = y.transpose(1, 2).contiguous().view(B, T, C)
@@ -223,8 +246,8 @@ class GPT(nn.Module):
             if pn.endswith('c_proj.weight'):
                 torch.nn.init.normal_(p, mean=0.0, std=0.02 / math.sqrt(2 * config.n_layer))
 
-        # Report number of parameters
-        print(f"GPT model initialized with {self.get_num_params()/1e6:.2f}M parameters")
+        # Log number of parameters
+        logger.info(f"GPT model initialized with {self.get_num_params()/1e6:.2f}M parameters")
 
     def _init_weights(self, module: nn.Module):
         """Initialize weights following GPT-2 scheme."""
@@ -235,8 +258,9 @@ class GPT(nn.Module):
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
         elif isinstance(module, nn.LayerNorm):
-            torch.nn.init.zeros_(module.bias)
             torch.nn.init.ones_(module.weight)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
 
     def get_num_params(self, non_embedding: bool = True) -> int:
         """
@@ -326,29 +350,44 @@ class GPT(nn.Module):
         Returns:
             Generated token indices of shape (batch_size, seq_len + max_new_tokens)
         """
-        for _ in range(max_new_tokens):
-            # Crop sequence to block_size if necessary
-            idx_cond = idx if idx.size(1) <= self.config.block_size else idx[:, -self.config.block_size:]
+        # Input validation
+        if temperature <= 0:
+            raise ValueError(f"temperature must be > 0, got {temperature}")
+        if top_k is not None and top_k <= 0:
+            raise ValueError(f"top_k must be > 0 or None, got {top_k}")
 
-            # Get predictions
-            logits, _ = self(idx_cond)
+        # Set to eval mode to disable dropout
+        was_training = self.training
+        self.eval()
 
-            # Focus on the last token's logits and apply temperature
-            logits = logits[:, -1, :] / temperature
+        try:
+            for _ in range(max_new_tokens):
+                # Crop sequence to block_size if necessary
+                idx_cond = idx if idx.size(1) <= self.config.block_size else idx[:, -self.config.block_size:]
 
-            # Optionally apply top-k filtering
-            if top_k is not None:
-                v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
-                logits[logits < v[:, [-1]]] = float('-inf')
+                # Get predictions
+                logits, _ = self(idx_cond)
 
-            # Convert to probabilities
-            probs = F.softmax(logits, dim=-1)
+                # Focus on the last token's logits and apply temperature
+                logits = logits[:, -1, :] / temperature
 
-            # Sample from the distribution
-            idx_next = torch.multinomial(probs, num_samples=1)
+                # Optionally apply top-k filtering
+                if top_k is not None:
+                    v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
+                    logits[logits < v[:, [-1]]] = float('-inf')
 
-            # Append to the sequence
-            idx = torch.cat((idx, idx_next), dim=1)
+                # Convert to probabilities
+                probs = F.softmax(logits, dim=-1)
+
+                # Sample from the distribution
+                idx_next = torch.multinomial(probs, num_samples=1)
+
+                # Append to the sequence
+                idx = torch.cat((idx, idx_next), dim=1)
+        finally:
+            # Restore original training mode
+            if was_training:
+                self.train()
 
         return idx
 
@@ -389,12 +428,20 @@ class GPT(nn.Module):
 
         num_decay_params = sum(p.numel() for p in decay_params)
         num_nodecay_params = sum(p.numel() for p in nodecay_params)
-        print(f"Decayed parameter tensors: {len(decay_params)}, totaling {num_decay_params:,} parameters")
-        print(f"Non-decayed parameter tensors: {len(nodecay_params)}, totaling {num_nodecay_params:,} parameters")
+        logger.info(f"Decayed parameter tensors: {len(decay_params)}, totaling {num_decay_params:,} parameters")
+        logger.info(f"Non-decayed parameter tensors: {len(nodecay_params)}, totaling {num_nodecay_params:,} parameters")
 
         # Use fused AdamW if available (faster on CUDA)
-        fused_available = 'fused' in torch.optim.AdamW.__init__.__code__.co_varnames
-        use_fused = fused_available and device_type == 'cuda'
+        use_fused = False
+        if device_type == 'cuda':
+            try:
+                # Test if fused parameter is accepted
+                test_opt = torch.optim.AdamW([torch.zeros(1)], fused=True)
+                del test_opt
+                use_fused = True
+            except (TypeError, RuntimeError):
+                pass
+
         extra_args = {'fused': True} if use_fused else {}
 
         optimizer = torch.optim.AdamW(
@@ -404,9 +451,56 @@ class GPT(nn.Module):
             **extra_args
         )
 
-        print(f"Using fused AdamW: {use_fused}")
+        logger.info(f"Using fused AdamW: {use_fused}")
 
         return optimizer
+
+    def save_checkpoint(self, path: str, optimizer: Optional[torch.optim.Optimizer] = None,
+                        iter_num: int = 0, best_val_loss: float = float('inf'),
+                        **extra_state):
+        """
+        Save model checkpoint.
+
+        Args:
+            path: Path to save checkpoint
+            optimizer: Optional optimizer to save state
+            iter_num: Current iteration number
+            best_val_loss: Best validation loss so far
+            **extra_state: Additional state to save
+        """
+        checkpoint = {
+            'model': self.state_dict(),
+            'config': self.config,
+            'iter_num': iter_num,
+            'best_val_loss': best_val_loss,
+        }
+        if optimizer is not None:
+            checkpoint['optimizer'] = optimizer.state_dict()
+        checkpoint.update(extra_state)
+
+        torch.save(checkpoint, path)
+        logger.info(f"Saved checkpoint to {path}")
+
+    @classmethod
+    def load_checkpoint(cls, path: str, device: str = 'cpu'
+                        ) -> Tuple['GPT', dict]:
+        """
+        Load model from checkpoint.
+
+        Args:
+            path: Path to checkpoint
+            device: Device to load model to
+
+        Returns:
+            Tuple of (model, checkpoint_dict)
+        """
+        checkpoint = torch.load(path, map_location=device)
+        config = checkpoint['config']
+        model = cls(config)
+        model.load_state_dict(checkpoint['model'])
+        model.to(device)
+        logger.info(f"Loaded checkpoint from {path}")
+        return model, checkpoint
 
 
 # ============================================================================
@@ -431,9 +525,19 @@ def get_batch(
     Returns:
         x: Input sequences of shape (batch_size, block_size)
         y: Target sequences of shape (batch_size, block_size)
+
+    Raises:
+        ValueError: If data is too small for the given block_size
     """
+    if len(data) <= block_size:
+        raise ValueError(
+            f"Data length ({len(data)}) must be greater than block_size ({block_size}). "
+            f"Need at least {block_size + 1} tokens."
+        )
+
     # Random starting positions
-    ix = torch.randint(len(data) - block_size, (batch_size,))
+    max_start = len(data) - block_size - 1
+    ix = torch.randint(max_start + 1, (batch_size,))
 
     # Extract sequences
     x = torch.stack([data[i:i + block_size] for i in ix])
@@ -482,27 +586,71 @@ def estimate_loss(
     return out
 
 
+def get_lr(iter_num: int, warmup_iters: int, lr_decay_iters: int,
+           min_lr: float, max_lr: float) -> float:
+    """
+    Learning rate schedule with linear warmup and cosine decay.
+
+    Args:
+        iter_num: Current iteration
+        warmup_iters: Number of warmup iterations
+        lr_decay_iters: Number of iterations for cosine decay
+        min_lr: Minimum learning rate
+        max_lr: Maximum learning rate
+
+    Returns:
+        Learning rate for current iteration
+    """
+    # Linear warmup
+    if iter_num < warmup_iters:
+        return max_lr * (iter_num + 1) / warmup_iters
+
+    # After decay period, return minimum
+    if iter_num > lr_decay_iters:
+        return min_lr
+
+    # Cosine decay
+    decay_ratio = (iter_num - warmup_iters) / (lr_decay_iters - warmup_iters)
+    coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio))
+    return min_lr + coeff * (max_lr - min_lr)
+
+
 # ============================================================================
 # Simple character-level tokenizer for demo purposes
 # ============================================================================
 
 class CharTokenizer:
-    """Simple character-level tokenizer."""
+    """Simple character-level tokenizer with unknown character handling."""
+
+    # Special token for unknown characters
+    UNK_TOKEN = '<UNK>'
 
     def __init__(self, text: str):
         """Initialize tokenizer from text corpus."""
         chars = sorted(list(set(text)))
-        self.vocab_size = len(chars)
-        self.stoi = {ch: i for i, ch in enumerate(chars)}
-        self.itos = {i: ch for i, ch in enumerate(chars)}
+
+        # Add UNK token at position 0
+        self.itos = {0: self.UNK_TOKEN}
+        self.stoi = {self.UNK_TOKEN: 0}
+
+        # Add all characters from corpus
+        for i, ch in enumerate(chars, start=1):
+            self.itos[i] = ch
+            self.stoi[ch] = i
+
+        self.vocab_size = len(self.itos)
 
     def encode(self, text: str) -> list:
-        """Convert text to list of token indices."""
-        return [self.stoi[c] for c in text]
+        """
+        Convert text to list of token indices.
+        Unknown characters are mapped to UNK token.
+        """
+        unk_idx = self.stoi[self.UNK_TOKEN]
+        return [self.stoi.get(c, unk_idx) for c in text]
 
     def decode(self, indices: list) -> str:
         """Convert list of token indices to text."""
-        return ''.join([self.itos[i] for i in indices])
+        return ''.join([self.itos.get(i, self.UNK_TOKEN) for i in indices])
 
 
 # ============================================================================
@@ -516,11 +664,16 @@ def demo():
     This demo:
     1. Downloads Shakespeare text (or uses sample text)
     2. Creates a character-level tokenizer
-    3. Trains a small GPT model
+    3. Trains a small GPT model with mixed precision and LR scheduling
     4. Generates sample text
     """
-    import os
     import urllib.request
+
+    # Configure logging for demo
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s'
+    )
 
     print("=" * 60)
     print("nanoGPT Demo: Training a small language model")
@@ -531,23 +684,36 @@ def demo():
     block_size = 256
     max_iters = 5000
     eval_interval = 500
-    learning_rate = 3e-4
+    max_lr = 3e-4
+    min_lr = 3e-5  # 10x smaller than max
+    warmup_iters = 100
+    lr_decay_iters = max_iters
     eval_iters = 200
     n_embd = 384
     n_head = 6
     n_layer = 6
     dropout = 0.2
+    grad_clip = 1.0
 
     # Device selection
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    device_type = 'cuda' if 'cuda' in device else 'cpu'
     print(f"Using device: {device}")
 
+    # Mixed precision settings
+    use_amp = device_type == 'cuda'
+    dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16
+    ctx = torch.autocast(device_type=device_type, dtype=dtype) if use_amp else nullcontext()
+    scaler = torch.cuda.amp.GradScaler(enabled=(use_amp and dtype == torch.float16))
+    print(f"Using mixed precision: {use_amp}" + (f" ({dtype})" if use_amp else ""))
+
     # Get training data
-    data_path = 'input.txt'
+    data_dir = os.path.dirname(os.path.abspath(__file__))
+    data_path = os.path.join(data_dir, 'input.txt')
     data_url = 'https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt'
 
     if not os.path.exists(data_path):
-        print(f"Downloading Shakespeare dataset...")
+        print("Downloading Shakespeare dataset...")
         try:
             urllib.request.urlretrieve(data_url, data_path)
             print("Download complete!")
@@ -560,15 +726,15 @@ def demo():
             Whether 'tis nobler in the mind to suffer
             The slings and arrows of outrageous fortune,
             Or to take arms against a sea of troubles
-            And by opposing end them. To die—to sleep,
+            And by opposing end them. To die-to sleep,
             No more; and by a sleep to say we end
             The heart-ache and the thousand natural shocks
             That flesh is heir to: 'tis a consummation
             Devoutly to be wish'd. To die, to sleep;
-            To sleep, perchance to dream—ay, there's the rub:
+            To sleep, perchance to dream-ay, there's the rub:
             For in that sleep of death what dreams may come,
             When we have shuffled off this mortal coil,
-            Must give us pause—there's the respect
+            Must give us pause-there's the respect
             That makes calamity of so long life.
             """ * 100  # Repeat to have enough data
             with open(data_path, 'w') as f:
@@ -610,32 +776,59 @@ def demo():
     # Create optimizer
     optimizer = model.configure_optimizers(
         weight_decay=0.1,
-        learning_rate=learning_rate,
+        learning_rate=max_lr,
         betas=(0.9, 0.99),
-        device_type=device
+        device_type=device_type
     )
 
     # Training loop
     print("\nStarting training...")
     print("-" * 60)
 
+    best_val_loss = float('inf')
+
     for iter_num in range(max_iters):
+        # Update learning rate
+        lr = get_lr(iter_num, warmup_iters, lr_decay_iters, min_lr, max_lr)
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = lr
+
         # Evaluate periodically
         if iter_num % eval_interval == 0 or iter_num == max_iters - 1:
             losses = estimate_loss(
                 model, train_data, val_data,
                 eval_iters, batch_size, block_size, device
             )
-            print(f"Step {iter_num:5d}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
+            print(f"Step {iter_num:5d}: train loss {losses['train']:.4f}, "
+                  f"val loss {losses['val']:.4f}, lr {lr:.2e}")
 
-        # Get batch and compute loss
+            # Save best model
+            if losses['val'] < best_val_loss:
+                best_val_loss = losses['val']
+                checkpoint_path = os.path.join(data_dir, 'best_model.pt')
+                model.save_checkpoint(
+                    checkpoint_path,
+                    optimizer=optimizer,
+                    iter_num=iter_num,
+                    best_val_loss=best_val_loss
+                )
+
+        # Get batch and compute loss with mixed precision
         xb, yb = get_batch(train_data, batch_size, block_size, device)
-        logits, loss = model(xb, yb)
 
-        # Backpropagation
+        with ctx:
+            logits, loss = model(xb, yb)
+
+        # Backpropagation with gradient scaling for mixed precision
         optimizer.zero_grad(set_to_none=True)
-        loss.backward()
-        optimizer.step()
+        scaler.scale(loss).backward()
+
+        # Gradient clipping
+        scaler.unscale_(optimizer)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+
+        scaler.step(optimizer)
+        scaler.update()
 
     print("-" * 60)
     print("Training complete!")
@@ -650,6 +843,15 @@ def demo():
     print(tokenizer.decode(generated[0].tolist()))
 
     return model, tokenizer
+
+
+# Null context manager for non-CUDA devices
+class nullcontext:
+    """Context manager that does nothing (for non-CUDA devices)."""
+    def __enter__(self):
+        return self
+    def __exit__(self, *args):
+        pass
 
 
 if __name__ == '__main__':
