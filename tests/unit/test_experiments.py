@@ -496,3 +496,267 @@ class TestTrainingHistory:
 
         assert len(history.step_metrics) == 1
         assert history.step_metrics[0].step == 0
+
+
+# =============================================================================
+# EXPERIMENT CONFIG TESTS
+# =============================================================================
+
+from cortical.experiments.config import ExperimentConfig
+
+
+class TestExperimentConfigBasic:
+    """Tests for ExperimentConfig dataclass."""
+
+    def test_create_config(self):
+        """Can create config with required fields."""
+        config = ExperimentConfig(name="test", input_path="input.txt")
+        assert config.name == "test"
+        assert config.input_path == "input.txt"
+
+    def test_default_values(self):
+        """Config has sensible defaults."""
+        config = ExperimentConfig(name="test", input_path="input.txt")
+        assert config.embedding_dim == 16
+        assert config.num_heads == 2  # Updated default
+        assert config.num_layers == 2
+        assert config.epochs == 500
+        assert config.lr == 0.03
+        assert config.seed == 42
+
+    def test_validates_head_divisibility(self):
+        """Raises error if embedding_dim not divisible by num_heads."""
+        with pytest.raises(ValueError, match="divisible"):
+            ExperimentConfig(
+                name="test",
+                input_path="input.txt",
+                embedding_dim=15,
+                num_heads=4,
+            )
+
+    def test_validates_loss_fn(self):
+        """Raises error for unsupported loss function."""
+        with pytest.raises(ValueError, match="not supported"):
+            ExperimentConfig(
+                name="test",
+                input_path="input.txt",
+                loss_fn="cross_entropy",
+            )
+
+
+class TestExperimentConfigSerialization:
+    """Tests for ExperimentConfig serialization."""
+
+    def test_to_dict(self):
+        """Config converts to dictionary."""
+        config = ExperimentConfig(name="test", input_path="input.txt")
+        d = config.to_dict()
+
+        assert d["name"] == "test"
+        assert d["input_path"] == "input.txt"
+        assert d["embedding_dim"] == 16
+
+    def test_from_dict(self):
+        """Config can be created from dictionary."""
+        d = {
+            "name": "test",
+            "input_path": "input.txt",
+            "embedding_dim": 32,
+            "num_heads": 4,
+        }
+        config = ExperimentConfig.from_dict(d)
+
+        assert config.name == "test"
+        assert config.embedding_dim == 32
+        assert config.num_heads == 4
+
+    def test_from_dict_ignores_unknown_fields(self):
+        """from_dict ignores unknown fields."""
+        d = {
+            "name": "test",
+            "input_path": "input.txt",
+            "unknown_field": "ignored",
+        }
+        config = ExperimentConfig.from_dict(d)
+        assert config.name == "test"
+        assert not hasattr(config, "unknown_field")
+
+    def test_to_json(self):
+        """Config converts to JSON string."""
+        config = ExperimentConfig(name="test", input_path="input.txt")
+        json_str = config.to_json()
+
+        assert '"name": "test"' in json_str
+        assert '"input_path": "input.txt"' in json_str
+
+    def test_from_json(self):
+        """Config can be created from JSON string."""
+        json_str = '{"name": "test", "input_path": "input.txt"}'
+        config = ExperimentConfig.from_json(json_str)
+
+        assert config.name == "test"
+        assert config.input_path == "input.txt"
+
+    def test_roundtrip(self):
+        """Config survives JSON roundtrip."""
+        original = ExperimentConfig(
+            name="test",
+            input_path="input.txt",
+            embedding_dim=32,
+            num_heads=4,
+            epochs=100,
+        )
+        json_str = original.to_json()
+        restored = ExperimentConfig.from_json(json_str)
+
+        assert restored.name == original.name
+        assert restored.embedding_dim == original.embedding_dim
+        assert restored.num_heads == original.num_heads
+        assert restored.epochs == original.epochs
+
+
+class TestExperimentConfigSummary:
+    """Tests for ExperimentConfig summary."""
+
+    def test_summary_contains_name(self):
+        """Summary includes experiment name."""
+        config = ExperimentConfig(name="my-experiment", input_path="input.txt")
+        summary = config.summary()
+        assert "my-experiment" in summary
+
+    def test_summary_contains_hyperparameters(self):
+        """Summary includes key hyperparameters."""
+        config = ExperimentConfig(
+            name="test",
+            input_path="input.txt",
+            embedding_dim=32,
+            num_heads=4,
+        )
+        summary = config.summary()
+        assert "32" in summary
+        assert "4" in summary
+
+
+# =============================================================================
+# EXPERIMENT LOGGING TESTS
+# =============================================================================
+
+import tempfile
+from pathlib import Path
+from cortical.experiments.logging import ExperimentLog, ExperimentMetrics, list_experiments
+
+
+class TestExperimentMetrics:
+    """Tests for ExperimentMetrics dataclass."""
+
+    def test_default_values(self):
+        """Metrics initializes with empty lists."""
+        metrics = ExperimentMetrics()
+        assert metrics.train_losses == []
+        assert metrics.accuracies == []
+        assert metrics.final_loss is None
+
+    def test_to_dict(self):
+        """Metrics converts to dictionary."""
+        metrics = ExperimentMetrics(
+            train_losses=[1.0, 0.5],
+            final_loss=0.5,
+            final_accuracy=0.9,
+        )
+        d = metrics.to_dict()
+
+        assert d["train_losses"] == [1.0, 0.5]
+        assert d["final_loss"] == 0.5
+        assert d["final_accuracy"] == 0.9
+
+    def test_roundtrip(self):
+        """Metrics survives JSON roundtrip."""
+        original = ExperimentMetrics(
+            train_losses=[1.0, 0.8, 0.5],
+            final_loss=0.5,
+            training_time_seconds=10.5,
+        )
+        json_str = original.to_json()
+        restored = ExperimentMetrics.from_json(json_str)
+
+        assert restored.train_losses == original.train_losses
+        assert restored.final_loss == original.final_loss
+
+
+class TestExperimentLog:
+    """Tests for ExperimentLog class."""
+
+    def test_log_epoch(self):
+        """Can log individual epochs."""
+        config = ExperimentConfig(name="test", input_path="input.txt")
+        log = ExperimentLog(config)
+
+        log.log_epoch(loss=1.0, accuracy=0.5)
+        log.log_epoch(loss=0.8, accuracy=0.6)
+
+        assert log.metrics.train_losses == [1.0, 0.8]
+        assert log.metrics.accuracies == [0.5, 0.6]
+
+    def test_finalize(self):
+        """Finalize sets final metrics."""
+        config = ExperimentConfig(name="test", input_path="input.txt")
+        log = ExperimentLog(config)
+
+        log.log_epoch(loss=1.0)
+        log.log_epoch(loss=0.5)
+        log.finalize(final_loss=0.5, final_accuracy=0.9, training_time=10.0)
+
+        assert log.metrics.final_loss == 0.5
+        assert log.metrics.final_accuracy == 0.9
+        assert log.metrics.min_loss == 0.5
+        assert log.metrics.training_time_seconds == 10.0
+
+    def test_save_and_load(self):
+        """Can save and load experiment."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = ExperimentConfig(name="test", input_path="input.txt")
+            log = ExperimentLog(config, base_dir=Path(tmpdir))
+
+            log.log_epoch(loss=1.0)
+            log.finalize(final_loss=0.5, final_accuracy=0.9, training_time=5.0)
+            run_dir = log.save()
+
+            # Verify files exist
+            assert (run_dir / "config.json").exists()
+            assert (run_dir / "metrics.json").exists()
+            assert (run_dir / "summary.txt").exists()
+
+            # Load and verify
+            loaded = ExperimentLog.load(run_dir)
+            assert loaded.config.name == "test"
+            assert loaded.metrics.final_loss == 0.5
+            assert loaded.metrics.final_accuracy == 0.9
+
+
+class TestListExperiments:
+    """Tests for list_experiments function."""
+
+    def test_empty_directory(self):
+        """Returns empty list for empty directory."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = list_experiments(Path(tmpdir))
+            assert result == []
+
+    def test_lists_experiments(self):
+        """Lists all experiment directories."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base = Path(tmpdir)
+
+            # Create two experiments
+            config1 = ExperimentConfig(name="exp1", input_path="input.txt")
+            log1 = ExperimentLog(config1, base_dir=base)
+            log1.finalize(final_loss=1.0, final_accuracy=0.5, training_time=1.0)
+            log1.save()
+
+            config2 = ExperimentConfig(name="exp2", input_path="input.txt")
+            log2 = ExperimentLog(config2, base_dir=base)
+            log2.finalize(final_loss=0.5, final_accuracy=0.8, training_time=2.0)
+            log2.save()
+
+            result = list_experiments(base)
+            assert len(result) == 2
