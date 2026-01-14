@@ -266,16 +266,18 @@ class TestExperimentKernelTrainStep:
 
     def test_train_step_returns_metrics(self, kernel):
         """Test that train_step returns StepMetrics with valid calculated values."""
+        np.random.seed(42)
+        # Use fixed targets for reproducibility
         targets = {
-            "pos_2": np.ones(8) * 0.5,
-            "pos_3": np.ones(8) * 0.5,
+            "pos_2": np.array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]),
+            "pos_3": np.array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]),
         }
 
         metrics = kernel.train_step(targets, num_layers=1)
 
         # Verify all metrics have valid calculated values
         assert metrics.loss > 0, "Loss should be positive for non-zero targets"
-        assert metrics.gradient_norm >= 0, "Gradient norm should be non-negative"
+        assert metrics.gradient_norm > 0, "Gradient norm should be positive"
         assert metrics.forward_time_ms >= 0, "Forward time should be non-negative"
         assert metrics.backward_time_ms >= 0, "Backward time should be non-negative"
         assert metrics.update_time_ms >= 0, "Update time should be non-negative"
@@ -283,6 +285,10 @@ class TestExperimentKernelTrainStep:
         assert metrics.total_time_ms >= (
             metrics.forward_time_ms + metrics.backward_time_ms + metrics.update_time_ms
         ) * 0.9  # Allow 10% tolerance for measurement overhead
+
+        # Verify loss is in expected range for this seed (pre-computed)
+        # With seed=42, the initial embeddings produce a specific loss
+        assert 0.1 < metrics.loss < 2.0, f"Loss {metrics.loss} outside expected range [0.1, 2.0]"
 
     def test_train_step_updates_parameters(self, kernel):
         """Test that train_step updates model parameters."""
@@ -303,67 +309,71 @@ class TestExperimentKernelTrainStep:
 
         assert changed, "Parameters should be updated after train_step"
 
-    def test_train_step_computes_mse_loss_correctly(self, kernel):
-        """Test that MSE loss is calculated correctly."""
-        # Use a known target and verify loss formula
+    def test_train_step_computes_mse_loss_correctly(self):
+        """Test that MSE loss is calculated correctly with deterministic values."""
+        # Create a fresh graph with known seed for reproducibility
+        np.random.seed(123)
+        graph = create_causal_attention_graph(seq_len=4, embedding_dim=8, seed=123)
+        graph.forward(num_layers=1)
+        optimizer = Adam(graph.parameters(), lr=0.01)
+        loss_fn = MSELoss()
+        kernel = ExperimentKernel(graph=graph, optimizer=optimizer, loss_fn=loss_fn)
+
+        # Use zero target - loss should equal mean of squared outputs
         target_value = np.zeros(8)
         targets = {"pos_3": target_value}
+
+        # Get the output BEFORE training step to compute expected loss
+        outputs_before = graph.forward(num_layers=1)
+        output_at_pos3 = outputs_before["pos_3"]
+        expected_loss = np.mean(output_at_pos3 ** 2)  # MSE against zeros
 
         # Take a training step
         metrics = kernel.train_step(targets, num_layers=1)
 
-        # Get the output that was computed during the training step
-        # by running forward again (graph state is deterministic with same inputs)
-        outputs = kernel.graph.forward(num_layers=1)
-        output_at_pos3 = outputs["pos_3"]
+        # Loss should match our pre-computed expected value exactly
+        assert abs(metrics.loss - expected_loss) < 1e-10, \
+            f"Expected loss {expected_loss:.10f}, got {metrics.loss:.10f}"
 
-        # MSE = mean((output - target)^2)
-        # After one training step, the loss recorded should be close to
-        # what we'd compute from the current output (slight difference due to update)
-        computed_mse = np.mean((output_at_pos3 - target_value) ** 2)
+        # Verify the exact loss value for this seed
+        assert abs(expected_loss - 0.112472024529320) < 1e-6, \
+            f"Expected loss ~0.1125 for seed=123, got {expected_loss:.10f}"
 
-        # The loss should be positive (non-zero output vs zero target)
-        assert metrics.loss > 0, "Loss should be positive"
-
-        # Verify loss is reasonable - should be same order of magnitude
-        assert 0.01 < metrics.loss < 10.0, \
-            f"Loss {metrics.loss:.6f} seems unreasonable for normalized embeddings"
-
-        # Verify the computed MSE is also in a reasonable range
-        assert computed_mse >= 0, "Computed MSE should be non-negative"
-
-    def test_train_step_with_gradient_clipping(self, kernel):
+    def test_train_step_with_gradient_clipping(self):
         """Test train_step with gradient clipping verifies clipped norm."""
-        targets = {"pos_3": np.ones(8) * 100}  # Large target for large gradients
-        clip_value = 0.5
-
-        # First, run without clipping to get the unclipped gradient norm
-        kernel.reset()
-        metrics_unclipped = kernel.train_step(targets, num_layers=1, clip_grad=None)
-        unclipped_norm = metrics_unclipped.gradient_norm
-
-        # Reset and run with clipping
-        kernel.reset()
-        # Re-create kernel to reset parameters
+        # Use deterministic seed
         np.random.seed(42)
         graph = create_causal_attention_graph(seq_len=4, embedding_dim=8, seed=42)
         graph.forward(num_layers=1)
         optimizer = Adam(graph.parameters(), lr=0.01)
         loss_fn = MSELoss()
-        kernel2 = ExperimentKernel(graph=graph, optimizer=optimizer, loss_fn=loss_fn)
+        kernel = ExperimentKernel(graph=graph, optimizer=optimizer, loss_fn=loss_fn)
 
-        metrics_clipped = kernel2.train_step(targets, num_layers=1, clip_grad=clip_value)
+        # Large target creates large gradients
+        targets = {"pos_3": np.ones(8) * 100}
+        clip_value = 0.5
+
+        # Store initial parameter values
+        initial_params = {p.name: p.data.copy() for p in graph.parameters()}
+
+        metrics = kernel.train_step(targets, num_layers=1, clip_grad=clip_value)
 
         # Gradient norm in metrics is computed BEFORE clipping
-        assert metrics_clipped.gradient_norm > 0, "Gradient norm should be positive"
-        assert metrics_clipped.loss > 0, "Loss should be positive"
+        assert metrics.gradient_norm > clip_value, \
+            f"Gradient norm {metrics.gradient_norm} should be > clip_value {clip_value}"
 
-        # If the original norm was > clip_value, clipping should have occurred
-        # The metric shows the norm BEFORE clipping
-        if unclipped_norm > clip_value:
-            # Verify the gradient norm was larger than clip value (so clipping happened)
-            assert metrics_clipped.gradient_norm > clip_value * 0.5, \
-                f"Expected large gradient norm before clipping, got {metrics_clipped.gradient_norm}"
+        # The gradient norm before clipping should be large (due to large target)
+        # With seed=42 and target=100, expect gradient norm > 10
+        assert metrics.gradient_norm > 10, \
+            f"Expected large gradient norm > 10, got {metrics.gradient_norm}"
+
+        # Verify parameters were still updated (clipping doesn't prevent updates)
+        params_changed = False
+        for p in graph.parameters():
+            if not np.allclose(p.data, initial_params[p.name]):
+                params_changed = True
+                break
+        assert params_changed, "Parameters should be updated even with clipping"
 
     def test_train_step_with_input_nodes(self, kernel):
         """Test train_step with custom input nodes."""
@@ -427,10 +437,20 @@ class TestExperimentKernelFit:
         assert isinstance(history, TrainingHistory)
         assert len(history.train_losses) == 5
 
-    def test_fit_reduces_loss(self, kernel):
+    def test_fit_reduces_loss(self):
         """Test that fit reduces loss over epochs with quantified reduction."""
+        # Use deterministic seed for reproducible results
         np.random.seed(42)
-        targets = {"pos_2": np.random.randn(8)}
+        graph = create_causal_attention_graph(seq_len=3, embedding_dim=8, seed=42)
+        graph.forward(num_layers=1)
+        optimizer = Adam(graph.parameters(), lr=0.01)
+        loss_fn = MSELoss()
+        kernel = ExperimentKernel(graph=graph, optimizer=optimizer, loss_fn=loss_fn)
+
+        # Fixed target for reproducibility
+        np.random.seed(42)
+        target = np.random.randn(8)
+        targets = {"pos_2": target}
 
         history = kernel.fit(
             targets=targets,
@@ -439,7 +459,7 @@ class TestExperimentKernelFit:
             verbose=False,
         )
 
-        # Loss should generally decrease
+        # Loss should decrease
         initial_loss = history.train_losses[0]
         final_loss = history.train_losses[-1]
         assert final_loss < initial_loss, \
@@ -447,15 +467,29 @@ class TestExperimentKernelFit:
 
         # Calculate and verify loss reduction percentage
         loss_reduction = (initial_loss - final_loss) / initial_loss
-        assert loss_reduction > 0.1, \
-            f"Loss should reduce by at least 10%, got {loss_reduction*100:.1f}%"
+        assert loss_reduction > 0.5, \
+            f"Loss should reduce by at least 50% after 50 epochs, got {loss_reduction*100:.1f}%"
 
         # Verify history length matches epochs
         assert len(history.train_losses) == 50
         assert len(history.gradient_norms) == 50
 
-    def test_fit_with_callback(self, kernel):
+        # Verify monotonic decrease in early epochs (first 10)
+        early_losses = history.train_losses[:10]
+        for i in range(1, len(early_losses)):
+            assert early_losses[i] <= early_losses[i-1] * 1.1, \
+                f"Loss should generally decrease: epoch {i-1}={early_losses[i-1]:.6f}, epoch {i}={early_losses[i]:.6f}"
+
+    def test_fit_with_callback(self):
         """Test that fit calls callback with correct calculated values."""
+        # Use deterministic seed
+        np.random.seed(42)
+        graph = create_causal_attention_graph(seq_len=3, embedding_dim=8, seed=42)
+        graph.forward(num_layers=1)
+        optimizer = Adam(graph.parameters(), lr=0.01)
+        loss_fn = MSELoss()
+        kernel = ExperimentKernel(graph=graph, optimizer=optimizer, loss_fn=loss_fn)
+
         targets = {"pos_2": np.ones(8)}
         callback_calls = []
 
@@ -478,22 +512,27 @@ class TestExperimentKernelFit:
         # Verify callback was called for each epoch
         assert len(callback_calls) == 5
 
-        # Verify epoch numbers are sequential
-        for i, call in enumerate(callback_calls):
-            assert call['epoch'] == i, f"Expected epoch {i}, got {call['epoch']}"
+        # Verify epoch numbers are sequential (0, 1, 2, 3, 4)
+        expected_epochs = [0, 1, 2, 3, 4]
+        actual_epochs = [call['epoch'] for call in callback_calls]
+        assert actual_epochs == expected_epochs, \
+            f"Expected epochs {expected_epochs}, got {actual_epochs}"
 
         # Verify all losses are positive and decreasing trend
         losses = [call['loss'] for call in callback_calls]
         assert all(loss > 0 for loss in losses), "All losses should be positive"
-        assert losses[-1] < losses[0], "Loss should decrease over training"
+        assert losses[-1] < losses[0], \
+            f"Loss should decrease: first={losses[0]:.6f}, last={losses[-1]:.6f}"
 
         # Verify gradient norms are positive
-        assert all(call['grad_norm'] > 0 for call in callback_calls), \
-            "All gradient norms should be positive"
+        grad_norms = [call['grad_norm'] for call in callback_calls]
+        assert all(gn > 0 for gn in grad_norms), \
+            f"All gradient norms should be positive, got {grad_norms}"
 
-        # Verify timing was recorded
-        assert all(call['total_time'] >= 0 for call in callback_calls), \
-            "All times should be non-negative"
+        # Verify timing was recorded and non-negative
+        times = [call['total_time'] for call in callback_calls]
+        assert all(t >= 0 for t in times), \
+            f"All times should be non-negative, got {times}"
 
     def test_fit_with_gradient_clipping(self, kernel):
         """Test fit with gradient clipping enabled."""
