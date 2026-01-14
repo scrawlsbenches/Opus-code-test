@@ -138,6 +138,12 @@ class Profiler:
 
         report = profiler.report()
         print(report)
+        profiler.close()  # Explicit cleanup
+
+    Or use as context manager:
+        with Profiler(enabled=True) as profiler:
+            # ... training loop ...
+        # Automatically cleaned up
     """
 
     def __init__(self, enabled: bool = True, track_memory: bool = True):
@@ -150,6 +156,8 @@ class Profiler:
         """
         self.enabled = enabled
         self.track_memory = track_memory and enabled
+        self._owns_tracemalloc = False  # Track if we started tracemalloc
+        self._closed = False
 
         self._steps: List[StepMetrics] = []
         self._current_step: Optional[_StepContext] = None
@@ -157,7 +165,10 @@ class Profiler:
         self._peak_memory: int = 0
 
         if self.track_memory:
-            tracemalloc.start()
+            # Guard: only start tracemalloc if not already tracing
+            if not tracemalloc.is_tracing():
+                tracemalloc.start()
+                self._owns_tracemalloc = True
 
     @contextmanager
     def step(self, step_num: int):
@@ -327,13 +338,29 @@ class Profiler:
         self._start_time = None
         self._peak_memory = 0
 
-    def __del__(self):
-        """Cleanup tracemalloc if we started it."""
-        if self.track_memory:
-            try:
-                tracemalloc.stop()
-            except Exception:
-                pass  # May already be stopped
+    def close(self) -> None:
+        """
+        Explicitly release resources.
+
+        Call this when done with the profiler, or use as context manager.
+        Safe to call multiple times.
+        """
+        if self._closed:
+            return
+
+        if self._owns_tracemalloc and tracemalloc.is_tracing():
+            tracemalloc.stop()
+            self._owns_tracemalloc = False
+
+        self._closed = True
+
+    def __enter__(self) -> "Profiler":
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Context manager exit - ensures cleanup."""
+        self.close()
 
 
 class _StepContext:

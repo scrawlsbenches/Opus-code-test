@@ -8,7 +8,7 @@ For production use, consider subword tokenization (BPE, SentencePiece).
 from __future__ import annotations
 
 import re
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 # Special tokens
 PAD_TOKEN = "<PAD>"
@@ -179,7 +179,3 @@ def detokenize(tokens: List[str]) -> str:
     text = re.sub(r"\s+([)\]])", r"\1", text)
 
     return text
-
-
-# Optional import guard for type hints
-from typing import Optional

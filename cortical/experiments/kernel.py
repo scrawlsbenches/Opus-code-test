@@ -38,13 +38,10 @@ def clip_gradients(parameters: List["Parameter"], max_norm: float) -> float:
     """
     # Compute global norm
     total_norm_sq = 0.0
-    grads = []
 
     for param in parameters:
         if param.grad is not None:
-            grad = param.grad
-            grads.append(grad)
-            total_norm_sq += np.sum(grad ** 2)
+            total_norm_sq += np.sum(param.grad ** 2)
 
     total_norm = np.sqrt(total_norm_sq)
 
@@ -278,6 +275,9 @@ class ExperimentKernel:
                     f"Grad: {metrics.gradient_norm:.4f} | "
                     f"Time: {metrics.total_time_ms:.1f}ms"
                 )
+
+        # Switch to eval mode after training
+        self.graph.eval()
 
         if verbose:
             print()
