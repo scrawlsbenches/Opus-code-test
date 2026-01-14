@@ -1,9 +1,10 @@
 # AttentionGraph Improvements Plan
 
-**Status**: Planning
+**Status**: Complete
 **Created**: 2026-01-14
-**Branch**: claude/review-implementation-gaps-lZMG7
+**Branch**: claude/review-attention-graph-9dbtC
 **Last Review**: Deep code review of AttentionGraph and supporting code
+**Current Session**: Implemented 5 priority features for small graph experimentation
 
 ## Overview
 
@@ -19,6 +20,39 @@ This document captures bugs, missing implementations, and improvements identifie
 - [x] Fix softmax numerical underflow edge case (`attention.py`)
 
 All 235 tests pass (166 attention + 69 trainable graph tests).
+
+---
+
+## Completed (Current Session - 2026-01-14)
+
+Implemented priority features for small graph experimentation:
+
+- [x] **Refactor 2**: Fix edge weight key parsing bug (`trainable.py:1409,1433`)
+  - Changed separator from `"_"` to `"::"` for safe node ID handling
+  - Added backward compatibility for legacy checkpoints
+- [x] **Feature 2**: Residual connections in AttentionLayer (`attention.py`)
+  - Added `use_residual` parameter to AttentionLayer and AttentionGraph
+  - Updated forward pass: `output = attention_output + input`
+  - Updated backward pass: gradient flows through both paths
+  - Added `--residual` CLI flag
+  - Added TODO comments for LayerNorm integration
+- [x] **Feature 1**: Sinusoidal position encoding (`position.py`)
+  - Implemented full `SinusoidalPositionEncoding` class
+  - Pre-computed encoding matrix for efficiency
+  - Added to CLI choices: `--position-encoding sinusoidal`
+- [x] **Feature 5**: Weight decay CLI argument (`cli.py`, `config.py`)
+  - Added `--weight-decay` CLI argument
+  - Passes to Adam optimizer
+- [x] **Feature 4**: Train/validation split (`cli.py`, `config.py`, `logging.py`)
+  - Added `--val-split` CLI argument (0.0-0.5)
+  - Split prediction positions (not tokens) for validation
+  - Compute and log validation loss each epoch
+  - Track val_losses, val_accuracies in ExperimentMetrics
+  - Report final val accuracy
+
+**Deferred** (can add later if needed):
+- Feature 3: Layer Normalization - TODO comments added in code
+- Feature 6: Feed-Forward Network (FFN) - TODO comments added in code
 
 ---
 
@@ -67,17 +101,11 @@ When all scores are extremely negative after subtracting max, `exp_scores` can u
 
 ## Priority 2: Missing Core Features (High Impact)
 
-### Feature 1: Sinusoidal Position Encoding
-**Location**: `cortical/experiments/position.py:171-189`
+### ~~Feature 1: Sinusoidal Position Encoding~~ IMPLEMENTED
+**Location**: `cortical/experiments/position.py:171-343`
 **Effort**: Low (2-3 hours)
 **Impact**: High - completes documented feature
-
-**Current State**:
-```python
-class SinusoidalPositionEncoding:
-    def __init__(self, max_len: int, embedding_dim: int):
-        raise NotImplementedError(...)
-```
+**Status**: IMPLEMENTED
 
 **Implementation**:
 ```python
@@ -92,42 +120,34 @@ PE(pos, 2i+1) = cos(pos / 10000^(2i/d_model))
 - Classic baseline for comparison with learned encodings
 
 **Tasks**:
-- [ ] Implement `SinusoidalPositionEncoding` class
-- [ ] Add "sinusoidal" to config validation (`config.py:72`)
-- [ ] Update CLI choices for `--position-encoding`
-- [ ] Add unit tests
+- [x] Implement `SinusoidalPositionEncoding` class
+- [x] Add "sinusoidal" to config validation (`config.py:72`)
+- [x] Update CLI choices for `--position-encoding`
+- [ ] Add unit tests (TODO)
 
 ---
 
-### Feature 2: Residual Connections
+### ~~Feature 2: Residual Connections~~ IMPLEMENTED
 **Location**: `cortical/graph/attention.py` (AttentionLayer and AttentionGraph)
 **Effort**: Medium (4-6 hours)
 **Impact**: High - critical for training stability
+**Status**: IMPLEMENTED
 
-**Current State**: No residual connections. Output is directly from attention.
-
-**Standard Transformer Pattern**:
+**Implementation** (Pre-LN style without LayerNorm):
 ```python
-# Pre-LN variant (more stable)
-x = x + Attention(LayerNorm(x))
-x = x + FFN(LayerNorm(x))
-
-# Post-LN variant (original paper)
-x = LayerNorm(x + Attention(x))
-x = LayerNorm(x + FFN(x))
+# Simple residual: output = attention_output + input
+# LayerNorm can be added later for full transformer block
 ```
 
-**Implementation Plan**:
-1. Add `residual: bool = True` parameter to AttentionLayer
-2. In forward: `output = input + attention_output` when residual=True
-3. In backward: gradient flows through both paths
-4. Add to AttentionGraph constructor as option
+**Design Decision**: Implemented simple residual without LayerNorm.
+- For small graphs (1-3 layers), LayerNorm is optional
+- TODO comments added for adding LayerNorm when needed
 
 **Tasks**:
-- [ ] Add residual connection to AttentionLayer.forward()
-- [ ] Update AttentionLayer.backward() for residual gradient flow
-- [ ] Add `--residual` CLI flag (default True)
-- [ ] Add unit tests for residual gradient flow
+- [x] Add residual connection to AttentionLayer.forward()
+- [x] Update AttentionLayer.backward() for residual gradient flow
+- [x] Add `--residual` CLI flag (default False for backward compatibility)
+- [ ] Add unit tests for residual gradient flow (TODO)
 
 ---
 
@@ -165,39 +185,38 @@ class LayerNorm:
 
 ## Priority 3: Training Infrastructure
 
-### Feature 4: Train/Validation Split
-**Location**: `cortical/experiments/cli.py`, `cortical/experiments/logging.py`
+### ~~Feature 4: Train/Validation Split~~ IMPLEMENTED
+**Location**: `cortical/experiments/cli.py`, `cortical/experiments/logging.py`, `cortical/experiments/config.py`
 **Effort**: Low (2-3 hours)
 **Impact**: Medium - important for detecting overfitting
-
-**Current State**: All data used for training, no validation.
+**Status**: IMPLEMENTED
 
 **Implementation**:
-1. Add `--val-split` CLI argument (default 0.1)
-2. Split tokens into train/val sets
+1. Added `--val-split` CLI argument (default 0.0, range 0.0-0.5)
+2. Split prediction positions (not tokens) - uses last N% for validation
 3. Compute validation loss each epoch
-4. Log to `metrics.json` with `val_losses` array
-5. Optional: early stopping based on val loss
+4. Log to `metrics.json` with `val_losses` and `val_accuracies` arrays
+5. Report final validation loss and accuracy
 
 **Tasks**:
-- [ ] Add `--val-split` argument to CLI
-- [ ] Implement token split logic in `run_experiment()`
-- [ ] Update ExperimentKernel or add eval loop
-- [ ] Update ExperimentMetrics/ExperimentLog for val metrics
-- [ ] Add `--early-stopping` patience option
+- [x] Add `--val-split` argument to CLI
+- [x] Implement position split logic in `run_experiment()`
+- [x] Add compute_loss() and compute_accuracy() helpers
+- [x] Update ExperimentMetrics/ExperimentLog for val metrics
+- [ ] Add `--early-stopping` patience option (TODO - can add later)
 
 ---
 
-### Feature 5: Weight Decay CLI Option
-**Location**: `cortical/experiments/cli.py`
+### ~~Feature 5: Weight Decay CLI Option~~ IMPLEMENTED
+**Location**: `cortical/experiments/cli.py`, `cortical/experiments/config.py`
 **Effort**: Low (1 hour)
 **Impact**: Low-Medium - regularization helps generalization
-
-**Current State**: Adam optimizer supports weight_decay but not exposed in CLI.
+**Status**: IMPLEMENTED
 
 **Tasks**:
-- [ ] Add `--weight-decay` CLI argument (default 0.0)
-- [ ] Pass to optimizer in `run_experiment()`
+- [x] Add `--weight-decay` CLI argument (default 0.0)
+- [x] Add `weight_decay` to ExperimentConfig
+- [x] Pass to Adam optimizer in `run_experiment()`
 
 ---
 
@@ -237,13 +256,16 @@ FFN(x) = GELU(xW1 + b1)W2 + b2
 
 ---
 
-### Refactor 2: Fix Edge Weight Key Parsing
-**Location**: `cortical/graph/trainable.py:1424-1430`
+### ~~Refactor 2: Fix Edge Weight Key Parsing~~ FIXED
+**Location**: `cortical/graph/trainable.py:1407-1447`
 **Effort**: Low (1 hour)
+**Status**: FIXED
 
-**Problem**: Key parsing with `split("_")` breaks for node IDs containing underscores.
+**Problem**: Key parsing with `split("_")` breaks for node IDs containing underscores (e.g., "pos_0").
 
-**Fix**: Use a safer separator like `"::"` or store as JSON tuple.
+**Fix**: Changed to use `"::"` separator with backward compatibility for legacy checkpoints.
+- Save: `f"{edge.source_id}::{edge.target_id}"`
+- Load: Check for `"::"` first, fall back to `"_"` for legacy
 
 ---
 

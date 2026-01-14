@@ -598,6 +598,7 @@ class AttentionLayer(ProcessingLayer):
         use_bias: bool = False,
         dropout: float = 0.0,
         num_heads: int = 1,
+        use_residual: bool = False,
     ):
         """
         Initialize attention layer.
@@ -607,6 +608,21 @@ class AttentionLayer(ProcessingLayer):
             use_bias: Whether to use bias in projections
             dropout: Attention dropout rate (0 = no dropout)
             num_heads: Number of attention heads (must divide embedding_dim)
+            use_residual: Whether to add residual connection (output = attention + input)
+                         This helps gradient flow in multi-layer networks.
+                         For small graphs (1-3 layers), this is optional but still beneficial.
+
+        Design Decision (Residual Connections):
+            We implement a simple residual: output = attention_output + input
+            This is the "Pre-LN style" without LayerNorm (which can be added later).
+
+            For small graphs, residual connections provide:
+            1. Better gradient flow (gradients bypass attention via skip connection)
+            2. Easier optimization (network can learn identity if attention isn't helpful)
+            3. Foundation for adding LayerNorm later if needed
+
+            # TODO: Add LayerNorm for full Pre-LN transformer block when needed
+            # TODO: Add Post-LN variant option for comparison experiments
         """
         if embedding_dim % num_heads != 0:
             raise ValueError(
@@ -619,6 +635,7 @@ class AttentionLayer(ProcessingLayer):
         self.head_dim = embedding_dim // num_heads
         self.use_bias = use_bias
         self.dropout = dropout
+        self.use_residual = use_residual
         self._training = True
 
         # Initialize projection matrices with Xavier initialization
@@ -735,6 +752,10 @@ class AttentionLayer(ProcessingLayer):
                 output = current @ self.W_o.data
                 if self.use_bias:
                     output = output + self.b_o.data
+                # Residual connection: add input to attention output
+                # This creates a "skip connection" that helps gradient flow
+                if self.use_residual:
+                    output = output + current
                 outputs[node_id] = output
                 node.attention_weights = {}
                 self._cache["attention_weights"][node_id] = {}
@@ -845,6 +866,11 @@ class AttentionLayer(ProcessingLayer):
             output = attended @ self.W_o.data
             if self.use_bias:
                 output = output + self.b_o.data
+
+            # Residual connection: add input to attention output
+            # This creates a "skip connection" that helps gradient flow
+            if self.use_residual:
+                output = output + current
 
             outputs[node_id] = output
             node.output = output.copy()
@@ -961,11 +987,16 @@ class AttentionLayer(ProcessingLayer):
                     if self.use_bias:
                         self.b_q.add_grad(grad_query)
 
-                    # Accumulate gradient for this node's input
+                    # Accumulate gradient for this node's input (through query projection)
                     grad_input = grad_query @ self.W_q.data.T
                     if node_id not in input_gradients:
                         input_gradients[node_id] = np.zeros(self.embedding_dim)
                     input_gradients[node_id] += grad_input
+
+                    # Residual connection gradient: grad also flows directly to input
+                    # Since output = attention_output + input, d(output)/d(input) includes +1
+                    if self.use_residual:
+                        input_gradients[node_id] += grad_output
 
                     # Gradient through key/value projections for each source
                     for i, source_id in enumerate(source_ids):
@@ -1006,6 +1037,10 @@ class AttentionLayer(ProcessingLayer):
                 if node_id not in input_gradients:
                     input_gradients[node_id] = np.zeros(self.embedding_dim)
                 input_gradients[node_id] += grad_input
+
+                # Residual connection gradient: grad also flows directly to input
+                if self.use_residual:
+                    input_gradients[node_id] += grad_output
 
         return input_gradients
 
@@ -1069,6 +1104,7 @@ class AttentionGraph(BaseGraph[AttentionNode, AttentionEdge]):
         use_bias: bool = False,
         dropout: float = 0.0,
         seed: Optional[int] = None,
+        use_residual: bool = False,
     ):
         """
         Initialize attention graph.
@@ -1079,6 +1115,10 @@ class AttentionGraph(BaseGraph[AttentionNode, AttentionEdge]):
             use_bias: Whether to use bias in projections
             dropout: Dropout rate for attention weights
             seed: Random seed for reproducibility
+            use_residual: Whether to use residual connections in attention layers.
+                         Residual connections add the input to the output, which
+                         helps gradient flow and makes optimization easier.
+                         Recommended for multi-layer graphs.
         """
         super().__init__(InMemoryGraphStorage())
 
@@ -1086,6 +1126,7 @@ class AttentionGraph(BaseGraph[AttentionNode, AttentionEdge]):
         self.num_heads = num_heads
         self.use_bias = use_bias
         self.dropout = dropout
+        self.use_residual = use_residual
 
         if seed is not None:
             np.random.seed(seed)
@@ -1159,6 +1200,7 @@ class AttentionGraph(BaseGraph[AttentionNode, AttentionEdge]):
                 use_bias=self.use_bias,
                 dropout=self.dropout,
                 num_heads=self.num_heads,
+                use_residual=self.use_residual,
             )
             if self._training:
                 layer.train()

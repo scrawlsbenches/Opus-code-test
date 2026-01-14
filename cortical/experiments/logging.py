@@ -49,11 +49,20 @@ class ExperimentMetrics:
     accuracies: List[float] = field(default_factory=list)
     gradient_norms: List[float] = field(default_factory=list)
 
+    # Validation curves (populated when val_split > 0)
+    val_losses: List[float] = field(default_factory=list)
+    val_accuracies: List[float] = field(default_factory=list)
+
     # Final metrics
     final_loss: Optional[float] = None
     final_accuracy: Optional[float] = None
     min_loss: Optional[float] = None
     max_accuracy: Optional[float] = None
+
+    # Final validation metrics (populated when val_split > 0)
+    final_val_loss: Optional[float] = None
+    final_val_accuracy: Optional[float] = None
+    min_val_loss: Optional[float] = None
 
     # Timing
     training_time_seconds: Optional[float] = None
@@ -61,10 +70,6 @@ class ExperimentMetrics:
     # Metadata
     git_commit: Optional[str] = None
     timestamp: Optional[str] = None
-
-    # TODO(agent): Add validation metrics when train/val split is implemented
-    # SESSION_HANDOFF: Will need val_losses, val_accuracies lists
-    # CONTEXT: Currently only tracking training metrics
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert metrics to dictionary."""
@@ -146,6 +151,8 @@ class ExperimentLog:
         loss: float,
         accuracy: Optional[float] = None,
         gradient_norm: Optional[float] = None,
+        val_loss: Optional[float] = None,
+        val_accuracy: Optional[float] = None,
     ) -> None:
         """
         Log metrics for a single epoch.
@@ -154,18 +161,26 @@ class ExperimentLog:
             loss: Training loss for this epoch
             accuracy: Optional accuracy metric
             gradient_norm: Optional gradient norm
+            val_loss: Optional validation loss (when using val_split)
+            val_accuracy: Optional validation accuracy (when using val_split)
         """
         self.metrics.train_losses.append(loss)
         if accuracy is not None:
             self.metrics.accuracies.append(accuracy)
         if gradient_norm is not None:
             self.metrics.gradient_norms.append(gradient_norm)
+        if val_loss is not None:
+            self.metrics.val_losses.append(val_loss)
+        if val_accuracy is not None:
+            self.metrics.val_accuracies.append(val_accuracy)
 
     def finalize(
         self,
         final_loss: float,
         final_accuracy: float,
         training_time: float,
+        final_val_loss: Optional[float] = None,
+        final_val_accuracy: Optional[float] = None,
     ) -> None:
         """
         Finalize metrics after training completes.
@@ -174,6 +189,8 @@ class ExperimentLog:
             final_loss: Final training loss
             final_accuracy: Final accuracy on training data
             training_time: Total training time in seconds
+            final_val_loss: Final validation loss (when using val_split)
+            final_val_accuracy: Final validation accuracy (when using val_split)
         """
         self.metrics.final_loss = final_loss
         self.metrics.final_accuracy = final_accuracy
@@ -183,6 +200,12 @@ class ExperimentLog:
             self.metrics.min_loss = min(self.metrics.train_losses)
         if self.metrics.accuracies:
             self.metrics.max_accuracy = max(self.metrics.accuracies)
+
+        # Validation metrics
+        self.metrics.final_val_loss = final_val_loss
+        self.metrics.final_val_accuracy = final_val_accuracy
+        if self.metrics.val_losses:
+            self.metrics.min_val_loss = min(self.metrics.val_losses)
 
         self.metrics.git_commit = get_git_commit()
         self.metrics.timestamp = datetime.now().isoformat()
@@ -223,12 +246,25 @@ class ExperimentLog:
             f"  final_accuracy: {self.metrics.final_accuracy:.1%}" if self.metrics.final_accuracy else "  final_accuracy: N/A",
             f"  min_loss: {self.metrics.min_loss:.4f}" if self.metrics.min_loss else "  min_loss: N/A",
             f"  training_time: {self.metrics.training_time_seconds:.1f}s" if self.metrics.training_time_seconds else "  training_time: N/A",
+        ]
+
+        # Add validation metrics if present
+        if self.metrics.val_losses:
+            lines.extend([
+                "",
+                "Validation:",
+                f"  final_val_loss: {self.metrics.final_val_loss:.4f}" if self.metrics.final_val_loss else "  final_val_loss: N/A",
+                f"  final_val_accuracy: {self.metrics.final_val_accuracy:.1%}" if self.metrics.final_val_accuracy else "  final_val_accuracy: N/A",
+                f"  min_val_loss: {self.metrics.min_val_loss:.4f}" if self.metrics.min_val_loss else "  min_val_loss: N/A",
+            ])
+
+        lines.extend([
             "",
             f"Git commit: {self.metrics.git_commit or 'N/A'}",
             f"Timestamp: {self.metrics.timestamp or 'N/A'}",
             "",
             "=" * 60,
-        ]
+        ])
         self.summary_path.write_text("\n".join(lines))
 
     @classmethod
