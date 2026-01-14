@@ -15,17 +15,20 @@ This document captures bugs, missing implementations, and improvements identifie
 - [x] Add `--use-bias` CLI argument (`cli.py`)
 - [x] Pass dropout/use_bias to `create_causal_attention_graph()` (`cli.py:196-203`)
 - [x] Clear VocabProjection caches in `zero_grad()` (`projection.py:193-201`)
+- [x] Fix TrainableGraph multi-layer backward pass (`trainable.py`)
+- [x] Fix softmax numerical underflow edge case (`attention.py`)
 
-All 166 AttentionGraph tests pass after these fixes.
+All 235 tests pass (166 attention + 69 trainable graph tests).
 
 ---
 
-## Priority 1: Bugs (Should Fix)
+## Priority 1: Bugs (All Fixed)
 
-### Bug 2: TrainableGraph backward uses wrong layer input
+### ~~Bug 2: TrainableGraph backward uses wrong layer input~~ FIXED
 **Location**: `cortical/graph/trainable.py:1283-1286`
 **Severity**: Medium
 **Effort**: Medium
+**Status**: FIXED - Added layer_inputs field and proper storage/retrieval
 
 **Problem**:
 ```python
@@ -43,10 +46,11 @@ For layers > 0, `node.output` stores the output from the **last** layer, not the
 
 ---
 
-### Bug 3: Softmax numerical instability edge case
+### ~~Bug 3: Softmax numerical instability edge case~~ FIXED
 **Location**: `cortical/graph/attention.py:492-494`
 **Severity**: Low
 **Effort**: Low
+**Status**: FIXED - Explicit check for underflow with uniform attention fallback
 
 **Problem**:
 ```python
