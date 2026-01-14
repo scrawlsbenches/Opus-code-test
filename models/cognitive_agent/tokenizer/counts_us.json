@@ -1,12 +1,12 @@
 {
-  "us": 38,
-  "using": 87,
-  "user": 181,
+  "us": 39,
+  "using": 89,
+  "user": 194,
   "userstorytemplate": 2,
   "users": 24,
-  "use": 499,
+  "use": 500,
   "useraction": 1,
-  "uses": 83,
+  "uses": 86,
   "used": 77,
   "usually": 3,
   "userinput": 3,
@@ -14,7 +14,7 @@
   "userservice": 3,
   "userid": 6,
   "usememory": 5,
-  "useful": 12,
+  "useful": 18,
   "useless": 2,
   "usability": 3,
   "usecase": 1,
@@ -25,5 +25,6 @@
   "usesemantic": 4,
   "usable": 2,
   "userpromptsubmit": 1,
-  "usercode": 1
+  "usercode": 1,
+  "usefulness": 1
 }

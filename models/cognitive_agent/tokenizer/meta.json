@@ -1,7 +1,7 @@
 {
   "version": "1.0",
-  "vocab_size": 8862,
-  "shard_count": 352,
+  "vocab_size": 8896,
+  "shard_count": 354,
   "shards": [
     "vocab_aa.json",
     "vocab_ab.json",
@@ -263,6 +263,7 @@
     "vocab_rn.json",
     "vocab_ro.json",
     "vocab_rs.json",
+    "vocab_rt.json",
     "vocab_ru.json",
     "vocab_rw.json",
     "vocab_ry.json",
@@ -321,6 +322,7 @@
     "vocab_vc.json",
     "vocab_ve.json",
     "vocab_vi.json",
+    "vocab_vl.json",
     "vocab_vn.json",
     "vocab_vo.json",
     "vocab_vp.json",
@@ -358,5 +360,5 @@
   ],
   "min_frequency": 2,
   "max_vocab_size": 10000,
-  "total_docs": 165
+  "total_docs": 166
 }

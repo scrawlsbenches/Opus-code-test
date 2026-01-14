@@ -1,14 +1,14 @@
 {
-  "with": 932,
+  "with": 942,
   "without": 156,
-  "will": 43,
+  "will": 44,
   "within": 51,
   "winner": 1,
   "wire": 19,
   "wiring": 6,
   "win": 3,
   "widen": 2,
-  "window": 26,
+  "window": 30,
   "withtimeout": 1,
   "willing": 1,
   "wisdom": 30,
@@ -33,5 +33,6 @@
   "withsuffix": 2,
   "wip": 11,
   "withoutsearching": 1,
-  "windowsize": 3
+  "windowsize": 3,
+  "widely": 1
 }

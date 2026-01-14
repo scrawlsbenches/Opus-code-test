@@ -1,8 +1,8 @@
 {
   "model_version": "1.0",
-  "last_training": "2026-01-14T00:24:07.803762",
-  "total_documents": 165,
-  "vocabulary_size": 8862,
+  "last_training": "2026-01-14T00:29:12.866918",
+  "total_documents": 166,
+  "vocabulary_size": 8896,
   "last_reindex_doc_count": 50,
   "idf_epoch": 1,
   "documents": {
@@ -995,6 +995,12 @@
       "content_hash": "0f820a95f05e9a2b",
       "trained_at": "2026-01-14T00:24:07.803583",
       "word_count": 872
+    },
+    "context-window-notes.md": {
+      "path": "context-window-notes.md",
+      "content_hash": "0c3ce7f1fdc3f8de",
+      "trained_at": "2026-01-14T00:29:12.866791",
+      "word_count": 1919
     }
   }
 }

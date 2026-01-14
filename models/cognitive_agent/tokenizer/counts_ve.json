@@ -2,12 +2,12 @@
   "verbose": 29,
   "verify": 192,
   "verifiable": 2,
-  "very": 13,
+  "very": 16,
   "versioned": 61,
   "verification": 86,
-  "ve": 52,
+  "ve": 53,
   "velocity": 24,
-  "version": 152,
+  "version": 153,
   "versionedstore": 56,
   "versions": 12,
   "vendor": 4,
@@ -39,5 +39,6 @@
   "verificationresult": 2,
   "verifygrounding": 1,
   "verifiers": 1,
-  "verbal": 1
+  "verbal": 1,
+  "verdict": 6
 }

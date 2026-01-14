@@ -2,7 +2,7 @@
   "spark": 236,
   "speed": 19,
   "specifications": 14,
-  "specific": 193,
+  "specific": 195,
   "split": 72,
   "splitting": 11,
   "splitwords": 1,
@@ -10,10 +10,10 @@
   "sparkapi": 5,
   "sparkslm": 59,
   "sparkmixin": 3,
-  "sprint": 518,
+  "sprint": 521,
   "splitidentifier": 17,
   "sprints": 54,
-  "spend": 2,
+  "spend": 3,
   "spending": 2,
   "specification": 13,
   "spec": 32,
@@ -55,7 +55,7 @@
   "spawned": 5,
   "sparksml": 2,
   "sparkdemo": 6,
-  "sparse": 7,
+  "sparse": 8,
   "sprintschema": 1,
   "sprintgoal": 1,
   "spreadingactivation": 1,
@@ -68,5 +68,6 @@
   "speedups": 1,
   "sprawling": 1,
   "specentitygeneratesvalidchecksum": 1,
-  "specentityserializationroundtrip": 1
+  "specentityserializationroundtrip": 1,
+  "speaks": 2
 }

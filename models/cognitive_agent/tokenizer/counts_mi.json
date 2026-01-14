@@ -6,7 +6,7 @@
   "milliseconds": 2,
   "mixed": 6,
   "mindset": 5,
-  "might": 22,
+  "might": 23,
   "migrations": 5,
   "migration": 115,
   "microseconds": 17,
@@ -16,7 +16,7 @@
   "mistakes": 14,
   "mixin": 38,
   "mixins": 12,
-  "mind": 312,
+  "mind": 314,
   "middle": 3,
   "mid": 4,
   "minute": 2,
@@ -36,7 +36,7 @@
   "misspellings": 1,
   "minimum": 10,
   "mitigations": 1,
-  "min": 33,
+  "min": 34,
   "minsize": 2,
   "misparse": 1,
   "mirrors": 3,
@@ -73,5 +73,6 @@
   "migratemltocali": 1,
   "mincontextkeys": 1,
   "middleware": 1,
-  "minified": 1
+  "minified": 1,
+  "misalignment": 1
 }

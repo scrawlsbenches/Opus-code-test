@@ -1,5 +1,5 @@
 {
-  "system": 302,
+  "system": 303,
   "systemhandlesfailures": 2,
   "systemhandlesunexpectedfailures": 1,
   "systems": 77,
@@ -7,9 +7,9 @@
   "symptom": 28,
   "systematic": 2,
   "syncindexes": 1,
-  "sync": 44,
+  "sync": 45,
   "symptoms": 27,
-  "syntax": 10,
+  "syntax": 11,
   "synonymy": 2,
   "synaptictransition": 4,
   "synaptic": 56,

@@ -4,9 +4,9 @@
   "failing": 28,
   "faster": 52,
   "fault": 13,
-  "failure": 55,
+  "failure": 56,
   "fails": 42,
-  "false": 47,
+  "false": 48,
   "fail": 57,
   "factory": 40,
   "falls": 3,
@@ -47,5 +47,6 @@
   "fade": 1,
   "fastsearchcomparison": 4,
   "fastsearch": 5,
-  "fastspeedup": 4
+  "fastspeedup": 4,
+  "fancy": 4
 }

@@ -517,15 +517,65 @@ stop words true false positive good decisions made...
 
 ---
 
-## [013] Session Summary
+## [013] Re-trained on This File + Query Command
 
-This file-based communication experiment taught us:
+**User:** What happens if we train again? And try `query` instead of `ask`.
 
-1. **File approach works** - Append-only + read-from-end is viable
-2. **CLI tools vary widely** - `got dashboard` useful, `audit reason` not
-3. **Cognitive agent = semantic similarity engine** - Not Q&A, not conversation
-4. **Generate = n-gram predictor** - Speaks whatever language it's trained on
-5. **RTFM** - CLAUDE.md has answers
+**Training results (file now 530 lines):**
+```bash
+$ python -m cortical.cognitive train . --pattern "context-window-notes.md"
+New: 1, Atoms created: 34, Links created: 1705
+```
+
+**Query command (single word associations):**
+
+```bash
+$ python -m cortical.cognitive query "pln" -k 10
+1. plngraph       1.29
+2. prism          1.14
+3. probabilistic  0.98
+4. attention      0.82
+
+$ python -m cortical.cognitive query "cognitive" -k 10
+1. cognitiveagent 0.93
+2. ask            0.78
+3. cognitivegraph 0.75
+4. agent          0.70
+5. training       0.68
+
+$ python -m cortical.cognitive query "fancy"
+No associations found (not in vocabulary)
+```
+
+**Key insight:**
+
+The cognitive agent is a **term co-occurrence tracker**, not a memory system.
+
+| What You Ask | What It Does |
+|--------------|--------------|
+| "What did we learn about PLN?" | Finds words near "PLN" in training docs |
+| "Is PLN useful?" | Finds words near "useful" |
+| `query pln` | Shows: plngraph, prism, probabilistic |
+
+**It can't "remember" that we decided PLN = fancy grep** because:
+- It doesn't store sentences or judgments
+- It stores (word1, word2, co-occurrence_count)
+- No concept of "meaning" or "conclusion"
+
+**What it's actually useful for:**
+- "What terms appear near X in our docs?" → `query X`
+- "What comes after X in our docs?" → `generate X`
+- NOT: "What do we know about X?"
+
+---
+
+## [014] Session Summary
+
+1. **File-based communication** - Works as append-only log
+2. **Cognitive agent** - Term co-occurrence, not memory
+3. **Query vs Ask** - Query shows raw associations, Ask tries (poorly) to form sentences
+4. **Generate** - N-gram completion, speaks training language
+5. **For actual memory** - Just read the file or use GoT knowledge transfers
 
 ---
 
