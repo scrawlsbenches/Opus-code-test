@@ -1,591 +1,108 @@
 [
   [
     [
-      "dict",
-      "str"
-    ],
-    "dict_str"
-  ],
-  [
-    [
-      "if",
-      "not"
-    ],
-    "if_not"
-  ],
-  [
-    [
-      "in",
-      "self"
-    ],
-    "in_self"
-  ],
-  [
-    [
-      "entity",
-      "type"
-    ],
-    "entity_type"
-  ],
-  [
-    [
-      "str",
-      "any"
-    ],
-    "str_any"
-  ],
-  [
-    [
-      "for",
-      "in"
-    ],
-    "for_in"
-  ],
-  [
-    [
-      "node",
-      "id"
-    ],
-    "node_id"
-  ],
-  [
-    [
-      "id",
-      "id"
-    ],
-    "id_id"
-  ],
-  [
-    [
-      "return",
-      "self"
-    ],
-    "return_self"
-  ],
-  [
-    [
-      "list",
-      "str"
-    ],
-    "list_str"
-  ],
-  [
-    [
-      "if",
-      "self"
-    ],
-    "if_self"
-  ],
-  [
-    [
-      "entitytype",
-      "entity"
-    ],
-    "entitytype_entity"
-  ],
-  [
-    [
-      "id",
-      "str"
-    ],
-    "id_str"
-  ],
-  [
-    [
-      "doc",
-      "id"
-    ],
-    "doc_id"
-  ],
-  [
-    [
-      "task",
-      "id"
-    ],
-    "task_id"
-  ],
-  [
-    [
-      "entity",
-      "id"
-    ],
-    "entity_id"
-  ],
-  [
-    [
-      "docid",
-      "doc"
-    ],
-    "docid_doc"
-  ],
-  [
-    [
-      "list",
-      "of"
-    ],
-    "list_of"
-  ],
-  [
-    [
-      "data",
-      "get"
-    ],
-    "data_get"
-  ],
-  [
-    [
-      "entityid",
-      "entity"
-    ],
-    "entityid_entity"
-  ],
-  [
-    [
-      "str",
-      "none"
-    ],
-    "str_none"
-  ],
-  [
-    [
-      "not",
-      "in"
-    ],
-    "not_in"
-  ],
-  [
-    [
-      "lines",
-      "append"
-    ],
-    "lines_append"
-  ],
-  [
-    [
-      "taskid",
-      "task"
-    ],
-    "taskid_task"
-  ],
-  [
-    [
-      "nodeid",
-      "node"
-    ],
-    "nodeid_node"
-  ],
-  [
-    [
-      "edge",
-      "type"
-    ],
-    "edge_type"
-  ],
-  [
-    [
-      "target",
-      "id"
-    ],
-    "target_id"
-  ],
-  [
-    [
-      "targetid",
-      "target"
-    ],
-    "targetid_target"
-  ],
-  [
-    [
-      "id",
-      "if"
-    ],
-    "id_if"
-  ],
-  [
-    [
-      "edgetype",
-      "edge"
-    ],
-    "edgetype_edge"
-  ],
-  [
-    [
-      "valueerror",
-      "value"
-    ],
-    "valueerror_value"
-  ],
-  [
-    [
-      "value",
-      "error"
-    ],
-    "value_error"
-  ],
-  [
-    [
-      "is",
-      "not"
-    ],
-    "is_not"
-  ],
-  [
-    [
-      "id",
-      "in"
-    ],
-    "id_in"
-  ],
-  [
-    [
-      "file",
-      "path"
-    ],
-    "file_path"
-  ],
-  [
-    [
-      "field",
-      "defaultfactory"
-    ],
-    "field_defaultfactory"
-  ],
-  [
-    [
-      "defaultfactory",
-      "default"
-    ],
-    "defaultfactory_default"
-  ],
-  [
-    [
-      "default",
-      "factory"
-    ],
-    "default_factory"
-  ],
-  [
-    [
-      "str",
-      "float"
-    ],
-    "str_float"
-  ],
-  [
-    [
-      "len",
-      "self"
-    ],
-    "len_self"
-  ],
-  [
-    [
-      "optional",
-      "str"
-    ],
-    "optional_str"
-  ],
-  [
-    [
-      "is",
-      "none"
-    ],
-    "is_none"
-  ],
-  [
-    [
-      "from",
+      "python",
       "cortical"
     ],
-    "from_cortical"
+    "python_cortical"
   ],
   [
     [
-      "returns",
-      "list"
+      "cortical",
+      "cli"
     ],
-    "returns_list"
+    "cortical_cli"
   ],
   [
     [
-      "source",
-      "id"
+      "cli",
+      "audit"
     ],
-    "source_id"
+    "cli_audit"
   ],
   [
     [
-      "sourceid",
-      "source"
+      "audit",
+      "reason"
     ],
-    "sourceid_source"
+    "audit_reason"
   ],
   [
     [
-      "not",
-      "none"
+      "cortical",
+      "got"
     ],
-    "not_none"
+    "cortical_got"
   ],
   [
     [
-      "number",
-      "of"
+      "haspattern",
+      "has"
     ],
-    "number_of"
+    "haspattern_has"
   ],
   [
     [
-      "filepath",
-      "file"
+      "has",
+      "pattern"
     ],
-    "filepath_file"
+    "has_pattern"
   ],
   [
     [
-      "init",
-      "init"
+      "bash",
+      "python"
     ],
-    "init_init"
+    "bash_python"
   ],
   [
     [
-      "check",
-      "if"
+      "cognitive",
+      "agent"
     ],
-    "check_if"
+    "cognitive_agent"
   ],
   [
     [
-      "str",
-      "list"
+      "cortical",
+      "cognitive"
     ],
-    "str_list"
+    "cortical_cognitive"
   ],
   [
     [
-      "addargument",
-      "add"
+      "pln",
+      "pln"
     ],
-    "addargument_add"
+    "pln_pln"
   ],
   [
     [
-      "add",
-      "argument"
+      "risky",
+      "files"
     ],
-    "add_argument"
+    "risky_files"
   ],
   [
     [
-      "error",
-      "if"
+      "py",
+      "risk"
     ],
-    "error_if"
+    "py_risk"
   ],
   [
     [
-      "not",
-      "self"
+      "todo",
+      "todo"
     ],
-    "not_self"
+    "todo_todo"
   ],
   [
     [
-      "init",
-      "self"
+      "cli",
+      "cli"
     ],
-    "init_self"
-  ],
-  [
-    [
-      "to",
-      "dict"
-    ],
-    "to_dict"
-  ],
-  [
-    [
-      "datetime",
-      "now"
-    ],
-    "datetime_now"
-  ],
-  [
-    [
-      "truth",
-      "value"
-    ],
-    "truth_value"
-  ],
-  [
-    [
-      "str",
-      "str"
-    ],
-    "str_str"
-  ],
-  [
-    [
-      "todict",
-      "to"
-    ],
-    "todict_to"
-  ],
-  [
-    [
-      "id",
-      "self"
-    ],
-    "id_self"
-  ],
-  [
-    [
-      "dataclass",
-      "class"
-    ],
-    "dataclass_class"
-  ],
-  [
-    [
-      "not",
-      "found"
-    ],
-    "not_found"
-  ],
-  [
-    [
-      "ids",
-      "ds"
-    ],
-    "ids_ds"
-  ],
-  [
-    [
-      "event",
-      "id"
-    ],
-    "event_id"
-  ],
-  [
-    [
-      "path",
-      "path"
-    ],
-    "path_path"
-  ],
-  [
-    [
-      "self",
-      "dict"
-    ],
-    "self_dict"
-  ],
-  [
-    [
-      "def",
-      "init"
-    ],
-    "def_init"
-  ],
-  [
-    [
-      "if",
-      "len"
-    ],
-    "if_len"
-  ],
-  [
-    [
-      "node",
-      "type"
-    ],
-    "node_type"
-  ],
-  [
-    [
-      "sprint",
-      "id"
-    ],
-    "sprint_id"
-  ],
-  [
-    [
-      "set",
-      "str"
-    ],
-    "set_str"
-  ],
-  [
-    [
-      "raise",
-      "valueerror"
-    ],
-    "raise_valueerror"
-  ],
-  [
-    [
-      "wal",
-      "wal"
-    ],
-    "wal_wal"
-  ],
-  [
-    [
-      "id",
-      "return"
-    ],
-    "id_return"
-  ],
-  [
-    [
-      "bool",
-      "true"
-    ],
-    "bool_true"
-  ],
-  [
-    [
-      "parser",
-      "addargument"
-    ],
-    "parser_addargument"
-  ],
-  [
-    [
-      "get",
-      "all"
-    ],
-    "get_all"
-  ],
-  [
-    [
-      "none",
-      "if"
-    ],
-    "none_if"
-  ],
-  [
-    [
-      "nodetype",
-      "node"
-    ],
-    "nodetype_node"
-  ],
-  [
-    [
-      "from",
-      "typing"
-    ],
-    "from_typing"
-  ],
-  [
-    [
-      "typing",
-      "import"
-    ],
-    "typing_import"
+    "cli_cli"
   ],
   [
     [
@@ -596,107 +113,590 @@
   ],
   [
     [
-      "self",
-      "config"
+      "files",
+      "in"
     ],
-    "self_config"
+    "files_in"
   ],
   [
     [
-      "truthvalue",
-      "truth"
+      "cortical",
+      "reasoning"
     ],
-    "truthvalue_truth"
+    "cortical_reasoning"
   ],
   [
     [
-      "return",
-      "none"
+      "should",
+      "be"
     ],
-    "return_none"
+    "should_be"
   ],
   [
     [
-      "list",
-      "tuple"
+      "in",
+      "cortical"
     ],
-    "list_tuple"
+    "in_cortical"
   ],
   [
     [
-      "go",
-      "manager"
+      "found",
+      "files"
     ],
-    "go_manager"
+    "found_files"
   ],
   [
     [
-      "topn",
-      "top"
+      "files",
+      "findings"
     ],
-    "topn_top"
+    "files_findings"
   ],
   [
     [
-      "semantic",
-      "relations"
+      "got",
+      "api"
     ],
-    "semantic_relations"
+    "got_api"
   ],
   [
     [
-      "self",
-      "graph"
+      "api",
+      "py"
     ],
-    "self_graph"
+    "api_py"
+  ],
+  [
+    [
+      "cognitive",
+      "ask"
+    ],
+    "cognitive_ask"
+  ],
+  [
+    [
+      "audit",
+      "health"
+    ],
+    "audit_health"
+  ],
+  [
+    [
+      "claude",
+      "claude"
+    ],
+    "claude_claude"
+  ],
+  [
+    [
+      "claude",
+      "md"
+    ],
+    "claude_md"
+  ],
+  [
+    [
+      "the",
+      "cognitive"
+    ],
+    "the_cognitive"
+  ],
+  [
+    [
+      "archive",
+      "archive"
+    ],
+    "archive_archive"
+  ],
+  [
+    [
+      "recent",
+      "recent"
+    ],
+    "recent_recent"
+  ],
+  [
+    [
+      "vlti",
+      "vlti"
+    ],
+    "vlti_vlti"
+  ],
+  [
+    [
+      "across",
+      "sessions"
+    ],
+    "across_sessions"
+  ],
+  [
+    [
+      "show",
+      "rules"
+    ],
+    "show_rules"
+  ],
+  [
+    [
+      "natural",
+      "language"
+    ],
+    "natural_language"
+  ],
+  [
+    [
+      "reason",
+      "show"
+    ],
+    "reason_show"
+  ],
+  [
+    [
+      "strength",
+      "haspattern"
+    ],
+    "strength_haspattern"
+  ],
+  [
+    [
+      "risk",
+      "cortical"
+    ],
+    "risk_cortical"
+  ],
+  [
+    [
+      "hack",
+      "hack"
+    ],
+    "hack_hack"
+  ],
+  [
+    [
+      "what",
+      "it"
+    ],
+    "what_it"
+  ],
+  [
+    [
+      "got",
+      "dashboard"
+    ],
+    "got_dashboard"
+  ],
+  [
+    [
+      "got",
+      "analyze"
+    ],
+    "got_analyze"
+  ],
+  [
+    [
+      "audit",
+      "discover"
+    ],
+    "audit_discover"
+  ],
+  [
+    [
+      "analyze",
+      "summary"
+    ],
+    "analyze_summary"
+  ],
+  [
+    [
+      "what",
+      "is"
+    ],
+    "what_is"
+  ],
+  [
+    [
+      "training",
+      "on"
+    ],
+    "training_on"
+  ],
+  [
+    [
+      "on",
+      "cortical"
+    ],
+    "on_cortical"
+  ],
+  [
+    [
+      "archive",
+      "old"
+    ],
+    "archive_old"
+  ],
+  [
+    [
+      "old",
+      "context"
+    ],
+    "old_context"
+  ],
+  [
+    [
+      "file",
+      "based"
+    ],
+    "file_based"
   ],
   [
     [
       "based",
-      "on"
+      "communication"
     ],
-    "based_on"
+    "based_communication"
   ],
   [
     [
-      "created",
-      "at"
+      "append",
+      "only"
     ],
-    "created_at"
-  ],
-  [
-    [
-      "return",
-      "false"
-    ],
-    "return_false"
+    "append_only"
   ],
   [
     [
       "from",
-      "dict"
+      "end"
     ],
-    "from_dict"
+    "from_end"
   ],
   [
     [
-      "createdat",
-      "created"
+      "claude",
+      "reads"
     ],
-    "createdat_created"
+    "claude_reads"
   ],
   [
     [
-      "gotmanager",
-      "go"
+      "graph",
+      "of"
     ],
-    "gotmanager_go"
+    "graph_of"
   ],
   [
     [
       "of",
+      "thought"
+    ],
+    "of_thought"
+  ],
+  [
+    [
+      "experiment",
+      "with"
+    ],
+    "experiment_with"
+  ],
+  [
+    [
+      "found",
+      "python"
+    ],
+    "found_python"
+  ],
+  [
+    [
+      "probabilistic",
+      "logic"
+    ],
+    "probabilistic_logic"
+  ],
+  [
+    [
+      "logic",
+      "networks"
+    ],
+    "logic_networks"
+  ],
+  [
+    [
+      "file",
+      "risk"
+    ],
+    "file_risk"
+  ],
+  [
+    [
+      "rules",
+      "to"
+    ],
+    "rules_to"
+  ],
+  [
+    [
+      "to",
+      "infer"
+    ],
+    "to_infer"
+  ],
+  [
+    [
+      "very",
+      "long"
+    ],
+    "very_long"
+  ],
+  [
+    [
+      "long",
+      "term"
+    ],
+    "long_term"
+  ],
+  [
+    [
+      "term",
+      "important"
+    ],
+    "term_important"
+  ],
+  [
+    [
+      "state",
+      "across"
+    ],
+    "state_across"
+  ],
+  [
+    [
+      "pln",
+      "rules"
+    ],
+    "pln_rules"
+  ],
+  [
+    [
+      "show",
+      "state"
+    ],
+    "show_state"
+  ],
+  [
+    [
+      "rules",
+      "total"
+    ],
+    "rules_total"
+  ],
+  [
+    [
+      "manual",
+      "rules"
+    ],
+    "manual_rules"
+  ],
+  [
+    [
+      "rules",
+      "haspattern"
+    ],
+    "rules_haspattern"
+  ],
+  [
+    [
+      "pattern",
+      "hack"
+    ],
+    "pattern_hack"
+  ],
+  [
+    [
+      "hack",
+      "needsreview"
+    ],
+    "hack_needsreview"
+  ],
+  [
+    [
+      "needsreview",
+      "needs"
+    ],
+    "needsreview_needs"
+  ],
+  [
+    [
+      "needs",
+      "review"
+    ],
+    "needs_review"
+  ],
+  [
+    [
+      "review",
+      "strength"
+    ],
+    "review_strength"
+  ],
+  [
+    [
+      "reason",
+      "risky"
+    ],
+    "reason_risky"
+  ],
+  [
+    [
+      "findings",
+      "risky"
+    ],
+    "findings_risky"
+  ],
+  [
+    [
+      "risky",
+      "risky"
+    ],
+    "risky_risky"
+  ],
+  [
+    [
+      "files",
+      "files"
+    ],
+    "files_files"
+  ],
+  [
+    [
+      "hack",
+      "todo"
+    ],
+    "hack_todo"
+  ],
+  [
+    [
+      "what",
+      "this"
+    ],
+    "what_this"
+  ],
+  [
+    [
+      "fixme",
+      "fixme"
+    ],
+    "fixme_fixme"
+  ],
+  [
+    [
+      "cli",
+      "exercise"
+    ],
+    "cli_exercise"
+  ],
+  [
+    [
+      "exercise",
+      "results"
+    ],
+    "exercise_results"
+  ],
+  [
+    [
+      "exercise",
       "the"
     ],
-    "of_the"
+    "exercise_the"
+  ],
+  [
+    [
+      "pattern",
+      "critical"
+    ],
+    "pattern_critical"
+  ],
+  [
+    [
+      "critical",
+      "requiresattention"
+    ],
+    "critical_requiresattention"
+  ],
+  [
+    [
+      "requiresattention",
+      "requires"
+    ],
+    "requiresattention_requires"
+  ],
+  [
+    [
+      "requires",
+      "attention"
+    ],
+    "requires_attention"
+  ],
+  [
+    [
+      "aggregation",
+      "strategy"
+    ],
+    "aggregation_strategy"
+  ],
+  [
+    [
+      "findings",
+      "no"
+    ],
+    "findings_no"
+  ],
+  [
+    [
+      "no",
+      "files"
+    ],
+    "no_files"
+  ],
+  [
+    [
+      "files",
+      "exceed"
+    ],
+    "files_exceed"
+  ],
+  [
+    [
+      "fancy",
+      "grep"
+    ],
+    "fancy_grep"
+  ],
+  [
+    [
+      "todo",
+      "hack"
+    ],
+    "todo_hack"
+  ],
+  [
+    [
+      "it",
+      "does"
+    ],
+    "it_does"
+  ],
+  [
+    [
+      "todos",
+      "tod"
+    ],
+    "todos_tod"
+  ],
+  [
+    [
+      "tod",
+      "os"
+    ],
+    "tod_os"
   ]
 ]

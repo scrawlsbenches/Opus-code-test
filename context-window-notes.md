@@ -396,12 +396,54 @@ A: "involves auditplnrules, wovenauditmind... acid, schema, infer, modules"
 
 ---
 
-## [009] What's Next?
+## [009] Trained Cognitive Agent on This File
+
+**User:** Train cognitive agent on file we're communicating with
+
+```bash
+$ python -m cortical.cognitive train . --pattern "context-window-notes.md"
+New: 1, Atoms created: 14, Links created: 1347
+```
+
+**Questions & Responses:**
+
+| Question | Response (key terms) |
+|----------|---------------------|
+| "What is the context window communication file about?" | sliding, window, communication, active, describes |
+| "What did Claude and user discuss?" | restructured, file, section, communication |
+| "What is the PLN audit reason tool?" | auditreasoner, assertfact, conclusions, causal |
+| "Is PLN tool useful or just fancy grep?" | truth, auditplnrules, templates, logic |
+| "What lesson about CLAUDE.md?" | completion, tested, knowledgetransfer |
+
+**Observations:**
+
+1. **Term association works** - It found "communication", "restructured", "auditreasoner"
+2. **No semantic understanding** - It can't tell you our *judgment* ("PLN is fancy grep")
+3. **No narrative memory** - It doesn't know we learned "RTFM" as a lesson
+4. **Keyword soup** - Responses are related terms, not coherent answers
+
+**What the cognitive agent IS:**
+- A semantic similarity engine
+- Good for "find related concepts to X"
+
+**What it ISN'T:**
+- A question-answering system
+- A way to store/retrieve judgments or conclusions
+- A replacement for reading the actual file
+
+---
+
+## [010] What's Next?
+
+This file-based communication experiment has been interesting. We've:
+- Explored CLI tools
+- Fixed the cognitive agent
+- Learned its limitations
 
 Options:
-1. Try more GoT commands (query, edge, handoff)?
-2. Exercise the cognitive demo?
-3. Something else?
+1. Try more GoT commands?
+2. Work on something concrete in the codebase?
+3. End the experiment and do something else?
 
 ---
 
