@@ -377,13 +377,14 @@ def run_experiment(args: argparse.Namespace) -> int:
     val_losses = []
 
     for epoch in range(config.epochs):
-        # Training step
-        train_loss = kernel.train_step(
+        # Training step - extract loss value from StepMetrics
+        step_metrics = kernel.train_step(
             targets=targets,
             num_layers=config.num_layers,
             clip_grad=config.clip_grad,
             input_nodes=input_nodes,
         )
+        train_loss = step_metrics.loss
         train_losses.append(train_loss)
 
         # Compute validation loss if we have validation data
