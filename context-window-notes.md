@@ -440,10 +440,43 @@ This file-based communication experiment has been interesting. We've:
 - Fixed the cognitive agent
 - Learned its limitations
 
+---
+
+## [011] Generate Command
+
+**User:** The generate command might work better
+
+```bash
+$ python -m cortical.cognitive generate "cognitive agent" -n 30 --show-confidence
+cognitive agent cognitiveagent cognitive event type str any none return
+self graph storage format is not in self graph nodes...
+
+$ python -m cortical.cognitive generate "PLN" -n 30
+pln bridge dir glob json load snapshot version createdat created at
+datetime now timezone utc isoformat...
+```
+
+**User:** There's too much code it's trained on
+
+**Exactly.** The generate command uses FOLLOWS links (next-word prediction) to generate text. But since we trained on Python source code, it generates:
+- Code patterns (`self graph nodes if not in`)
+- Type annotations (`str any none return`)
+- Import statements (`datetime import dataclass field`)
+
+**It's a code autocomplete**, not a conversation generator.
+
+**To generate natural language:**
+- Would need to train primarily on prose (docs, markdown)
+- Or train a separate model on non-code text
+- The current model is ~95% code, so it speaks code
+
+---
+
+## [012] What's Next?
+
 Options:
-1. Try more GoT commands?
-2. Work on something concrete in the codebase?
-3. End the experiment and do something else?
+1. Train cognitive agent on only docs/markdown and try generate again?
+2. Move on to something else?
 
 ---
 
