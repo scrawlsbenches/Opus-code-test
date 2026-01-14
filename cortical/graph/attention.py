@@ -95,18 +95,13 @@ from __future__ import annotations
 import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import (
     Any,
-    Callable,
     Dict,
-    Iterator,
     List,
     Optional,
     Protocol,
-    Set,
     Tuple,
-    Union,
     runtime_checkable,
 )
 
@@ -216,9 +211,21 @@ class TrainableGraphProtocol(Protocol):
 # PARAMETER CLASS
 # =============================================================================
 #
-# Reusing the Parameter class from trainable.py would be ideal, but to keep
-# this module self-contained for now, we define a compatible version.
-# TODO: Extract Parameter to a shared module.
+# Design Decision: Intentional Duplication
+# -----------------------------------------
+# This Parameter class duplicates the one in trainable.py. This is intentional:
+#
+# 1. Self-containment: This module can be understood without reading trainable.py
+# 2. Independence: Changes to one won't accidentally break the other
+# 3. Future extraction: Both will be replaced when we create a shared module
+#
+# The interface is identical, so code using either will work with both.
+# When we refactor to a shared `cortical/graph/parameters.py`, both modules
+# will simply change their import statement.
+#
+# FUTURE: Extract to cortical/graph/parameters.py with:
+#   - Parameter class
+#   - Optimizer base class and implementations (if shared)
 # =============================================================================
 
 
@@ -328,11 +335,18 @@ class AttentionEdge(EdgeBase):
         then B can look through the window and see A. Without the edge,
         B cannot see A at all (infinite attention mask).
 
-        The weight field here is not the attention weight (that's computed
-        dynamically). Instead, it can serve as a prior or bias:
+    Current Behavior:
+        - Edge presence: Determines if attention is possible (binary mask)
+        - Edge weight: Currently unused (reserved for future attention bias)
+
+    Future Enhancement:
+        The weight field could serve as an attention bias:
         - weight=1.0: Normal attention possible
-        - weight=0.5: Attention is dampened (multiplied by 0.5)
-        - weight=0.0: Edge exists but attention is blocked
+        - weight=0.5: Attention is dampened (add log(0.5) to pre-softmax score)
+        - weight=0.0: Edge exists but attention is blocked (-inf bias)
+
+        This would allow structural priors without removing edges entirely.
+        See: graph.add_edge("A", "B", weight=0.8)  # Slightly discourage attention
 
     For causal language modeling:
         - Add edge from pos_j to pos_i for all j < i
@@ -1101,6 +1115,11 @@ class AttentionGraph(BaseGraph[AttentionNode, AttentionEdge]):
         # Initialize node values from embeddings or inputs
         values: Dict[str, Array] = {}
         for node in self.nodes:
+            # CRITICAL: Clear previous forward pass state to prevent memory leak
+            # Each forward pass starts fresh - we don't accumulate across iterations
+            node.layer_inputs = []
+            node.layer_outputs = []
+
             if input_nodes and node.id in input_nodes:
                 values[node.id] = input_nodes[node.id].copy()
             elif node.embedding is not None:
@@ -1108,8 +1127,8 @@ class AttentionGraph(BaseGraph[AttentionNode, AttentionEdge]):
             else:
                 values[node.id] = np.zeros(self.embedding_dim)
 
-            # Store for backward pass
-            node.layer_inputs = [values[node.id].copy()]
+            # Store initial input for backward pass
+            node.layer_inputs.append(values[node.id].copy())
 
         # Apply attention layers
         for layer_idx in range(num_layers):

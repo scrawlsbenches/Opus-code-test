@@ -18,7 +18,7 @@ BaseGraph Architecture:
         >>> graph.add_edge("A", "B", edge_type="related")
         >>> pagerank = graph.compute_pagerank()
 
-TrainableGraph (Graph Neural Network):
+TrainableGraph (Message-Passing Graph Neural Network):
     - TrainableGraph: Graph with learnable parameters and gradient descent
     - TrainableNode: Node with learnable embedding vectors
     - TrainableEdge: Edge with learnable weights
@@ -38,6 +38,23 @@ TrainableGraph (Graph Neural Network):
         >>> loss = MSELoss()(outputs["B"], target)
         >>> graph.backward({"B": MSELoss().gradient(outputs["B"], target)})
         >>> optimizer.step()
+
+AttentionGraph (Self-Attention Graph Neural Network):
+    - AttentionGraph: Graph using self-attention instead of message passing
+    - AttentionNode: Node with query/key/value projections
+    - AttentionEdge: Edge defining attention visibility (causal mask via structure)
+    - ProcessingLayer: Abstract base for composable layers
+    - TrainableGraphProtocol: Contract for experiment kernel compatibility
+
+    Key difference: While TrainableGraph aggregates neighbor messages with fixed
+    weights, AttentionGraph computes dynamic attention weights based on content.
+    This preserves sequential order better for language modeling tasks.
+
+    Example:
+        >>> from cortical.graph import AttentionGraph, create_causal_attention_graph
+        >>> graph = create_causal_attention_graph(seq_len=16, embedding_dim=64)
+        >>> outputs = graph.forward(num_layers=2)
+        >>> print(graph.visualize_attention("pos_5"))  # See what pos_5 attends to
 
 SemanticKnowledgeGraph (Existing):
     - SemanticKnowledgeGraph: Unified orchestrator for cognitive architecture
@@ -128,6 +145,23 @@ from .trainable import (
     fit,
 )
 
+from .attention import (
+    # Core types
+    AttentionNode,
+    AttentionEdge,
+    AttentionGraph,
+    # Processing layer abstraction
+    ProcessingLayer,
+    AttentionLayer,
+    # Protocol for experiment kernel compatibility
+    TrainableGraphProtocol,
+    # Attention functions
+    scaled_dot_product_attention,
+    attention_backward,
+    # Convenience functions
+    create_causal_attention_graph,
+)
+
 # =============================================================================
 # SemanticKnowledgeGraph (Existing)
 # =============================================================================
@@ -210,6 +244,16 @@ __all__ = [
     'TrainingHistory',
     'train_step',
     'fit',
+    # Attention Graph (NEW)
+    'AttentionNode',
+    'AttentionEdge',
+    'AttentionGraph',
+    'ProcessingLayer',
+    'AttentionLayer',
+    'TrainableGraphProtocol',
+    'scaled_dot_product_attention',
+    'attention_backward',
+    'create_causal_attention_graph',
     # SemanticKnowledgeGraph (Existing)
     'SemanticKnowledgeGraph',
     'GraphNode',
