@@ -1215,5 +1215,255 @@ def run_tokenizer_experiment(tokenizer, corpus, metrics):
 
 **To add:** Would take ~2 hours to create proper TokenizerProtocol + adapters + experiment runner.
 
-I will communicate through the document.
+---
+
+## [027] Training Pipeline Design: Multi-Tokenizer Experiments
+
+**User question:** What would combining training results from different tokenizers do in the graph?
+
+### The Interesting Question
+
+When you train the cognitive agent with different tokenizers, you get different graph structures:
+
+| Tokenizer | Token Example | Graph Result |
+|-----------|---------------|--------------|
+| Word-level | `["neural", "network"]` | Nodes: `neural`, `network` |
+| BPE | `["neur", "al", "net", "work"]` | Nodes: `neur`, `al`, `net`, `work` |
+| Character | `["n", "e", "u", "r", ...]` | Nodes: individual chars |
+
+**Combining these creates a multi-resolution graph:**
+- Word nodes connect to subword nodes
+- Subword nodes connect to character nodes
+- SIMILARITY links span resolutions
+
+### What Would Happen?
+
+**Hypothesis 1: Hierarchical Emergence**
+```
+neural (word) ←CONTAINS→ neur (subword) ←CONTAINS→ n,e,u,r (chars)
+      ↓ SIMILARITY
+   network (word)
+```
+The graph would learn that `neural` and `network` are similar at word level, but also that `neur-` prefix appears in other words.
+
+**Hypothesis 2: Disambiguation**
+Words like "bank" (river vs. money) might get:
+- BPE: same token
+- Context-aware: different embeddings based on neighbors
+- Multi-tokenizer: richer context from multiple views
+
+**Hypothesis 3: Noise**
+Too many granularities might create spurious connections. Character `n` links to everything starting with `n`.
+
+### Proposed Training Pipeline
+
+```python
+class MultiTokenizerTrainer:
+    """Train cognitive agent with multiple tokenizers and merge results."""
+
+    def __init__(self, agent: CognitiveAgent):
+        self.agent = agent
+        self.tokenizers = {}
+        self.training_runs = []
+
+    def register_tokenizer(self, name: str, tokenizer, resolution: str):
+        """Register a tokenizer with its resolution level."""
+        self.tokenizers[name] = {
+            'tokenizer': tokenizer,
+            'resolution': resolution,  # 'word', 'subword', 'char'
+        }
+
+    def train_with_tokenizer(self, name: str, corpus: Dict[str, str]):
+        """Train using a specific tokenizer, track atoms created."""
+        tokenizer = self.tokenizers[name]['tokenizer']
+        resolution = self.tokenizers[name]['resolution']
+
+        atoms_before = set(a.id for a in self.agent.graph.all_atoms())
+
+        for doc_id, text in corpus.items():
+            tokens = tokenizer.tokenize(text)
+            # Create atoms with resolution metadata
+            for token in tokens:
+                atom = self.agent.graph.node(token)
+                atom.metadata['resolution'] = resolution
+                atom.metadata['source_tokenizer'] = name
+
+            # Create co-occurrence links
+            for i, t1 in enumerate(tokens):
+                for t2 in tokens[i+1:i+5]:  # Window of 5
+                    self.agent.graph.link(
+                        AtomType.SIMILARITY,
+                        [self.agent.graph.node(t1), self.agent.graph.node(t2)],
+                        TruthValue(0.5, 0.3)
+                    )
+
+        atoms_after = set(a.id for a in self.agent.graph.all_atoms())
+        new_atoms = atoms_after - atoms_before
+
+        self.training_runs.append({
+            'tokenizer': name,
+            'resolution': resolution,
+            'atoms_created': len(new_atoms),
+            'atom_ids': new_atoms,
+        })
+
+        return len(new_atoms)
+
+    def create_cross_resolution_links(self):
+        """Link atoms across resolution levels (word → subword → char)."""
+        word_atoms = [a for a in self.agent.graph.all_atoms()
+                      if a.metadata.get('resolution') == 'word']
+        subword_atoms = [a for a in self.agent.graph.all_atoms()
+                         if a.metadata.get('resolution') == 'subword']
+
+        for word in word_atoms:
+            for subword in subword_atoms:
+                if subword.name in word.name:
+                    # Word contains subword
+                    self.agent.graph.link(
+                        AtomType.PART_OF,
+                        [subword, word],
+                        TruthValue(1.0, 0.9)
+                    )
+
+    def get_experiment_stats(self) -> Dict:
+        """Get statistics about the multi-tokenizer training."""
+        return {
+            'total_atoms': len(list(self.agent.graph.all_atoms())),
+            'runs': self.training_runs,
+            'resolution_counts': {
+                res: sum(1 for a in self.agent.graph.all_atoms()
+                        if a.metadata.get('resolution') == res)
+                for res in ['word', 'subword', 'char']
+            }
+        }
+```
+
+### Experiment Design
+
+```python
+# 1. Create fresh agent
+agent = CognitiveAgent()
+trainer = MultiTokenizerTrainer(agent)
+
+# 2. Register tokenizers at different resolutions
+trainer.register_tokenizer('word', Tokenizer(), 'word')
+trainer.register_tokenizer('bpe', BPETokenizer(), 'subword')
+trainer.register_tokenizer('char', CharTokenizer(), 'char')
+
+# 3. Train each on same corpus
+corpus = load_corpus('samples/')
+for name in ['word', 'bpe', 'char']:
+    atoms = trainer.train_with_tokenizer(name, corpus)
+    print(f"{name}: {atoms} atoms created")
+
+# 4. Create cross-resolution links
+trainer.create_cross_resolution_links()
+
+# 5. Analyze results
+stats = trainer.get_experiment_stats()
+print(f"Total atoms: {stats['total_atoms']}")
+print(f"By resolution: {stats['resolution_counts']}")
+
+# 6. Query and compare
+response_word = agent.query("similar_to", "neural")  # Word-level
+response_multi = agent.query("similar_to", "neur")   # Subword finds more
+```
+
+### Expected Insights
+
+| Metric | Single Tokenizer | Multi-Tokenizer |
+|--------|------------------|-----------------|
+| Vocabulary size | ~5K | ~15K (combined) |
+| OOV handling | Fails on novel words | Subword fallback |
+| Query flexibility | Exact match only | Prefix/suffix match |
+| Graph density | Sparse | Dense (cross-resolution) |
+| Memory usage | Low | 3x higher |
+
+### Research Questions
+
+1. **Does multi-resolution improve query recall?**
+   - Query "neuroscience" → find "neural", "neuro-", "science"
+
+2. **Do cross-resolution links help disambiguation?**
+   - "bank" near "river" vs "bank" near "money"
+
+3. **What's the optimal resolution mix?**
+   - 70% word, 25% subword, 5% char?
+
+4. **Can we prune without losing signal?**
+   - Remove low-confidence cross-resolution links
+
+### Implementation Effort
+
+| Component | Effort | Priority |
+|-----------|--------|----------|
+| MultiTokenizerTrainer class | 2 hours | High |
+| Cross-resolution linking | 1 hour | High |
+| Experiment harness | 1 hour | Medium |
+| Visualization of multi-res graph | 2 hours | Low |
+| Metrics collection | 1 hour | Medium |
+
+**Total: ~7 hours for full pipeline.**
+
+### Answer
+
+Combining training from different tokenizers would create a **multi-resolution knowledge graph** where:
+- Words link to their subword components
+- Subwords link to characters
+- SIMILARITY spans resolutions
+
+This could improve:
+- Novel word handling (subword fallback)
+- Query flexibility (prefix/suffix matching)
+- Disambiguation (richer context)
+
+But risks:
+- 3x memory usage
+- Spurious links at character level
+- Complexity in querying
+
+**Want me to implement the MultiTokenizerTrainer?**
+
+---
+
+## [028] Session Continuation (2026-01-14) - Communication Reset
+
+**Problem:** Claude forgot to use file-based communication after context window reset.
+
+**User question:** How do we fix that?
+
+### Options to Fix
+
+| Option | How It Works | Persistence |
+|--------|--------------|-------------|
+| **A. Add to CLAUDE.md** | Add instruction: "Use context-window-notes.md for communication" | ✅ Survives context reset |
+| **B. Session start hook** | Hook that reminds Claude to read this file | ✅ Automatic |
+| **C. Cognitive agent training** | Train on this file so queries surface it | ⚠️ Indirect |
+| **D. Prompt in summary** | Include in conversation summary | ⚠️ May be lost |
+
+### Recommendation
+
+**Option A + B combined:**
+
+1. Add to CLAUDE.md:
+```markdown
+## File-Based Communication
+
+When working on extended sessions, use `context-window-notes.md`:
+- Read RECENT section at session start
+- Append entries with sequential numbers [XXX]
+- Archive old entries when RECENT grows large
+```
+
+2. Create session start hook that outputs:
+```
+Reminder: Check context-window-notes.md for session context
+```
+
+### Why This Happens
+
+The conversation summary preserves *what* was done but not *how* we decided to work. File-based communication is a *process* decision that gets lost.
+
+**Awaiting user direction on which fix to implement.**
 
