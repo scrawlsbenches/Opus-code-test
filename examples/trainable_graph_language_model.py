@@ -23,7 +23,7 @@ import re
 import random
 from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Any
 
 import numpy as np
 
@@ -357,9 +357,24 @@ def train_language_model(
     epochs: int = 20,
     batch_size: int = 32,
     learning_rate: float = 0.01,
-) -> List[float]:
-    """Train the language model."""
+    checkpoint_path: Optional[str] = None,
+    save_every: int = 10,
+) -> Tuple[List[float], Optional[dict]]:
+    """
+    Train the language model with checkpoint support.
 
+    Args:
+        model: The language model to train
+        text: Training text corpus
+        epochs: Number of epochs to train
+        batch_size: Batch size for training
+        learning_rate: Learning rate for optimizer
+        checkpoint_path: Path to save/load checkpoints (None to disable)
+        save_every: Save checkpoint every N epochs
+
+    Returns:
+        Tuple of (loss history, final checkpoint dict)
+    """
     # Create training data
     sequences = create_training_sequences(
         text,
@@ -371,8 +386,21 @@ def train_language_model(
 
     optimizer = Adam(model.parameters(), lr=learning_rate)
     losses = []
+    start_epoch = 0
 
-    for epoch in range(epochs):
+    # Try to load checkpoint if path provided
+    if checkpoint_path:
+        checkpoint_file = Path(checkpoint_path)
+        if checkpoint_file.exists():
+            import pickle
+            with open(checkpoint_file, "rb") as f:
+                checkpoint = pickle.load(f)
+            resume_info = model.graph.load_checkpoint(checkpoint, optimizer)
+            start_epoch = resume_info["epoch"]
+            losses = resume_info.get("extra", {}).get("losses", [])
+            print(f"  Resumed from checkpoint at epoch {start_epoch}")
+
+    for epoch in range(start_epoch, epochs):
         random.shuffle(sequences)
         epoch_loss = 0.0
         num_batches = 0
@@ -412,7 +440,33 @@ def train_language_model(
         if (epoch + 1) % 5 == 0:
             print(f"  Epoch {epoch + 1}: Loss = {avg_loss:.4f}")
 
-    return losses
+        # Save checkpoint periodically
+        if checkpoint_path and (epoch + 1) % save_every == 0:
+            checkpoint = model.graph.save_checkpoint(
+                optimizer=optimizer,
+                epoch=epoch + 1,
+                loss=avg_loss,
+                extra={"losses": losses},
+            )
+            import pickle
+            with open(checkpoint_path, "wb") as f:
+                pickle.dump(checkpoint, f)
+            print(f"  Checkpoint saved at epoch {epoch + 1}")
+
+    # Final checkpoint
+    final_checkpoint = None
+    if checkpoint_path:
+        final_checkpoint = model.graph.save_checkpoint(
+            optimizer=optimizer,
+            epoch=epochs,
+            loss=losses[-1] if losses else 0.0,
+            extra={"losses": losses},
+        )
+        import pickle
+        with open(checkpoint_path, "wb") as f:
+            pickle.dump(final_checkpoint, f)
+
+    return losses, final_checkpoint
 
 
 # =============================================================================
@@ -430,6 +484,8 @@ def main():
     parser.add_argument("--generate", type=str, default=None, help="Generate from prompt")
     parser.add_argument("--temperature", type=float, default=0.7, help="Generation temperature")
     parser.add_argument("--max-docs", type=int, default=30, help="Max documents to load")
+    parser.add_argument("--checkpoint", type=str, default=None, help="Checkpoint file for save/resume")
+    parser.add_argument("--save-every", type=int, default=10, help="Save checkpoint every N epochs")
 
     args = parser.parse_args()
 
@@ -474,11 +530,15 @@ def main():
 
     # Train
     print(f"\n4. Training (epochs={args.epochs}, lr={args.lr})...")
-    losses = train_language_model(
+    if args.checkpoint:
+        print(f"   Checkpoint: {args.checkpoint}")
+    losses, checkpoint = train_language_model(
         model,
         corpus,
         epochs=args.epochs,
         learning_rate=args.lr,
+        checkpoint_path=args.checkpoint,
+        save_every=args.save_every,
     )
     print(f"   Final loss: {losses[-1]:.4f}")
 

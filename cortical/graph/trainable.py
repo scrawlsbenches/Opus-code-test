@@ -445,6 +445,24 @@ class Optimizer(ABC):
         for param in self.parameters:
             param.zero_grad()
 
+    def state_dict(self) -> Dict[str, Any]:
+        """
+        Get optimizer state for checkpointing.
+
+        Returns:
+            Dict containing optimizer hyperparameters and internal state
+        """
+        return {"lr": self.lr}
+
+    def load_state_dict(self, state: Dict[str, Any]) -> None:
+        """
+        Load optimizer state from checkpoint.
+
+        Args:
+            state: State dict from state_dict()
+        """
+        self.lr = state.get("lr", self.lr)
+
 
 class SGD(Optimizer):
     """
@@ -497,6 +515,24 @@ class SGD(Optimizer):
                     grad = v
 
             param.data -= self.lr * grad
+
+    def state_dict(self) -> Dict[str, Any]:
+        """Get SGD state for checkpointing."""
+        return {
+            "lr": self.lr,
+            "momentum": self.momentum,
+            "weight_decay": self.weight_decay,
+            "nesterov": self.nesterov,
+            "velocities": {k: v.copy() for k, v in self.velocities.items()},
+        }
+
+    def load_state_dict(self, state: Dict[str, Any]) -> None:
+        """Load SGD state from checkpoint."""
+        self.lr = state.get("lr", self.lr)
+        self.momentum = state.get("momentum", self.momentum)
+        self.weight_decay = state.get("weight_decay", self.weight_decay)
+        self.nesterov = state.get("nesterov", self.nesterov)
+        self.velocities = {k: v.copy() for k, v in state.get("velocities", {}).items()}
 
 
 class Adam(Optimizer):
@@ -566,6 +602,34 @@ class Adam(Optimizer):
 
             param.data -= self.lr * m_hat / (np.sqrt(v_hat) + self.eps)
 
+    def state_dict(self) -> Dict[str, Any]:
+        """Get Adam state for checkpointing."""
+        return {
+            "lr": self.lr,
+            "beta1": self.beta1,
+            "beta2": self.beta2,
+            "eps": self.eps,
+            "weight_decay": self.weight_decay,
+            "amsgrad": self.amsgrad,
+            "t": self.t,
+            "m": {k: v.copy() for k, v in self.m.items()},
+            "v": {k: v.copy() for k, v in self.v.items()},
+            "v_max": {k: v.copy() for k, v in self.v_max.items()},
+        }
+
+    def load_state_dict(self, state: Dict[str, Any]) -> None:
+        """Load Adam state from checkpoint."""
+        self.lr = state.get("lr", self.lr)
+        self.beta1 = state.get("beta1", self.beta1)
+        self.beta2 = state.get("beta2", self.beta2)
+        self.eps = state.get("eps", self.eps)
+        self.weight_decay = state.get("weight_decay", self.weight_decay)
+        self.amsgrad = state.get("amsgrad", self.amsgrad)
+        self.t = state.get("t", self.t)
+        self.m = {k: v.copy() for k, v in state.get("m", {}).items()}
+        self.v = {k: v.copy() for k, v in state.get("v", {}).items()}
+        self.v_max = {k: v.copy() for k, v in state.get("v_max", {}).items()}
+
 
 class AdaGrad(Optimizer):
     """AdaGrad optimizer with per-parameter learning rates."""
@@ -592,6 +656,20 @@ class AdaGrad(Optimizer):
 
             self.sum_sq_grads[i] += grad**2
             param.data -= self.lr * grad / (np.sqrt(self.sum_sq_grads[i]) + self.eps)
+
+    def state_dict(self) -> Dict[str, Any]:
+        """Get AdaGrad state for checkpointing."""
+        return {
+            "lr": self.lr,
+            "eps": self.eps,
+            "sum_sq_grads": {k: v.copy() for k, v in self.sum_sq_grads.items()},
+        }
+
+    def load_state_dict(self, state: Dict[str, Any]) -> None:
+        """Load AdaGrad state from checkpoint."""
+        self.lr = state.get("lr", self.lr)
+        self.eps = state.get("eps", self.eps)
+        self.sum_sq_grads = {k: v.copy() for k, v in state.get("sum_sq_grads", {}).items()}
 
 
 class RMSprop(Optimizer):
@@ -635,6 +713,26 @@ class RMSprop(Optimizer):
                 update = self.velocities[i]
 
             param.data -= update
+
+    def state_dict(self) -> Dict[str, Any]:
+        """Get RMSprop state for checkpointing."""
+        return {
+            "lr": self.lr,
+            "alpha": self.alpha,
+            "eps": self.eps,
+            "momentum": self.momentum,
+            "avg_sq_grads": {k: v.copy() for k, v in self.avg_sq_grads.items()},
+            "velocities": {k: v.copy() for k, v in self.velocities.items()},
+        }
+
+    def load_state_dict(self, state: Dict[str, Any]) -> None:
+        """Load RMSprop state from checkpoint."""
+        self.lr = state.get("lr", self.lr)
+        self.alpha = state.get("alpha", self.alpha)
+        self.eps = state.get("eps", self.eps)
+        self.momentum = state.get("momentum", self.momentum)
+        self.avg_sq_grads = {k: v.copy() for k, v in state.get("avg_sq_grads", {}).items()}
+        self.velocities = {k: v.copy() for k, v in state.get("velocities", {}).items()}
 
 
 # =============================================================================
@@ -832,6 +930,12 @@ class TrainableGraph(BaseGraph[TrainableNode, TrainableEdge]):
         # Training state
         self._training = True
 
+        # Adjacency cache for optimized forward pass
+        self._adjacency_cache: Optional[Dict[str, List[Tuple[str, int]]]] = None
+        self._node_index: Optional[Dict[str, int]] = None
+        self._index_to_node: Optional[Dict[int, str]] = None
+        self._cache_valid = False
+
     def _create_node(self, id: str, **kwargs: Any) -> TrainableNode:
         """Create a trainable node with embedding."""
         embedding_data = kwargs.get("embedding")
@@ -886,6 +990,62 @@ class TrainableGraph(BaseGraph[TrainableNode, TrainableEdge]):
             properties=kwargs.get("properties", {}),
             weight_param=weight_param,
         )
+
+    def add_node(
+        self,
+        node_id: str,
+        node_type: str = "",
+        content: str = "",
+        **kwargs: Any,
+    ) -> TrainableNode:
+        """Add node and invalidate adjacency cache."""
+        self._invalidate_cache()
+        return super().add_node(node_id, node_type, content, **kwargs)
+
+    def add_edge(
+        self,
+        source_id: str,
+        target_id: str,
+        edge_type: str = "",
+        weight: float = 1.0,
+        **kwargs: Any,
+    ) -> Optional[TrainableEdge]:
+        """Add edge and invalidate adjacency cache."""
+        self._invalidate_cache()
+        return super().add_edge(source_id, target_id, edge_type, weight, **kwargs)
+
+    def _invalidate_cache(self) -> None:
+        """Invalidate the adjacency cache."""
+        self._cache_valid = False
+        self._adjacency_cache = None
+        self._node_index = None
+        self._index_to_node = None
+
+    def _build_adjacency_cache(self) -> None:
+        """
+        Build adjacency cache for optimized forward pass.
+
+        Pre-computes:
+        - Node index mappings for array-based operations
+        - Incoming edges for each node (source_id, edge_index)
+        - Edge weight array for vectorized operations
+        """
+        if self._cache_valid:
+            return
+
+        # Build node index mappings
+        nodes_list = list(self.nodes)
+        self._node_index = {node.id: idx for idx, node in enumerate(nodes_list)}
+        self._index_to_node = {idx: node.id for idx, node in enumerate(nodes_list)}
+
+        # Build adjacency cache: for each node, list of (source_id, edge_idx)
+        self._adjacency_cache = {node.id: [] for node in nodes_list}
+
+        edges_list = list(self.edges)
+        for edge_idx, edge in enumerate(edges_list):
+            self._adjacency_cache[edge.target_id].append((edge.source_id, edge_idx))
+
+        self._cache_valid = True
 
     def parameters(self) -> List[Parameter]:
         """
@@ -982,6 +1142,10 @@ class TrainableGraph(BaseGraph[TrainableNode, TrainableEdge]):
             Dict mapping node_id to output embeddings
         """
         self._ensure_layer_params(num_layers)
+        self._build_adjacency_cache()
+
+        # Cache edge list for fast index access
+        edges_list = list(self.edges)
 
         # Initialize node values
         values: Dict[str, Array] = {}
@@ -993,43 +1157,60 @@ class TrainableGraph(BaseGraph[TrainableNode, TrainableEdge]):
             else:
                 values[node.id] = np.zeros(self.embedding_dim)
 
+        # Pre-allocate aggregation buffer to avoid repeated np.stack
+        agg_buffer = np.zeros((max(1, len(edges_list)), self.embedding_dim))
+
         # Message passing layers
         for layer in range(num_layers):
             new_values: Dict[str, Array] = {}
+            transform = self._layer_transforms[layer].data
 
             for node in self.nodes:
-                # Collect messages from incoming edges
-                messages: List[Array] = []
+                node_id = node.id
+                incoming_edges = self._adjacency_cache[node_id]
+
+                # Collect messages using cached adjacency
                 incoming_info: List[Tuple[str, Array, float]] = []
+                num_messages = len(incoming_edges)
 
-                for edge in self.edges_to(node.id):
-                    source_value = values[edge.source_id]
+                if num_messages > 0:
+                    # Use pre-allocated buffer for aggregation
+                    for msg_idx, (source_id, edge_idx) in enumerate(incoming_edges):
+                        edge = edges_list[edge_idx]
+                        source_value = values[source_id]
 
-                    # Get edge weight
-                    if edge.weight_param is not None:
-                        weight = float(edge.weight_param.data[0])
+                        # Get edge weight
+                        if edge.weight_param is not None:
+                            weight = float(edge.weight_param.data[0])
+                        else:
+                            weight = edge.weight
+
+                        # Compute message directly into buffer
+                        agg_buffer[msg_idx] = source_value * weight
+                        incoming_info.append((source_id, source_value.copy(), weight))
+
+                    # Aggregate without np.stack
+                    msg_slice = agg_buffer[:num_messages]
+                    if self.aggregation == Aggregation.SUM:
+                        aggregated = np.sum(msg_slice, axis=0)
+                    elif self.aggregation == Aggregation.MEAN:
+                        aggregated = np.mean(msg_slice, axis=0)
+                    elif self.aggregation == Aggregation.MAX:
+                        aggregated = np.max(msg_slice, axis=0)
+                    elif self.aggregation == Aggregation.MIN:
+                        aggregated = np.min(msg_slice, axis=0)
                     else:
-                        weight = edge.weight
-
-                    # Compute message: source_value * weight
-                    message = source_value * weight
-                    messages.append(message)
-                    incoming_info.append((edge.source_id, source_value.copy(), weight))
+                        aggregated = np.sum(msg_slice, axis=0)
+                else:
+                    aggregated = np.zeros(self.embedding_dim)
 
                 # Store for backward pass
                 node.incoming_messages = incoming_info
 
-                # Aggregate messages
-                if messages:
-                    aggregated = aggregate_messages(messages, self.aggregation)
-                else:
-                    aggregated = np.zeros(self.embedding_dim)
-
                 # Combine with self-loop (original embedding)
-                combined = values[node.id] + aggregated
+                combined = values[node_id] + aggregated
 
                 # Apply transformation
-                transform = self._layer_transforms[layer].data
                 pre_activation = combined @ transform
 
                 if self.use_bias and layer < len(self._layer_biases):
@@ -1044,7 +1225,7 @@ class TrainableGraph(BaseGraph[TrainableNode, TrainableEdge]):
                 # Apply dropout
                 output = self._apply_dropout(output)
 
-                new_values[node.id] = output
+                new_values[node_id] = output
                 node.output = output.copy()
 
             values = new_values
@@ -1255,6 +1436,72 @@ class TrainableGraph(BaseGraph[TrainableNode, TrainableEdge]):
         for i, bias in enumerate(state.get("biases", [])):
             if i < len(self._layer_biases):
                 self._layer_biases[i].data = bias.copy()
+
+    def save_checkpoint(
+        self,
+        optimizer: Optional["Optimizer"] = None,
+        epoch: int = 0,
+        loss: float = 0.0,
+        extra: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Save full training checkpoint for resumption.
+
+        Args:
+            optimizer: Optimizer to save state from
+            epoch: Current epoch number
+            loss: Current loss value
+            extra: Any additional data to save
+
+        Returns:
+            Checkpoint dict that can be used with load_checkpoint()
+        """
+        checkpoint = {
+            "model_state": self.save_state(),
+            "epoch": epoch,
+            "loss": loss,
+            "embedding_dim": self.embedding_dim,
+            "activation": self.activation.value,
+            "aggregation": self.aggregation.value,
+            "timestamp": datetime.now().isoformat(),
+        }
+
+        if optimizer is not None:
+            checkpoint["optimizer_state"] = optimizer.state_dict()
+            checkpoint["optimizer_class"] = type(optimizer).__name__
+
+        if extra is not None:
+            checkpoint["extra"] = extra
+
+        return checkpoint
+
+    def load_checkpoint(
+        self,
+        checkpoint: Dict[str, Any],
+        optimizer: Optional["Optimizer"] = None,
+    ) -> Dict[str, Any]:
+        """
+        Load training checkpoint and resume training.
+
+        Args:
+            checkpoint: Checkpoint dict from save_checkpoint()
+            optimizer: Optimizer to restore state to
+
+        Returns:
+            Dict with epoch, loss, and any extra data from checkpoint
+        """
+        # Load model state
+        self.load_state(checkpoint["model_state"])
+
+        # Load optimizer state if provided
+        if optimizer is not None and "optimizer_state" in checkpoint:
+            optimizer.load_state_dict(checkpoint["optimizer_state"])
+
+        return {
+            "epoch": checkpoint.get("epoch", 0),
+            "loss": checkpoint.get("loss", 0.0),
+            "extra": checkpoint.get("extra", {}),
+        }
 
 
 # =============================================================================
