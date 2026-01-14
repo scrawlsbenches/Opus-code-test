@@ -379,8 +379,11 @@ class TestProfilerReport:
             assert report.total_steps == 0
 
     def test_report_statistics(self):
-        """Test report computes correct statistics."""
+        """Test report computes correct statistics with verified calculations."""
         with Profiler(enabled=True, track_memory=False) as profiler:
+            losses = []
+            grad_norms = []
+
             for i in range(10):
                 with profiler.step(i) as metrics:
                     with profiler.forward():
@@ -389,20 +392,36 @@ class TestProfilerReport:
                         time.sleep(0.001)
                     with profiler.update():
                         time.sleep(0.001)
-                    metrics.loss = 1.0 - i * 0.1  # Decreasing loss
-                    metrics.gradient_norm = 1.0
+                    loss_val = 1.0 - i * 0.1  # Decreasing loss
+                    metrics.loss = loss_val
+                    metrics.gradient_norm = 1.0 + i * 0.1  # Varying gradient norm
+                    losses.append(loss_val)
+                    grad_norms.append(metrics.gradient_norm)
 
             report = profiler.report()
 
+            # Verify step count
             assert report.total_steps == 10
+
+            # Verify timing - all should be positive
             assert report.forward_time_mean > 0
             assert report.backward_time_mean > 0
             assert report.update_time_mean > 0
             assert report.step_time_mean > 0
-            assert report.gradient_norm_mean == 1.0
-            assert report.initial_loss == 1.0
-            assert abs(report.final_loss - 0.1) < 1e-6
-            assert report.min_loss <= 0.1 + 1e-6
+
+            # Verify gradient norm statistics match expected calculations
+            expected_grad_mean = np.mean(grad_norms)
+            expected_grad_min = min(grad_norms)
+            expected_grad_max = max(grad_norms)
+            assert abs(report.gradient_norm_mean - expected_grad_mean) < 1e-6, \
+                f"Grad norm mean: expected {expected_grad_mean}, got {report.gradient_norm_mean}"
+            assert abs(report.gradient_norm_min - expected_grad_min) < 1e-6
+            assert abs(report.gradient_norm_max - expected_grad_max) < 1e-6
+
+            # Verify loss statistics match expected calculations
+            assert report.initial_loss == losses[0]
+            assert abs(report.final_loss - losses[-1]) < 1e-6
+            assert abs(report.min_loss - min(losses)) < 1e-6
 
     def test_report_loss_reduction(self):
         """Test report calculates loss reduction correctly."""
