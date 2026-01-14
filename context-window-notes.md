@@ -1128,5 +1128,92 @@ spm.SentencePieceTrainer.train(
 
 **Trade-off:** Would require external dependency (violates sovereignty principle) or implementing Unigram LM from scratch.
 
+---
+
+## [026] Tokenizer Swapping: Current State
+
+**User question:** Do we have an easy way to switch out tokenizers and run experiments?
+
+### Current Architecture
+
+**Yes, partially.** The processor accepts a tokenizer via constructor injection:
+
+```python
+# cortical/processor/core.py:41-53
+def __init__(
+    self,
+    tokenizer: Optional[Tokenizer] = None,
+    ...
+):
+    self.tokenizer = tokenizer or Tokenizer()
+```
+
+### Available Tokenizers
+
+| Tokenizer | Location | Purpose |
+|-----------|----------|---------|
+| `Tokenizer` | `cortical/tokenizer.py` | Main tokenizer (stop words, stemming) |
+| `BPETokenizer` | `cortical/cognitive/text_bridge.py` | BPE for cognitive agent |
+| `CodeTokenizer` | `cortical/spark/tokenizer.py` | Code-specific tokenization |
+| `DiffTokenizer` | `cortical/spark/diff_tokenizer.py` | Git diff tokenization |
+
+### What's Missing
+
+**No formal TokenizerProtocol.** Each tokenizer has different interfaces:
+
+| Method | Tokenizer | BPETokenizer | CodeTokenizer |
+|--------|-----------|--------------|---------------|
+| `tokenize(text)` | ✅ | ✅ | ✅ |
+| `extract_ngrams(tokens, n)` | ✅ | ❌ | ❌ |
+| `get_word_variants(word)` | ✅ | ❌ | ❌ |
+| `encode(text)` | ❌ | ✅ | ❌ |
+| `decode(ids)` | ❌ | ✅ | ❌ |
+
+### Experiment Framework
+
+There IS an experiment framework at `cortical/ml_experiments/experiment.py`, but it's for ML training experiments, not tokenizer comparison.
+
+### What Would Make Swapping Easy
+
+1. **Create TokenizerProtocol:**
+```python
+class TokenizerProtocol(Protocol):
+    def tokenize(self, text: str) -> List[str]: ...
+    def extract_ngrams(self, tokens: List[str], n: int) -> List[str]: ...
+```
+
+2. **Adapter pattern for incompatible tokenizers:**
+```python
+class BPETokenizerAdapter:
+    def __init__(self, bpe: BPETokenizer):
+        self._bpe = bpe
+
+    def tokenize(self, text: str) -> List[str]:
+        return self._bpe.tokenize(text)
+
+    def extract_ngrams(self, tokens: List[str], n: int) -> List[str]:
+        # Implement ngrams for BPE
+        return [' '.join(tokens[i:i+n]) for i in range(len(tokens)-n+1)]
+```
+
+3. **Experiment harness:**
+```python
+def run_tokenizer_experiment(tokenizer, corpus, metrics):
+    processor = CorticalTextProcessor(tokenizer=tokenizer)
+    for doc_id, text in corpus.items():
+        processor.process_document(doc_id, text)
+    processor.compute_all()
+    return evaluate_metrics(processor, metrics)
+```
+
+### Answer
+
+**Partial yes.** You CAN swap tokenizers via constructor injection, but:
+- No common Protocol (interface may not match)
+- No experiment harness for comparison
+- Need adapters for BPE/Code tokenizers
+
+**To add:** Would take ~2 hours to create proper TokenizerProtocol + adapters + experiment runner.
+
 I will communicate through the document.
 
