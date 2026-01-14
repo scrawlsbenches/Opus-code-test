@@ -3,8 +3,8 @@
   "last_training": "2026-01-14T00:29:12.866918",
   "total_documents": 166,
   "vocabulary_size": 8896,
-  "last_reindex_doc_count": 50,
-  "idf_epoch": 1,
+  "last_reindex_doc_count": 166,
+  "idf_epoch": 2,
   "documents": {
     "alignment/definitions.md": {
       "path": "alignment/definitions.md",
