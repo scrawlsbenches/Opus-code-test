@@ -346,12 +346,62 @@ Formed 10 abstractions:
 
 ---
 
-## [008] What's Next?
+## [008] Fixed Cognitive Agent
+
+**User:** There should be instructions in CLAUDE.md
+
+**Finding:** CLAUDE.md has a whole section on the Cognitive Agent. Key steps:
+
+```bash
+# 1. Check status
+./scripts/bootstrap_cognitive.sh --check
+# Result: Bridge NOT BUILT
+
+# 2. Bootstrap (rebuild links)
+./scripts/bootstrap_cognitive.sh
+# Result: 94905 atoms, 47271 links created
+
+# 3. Still broken - CLAUDE.md says train on cortical/
+python -m cortical.cognitive list | grep -c "cortical/"
+# Result: 0 (no cortical files trained!)
+
+# 4. Train on source code
+python -m cortical.cognitive train cortical/ --pattern "*.py"
+# Result: 262 new files, 108856 links
+
+# 5. Reindex (update IDF weights)
+python -m cortical.cognitive reindex
+# Result: 83472 links updated, 0% staleness
+```
+
+**Before training on cortical/:**
+```
+Q: "What is the cognitive agent?"
+A: "works with atom, link... decision, traditional, awkwardly"
+   (vague, irrelevant terms)
+```
+
+**After training on cortical/:**
+```
+Q: "What is the cognitive agent?"
+A: "works with training, hypergraph, semantic... trainer, incremental, truth"
+   (relevant technical terms!)
+
+Q: "How does transaction management work in GoT?"
+A: "involves auditplnrules, wovenauditmind... acid, schema, infer, modules"
+   (now mentions ACID, schema, modules)
+```
+
+**Lesson:** RTFM (CLAUDE.md). The instructions were there all along.
+
+---
+
+## [009] What's Next?
 
 Options:
-1. Fix the cognitive agent training issue?
-2. Try more GoT commands (query, edge, handoff)?
-3. Do something else entirely?
+1. Try more GoT commands (query, edge, handoff)?
+2. Exercise the cognitive demo?
+3. Something else?
 
 ---
 
