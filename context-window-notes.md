@@ -1071,5 +1071,62 @@ All tests pass including new chain-of-thought tests.
 **Branch:** `claude/context-window-file-UvbIH`
 **Latest commit:** `2da915b0`
 
+---
+
+## [025] Tokenization: What's Better Than BPE?
+
+**User question:** What is better than BPE for tokenization?
+
+### Short Answer
+
+**It depends on the use case.** BPE is good but has known limitations.
+
+### Alternatives to BPE
+
+| Method | Advantage Over BPE | Disadvantage |
+|--------|-------------------|--------------|
+| **Unigram LM** (SentencePiece) | Probabilistic, better subword selection | Slower training |
+| **WordPiece** (BERT) | Likelihood-based merging | Similar to BPE in practice |
+| **SentencePiece** | Language-agnostic, no pre-tokenization | Requires training |
+| **Tiktoken** (OpenAI) | Faster encoding, optimized for LLMs | Proprietary vocabulary |
+| **Character-level** | No OOV, simplest | Longer sequences, less semantic |
+| **Morphological** | Linguistically grounded | Language-specific |
+
+### For This Codebase
+
+The current `text_bridge.py` uses BPE-style tokenization. Better options:
+
+1. **Unigram LM** - Better for variable-length subwords, handles rare words more gracefully
+2. **Hybrid: Word + Subword** - Keep frequent terms whole, break rare ones
+3. **Domain-specific vocabulary** - Pre-seed with code tokens (`def`, `class`, `return`)
+
+### Why BPE Falls Short
+
+1. **Greedy merging** - Locally optimal, not globally optimal
+2. **No probabilistic model** - Can't score alternative segmentations
+3. **Frequency bias** - Common substrings dominate, rare concepts fragmented
+4. **No morphological awareness** - "running" → "run" + "ning" vs "run" + "ing"
+
+### Recommendation for Cortical
+
+If replacing BPE, use **Unigram LM** (via SentencePiece):
+- Probabilistic segmentation
+- Can sample alternative tokenizations
+- Better handling of rare/novel words
+- Widely used (T5, ALBERT, XLNet)
+
+```python
+# Example with SentencePiece
+import sentencepiece as spm
+spm.SentencePieceTrainer.train(
+    input='corpus.txt',
+    model_prefix='unigram',
+    model_type='unigram',  # Not 'bpe'
+    vocab_size=8000
+)
+```
+
+**Trade-off:** Would require external dependency (violates sovereignty principle) or implementing Unigram LM from scratch.
+
 I will communicate through the document.
 
