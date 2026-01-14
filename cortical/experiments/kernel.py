@@ -111,6 +111,7 @@ class ExperimentKernel:
     - Gradient clipping
     - Verbose logging
     - Clean interface for any protocol-compliant graph
+    - Position encoding support with proper gradient flow
 
     Usage:
         from cortical.graph.attention import AttentionGraph, create_causal_attention_graph
@@ -132,6 +133,7 @@ class ExperimentKernel:
         loss_fn: Any,  # LossFunction from trainable.py
         profiling: bool = True,
         track_memory: bool = True,
+        position_encoding: Any = None,  # Optional position encoding module
     ):
         """
         Initialize the experiment kernel.
@@ -142,10 +144,13 @@ class ExperimentKernel:
             loss_fn: Loss function instance (MSELoss, CrossEntropyLoss, etc.)
             profiling: Whether to collect profiling data
             track_memory: Whether to track memory allocation
+            position_encoding: Optional position encoding module (e.g., LearnedPositionEncoding)
+                             Must have a backward(input_gradients) method for gradient propagation
         """
         self.graph = graph
         self.optimizer = optimizer
         self.loss_fn = loss_fn
+        self.position_encoding = position_encoding
         self.profiler = Profiler(enabled=profiling, track_memory=track_memory)
         self._history = TrainingHistory()
 
@@ -194,15 +199,24 @@ class ExperimentKernel:
 
             # Backward pass
             with self.profiler.backward():
-                self.graph.backward(output_grads, num_layers=num_layers)
+                input_gradients = self.graph.backward(output_grads, num_layers=num_layers)
 
-            # Compute gradient norm before clipping
-            grad_norm = compute_gradient_norm(self.graph.parameters())
+                # Propagate gradients to position encoding if present
+                # This is critical: position encoding is added BEFORE forward,
+                # so we need to manually propagate gradients from input nodes
+                if self.position_encoding is not None and input_gradients is not None:
+                    self.position_encoding.backward(input_gradients)
+
+            # Compute gradient norm before clipping (include position encoding params)
+            all_params = self.graph.parameters()
+            if self.position_encoding is not None:
+                all_params = all_params + self.position_encoding.parameters()
+            grad_norm = compute_gradient_norm(all_params)
             metrics.gradient_norm = grad_norm
 
-            # Gradient clipping
+            # Gradient clipping (include position encoding if present)
             if clip_grad is not None:
-                clip_gradients(self.graph.parameters(), clip_grad)
+                clip_gradients(all_params, clip_grad)
 
             # Parameter update
             with self.profiler.update():

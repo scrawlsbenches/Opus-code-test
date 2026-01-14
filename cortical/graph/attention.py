@@ -184,13 +184,17 @@ class TrainableGraphProtocol(Protocol):
         self,
         output_gradients: Dict[str, Array],
         num_layers: int = 1,
-    ) -> None:
+    ) -> Optional[Dict[str, Array]]:
         """
         Compute gradients via backpropagation.
 
         Args:
             output_gradients: Gradient of loss w.r.t. each output node
             num_layers: Must match the forward pass
+
+        Returns:
+            Optional dict of input gradients (for propagating to external modules
+            like position encodings). May return None for backward compatibility.
         """
         ...
 
@@ -1255,7 +1259,7 @@ class AttentionGraph(BaseGraph[AttentionNode, AttentionEdge]):
         self,
         output_gradients: Dict[str, Array],
         num_layers: int = 1,
-    ) -> None:
+    ) -> Dict[str, Array]:
         """
         Backward pass through attention layers.
 
@@ -1266,6 +1270,11 @@ class AttentionGraph(BaseGraph[AttentionNode, AttentionEdge]):
 
             Each layer receives gradients from the layer above (or loss),
             computes its contribution, and passes gradients down.
+
+        Returns:
+            Dict mapping node_id to input gradients. These are the gradients
+            w.r.t. the inputs passed to forward(). Useful for propagating
+            gradients to external modules like position encodings.
         """
         # Backprop through layers in reverse order
         gradients = output_gradients.copy()
@@ -1278,6 +1287,9 @@ class AttentionGraph(BaseGraph[AttentionNode, AttentionEdge]):
         for node in self.nodes:
             if node.id in gradients and node.embedding is not None:
                 node.embedding.add_grad(gradients[node.id])
+
+        # Return input gradients for external use (e.g., position encoding)
+        return gradients
 
     def save_state(self) -> Dict[str, Any]:
         """

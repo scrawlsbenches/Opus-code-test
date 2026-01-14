@@ -216,7 +216,11 @@ def run_experiment(args: argparse.Namespace) -> int:
 
     optimizer = Adam(all_params, lr=config.lr)
     loss_fn = MSELoss()
-    kernel = ExperimentKernel(graph, optimizer, loss_fn, profiling=False)
+    kernel = ExperimentKernel(
+        graph, optimizer, loss_fn,
+        profiling=False,
+        position_encoding=pos_encoding,
+    )
 
     # Setup logging
     log = ExperimentLog(config)

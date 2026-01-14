@@ -10,6 +10,16 @@ where tokens appear in the sequence. Position encodings add this information.
 Supported types:
 - learned: Trainable embedding per position (default)
 - sinusoidal: Fixed sin/cos patterns (TODO)
+
+TODO(agent): Position encoding shows mixed results in experiments.
+SESSION_HANDOFF: Initial tests show learned position encoding doesn't consistently
+improve accuracy over baseline. Possible causes:
+1. Causal masking already provides implicit positional information
+2. Learned embeddings add parameters that make optimization harder
+3. May need different learning rate for position vs attention params
+4. Sinusoidal (fixed) encoding might work better than learned
+CONTEXT: Gradient flow is verified working. See comparison results at
+30/50/75/100 tokens showing position encoding sometimes hurts accuracy.
 """
 
 from __future__ import annotations
@@ -132,6 +142,30 @@ class LearnedPositionEncoding:
     def zero_grad(self):
         """Reset gradients."""
         self.embeddings.zero_grad()
+
+    def backward(self, input_gradients: Dict[str, np.ndarray]) -> None:
+        """
+        Accumulate gradients from input node gradients.
+
+        Since position encoding is added element-wise to inputs:
+            input_with_pos = token_emb + pos_enc
+
+        The gradient of loss w.r.t. pos_enc equals the gradient w.r.t. input_with_pos.
+
+        Args:
+            input_gradients: Dict mapping node_id to gradient w.r.t. input
+        """
+        for node_id, grad in input_gradients.items():
+            if node_id.startswith("pos_"):
+                try:
+                    position = int(node_id.split("_")[1])
+                    if position < self.max_len:
+                        # Accumulate gradient for this position
+                        if self.embeddings.grad is None:
+                            self.embeddings.grad = np.zeros_like(self.embeddings.data)
+                        self.embeddings.grad[position] += grad
+                except (IndexError, ValueError):
+                    pass  # Not a position node
 
 
 class SinusoidalPositionEncoding:
