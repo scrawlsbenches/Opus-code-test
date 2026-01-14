@@ -491,7 +491,13 @@ def scaled_dot_product_attention(
     # Numerical stability: subtract max before exp
     scores_stable = scores - np.max(scores)
     exp_scores = np.exp(scores_stable)
-    attention_weights = exp_scores / (np.sum(exp_scores) + 1e-10)
+    sum_exp = np.sum(exp_scores)
+
+    # Handle numerical underflow: if all exp_scores are ~0, use uniform weights
+    if sum_exp < 1e-10:
+        attention_weights = np.ones_like(exp_scores) / len(exp_scores)
+    else:
+        attention_weights = exp_scores / sum_exp
 
     # Weighted sum of values
     # Shape: (d_v,)

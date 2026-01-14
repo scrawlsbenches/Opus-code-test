@@ -43,9 +43,9 @@ class ExperimentConfig:
     dropout: float = 0.0
     use_bias: bool = False
 
-    # TODO(agent): Implement cross_entropy loss function
-    # SESSION_HANDOFF: Requires softmax output layer and vocab projection
-    # CONTEXT: Currently only "mse" is supported
+    # Loss function: "mse" for embedding matching, "cross_entropy" for language modeling
+    # - mse: Targets are next-token embeddings, outputs match embedding space
+    # - cross_entropy: Targets are token indices, outputs are logits over vocabulary
     loss_fn: str = "mse"
 
     # Position encoding type: "none", "learned", or "sinusoidal"
@@ -62,10 +62,9 @@ class ExperimentConfig:
                 f"num_heads ({self.num_heads})"
             )
 
-        if self.loss_fn not in ("mse",):
-            # TODO(agent): Remove this check when cross_entropy is implemented
+        if self.loss_fn not in ("mse", "cross_entropy"):
             raise ValueError(
-                f"loss_fn '{self.loss_fn}' not supported. Currently only 'mse' is available."
+                f"loss_fn '{self.loss_fn}' not supported. Use 'mse' or 'cross_entropy'."
             )
 
         if self.position_encoding not in ("none", "learned"):

@@ -269,11 +269,13 @@ class TrainableNode(NodeBase):
         output: Computed output after forward pass
         pre_activation: Value before activation (for backprop)
         incoming_messages: Messages from neighbors (for backprop)
+        layer_inputs: Input values at each layer (for multi-layer backprop)
     """
     embedding: Optional[Parameter] = None
     output: Optional[Array] = None
     pre_activation: Optional[Array] = None
     incoming_messages: List[Tuple[str, Array, float]] = field(default_factory=list)
+    layer_inputs: List[Array] = field(default_factory=list)
 
     def __hash__(self) -> int:
         return hash(self.id)
@@ -1147,9 +1149,10 @@ class TrainableGraph(BaseGraph[TrainableNode, TrainableEdge]):
         # Cache edge list for fast index access
         edges_list = list(self.edges)
 
-        # Initialize node values
+        # Initialize node values and clear layer_inputs for fresh forward pass
         values: Dict[str, Array] = {}
         for node in self.nodes:
+            node.layer_inputs = []  # Clear previous forward pass state
             if input_nodes and node.id in input_nodes:
                 values[node.id] = input_nodes[node.id].copy()
             elif node.embedding is not None:
@@ -1209,6 +1212,9 @@ class TrainableGraph(BaseGraph[TrainableNode, TrainableEdge]):
 
                 # Combine with self-loop (original embedding)
                 combined = values[node_id] + aggregated
+
+                # Store layer input for backward pass (the value before transform)
+                node.layer_inputs.append(combined.copy())
 
                 # Apply transformation
                 pre_activation = combined @ transform
@@ -1278,16 +1284,18 @@ class TrainableGraph(BaseGraph[TrainableNode, TrainableEdge]):
                 transform = self._layer_transforms[layer]
 
                 # Gradient w.r.t. transformation matrix
-                if node.embedding is not None:
-                    # Get input to this layer
-                    if layer == 0:
-                        layer_input = node.embedding.data
-                    else:
-                        layer_input = node.output if node.output is not None else node.embedding.data
+                # Use stored layer_inputs from forward pass for correct gradient
+                if layer < len(node.layer_inputs):
+                    layer_input = node.layer_inputs[layer]
+                elif node.embedding is not None:
+                    # Fallback for layer 0 or if forward wasn't called
+                    layer_input = node.embedding.data
+                else:
+                    layer_input = np.zeros(self.embedding_dim)
 
-                    # Outer product for transform gradient
-                    transform_grad = np.outer(layer_input, grad)
-                    transform.add_grad(transform_grad)
+                # Outer product for transform gradient
+                transform_grad = np.outer(layer_input, grad)
+                transform.add_grad(transform_grad)
 
                 # Gradient w.r.t. bias
                 if self.use_bias and layer < len(self._layer_biases):
