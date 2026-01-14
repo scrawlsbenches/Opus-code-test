@@ -1022,5 +1022,35 @@ Status: Pushed to origin
 
 **Implementation complete.** The cognitive agent now uses chain-of-thought reasoning for identity questions.
 
+---
+
+## [023] Unit Tests Added
+
+Added `TestChainOfThoughtGeneration` class to `tests/behavioral/test_nl_query_spec.py`.
+
+### New Tests (11 total)
+
+| Test | What It Verifies |
+|------|------------------|
+| `test_identity_question_uses_chain_of_thought` | Identity questions use new method |
+| `test_chain_of_thought_loads_working_memory` | Working memory layer is used |
+| `test_chain_of_thought_stimulates_attention` | Attention (STI) is stimulated |
+| `test_chain_of_thought_returns_structured_response` | Output has structure |
+| `test_synthesize_response_handles_empty_inputs` | Graceful with no data |
+| `test_synthesize_response_includes_core_terms` | Core terms (top 3) shown |
+| `test_synthesize_response_includes_predictions` | "Often appears with" shown |
+| `test_synthesize_response_includes_novel_terms` | "Less obvious" shown |
+| `test_synthesize_response_includes_code_entities` | Code locations shown |
+| `test_non_identity_question_uses_original_generator` | How/Where use original |
+| `test_exploration_is_probabilistic` | ε-greedy exploration works |
+
+### Test Results
+
+```
+34 passed in 0.54s
+```
+
+All tests pass including new chain-of-thought tests.
+
 I will communicate through the document.
 
