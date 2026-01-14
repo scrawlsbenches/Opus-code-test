@@ -3,7 +3,7 @@ AttentionGraph Implementation Review and Fixes
 
 Date: 2026-01-14
 Branch: claude/review-test-files-HjyTi
-Commits: f42a3c6b, 682ed758
+Commits: f42a3c6b, 682ed758, 1d6a97b1, 74e93e0f
 
 
 Overview
@@ -143,13 +143,30 @@ All fixes were verified with:
 
    Test: TestLoadStateLayerCreation.test_load_state_creates_missing_layers
 
+3. BIAS SAVE/LOAD TEST
+   Verified that when use_bias=True:
+   - All bias parameters (b_q, b_k, b_v, b_o) are saved in checkpoint
+   - Bias parameters are correctly restored on load
+   - Forward pass produces identical outputs after restoration
+
+   Test: TestLoadStateLayerCreation.test_load_state_with_bias_parameters
+
+   This test was added to close a coverage gap that could cause
+   "worked in training, fails in production" bugs.
+
 
 Test Coverage
 -------------
-After fixes:
-- cortical/graph/attention.py: 91% coverage
-- cortical/reasoning/attention_router.py: 97% coverage
-- Total attention tests: 178 (all passing)
+Final coverage after all fixes:
+
+    cortical/graph/attention.py:        92%
+    cortical/reasoning/attention_router.py: 97%
+    Total attention tests:              179 (all passing)
+
+Uncovered code analysis:
+- Protocol/ABC stubs (lines 155-207, 405-428): Cannot execute, by design
+- Embedding fallbacks to zeros: Defensive code, fails visibly if triggered
+- Cache miss paths: Error handling for corrupted state
 
 
 Key Learnings
@@ -175,6 +192,11 @@ Key Learnings
    When in doubt about gradient correctness, compare against numerical
    gradients using finite differences. Error < 1e-5 is usually acceptable.
 
+6. TEST CHECKPOINT SAVE/LOAD WITH ALL OPTIONS
+   If a feature has optional parameters (like use_bias=True), test that
+   checkpoints correctly save and restore state for all configurations.
+   Silent failures here cause "works in training, fails in prod" bugs.
+
 
 Files Modified
 --------------
@@ -182,6 +204,17 @@ Files Modified
 - tests/unit/test_attention_layer.py (test fixes)
 - tests/unit/test_attention_graph.py (test fixes)
 - tests/unit/test_attention_gradients.py (test fixes + new tests)
+- samples/attention_graph_implementation_review.txt (this document)
+
+
+New Tests Added
+---------------
+- TestDropoutGradients.test_dropout_gradient_consistency
+- TestDropoutGradients.test_dropout_gradient_numerical_verification
+- TestDropoutGradients.test_eval_mode_no_dropout_gradient
+- TestLoadStateLayerCreation.test_load_state_creates_missing_layers
+- TestLoadStateLayerCreation.test_load_state_preserves_layer_functionality
+- TestLoadStateLayerCreation.test_load_state_with_bias_parameters
 
 
 Related Documentation
