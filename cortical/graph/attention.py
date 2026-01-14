@@ -184,13 +184,17 @@ class TrainableGraphProtocol(Protocol):
         self,
         output_gradients: Dict[str, Array],
         num_layers: int = 1,
-    ) -> None:
+    ) -> Optional[Dict[str, Array]]:
         """
         Compute gradients via backpropagation.
 
         Args:
             output_gradients: Gradient of loss w.r.t. each output node
             num_layers: Must match the forward pass
+
+        Returns:
+            Optional dict of input gradients (for propagating to external modules
+            like position encodings). May return None for backward compatibility.
         """
         ...
 
@@ -587,6 +591,7 @@ class AttentionLayer(ProcessingLayer):
         embedding_dim: int,
         use_bias: bool = False,
         dropout: float = 0.0,
+        num_heads: int = 1,
     ):
         """
         Initialize attention layer.
@@ -595,8 +600,17 @@ class AttentionLayer(ProcessingLayer):
             embedding_dim: Dimension of node embeddings
             use_bias: Whether to use bias in projections
             dropout: Attention dropout rate (0 = no dropout)
+            num_heads: Number of attention heads (must divide embedding_dim)
         """
+        if embedding_dim % num_heads != 0:
+            raise ValueError(
+                f"embedding_dim ({embedding_dim}) must be divisible by "
+                f"num_heads ({num_heads})"
+            )
+
         self.embedding_dim = embedding_dim
+        self.num_heads = num_heads
+        self.head_dim = embedding_dim // num_heads
         self.use_bias = use_bias
         self.dropout = dropout
         self._training = True
@@ -757,20 +771,55 @@ class AttentionLayer(ProcessingLayer):
             self._cache["keys"][node_id] = keys.copy()
             self._cache["values"][node_id] = values.copy()
 
-            # Compute attention (the magic happens here)
-            attended, attn_weights = scaled_dot_product_attention(
-                query=query,
-                keys=keys,
-                values=values,
-                mask=None,  # Masking is implicit in graph structure
-            )
+            # Multi-head attention: reshape and compute per head
+            n_sources = len(source_ids)
+
+            if self.num_heads == 1:
+                # Single head: use original implementation for efficiency
+                attended, attn_weights = scaled_dot_product_attention(
+                    query=query,
+                    keys=keys,
+                    values=values,
+                    mask=None,
+                )
+                # Store as 2D for consistency (1, n_sources)
+                all_attn_weights = attn_weights.reshape(1, -1)
+            else:
+                # Multi-head: reshape into (num_heads, head_dim)
+                query_heads = query.reshape(self.num_heads, self.head_dim)
+                keys_heads = keys.reshape(n_sources, self.num_heads, self.head_dim)
+                values_heads = values.reshape(n_sources, self.num_heads, self.head_dim)
+
+                # Compute attention for each head
+                head_outputs = []
+                all_attn_weights = []
+
+                for h in range(self.num_heads):
+                    q_h = query_heads[h]  # (head_dim,)
+                    k_h = keys_heads[:, h, :]  # (n_sources, head_dim)
+                    v_h = values_heads[:, h, :]  # (n_sources, head_dim)
+
+                    attended_h, weights_h = scaled_dot_product_attention(
+                        query=q_h,
+                        keys=k_h,
+                        values=v_h,
+                        mask=None,
+                    )
+                    head_outputs.append(attended_h)
+                    all_attn_weights.append(weights_h)
+
+                # Concatenate head outputs: (num_heads, head_dim) -> (embedding_dim,)
+                attended = np.concatenate(head_outputs)
+                all_attn_weights = np.array(all_attn_weights)  # (num_heads, n_sources)
+                # Average weights across heads for interpretability
+                attn_weights = all_attn_weights.mean(axis=0)
 
             # Store attention weights for interpretability and backward pass
             attn_dict = {sid: float(w) for sid, w in zip(source_ids, attn_weights)}
             node.attention_weights = attn_dict
             self._cache["attention_weights"][node_id] = {
                 "source_ids": source_ids,
-                "weights": attn_weights.copy(),
+                "weights": all_attn_weights.copy(),  # Store per-head weights for backward
             }
 
             # Store pre-dropout value for backward pass
@@ -854,21 +903,51 @@ class AttentionLayer(ProcessingLayer):
                 # Get cached values for attention backward
                 attn_cache = self._cache["attention_weights"].get(node_id, {})
                 source_ids = attn_cache.get("source_ids", [])
-                attn_weights = attn_cache.get("weights", np.array([]))
+                all_attn_weights = attn_cache.get("weights", np.array([]))
 
                 if len(source_ids) > 0:
                     query = self._cache["queries"][node_id]
                     keys = self._cache["keys"][node_id]
                     values = self._cache["values"][node_id]
+                    n_sources = len(source_ids)
 
-                    # Backward through attention
-                    grad_query, grad_keys, grad_values = attention_backward(
-                        grad_output=grad_attended,
-                        query=query,
-                        keys=keys,
-                        values=values,
-                        attention_weights=attn_weights,
-                    )
+                    if self.num_heads == 1:
+                        # Single head: use original logic
+                        attn_weights = all_attn_weights.reshape(-1)
+                        grad_query, grad_keys, grad_values = attention_backward(
+                            grad_output=grad_attended,
+                            query=query,
+                            keys=keys,
+                            values=values,
+                            attention_weights=attn_weights,
+                        )
+                    else:
+                        # Multi-head: backward through each head
+                        query_heads = query.reshape(self.num_heads, self.head_dim)
+                        keys_heads = keys.reshape(n_sources, self.num_heads, self.head_dim)
+                        values_heads = values.reshape(n_sources, self.num_heads, self.head_dim)
+                        grad_attended_heads = grad_attended.reshape(self.num_heads, self.head_dim)
+
+                        grad_query_heads = []
+                        grad_keys_heads = np.zeros((n_sources, self.num_heads, self.head_dim))
+                        grad_values_heads = np.zeros((n_sources, self.num_heads, self.head_dim))
+
+                        for h in range(self.num_heads):
+                            gq_h, gk_h, gv_h = attention_backward(
+                                grad_output=grad_attended_heads[h],
+                                query=query_heads[h],
+                                keys=keys_heads[:, h, :],
+                                values=values_heads[:, h, :],
+                                attention_weights=all_attn_weights[h],
+                            )
+                            grad_query_heads.append(gq_h)
+                            grad_keys_heads[:, h, :] = gk_h
+                            grad_values_heads[:, h, :] = gv_h
+
+                        # Reshape back to full dimension
+                        grad_query = np.concatenate(grad_query_heads)
+                        grad_keys = grad_keys_heads.reshape(n_sources, self.embedding_dim)
+                        grad_values = grad_values_heads.reshape(n_sources, self.embedding_dim)
 
                     # Gradient through query projection
                     input_val = self._cache["input_values"][node_id]
@@ -1073,6 +1152,7 @@ class AttentionGraph(BaseGraph[AttentionNode, AttentionEdge]):
                 embedding_dim=self.embedding_dim,
                 use_bias=self.use_bias,
                 dropout=self.dropout,
+                num_heads=self.num_heads,
             )
             if self._training:
                 layer.train()
@@ -1179,7 +1259,7 @@ class AttentionGraph(BaseGraph[AttentionNode, AttentionEdge]):
         self,
         output_gradients: Dict[str, Array],
         num_layers: int = 1,
-    ) -> None:
+    ) -> Dict[str, Array]:
         """
         Backward pass through attention layers.
 
@@ -1190,6 +1270,11 @@ class AttentionGraph(BaseGraph[AttentionNode, AttentionEdge]):
 
             Each layer receives gradients from the layer above (or loss),
             computes its contribution, and passes gradients down.
+
+        Returns:
+            Dict mapping node_id to input gradients. These are the gradients
+            w.r.t. the inputs passed to forward(). Useful for propagating
+            gradients to external modules like position encodings.
         """
         # Backprop through layers in reverse order
         gradients = output_gradients.copy()
@@ -1202,6 +1287,9 @@ class AttentionGraph(BaseGraph[AttentionNode, AttentionEdge]):
         for node in self.nodes:
             if node.id in gradients and node.embedding is not None:
                 node.embedding.add_grad(gradients[node.id])
+
+        # Return input gradients for external use (e.g., position encoding)
+        return gradients
 
     def save_state(self) -> Dict[str, Any]:
         """

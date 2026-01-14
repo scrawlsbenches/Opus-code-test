@@ -197,3 +197,5 @@ models/cognitive_agent/bridge/
 # Benchmark harness runtime data (regenerate by running benchmarks)
 benchmarks/trainable_graph_benchmarks.json
 benchmarks/checkpoint_*.pkl
+experiments/runs/
+samples/subset/
