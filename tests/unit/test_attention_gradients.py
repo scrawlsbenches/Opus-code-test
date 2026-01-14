@@ -980,156 +980,19 @@ class TestEdgeCases:
 # =============================================================================
 # RUN TESTS
 # =============================================================================
-
-
-def run_all_tests():
-    """Run all test classes manually."""
-    print("="*70)
-    print("NUMERICAL GRADIENT VERIFICATION TESTS")
-    print("="*70)
-
-    # Test Attention Function Gradients
-    print("\n" + "="*70)
-    print("TEST SUITE: Attention Function Gradients")
-    print("="*70)
-
-    test_suite1 = TestAttentionFunctionGradients()
-    try:
-        test_suite1.test_query_gradient()
-        print("✓ test_query_gradient PASSED")
-    except AssertionError as e:
-        print(f"✗ test_query_gradient FAILED: {e}")
-
-    try:
-        test_suite1.test_keys_gradient()
-        print("✓ test_keys_gradient PASSED")
-    except AssertionError as e:
-        print(f"✗ test_keys_gradient FAILED: {e}")
-
-    try:
-        test_suite1.test_values_gradient()
-        print("✓ test_values_gradient PASSED")
-    except AssertionError as e:
-        print(f"✗ test_values_gradient FAILED: {e}")
-
-    try:
-        test_suite1.test_attention_with_different_dimensions()
-        print("✓ test_attention_with_different_dimensions PASSED")
-    except AssertionError as e:
-        print(f"✗ test_attention_with_different_dimensions FAILED: {e}")
-
-    # Test Attention Layer Gradients
-    print("\n" + "="*70)
-    print("TEST SUITE: Attention Layer Gradients")
-    print("="*70)
-
-    test_suite2 = TestAttentionLayerGradients()
-    try:
-        test_suite2.test_W_q_gradient()
-        print("✓ test_W_q_gradient PASSED")
-    except AssertionError as e:
-        print(f"✗ test_W_q_gradient FAILED: {e}")
-
-    try:
-        test_suite2.test_W_k_gradient()
-        print("✓ test_W_k_gradient PASSED")
-    except AssertionError as e:
-        print(f"✗ test_W_k_gradient FAILED: {e}")
-
-    try:
-        test_suite2.test_W_v_gradient()
-        print("✓ test_W_v_gradient PASSED")
-    except AssertionError as e:
-        print(f"✗ test_W_v_gradient FAILED: {e}")
-
-    try:
-        test_suite2.test_W_o_gradient()
-        print("✓ test_W_o_gradient PASSED")
-    except AssertionError as e:
-        print(f"✗ test_W_o_gradient FAILED: {e}")
-
-    try:
-        test_suite2.test_all_parameters_simultaneously()
-        print("✓ test_all_parameters_simultaneously PASSED")
-    except AssertionError as e:
-        print(f"✗ test_all_parameters_simultaneously FAILED: {e}")
-
-    # Test End-to-End Gradients
-    print("\n" + "="*70)
-    print("TEST SUITE: End-to-End Gradients")
-    print("="*70)
-
-    test_suite3 = TestEndToEndGradients()
-    try:
-        test_suite3.test_single_layer_embedding_gradient()
-        print("✓ test_single_layer_embedding_gradient PASSED")
-    except AssertionError as e:
-        print(f"✗ test_single_layer_embedding_gradient FAILED: {e}")
-
-    try:
-        test_suite3.test_multi_layer_embedding_gradient()
-        print("✓ test_multi_layer_embedding_gradient PASSED")
-    except AssertionError as e:
-        print(f"✗ test_multi_layer_embedding_gradient FAILED: {e}")
-
-    try:
-        test_suite3.test_different_loss_functions()
-        print("✓ test_different_loss_functions PASSED")
-    except AssertionError as e:
-        print(f"✗ test_different_loss_functions FAILED: {e}")
-
-    try:
-        test_suite3.test_longer_sequence()
-        print("✓ test_longer_sequence PASSED")
-    except AssertionError as e:
-        print(f"✗ test_longer_sequence FAILED: {e}")
-
-    # Test Gradient Accumulation
-    print("\n" + "="*70)
-    print("TEST SUITE: Gradient Accumulation")
-    print("="*70)
-
-    test_suite4 = TestGradientAccumulation()
-    try:
-        test_suite4.test_double_backward_doubles_gradient()
-        print("✓ test_double_backward_doubles_gradient PASSED")
-    except AssertionError as e:
-        print(f"✗ test_double_backward_doubles_gradient FAILED: {e}")
-
-    try:
-        test_suite4.test_zero_grad_clears_accumulation()
-        print("✓ test_zero_grad_clears_accumulation PASSED")
-    except AssertionError as e:
-        print(f"✗ test_zero_grad_clears_accumulation FAILED: {e}")
-
-    try:
-        test_suite4.test_multiple_output_nodes_accumulate()
-        print("✓ test_multiple_output_nodes_accumulate PASSED")
-    except AssertionError as e:
-        print(f"✗ test_multiple_output_nodes_accumulate FAILED: {e}")
-
-    # Test Edge Cases
-    print("\n" + "="*70)
-    print("TEST SUITE: Edge Cases")
-    print("="*70)
-
-    test_suite5 = TestEdgeCases()
-    try:
-        test_suite5.test_single_node_graph()
-        print("✓ test_single_node_graph PASSED")
-    except AssertionError as e:
-        print(f"✗ test_single_node_graph FAILED: {e}")
-
-    try:
-        test_suite5.test_small_embedding_dimension()
-        print("✓ test_small_embedding_dimension PASSED")
-    except AssertionError as e:
-        print(f"✗ test_small_embedding_dimension FAILED: {e}")
-
-    print("\n" + "="*70)
-    print("ALL TESTS COMPLETED")
-    print("="*70)
-
+# Use pytest to run these tests:
+#     pytest tests/unit/test_attention_gradients.py -v
+#
+# For verbose output with print statements:
+#     pytest tests/unit/test_attention_gradients.py -v -s
+#
+# To run specific test class:
+#     pytest tests/unit/test_attention_gradients.py::TestAttentionFunctionGradients -v
+# =============================================================================
 
 if __name__ == "__main__":
-    run_all_tests()
+    import pytest
+    import sys
+
+    # Run pytest on this file with verbose output
+    sys.exit(pytest.main([__file__, "-v", "-s"]))
