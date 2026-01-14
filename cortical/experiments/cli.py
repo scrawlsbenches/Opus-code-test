@@ -328,7 +328,7 @@ def run_experiment(args: argparse.Namespace) -> int:
                     output = logits[node_id]
                 else:
                     output = outputs[node_id]
-                total_loss += loss_fn.loss(output, target)
+                total_loss += loss_fn(output, target)
                 count += 1
 
         graph.train()  # Re-enable dropout
