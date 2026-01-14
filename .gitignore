@@ -193,3 +193,7 @@ trained_model_v2/
 # Tokenizer (~1.1MB) and manifest (~150KB) are essential for fast rebuild
 # Bridge (~152MB) contains FOLLOWS/SIMILARITY links - rebuild with: python -m cortical.cognitive rebuild-links
 models/cognitive_agent/bridge/
+
+# Benchmark harness runtime data (regenerate by running benchmarks)
+benchmarks/trainable_graph_benchmarks.json
+benchmarks/checkpoint_*.pkl

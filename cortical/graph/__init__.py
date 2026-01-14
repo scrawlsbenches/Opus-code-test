@@ -4,7 +4,7 @@ Graph Package: Unified Graph Architecture for Cortical.
 This package provides both the SemanticKnowledgeGraph (domain-specific)
 and a composable BaseGraph architecture for building custom graphs.
 
-BaseGraph Architecture (NEW):
+BaseGraph Architecture:
     - BaseGraph: Abstract base class for custom graph implementations
     - NodeBase, EdgeBase: Protocol-based node/edge contracts
     - InMemoryGraphStorage: High-performance in-memory storage
@@ -17,6 +17,27 @@ BaseGraph Architecture (NEW):
         >>> graph.add_node("B", content="Concept B")
         >>> graph.add_edge("A", "B", edge_type="related")
         >>> pagerank = graph.compute_pagerank()
+
+TrainableGraph (Graph Neural Network):
+    - TrainableGraph: Graph with learnable parameters and gradient descent
+    - TrainableNode: Node with learnable embedding vectors
+    - TrainableEdge: Edge with learnable weights
+    - Optimizers: SGD, Adam, AdaGrad, RMSprop
+    - Loss functions: MSE, MAE, CrossEntropy, Huber, Contrastive
+    - LR schedulers: StepLR, ExponentialLR, CosineAnnealing, ReduceOnPlateau
+
+    Example:
+        >>> from cortical.graph import TrainableGraph, Adam, MSELoss
+        >>> import numpy as np
+        >>> graph = TrainableGraph(embedding_dim=16)
+        >>> graph.add_node("A")
+        >>> graph.add_node("B")
+        >>> graph.add_edge("A", "B")
+        >>> optimizer = Adam(graph.parameters(), lr=0.01)
+        >>> outputs = graph.forward(num_layers=2)
+        >>> loss = MSELoss()(outputs["B"], target)
+        >>> graph.backward({"B": MSELoss().gradient(outputs["B"], target)})
+        >>> optimizer.step()
 
 SemanticKnowledgeGraph (Existing):
     - SemanticKnowledgeGraph: Unified orchestrator for cognitive architecture
@@ -66,6 +87,45 @@ from .implementations import (
     DAGGraph,
     WeightedEdge,
     WeightedGraph,
+)
+
+from .trainable import (
+    # Core types
+    TrainableNode,
+    TrainableEdge,
+    TrainableGraph,
+    Parameter,
+    # Activation and aggregation
+    Activation,
+    Aggregation,
+    apply_activation,
+    activation_derivative,
+    aggregate_messages,
+    # Loss functions
+    LossFunction,
+    MSELoss,
+    MAELoss,
+    CrossEntropyLoss,
+    BinaryCrossEntropyLoss,
+    HuberLoss,
+    ContrastiveLoss,
+    # Optimizers
+    Optimizer,
+    SGD,
+    Adam,
+    AdaGrad,
+    RMSprop,
+    # Learning rate schedulers
+    LRScheduler,
+    StepLR,
+    ExponentialLR,
+    CosineAnnealingLR,
+    ReduceLROnPlateau,
+    # Training utilities
+    EarlyStopping,
+    TrainingHistory,
+    train_step,
+    fit,
 )
 
 # =============================================================================
@@ -119,6 +179,37 @@ __all__ = [
     'DAGGraph',
     'WeightedEdge',
     'WeightedGraph',
+    # Trainable Graph (NEW)
+    'TrainableNode',
+    'TrainableEdge',
+    'TrainableGraph',
+    'Parameter',
+    'Activation',
+    'Aggregation',
+    'apply_activation',
+    'activation_derivative',
+    'aggregate_messages',
+    'LossFunction',
+    'MSELoss',
+    'MAELoss',
+    'CrossEntropyLoss',
+    'BinaryCrossEntropyLoss',
+    'HuberLoss',
+    'ContrastiveLoss',
+    'Optimizer',
+    'SGD',
+    'Adam',
+    'AdaGrad',
+    'RMSprop',
+    'LRScheduler',
+    'StepLR',
+    'ExponentialLR',
+    'CosineAnnealingLR',
+    'ReduceLROnPlateau',
+    'EarlyStopping',
+    'TrainingHistory',
+    'train_step',
+    'fit',
     # SemanticKnowledgeGraph (Existing)
     'SemanticKnowledgeGraph',
     'GraphNode',

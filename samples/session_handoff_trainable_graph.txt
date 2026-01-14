@@ -1,0 +1,105 @@
+Session Handoff: TrainableGraph Development and Benchmarking
+============================================================
+Date: 2026-01-14
+Branch: claude/trainable-graph-gradient-descent-uBJkg
+
+CONTEXT
+-------
+We implemented a TrainableGraph system for gradient descent on graph structures,
+then built a benchmark harness to evaluate its performance as a character-level
+language model.
+
+CURRENT STATE
+-------------
+1. TrainableGraph Implementation (cortical/graph/trainable.py):
+   - TrainableNode/TrainableEdge with learnable parameters
+   - Forward/backward passes with message passing
+   - Adjacency caching for performance optimization (~28% speedup)
+   - Checkpoint/resume support for all optimizers (SGD, Adam, AdaGrad, RMSprop)
+
+2. Benchmark Harness (examples/trainable_graph_benchmark.py):
+   - Modes: train, eval, continuous, report, overfit
+   - Tracks: loss, perplexity, accuracy (top-1/top-5), timing, generation samples
+   - Word quality metrics for overfit experiments
+   - JSON logging to benchmarks/trainable_graph_benchmarks.json
+
+3. Language Model Example (examples/trainable_graph_language_model.py):
+   - Character-level prediction using graph message passing
+   - Context window with position embeddings
+   - Works but has fundamental limitations (see below)
+
+KEY FINDING FROM OVERFIT EXPERIMENT
+-----------------------------------
+We ran a single-document overfitting test (200 epochs, compilers.txt):
+- Loss decreased: 2.91 -> 2.20 (model IS learning)
+- Perplexity improved: 18.4 -> 9.0
+- BUT word quality stayed at ~4%, only generating "the" and "and"
+
+The model learns character-level patterns and common suffixes (-tion, -ing, -ers)
+but struggles to form complete words beyond the shortest common ones.
+
+MY INTERPRETATION
+-----------------
+The message-passing architecture may not be well-suited for sequential character
+prediction. Each position node aggregates messages from neighbors, but this
+doesn't capture the strict left-to-right dependencies that word formation requires.
+
+The model essentially learns:
+- Character frequency distributions (good)
+- Common character bigrams/trigrams (decent)
+- Word boundaries via spaces (partial)
+- Complete word spelling (poor)
+
+POTENTIAL IMPROVEMENTS TO EXPLORE
+---------------------------------
+1. Attention mechanism instead of/alongside message passing
+2. Larger hidden dimensions (current: 64, try 128-256)
+3. More message passing layers (current: 2-3, try 4-6)
+4. Word-level tokenization instead of character-level
+5. Recurrent connections in the graph structure
+6. Different aggregation functions (attention-weighted vs sum)
+
+BENCHMARK DATA AVAILABLE
+------------------------
+benchmarks/trainable_graph_benchmarks.json contains 3 runs:
+- Run 1: 15 epochs, train mode, 21.4% accuracy
+- Run 2: 10 epochs, smaller dataset, 18.7% accuracy
+- Run 3: 200 epochs, overfit mode, 23.2% accuracy, 4% word quality
+
+FILES TO REVIEW
+---------------
+- cortical/graph/trainable.py - Core implementation
+- examples/trainable_graph_benchmark.py - Benchmark harness
+- examples/trainable_graph_language_model.py - Language model
+- benchmarks/trainable_graph_benchmarks.json - Results log
+
+OPEN QUESTIONS
+--------------
+1. Is the graph structure fundamentally limited for sequence modeling?
+2. Would more training (1000+ epochs) eventually memorize words?
+3. Could hybrid approaches (graph + RNN/attention) work better?
+4. Is character-level the right granularity for this architecture?
+
+MY HONEST ASSESSMENT
+--------------------
+The TrainableGraph is an interesting research direction but may not be the right
+tool for language modeling specifically. Graph neural networks excel at problems
+with explicit relational structure (molecules, social networks, knowledge graphs).
+For sequential text, the graph structure we imposed (linear chain with skip
+connections) doesn't add much over a standard neural network, and may actually
+hurt by diffusing information through message passing rather than maintaining
+strict sequential order.
+
+That said, the infrastructure we built (benchmark harness, checkpointing, metrics
+tracking) is solid and could be valuable for testing other graph-based learning
+tasks where the architecture is a better fit.
+
+SUGGESTED NEXT STEPS
+--------------------
+1. Run longer overfit experiments (500-1000 epochs) to find the ceiling
+2. Try much larger model capacity to see if it's a capacity issue
+3. Consider pivoting to a task where graph structure is more natural
+4. Or add attention mechanism to preserve sequential information better
+
+---
+End of handoff document
