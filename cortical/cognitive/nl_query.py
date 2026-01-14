@@ -411,7 +411,10 @@ class NLQuery:
             return f"I don't have information about {concepts_str}. Try training on relevant documents or indexing code."
 
         # Generate summary based on question type
-        if intent.question_type == "where":
+        # Use chain-of-thought reasoning for identity questions
+        if self._is_identity_question(intent.raw_question):
+            return self._generate_response_with_reasoning(intent, knowledge)
+        elif intent.question_type == "where":
             lines.append(self._generate_location_summary(intent, knowledge))
         elif intent.question_type == "how":
             lines.append(self._generate_mechanism_summary(intent, knowledge))
@@ -500,6 +503,149 @@ class NLQuery:
             return f"Related to: {', '.join(knowledge.associations[:5])}"
         else:
             return f"Information about {', '.join(intent.concepts)}:"
+
+    def _generate_response_with_reasoning(
+        self,
+        intent: QueryIntent,
+        knowledge: GatheredKnowledge
+    ) -> str:
+        """
+        Generate response using all 7 cognitive layers.
+
+        Chain-of-thought approach:
+        1. Load concepts into working memory
+        2. Get attention-ranked associations (STI)
+        3. Predict next concepts (co-occurrence)
+        4. Explore novel connections (ε-greedy)
+        5. Synthesize coherent response
+
+        Args:
+            intent: Parsed query intent
+            knowledge: Gathered knowledge from registry tools
+
+        Returns:
+            Coherent response string
+        """
+        # Phase 1: Load query concepts into working memory
+        loaded_atoms = []
+        for concept in intent.concepts[:4]:  # WorkingMemory capacity is 4
+            # Try to find atom by name
+            atom = self.agent.graph.get_node(concept)
+            if atom:
+                self.agent.working_memory.load(atom)
+                loaded_atoms.append(atom)
+                # Stimulate attention on queried concepts
+                self.agent.graph.stimulate(concept, 2.0)
+
+        # Phase 2: Get attention-ranked terms (high STI = recently/frequently used)
+        focus = self.agent.graph.get_attention_focus(top_k=15)
+        ranked_terms = []
+        for atom in focus:
+            if atom.name and atom.name.lower() not in STOP_WORDS:
+                ranked_terms.append(atom.name)
+        ranked_terms = ranked_terms[:8]  # Limit
+
+        # Phase 3: Predict next concepts from working memory context
+        context = self.agent.working_memory.contents()
+        predicted_terms = []
+        if context:
+            predictions = self.agent.predictor.predict(context)
+            for atom_id, prob in predictions[:5]:
+                pred_atom = self.agent.graph.get_atom(atom_id)
+                if pred_atom and pred_atom.name:
+                    predicted_terms.append(pred_atom.name)
+
+        # Phase 4: Explore novel connections (ε-greedy)
+        novel_terms = []
+        if self.agent.exploration.should_explore():
+            # Get atoms outside current context
+            context_ids = {a.id for a in context}
+            all_focus = self.agent.graph.get_attention_focus(top_k=50)
+            for atom in all_focus:
+                if atom.id not in context_ids and atom.name:
+                    if atom.name.lower() not in STOP_WORDS:
+                        novel_terms.append(atom.name)
+                        if len(novel_terms) >= 2:
+                            break
+
+        # Phase 5: Synthesize response
+        return self._synthesize_response(
+            intent, knowledge, ranked_terms, predicted_terms, novel_terms
+        )
+
+    def _synthesize_response(
+        self,
+        intent: QueryIntent,
+        knowledge: GatheredKnowledge,
+        ranked_terms: List[str],
+        predicted_terms: List[str],
+        novel_terms: List[str]
+    ) -> str:
+        """
+        Synthesize coherent response from cognitive layer outputs.
+
+        Args:
+            intent: Original query intent
+            knowledge: Gathered knowledge
+            ranked_terms: Attention-ranked terms (high STI)
+            predicted_terms: Predicted next concepts
+            novel_terms: Novel connections from exploration
+
+        Returns:
+            Formatted response string
+        """
+        lines = []
+        subject = intent.concepts[0] if intent.concepts else "this"
+
+        # Build main description using attention-ranked terms
+        if ranked_terms:
+            # Categorize terms
+            core_terms = ranked_terms[:3]
+            supporting_terms = ranked_terms[3:6]
+
+            # Main statement
+            core_str = ", ".join(core_terms)
+            lines.append(f"**{subject.title()}** relates to: {core_str}.")
+
+            # Supporting context
+            if supporting_terms:
+                support_str = ", ".join(supporting_terms)
+                lines.append(f"Also connected to: {support_str}.")
+        elif knowledge.associations:
+            # Fallback to gathered associations
+            assoc_str = ", ".join(knowledge.associations[:5])
+            lines.append(f"**{subject.title()}** is associated with: {assoc_str}.")
+
+        # Add predictions (what typically follows)
+        if predicted_terms:
+            pred_str = ", ".join(predicted_terms[:3])
+            lines.append(f"Often appears with: {pred_str}.")
+
+        # Add novel connections (exploration)
+        if novel_terms:
+            novel_str = ", ".join(novel_terms)
+            lines.append(f"Related but less obvious: {novel_str}.")
+
+        # Add code locations if available
+        if knowledge.code_entities:
+            lines.append("")
+            lines.append("**Code locations:**")
+            for entity in knowledge.code_entities[:3]:
+                file_path = entity.metadata.get("file_path", "unknown")
+                lineno = entity.metadata.get("lineno", "?")
+                lines.append(f"  - {entity.name} ({file_path}:{lineno})")
+
+        # Add methods if available
+        if knowledge.methods:
+            lines.append("")
+            lines.append("**Methods:**")
+            for method in knowledge.methods[:3]:
+                lines.append(f"  - {method.name}")
+
+        if not lines:
+            return f"I don't have detailed information about {subject}."
+
+        return "\n".join(lines)
 
     def _generate_identity_summary(
         self,

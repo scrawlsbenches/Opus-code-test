@@ -1,11 +1,19 @@
 {
-  "edge": 3138,
-  "edges": 3139,
-  "edgeswithrelations": 3140,
-  "edgetype": 3141,
-  "edit": 3142,
-  "edition": 3143,
-  "education": 3144,
-  "educational": 3145,
-  "edward": 3146
+  "edge": 2400,
+  "edgedata": 2401,
+  "edgeid": 2402,
+  "edges": 2403,
+  "edgeschema": 2404,
+  "edgesfrom": 2405,
+  "edgespec": 2406,
+  "edgesto": 2407,
+  "edgetype": 2408,
+  "edgetypes": 2409,
+  "edgetypestr": 2410,
+  "edit": 2411,
+  "editable": 2412,
+  "edits": 2413,
+  "edjpt": 2414,
+  "education": 2415,
+  "educational": 2416
 }

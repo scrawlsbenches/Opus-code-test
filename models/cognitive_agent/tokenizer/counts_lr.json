@@ -1,6 +1,4 @@
 {
   "lrucache": 1,
-  "lru": 27,
-  "lrfd": 2,
-  "lr": 2
+  "lru": 25
 }

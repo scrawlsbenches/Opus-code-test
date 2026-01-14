@@ -1,12 +1,4 @@
 {
-  "fp": 16,
-  "fprate": 6,
-  "fpgas": 1,
-  "fpg": 1,
-  "fpga": 2,
-  "fpfh": 2,
-  "fpk": 1,
-  "fps": 2,
-  "fpn": 8,
-  "fpo": 2
+  "fp": 2,
+  "fprate": 1
 }

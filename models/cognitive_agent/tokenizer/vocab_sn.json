@@ -1,7 +1,13 @@
 {
-  "snake": 8413,
-  "snakecase": 8414,
-  "snapshot": 8415,
-  "snapshots": 8416,
-  "snow": 8417
+  "snake": 7056,
+  "snakecase": 7057,
+  "snap": 7058,
+  "snapshot": 7059,
+  "snapshotid": 7060,
+  "snapshotmanager": 7061,
+  "snapshotrecovery": 7062,
+  "snapshots": 7063,
+  "snapshotsdir": 7064,
+  "snapshotversion": 7065,
+  "snippets": 7066
 }

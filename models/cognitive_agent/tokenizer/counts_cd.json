@@ -1,5 +1,5 @@
 {
-  "cdg": 371,
+  "cdg": 353,
   "cdgstore": 22,
   "cdgmodule": 3,
   "cdgtransactionmanager": 11,
@@ -7,11 +7,8 @@
   "cdgerror": 5,
   "cdgwalmanager": 8,
   "cdgwal": 8,
-  "cd": 4,
+  "cd": 2,
   "cdgconfig": 23,
   "cdgstoragestories": 1,
-  "cdgtx": 4,
-  "cdrh": 2,
-  "cder": 2,
-  "cdc": 2
+  "cdgtx": 4
 }

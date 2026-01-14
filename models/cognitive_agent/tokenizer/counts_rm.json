@@ -1,8 +1,4 @@
 {
   "rm": 6,
-  "rmtree": 1,
-  "rmi": 2,
-  "rmin": 3,
-  "rma": 12,
-  "rmsprop": 1
+  "rmtree": 1
 }

@@ -1,19 +1,11 @@
 {
-  "by": 1603,
+  "by": 272,
   "byname": 3,
-  "bypass": 25,
-  "bytes": 23,
-  "bypassing": 2,
-  "bypassed": 2,
+  "bypass": 6,
+  "bytes": 14,
+  "bypassing": 1,
+  "bypassed": 1,
   "bystatus": 1,
   "bysprint": 1,
-  "byepic": 1,
-  "byzantine": 16,
-  "byproducts": 2,
-  "bytecode": 2,
-  "byte": 2,
-  "bypasses": 2,
-  "byproduct": 1,
-  "bystander": 3,
-  "byteorder": 2
+  "byepic": 1
 }

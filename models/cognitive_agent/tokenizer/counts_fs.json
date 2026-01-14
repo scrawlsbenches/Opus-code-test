@@ -1,10 +1,7 @@
 {
-  "fsync": 40,
+  "fsync": 39,
   "fsynced": 2,
   "fsyncnow": 2,
   "fsyncfile": 1,
-  "fsyncs": 3,
-  "fs": 3,
-  "fsm": 2,
-  "fsc": 2
+  "fsyncs": 3
 }

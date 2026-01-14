@@ -1,7 +1,7 @@
 {
   "tx": 207,
   "txid": 17,
-  "txt": 56,
+  "txt": 41,
   "txprepare": 1,
   "txcommit": 6,
   "txmanager": 14,
@@ -12,6 +12,5 @@
   "txsprinttonode": 3,
   "txdecisiontonode": 2,
   "txepictonode": 2,
-  "txhandofftonode": 2,
-  "txv": 4
+  "txhandofftonode": 2
 }

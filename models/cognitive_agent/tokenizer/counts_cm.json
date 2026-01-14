@@ -3,7 +3,7 @@
   "cmd": 27,
   "cmdktshow": 1,
   "cmax": 1,
-  "cm": 4,
+  "cm": 3,
   "cmdhandoffinitiate": 1,
   "cmdhandoffaccept": 1,
   "cmdhandoffcomplete": 1,
@@ -19,7 +19,5 @@
   "cmdtasknext": 1,
   "cmdsprintcreate": 1,
   "cmdsprintlist": 1,
-  "cmdtaskimport": 2,
-  "cmyk": 4,
-  "cms": 6
+  "cmdtaskimport": 2
 }
