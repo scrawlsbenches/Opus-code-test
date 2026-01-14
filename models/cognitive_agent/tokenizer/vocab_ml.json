@@ -1,8 +1,18 @@
 {
-  "ml": 5732,
-  "mlcollector": 5733,
-  "mldatacollector": 5734,
-  "mlexperiments": 5735,
-  "mlfileprediction": 5736,
-  "mlstore": 5737
+  "ml": 4799,
+  "mlcollectionenabled": 4800,
+  "mlcollector": 4801,
+  "mldatacollector": 4802,
+  "mlexperiments": 4803,
+  "mlfileprediction": 4804,
+  "mlguide": 4805,
+  "mlintelligence": 4806,
+  "mlintelligencegenerator": 4807,
+  "mlintro": 4808,
+  "mlregression": 4809,
+  "mlstorage": 4810,
+  "mlsuggestblocking": 4811,
+  "mlsuggestenabled": 4812,
+  "mlsuggestthreshold": 4813,
+  "mlsuggesttopn": 4814
 }

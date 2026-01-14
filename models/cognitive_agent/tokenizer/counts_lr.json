@@ -1,9 +1,4 @@
 {
-  "lrucache": 7,
-  "lru": 77,
-  "lrfd": 2,
-  "lr": 2,
-  "lrukey": 2,
-  "lruid": 2,
-  "lrueviction": 1
+  "lrucache": 1,
+  "lru": 25
 }

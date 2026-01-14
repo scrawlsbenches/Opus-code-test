@@ -1,8 +1,6 @@
 {
-  "ll": 102,
-  "llm": 20,
+  "ll": 51,
+  "llm": 17,
   "llms": 3,
-  "llmorchestration": 5,
-  "llc": 2,
-  "lloyd": 1
+  "llmorchestration": 2
 }

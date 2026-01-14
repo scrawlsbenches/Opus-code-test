@@ -1,16 +1,14 @@
 {
-  "cdg": 1297,
-  "cdgconfig": 1298,
-  "cdgerror": 1299,
-  "cdgexecutor": 1300,
-  "cdgindexmanager": 1301,
-  "cdgmodule": 1302,
-  "cdgquery": 1303,
-  "cdgqueryengine": 1304,
-  "cdgqueryerror": 1305,
-  "cdgrecoverymanager": 1306,
-  "cdgstore": 1307,
-  "cdgtransactionmanager": 1308,
-  "cdgwal": 1309,
-  "cdgwalmanager": 1310
+  "cd": 987,
+  "cdg": 988,
+  "cdgconfig": 989,
+  "cdgerror": 990,
+  "cdgmodule": 991,
+  "cdgrecoverymanager": 992,
+  "cdgstoragestories": 993,
+  "cdgstore": 994,
+  "cdgtransactionmanager": 995,
+  "cdgtx": 996,
+  "cdgwal": 997,
+  "cdgwalmanager": 998
 }

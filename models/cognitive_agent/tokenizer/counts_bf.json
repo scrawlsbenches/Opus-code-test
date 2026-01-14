@@ -1,14 +1,4 @@
 {
-  "bfs": 123,
-  "bf": 15,
-  "bft": 2,
-  "bfo": 2,
-  "bfixme": 1,
-  "bfind": 1,
-  "bfstraverse": 2,
-  "bfsiterate": 2,
-  "bfsdistances": 2,
-  "bfunction": 1,
-  "bforget": 1,
-  "bfix": 1
+  "bfs": 15,
+  "bf": 8
 }

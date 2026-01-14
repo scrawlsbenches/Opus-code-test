@@ -472,11 +472,60 @@ datetime now timezone utc isoformat...
 
 ---
 
-## [012] What's Next?
+## [012] Reset Model - Train on Samples Only
 
-Options:
-1. Train cognitive agent on only docs/markdown and try generate again?
-2. Move on to something else?
+**User:** Reset the model and only train on the samples
+
+```bash
+$ rm -rf models/cognitive_agent
+$ python -m cortical.cognitive train samples/ --pattern "*.md"
+New: 165 files, 8862 vocabulary, 77832 links
+```
+
+**Generate results (prose-trained):**
+
+```bash
+$ python -m cortical.cognitive generate "cognitive agent" -n 30
+cognitive agent knowledge transfer sprint status pending tasks
+decisions made decision rationale alternatives considered options...
+
+$ python -m cortical.cognitive generate "understanding" -n 30 -t 0.7
+understanding is it matters modular design schema validation
+error handling current state inspection status pending implement fix...
+
+$ python -m cortical.cognitive generate "market prediction" -n 30
+market prediction model was done update session start end hook
+stop words true false positive good decisions made...
+```
+
+**Comparison:**
+
+| Training Data | Output Style |
+|---------------|--------------|
+| Code (~95%) | `self graph nodes if not in self` |
+| Prose (samples/) | `knowledge transfer sprint status pending tasks` |
+
+**Verdict:** Much more readable! But still loops into repeated patterns ("decisions made decision rationale..."). The model lacks:
+- Long-range coherence
+- Grammar/syntax rules
+- Ability to stay on topic
+
+**What it IS good for:**
+- Domain-specific word prediction
+- Understanding what terms co-occur in docs
+- Quick "what comes next after X" lookup
+
+---
+
+## [013] Session Summary
+
+This file-based communication experiment taught us:
+
+1. **File approach works** - Append-only + read-from-end is viable
+2. **CLI tools vary widely** - `got dashboard` useful, `audit reason` not
+3. **Cognitive agent = semantic similarity engine** - Not Q&A, not conversation
+4. **Generate = n-gram predictor** - Speaks whatever language it's trained on
+5. **RTFM** - CLAUDE.md has answers
 
 ---
 

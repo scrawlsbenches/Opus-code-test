@@ -1,13 +1,5 @@
 {
-  "ms": 340,
+  "ms": 29,
   "msgpack": 1,
-  "msg": 105,
-  "mscs": 1,
-  "msc": 5,
-  "msv": 1,
-  "mse": 4,
-  "msgid": 31,
-  "msgs": 3,
-  "msgfile": 7,
-  "msglower": 5
+  "msg": 5
 }

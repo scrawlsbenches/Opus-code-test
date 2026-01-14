@@ -1,4 +1,7 @@
 {
-  "fs": 3891,
-  "fsync": 3892
+  "fsync": 3153,
+  "fsynced": 3154,
+  "fsyncfile": 3155,
+  "fsyncnow": 3156,
+  "fsyncs": 3157
 }

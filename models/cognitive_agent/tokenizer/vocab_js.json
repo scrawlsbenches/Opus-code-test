@@ -1,8 +1,9 @@
 {
-  "js": 4972,
-  "json": 4973,
-  "jsondecodeerror": 4974,
-  "jsondir": 4975,
-  "jsonl": 4976,
-  "jsonstr": 4977
+  "js": 4140,
+  "json": 4141,
+  "jsondata": 4142,
+  "jsondecodeerror": 4143,
+  "jsonl": 4144,
+  "jsonschema": 4145,
+  "jsonserializer": 4146
 }

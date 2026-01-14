@@ -1,14 +1,5 @@
 {
-  "ctx": 170,
+  "ctx": 2,
   "ctrsi": 2,
-  "ctr": 2,
-  "ct": 23,
-  "ctl": 6,
-  "ctxline": 2,
-  "ctrl": 2,
-  "ctargets": 4,
-  "ctxfile": 3,
-  "ctxdata": 2,
-  "ctxlen": 10,
-  "ctxtuple": 4
+  "ctr": 2
 }

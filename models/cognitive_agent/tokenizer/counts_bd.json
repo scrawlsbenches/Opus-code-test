@@ -1,12 +1,3 @@
 {
-  "bdd": 31,
-  "bdnf": 2,
-  "bdef": 3,
-  "bdo": 1,
-  "bdisregard": 1,
-  "bdelete": 1,
-  "bdeprecate": 1,
-  "bdrop": 1,
-  "bdocument": 1,
-  "bdescribe": 1
+  "bdd": 15
 }

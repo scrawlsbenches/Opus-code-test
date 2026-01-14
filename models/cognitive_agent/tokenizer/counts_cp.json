@@ -1,11 +1,4 @@
 {
-  "cpu": 62,
-  "cprofile": 7,
-  "cp": 9,
-  "cpus": 1,
-  "cpk": 2,
-  "cpim": 2,
-  "cpr": 2,
-  "cpvc": 2,
-  "cpp": 5
+  "cpu": 8,
+  "cprofile": 5
 }

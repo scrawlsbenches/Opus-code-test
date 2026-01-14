@@ -1,4 +1,6 @@
 {
-  "os": 6260,
-  "oserror": 6261
+  "os": 5255,
+  "oscillation": 5256,
+  "oscillations": 5257,
+  "oserror": 5258
 }

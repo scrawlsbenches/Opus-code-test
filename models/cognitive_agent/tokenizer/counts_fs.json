@@ -1,12 +1,7 @@
 {
-  "fsync": 109,
-  "fsynced": 5,
-  "fsyncnow": 4,
-  "fsyncfile": 6,
-  "fsyncs": 3,
-  "fs": 220,
-  "fsm": 2,
-  "fsc": 2,
-  "fsyncall": 3,
-  "fsyncdir": 3
+  "fsync": 39,
+  "fsynced": 2,
+  "fsyncnow": 2,
+  "fsyncfile": 1,
+  "fsyncs": 3
 }

@@ -1,6 +1,8 @@
 {
-  "qa": 7100,
-  "qapv": 7101,
-  "qapvanomaly": 7102,
-  "qarg": 7103
+  "qa": 5945,
+  "qapv": 5946,
+  "qapvpattern": 5947,
+  "qapvverification": 5948,
+  "qarrw": 5949,
+  "qavariations": 5950
 }

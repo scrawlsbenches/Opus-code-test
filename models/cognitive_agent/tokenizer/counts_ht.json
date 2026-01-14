@@ -1,11 +1,6 @@
 {
-  "https": 8,
-  "html": 13,
+  "https": 1,
+  "html": 4,
   "htmlcov": 1,
-  "httpx": 1,
-  "htp": 2,
-  "httponly": 1,
-  "http": 22,
-  "htri": 2,
-  "htfs": 2
+  "httpx": 1
 }

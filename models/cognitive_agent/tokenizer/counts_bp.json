@@ -1,7 +1,4 @@
 {
-  "bpetokenizer": 34,
-  "bpe": 98,
-  "bpp": 2,
-  "bpretend": 1,
-  "bpatch": 1
+  "bpetokenizer": 15,
+  "bpe": 21
 }

@@ -1,5 +1,23 @@
 {
-  "cmd": 1563,
-  "cml": 1564,
-  "cmv": 1565
+  "cm": 1183,
+  "cmax": 1184,
+  "cmd": 1185,
+  "cmdcompact": 1186,
+  "cmdhandoffaccept": 1187,
+  "cmdhandoffcomplete": 1188,
+  "cmdhandoffinitiate": 1189,
+  "cmdhandofflist": 1190,
+  "cmdhandoffreject": 1191,
+  "cmdhandoffshow": 1192,
+  "cmdktshow": 1193,
+  "cmdmigrate": 1194,
+  "cmdmigrateevents": 1195,
+  "cmdsprintcreate": 1196,
+  "cmdsprintlist": 1197,
+  "cmdtaskcreate": 1198,
+  "cmdtaskimport": 1199,
+  "cmdtasklist": 1200,
+  "cmdtasknext": 1201,
+  "cml": 1202,
+  "cmv": 1203
 }

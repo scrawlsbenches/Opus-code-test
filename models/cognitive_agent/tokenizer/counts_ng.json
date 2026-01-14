@@ -1,18 +1,6 @@
 {
-  "ngrams": 17,
-  "ngram": 200,
-  "ngrammodel": 119,
-  "ngramorder": 20,
-  "ngp": 2,
-  "ngit": 1,
-  "nglobal": 1,
-  "ngramsize": 7,
-  "ngramcounts": 17,
-  "ngramdata": 9,
-  "ngramvocab": 1,
-  "ngramcontexts": 1,
-  "ngramtokens": 1,
-  "ngoodbye": 1,
-  "ngrampath": 3,
-  "ngramcoverage": 8
+  "ngrams": 3,
+  "ngram": 25,
+  "ngrammodel": 25,
+  "ngramorder": 1
 }

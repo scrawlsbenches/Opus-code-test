@@ -1,13 +1,3 @@
 {
-  "pci": 10,
-  "pcl": 2,
-  "pc": 10,
-  "pca": 6,
-  "pcd": 2,
-  "pct": 43,
-  "pctchange": 6,
-  "pctunderactive": 6,
-  "pctoveractive": 6,
-  "pctunder": 3,
-  "pctover": 3
+  "pci": 4
 }

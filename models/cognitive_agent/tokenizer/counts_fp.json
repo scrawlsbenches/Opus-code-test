@@ -1,14 +1,4 @@
 {
-  "fp": 67,
-  "fprate": 23,
-  "fpgas": 1,
-  "fpg": 1,
-  "fpga": 2,
-  "fpfh": 2,
-  "fpk": 1,
-  "fps": 2,
-  "fpn": 8,
-  "fpo": 2,
-  "fpr": 1,
-  "fpmodule": 5
+  "fp": 2,
+  "fprate": 1
 }

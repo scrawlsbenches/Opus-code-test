@@ -1,31 +1,45 @@
 [
   [
     [
+      "got",
+      "go"
+    ],
+    "got_go"
+  ],
+  [
+    [
       "python",
-      "cortical"
+      "scripts"
     ],
-    "python_cortical"
+    "python_scripts"
   ],
   [
     [
-      "cortical",
-      "cli"
+      "utils",
+      "py"
     ],
-    "cortical_cli"
+    "utils_py"
   ],
   [
     [
-      "cli",
-      "audit"
+      "gotutils",
+      "got"
     ],
-    "cli_audit"
+    "gotutils_got"
   ],
   [
     [
-      "audit",
-      "reason"
+      "got",
+      "utils"
     ],
-    "audit_reason"
+    "got_utils"
+  ],
+  [
+    [
+      "scripts",
+      "gotutils"
+    ],
+    "scripts_gotutils"
   ],
   [
     [
@@ -36,66 +50,52 @@
   ],
   [
     [
-      "haspattern",
-      "has"
+      "woven",
+      "mind"
     ],
-    "haspattern_has"
+    "woven_mind"
   ],
   [
     [
-      "has",
-      "pattern"
+      "json",
+      "json"
     ],
-    "has_pattern"
+    "json_json"
   ],
   [
     [
-      "bash",
-      "python"
+      "tests",
+      "unit"
     ],
-    "bash_python"
+    "tests_unit"
   ],
   [
     [
-      "cognitive",
-      "agent"
+      "id",
+      "id"
     ],
-    "cognitive_agent"
+    "id_id"
   ],
   [
     [
-      "cortical",
-      "cognitive"
+      "api",
+      "api"
     ],
-    "cortical_cognitive"
+    "api_api"
   ],
   [
     [
-      "pln",
-      "pln"
+      "wal",
+      "wal"
     ],
-    "pln_pln"
+    "wal_wal"
   ],
   [
     [
-      "risky",
-      "files"
+      "knowledge",
+      "transfer"
     ],
-    "risky_files"
-  ],
-  [
-    [
-      "py",
-      "risk"
-    ],
-    "py_risk"
-  ],
-  [
-    [
-      "todo",
-      "todo"
-    ],
-    "todo_todo"
+    "knowledge_transfer"
   ],
   [
     [
@@ -106,20 +106,6 @@
   ],
   [
     [
-      "got",
-      "go"
-    ],
-    "got_go"
-  ],
-  [
-    [
-      "files",
-      "in"
-    ],
-    "files_in"
-  ],
-  [
-    [
       "cortical",
       "reasoning"
     ],
@@ -127,66 +113,24 @@
   ],
   [
     [
-      "should",
-      "be"
+      "prism",
+      "prism"
     ],
-    "should_be"
+    "prism_prism"
   ],
   [
     [
-      "in",
+      "from",
       "cortical"
     ],
-    "in_cortical"
-  ],
-  [
-    [
-      "found",
-      "files"
-    ],
-    "found_files"
-  ],
-  [
-    [
-      "files",
-      "findings"
-    ],
-    "files_findings"
-  ],
-  [
-    [
-      "got",
-      "api"
-    ],
-    "got_api"
-  ],
-  [
-    [
-      "api",
-      "py"
-    ],
-    "api_py"
+    "from_cortical"
   ],
   [
     [
       "cognitive",
-      "ask"
+      "agent"
     ],
-    "cognitive_ask"
-  ],
-  [
-    [
-      "audit",
-      "health"
-    ],
-    "audit_health"
-  ],
-  [
-    [
-      "claude",
-      "claude"
-    ],
-    "claude_claude"
+    "cognitive_agent"
   ],
   [
     [
@@ -197,115 +141,276 @@
   ],
   [
     [
-      "the",
-      "cognitive"
-    ],
-    "the_cognitive"
-  ],
-  [
-    [
-      "archive",
-      "archive"
-    ],
-    "archive_archive"
-  ],
-  [
-    [
-      "recent",
-      "recent"
-    ],
-    "recent_recent"
-  ],
-  [
-    [
-      "vlti",
-      "vlti"
-    ],
-    "vlti_vlti"
-  ],
-  [
-    [
-      "across",
-      "sessions"
-    ],
-    "across_sessions"
-  ],
-  [
-    [
-      "show",
-      "rules"
-    ],
-    "show_rules"
-  ],
-  [
-    [
-      "natural",
-      "language"
-    ],
-    "natural_language"
-  ],
-  [
-    [
-      "reason",
-      "show"
-    ],
-    "reason_show"
-  ],
-  [
-    [
-      "strength",
-      "haspattern"
-    ],
-    "strength_haspattern"
-  ],
-  [
-    [
-      "risk",
+      "python",
       "cortical"
     ],
-    "risk_cortical"
+    "python_cortical"
   ],
   [
     [
-      "hack",
-      "hack"
+      "idf",
+      "idf"
     ],
-    "hack_hack"
+    "idf_idf"
   ],
   [
     [
-      "what",
-      "it"
+      "claude",
+      "claude"
     ],
-    "what_it"
+    "claude_claude"
   ],
   [
     [
-      "got",
-      "dashboard"
+      "pytest",
+      "tests"
     ],
-    "got_dashboard"
+    "pytest_tests"
   ],
   [
     [
-      "got",
-      "analyze"
+      "cortical",
+      "cognitive"
     ],
-    "got_analyze"
+    "cortical_cognitive"
   ],
   [
     [
-      "audit",
-      "discover"
+      "text",
+      "processor"
     ],
-    "audit_discover"
+    "text_processor"
   ],
   [
     [
-      "analyze",
-      "summary"
+      "cdg",
+      "cdg"
     ],
-    "analyze_summary"
+    "cdg_cdg"
+  ],
+  [
+    [
+      "ml",
+      "ml"
+    ],
+    "ml_ml"
+  ],
+  [
+    [
+      "cortical",
+      "text"
+    ],
+    "cortical_text"
+  ],
+  [
+    [
+      "query",
+      "api"
+    ],
+    "query_api"
+  ],
+  [
+    [
+      "py",
+      "tests"
+    ],
+    "py_tests"
+  ],
+  [
+    [
+      "python",
+      "pytest"
+    ],
+    "python_pytest"
+  ],
+  [
+    [
+      "wovenmind",
+      "woven"
+    ],
+    "wovenmind_woven"
+  ],
+  [
+    [
+      "this",
+      "session"
+    ],
+    "this_session"
+  ],
+  [
+    [
+      "init",
+      "init"
+    ],
+    "init_init"
+  ],
+  [
+    [
+      "py",
+      "task"
+    ],
+    "py_task"
+  ],
+  [
+    [
+      "demo",
+      "py"
+    ],
+    "demo_py"
+  ],
+  [
+    [
+      "how",
+      "do"
+    ],
+    "how_do"
+  ],
+  [
+    [
+      "root",
+      "cause"
+    ],
+    "root_cause"
+  ],
+  [
+    [
+      "is",
+      "the"
+    ],
+    "is_the"
+  ],
+  [
+    [
+      "python",
+      "from"
+    ],
+    "python_from"
+  ],
+  [
+    [
+      "branch",
+      "claude"
+    ],
+    "branch_claude"
+  ],
+  [
+    [
+      "task",
+      "id"
+    ],
+    "task_id"
+  ],
+  [
+    [
+      "ids",
+      "ds"
+    ],
+    "ids_ds"
+  ],
+  [
+    [
+      "api",
+      "py"
+    ],
+    "api_py"
+  ],
+  [
+    [
+      "tf",
+      "tf"
+    ],
+    "tf_tf"
+  ],
+  [
+    [
+      "py",
+      "lines"
+    ],
+    "py_lines"
+  ],
+  [
+    [
+      "test",
+      "got"
+    ],
+    "test_got"
+  ],
+  [
+    [
+      "cognitiveagent",
+      "cognitive"
+    ],
+    "cognitiveagent_cognitive"
+  ],
+  [
+    [
+      "tests",
+      "tests"
+    ],
+    "tests_tests"
+  ],
+  [
+    [
+      "prism",
+      "slm"
+    ],
+    "prism_slm"
+  ],
+  [
+    [
+      "slm",
+      "slm"
+    ],
+    "slm_slm"
+  ],
+  [
+    [
+      "code",
+      "review"
+    ],
+    "code_review"
+  ],
+  [
+    [
+      "edge",
+      "type"
+    ],
+    "edge_type"
+  ],
+  [
+    [
+      "ml",
+      "data"
+    ],
+    "ml_data"
+  ],
+  [
+    [
+      "cel",
+      "cel"
+    ],
+    "cel_cel"
+  ],
+  [
+    [
+      "py",
+      "added"
+    ],
+    "py_added"
+  ],
+  [
+    [
+      "tf",
+      "idf"
+    ],
+    "tf_idf"
+  ],
+  [
+    [
+      "corticaltextprocessor",
+      "cortical"
+    ],
+    "corticaltextprocessor_cortical"
   ],
   [
     [
@@ -316,66 +421,66 @@
   ],
   [
     [
-      "training",
-      "on"
+      "got",
+      "cli"
     ],
-    "training_on"
+    "got_cli"
   ],
   [
     [
-      "on",
-      "cortical"
+      "bash",
+      "python"
     ],
-    "on_cortical"
+    "bash_python"
   ],
   [
     [
-      "archive",
-      "old"
+      "python",
+      "benchmarks"
     ],
-    "archive_old"
+    "python_benchmarks"
   ],
   [
     [
-      "old",
-      "context"
+      "init",
+      "py"
     ],
-    "old_context"
+    "init_py"
   ],
   [
     [
-      "file",
-      "based"
+      "entity",
+      "id"
     ],
-    "file_based"
+    "entity_id"
   ],
   [
     [
-      "based",
-      "communication"
+      "doc",
+      "id"
     ],
-    "based_communication"
+    "doc_id"
   ],
   [
     [
-      "append",
-      "only"
+      "find",
+      "documents"
     ],
-    "append_only"
+    "find_documents"
   ],
   [
     [
-      "from",
-      "end"
+      "docid",
+      "doc"
     ],
-    "from_end"
+    "docid_doc"
   ],
   [
     [
-      "claude",
-      "reads"
+      "instead",
+      "of"
     ],
-    "claude_reads"
+    "instead_of"
   ],
   [
     [
@@ -386,6 +491,20 @@
   ],
   [
     [
+      "spark",
+      "slm"
+    ],
+    "spark_slm"
+  ],
+  [
+    [
+      "files",
+      "modified"
+    ],
+    "files_modified"
+  ],
+  [
+    [
       "of",
       "thought"
     ],
@@ -393,310 +512,191 @@
   ],
   [
     [
-      "experiment",
-      "with"
+      "date",
+      "session"
     ],
-    "experiment_with"
-  ],
-  [
-    [
-      "found",
-      "python"
-    ],
-    "found_python"
-  ],
-  [
-    [
-      "probabilistic",
-      "logic"
-    ],
-    "probabilistic_logic"
-  ],
-  [
-    [
-      "logic",
-      "networks"
-    ],
-    "logic_networks"
-  ],
-  [
-    [
-      "file",
-      "risk"
-    ],
-    "file_risk"
-  ],
-  [
-    [
-      "rules",
-      "to"
-    ],
-    "rules_to"
-  ],
-  [
-    [
-      "to",
-      "infer"
-    ],
-    "to_infer"
-  ],
-  [
-    [
-      "very",
-      "long"
-    ],
-    "very_long"
-  ],
-  [
-    [
-      "long",
-      "term"
-    ],
-    "long_term"
-  ],
-  [
-    [
-      "term",
-      "important"
-    ],
-    "term_important"
-  ],
-  [
-    [
-      "state",
-      "across"
-    ],
-    "state_across"
-  ],
-  [
-    [
-      "pln",
-      "rules"
-    ],
-    "pln_rules"
-  ],
-  [
-    [
-      "show",
-      "state"
-    ],
-    "show_state"
-  ],
-  [
-    [
-      "rules",
-      "total"
-    ],
-    "rules_total"
-  ],
-  [
-    [
-      "manual",
-      "rules"
-    ],
-    "manual_rules"
-  ],
-  [
-    [
-      "rules",
-      "haspattern"
-    ],
-    "rules_haspattern"
-  ],
-  [
-    [
-      "pattern",
-      "hack"
-    ],
-    "pattern_hack"
-  ],
-  [
-    [
-      "hack",
-      "needsreview"
-    ],
-    "hack_needsreview"
-  ],
-  [
-    [
-      "needsreview",
-      "needs"
-    ],
-    "needsreview_needs"
-  ],
-  [
-    [
-      "needs",
-      "review"
-    ],
-    "needs_review"
-  ],
-  [
-    [
-      "review",
-      "strength"
-    ],
-    "review_strength"
-  ],
-  [
-    [
-      "reason",
-      "risky"
-    ],
-    "reason_risky"
-  ],
-  [
-    [
-      "findings",
-      "risky"
-    ],
-    "findings_risky"
-  ],
-  [
-    [
-      "risky",
-      "risky"
-    ],
-    "risky_risky"
-  ],
-  [
-    [
-      "files",
-      "files"
-    ],
-    "files_files"
-  ],
-  [
-    [
-      "hack",
-      "todo"
-    ],
-    "hack_todo"
+    "date_session"
   ],
   [
     [
       "what",
-      "this"
+      "was"
     ],
-    "what_this"
+    "what_was"
   ],
   [
     [
-      "fixme",
-      "fixme"
+      "ci",
+      "ci"
     ],
-    "fixme_fixme"
+    "ci_ci"
   ],
   [
     [
-      "cli",
-      "exercise"
+      "codebase",
+      "py"
     ],
-    "cli_exercise"
+    "codebase_py"
   ],
   [
     [
-      "exercise",
-      "results"
+      "for",
+      "query"
     ],
-    "exercise_results"
+    "for_query"
   ],
   [
     [
-      "exercise",
+      "query",
+      "expansion"
+    ],
+    "query_expansion"
+  ],
+  [
+    [
+      "depends",
+      "on"
+    ],
+    "depends_on"
+  ],
+  [
+    [
+      "go",
+      "manager"
+    ],
+    "go_manager"
+  ],
+  [
+    [
+      "versioned",
+      "store"
+    ],
+    "versioned_store"
+  ],
+  [
+    [
+      "in",
       "the"
     ],
-    "exercise_the"
+    "in_the"
   ],
   [
     [
-      "pattern",
-      "critical"
+      "to",
+      "use"
     ],
-    "pattern_critical"
+    "to_use"
   ],
   [
     [
-      "critical",
-      "requiresattention"
+      "if",
+      "you"
     ],
-    "critical_requiresattention"
+    "if_you"
   ],
   [
     [
-      "requiresattention",
-      "requires"
+      "page",
+      "rank"
     ],
-    "requiresattention_requires"
+    "page_rank"
   ],
   [
     [
-      "requires",
-      "attention"
+      "unit",
+      "tests"
     ],
-    "requires_attention"
+    "unit_tests"
   ],
   [
     [
-      "aggregation",
-      "strategy"
+      "entityid",
+      "entity"
     ],
-    "aggregation_strategy"
+    "entityid_entity"
   ],
   [
     [
-      "findings",
-      "no"
+      "versionedstore",
+      "versioned"
     ],
-    "findings_no"
+    "versionedstore_versioned"
   ],
   [
     [
-      "no",
-      "files"
+      "cortical",
+      "spark"
     ],
-    "no_files"
+    "cortical_spark"
   ],
   [
     [
-      "files",
-      "exceed"
+      "python",
+      "def"
     ],
-    "files_exceed"
+    "python_def"
   ],
   [
     [
-      "fancy",
-      "grep"
+      "sparkslm",
+      "spark"
     ],
-    "fancy_grep"
+    "sparkslm_spark"
   ],
   [
     [
-      "todo",
-      "hack"
+      "pagerank",
+      "page"
     ],
-    "todo_hack"
+    "pagerank_page"
   ],
   [
     [
-      "it",
-      "does"
+      "the",
+      "system"
     ],
-    "it_does"
+    "the_system"
   ],
   [
     [
-      "todos",
-      "tod"
+      "when",
+      "to"
     ],
-    "todos_tod"
+    "when_to"
   ],
   [
     [
-      "tod",
-      "os"
+      "cortical",
+      "query"
     ],
-    "tod_os"
+    "cortical_query"
+  ],
+  [
+    [
+      "codebase",
+      "slm"
+    ],
+    "codebase_slm"
+  ],
+  [
+    [
+      "need",
+      "to"
+    ],
+    "need_to"
+  ],
+  [
+    [
+      "this",
+      "is"
+    ],
+    "this_is"
+  ],
+  [
+    [
+      "session",
+      "id"
+    ],
+    "session_id"
   ]
 ]

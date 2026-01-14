@@ -1,6 +1,4 @@
 {
   "mv": 2,
-  "mvcc": 14,
-  "mvs": 10,
-  "mvsnet": 2
+  "mvcc": 4
 }
