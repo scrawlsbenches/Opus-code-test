@@ -1,11 +1,17 @@
 {
-  "tfidf": 81,
-  "tf": 301,
-  "tfidfperdoc": 4,
+  "tfidf": 315,
+  "tf": 504,
+  "tfidfperdoc": 31,
   "tfidfms": 1,
   "tfidfdata": 2,
   "tful": 1,
   "tfidfcore": 9,
   "tfidfvalues": 4,
-  "tfglobal": 3
+  "tfglobal": 3,
+  "tfidfdelta": 1,
+  "tfidfembeddings": 2,
+  "tfidfscore": 13,
+  "tfcomponent": 2,
+  "tfidfweight": 5,
+  "tfidfscores": 3
 }

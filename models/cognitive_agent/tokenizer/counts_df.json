@@ -1,5 +1,12 @@
 {
-  "dfs": 15,
-  "df": 22,
-  "dfa": 2
+  "dfs": 104,
+  "df": 48,
+  "dfa": 2,
+  "dfscycle": 9,
+  "dfl": 1,
+  "dfstraverse": 3,
+  "dfsiterate": 3,
+  "dfsallpaths": 3,
+  "dfsreachable": 4,
+  "dfsrecursive": 3
 }

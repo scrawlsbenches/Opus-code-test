@@ -1,7 +1,13 @@
 {
   "npe": 2,
-  "np": 15,
+  "np": 21,
   "nps": 6,
-  "npm": 2,
-  "nplv": 2
+  "npm": 5,
+  "nplv": 2,
+  "npattern": 2,
+  "npln": 1,
+  "nparsed": 1,
+  "npartially": 1,
+  "nphase": 1,
+  "nproduction": 1
 }

@@ -1,4 +1,5 @@
 {
-  "eof": 8,
-  "eoq": 4
+  "eof": 33,
+  "eoq": 4,
+  "eoferror": 3
 }

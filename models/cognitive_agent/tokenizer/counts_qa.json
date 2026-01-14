@@ -1,12 +1,15 @@
 {
-  "qapv": 65,
-  "qa": 8,
+  "qapv": 159,
+  "qa": 11,
   "qavariations": 1,
-  "qapvverification": 1,
+  "qapvverification": 3,
   "qapvpattern": 1,
   "qarrw": 3,
   "qadar": 2,
   "qadiriyya": 1,
   "qatar": 1,
-  "qatari": 1
+  "qatari": 1,
+  "qapvanomaly": 10,
+  "qapvverifier": 6,
+  "qarg": 20
 }

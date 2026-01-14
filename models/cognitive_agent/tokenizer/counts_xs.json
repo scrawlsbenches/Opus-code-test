@@ -1,5 +1,6 @@
 {
-  "xss": 15,
+  "xss": 18,
   "xs": 2,
-  "xssrisk": 1
+  "xssrisk": 1,
+  "xsource": 1
 }

@@ -1,9 +1,14 @@
 {
-  "ls": 11,
+  "ls": 12,
   "lsof": 2,
-  "lsh": 50,
+  "lsh": 114,
   "lsp": 2,
   "lstm": 16,
   "lsd": 2,
-  "lsl": 4
+  "lsl": 4,
+  "lshmodel": 5,
+  "lshindex": 7,
+  "lstrip": 3,
+  "lshnumhashes": 3,
+  "lshnumbands": 3
 }

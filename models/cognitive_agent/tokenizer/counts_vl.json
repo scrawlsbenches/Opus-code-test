@@ -1,5 +1,8 @@
 {
   "vle": 6,
   "vlans": 2,
-  "vla": 2
+  "vla": 2,
+  "vlti": 113,
+  "vltifiles": 11,
+  "vltimark": 2
 }

@@ -1,6 +1,20 @@
 [
   [
     [
+      "dict",
+      "str"
+    ],
+    "dict_str"
+  ],
+  [
+    [
+      "if",
+      "not"
+    ],
+    "if_not"
+  ],
+  [
+    [
       "in",
       "self"
     ],
@@ -8,38 +22,129 @@
   ],
   [
     [
-      "add",
-      "dependency"
+      "entity",
+      "type"
     ],
-    "add_dependency"
+    "entity_type"
   ],
   [
     [
-      "adddependency",
-      "add"
+      "str",
+      "any"
     ],
-    "adddependency_add"
+    "str_any"
   ],
   [
     [
-      "dag",
-      "adddependency"
+      "for",
+      "in"
     ],
-    "dag_adddependency"
+    "for_in"
   ],
   [
     [
-      "findingid",
-      "finding"
-    ],
-    "findingid_finding"
-  ],
-  [
-    [
-      "finding",
+      "node",
       "id"
     ],
-    "finding_id"
+    "node_id"
+  ],
+  [
+    [
+      "id",
+      "id"
+    ],
+    "id_id"
+  ],
+  [
+    [
+      "return",
+      "self"
+    ],
+    "return_self"
+  ],
+  [
+    [
+      "list",
+      "str"
+    ],
+    "list_str"
+  ],
+  [
+    [
+      "if",
+      "self"
+    ],
+    "if_self"
+  ],
+  [
+    [
+      "entitytype",
+      "entity"
+    ],
+    "entitytype_entity"
+  ],
+  [
+    [
+      "id",
+      "str"
+    ],
+    "id_str"
+  ],
+  [
+    [
+      "doc",
+      "id"
+    ],
+    "doc_id"
+  ],
+  [
+    [
+      "task",
+      "id"
+    ],
+    "task_id"
+  ],
+  [
+    [
+      "entity",
+      "id"
+    ],
+    "entity_id"
+  ],
+  [
+    [
+      "docid",
+      "doc"
+    ],
+    "docid_doc"
+  ],
+  [
+    [
+      "list",
+      "of"
+    ],
+    "list_of"
+  ],
+  [
+    [
+      "data",
+      "get"
+    ],
+    "data_get"
+  ],
+  [
+    [
+      "entityid",
+      "entity"
+    ],
+    "entityid_entity"
+  ],
+  [
+    [
+      "str",
+      "none"
+    ],
+    "str_none"
   ],
   [
     [
@@ -50,59 +155,59 @@
   ],
   [
     [
-      "number",
-      "of"
+      "lines",
+      "append"
     ],
-    "number_of"
+    "lines_append"
   ],
   [
     [
-      "term",
-      "to"
+      "taskid",
+      "task"
     ],
-    "term_to"
+    "taskid_task"
   ],
   [
     [
-      "assert",
-      "dag"
+      "nodeid",
+      "node"
     ],
-    "assert_dag"
+    "nodeid_node"
   ],
   [
     [
-      "topn",
-      "top"
+      "edge",
+      "type"
     ],
-    "topn_top"
+    "edge_type"
   ],
   [
     [
-      "dict",
-      "str"
+      "target",
+      "id"
     ],
-    "dict_str"
+    "target_id"
   ],
   [
     [
-      "task",
-      "dag"
+      "targetid",
+      "target"
     ],
-    "task_dag"
+    "targetid_target"
   ],
   [
     [
-      "self",
-      "transitions"
+      "id",
+      "if"
     ],
-    "self_transitions"
+    "id_if"
   ],
   [
     [
-      "transitions",
-      "transitions"
+      "edgetype",
+      "edge"
     ],
-    "transitions_transitions"
+    "edgetype_edge"
   ],
   [
     [
@@ -120,458 +225,45 @@
   ],
   [
     [
-      "taskdag",
-      "task"
-    ],
-    "taskdag_task"
-  ],
-  [
-    [
-      "async",
-      "def"
-    ],
-    "async_def"
-  ],
-  [
-    [
-      "self",
-      "termtofindings"
-    ],
-    "self_termtofindings"
-  ],
-  [
-    [
-      "termtofindings",
-      "term"
-    ],
-    "termtofindings_term"
-  ],
-  [
-    [
-      "to",
-      "findings"
-    ],
-    "to_findings"
-  ],
-  [
-    [
-      "progress",
-      "callback"
-    ],
-    "progress_callback"
-  ],
-  [
-    [
-      "chunksize",
-      "chunk"
-    ],
-    "chunksize_chunk"
-  ],
-  [
-    [
-      "chunk",
-      "size"
-    ],
-    "chunk_size"
-  ],
-  [
-    [
-      "for",
-      "in"
-    ],
-    "for_in"
-  ],
-  [
-    [
-      "progresscallback",
-      "progress"
-    ],
-    "progresscallback_progress"
-  ],
-  [
-    [
-      "if",
+      "is",
       "not"
     ],
-    "if_not"
+    "is_not"
   ],
   [
     [
-      "in",
-      "range"
+      "id",
+      "in"
     ],
-    "in_range"
+    "id_in"
   ],
   [
     [
-      "print",
-      "ntest"
+      "file",
+      "path"
     ],
-    "print_ntest"
+    "file_path"
   ],
   [
     [
-      "ntest",
-      "test"
+      "field",
+      "defaultfactory"
     ],
-    "ntest_test"
+    "field_defaultfactory"
   ],
   [
     [
-      "hash",
-      "functions"
+      "defaultfactory",
+      "default"
     ],
-    "hash_functions"
+    "defaultfactory_default"
   ],
   [
     [
-      "hash",
-      "function"
+      "default",
+      "factory"
     ],
-    "hash_function"
-  ],
-  [
-    [
-      "tests",
-      "passed"
-    ],
-    "tests_passed"
-  ],
-  [
-    [
-      "numhashes",
-      "num"
-    ],
-    "numhashes_num"
-  ],
-  [
-    [
-      "num",
-      "hashes"
-    ],
-    "num_hashes"
-  ],
-  [
-    [
-      "numbands",
-      "num"
-    ],
-    "numbands_num"
-  ],
-  [
-    [
-      "num",
-      "bands"
-    ],
-    "num_bands"
-  ],
-  [
-    [
-      "from",
-      "word"
-    ],
-    "from_word"
-  ],
-  [
-    [
-      "list",
-      "of"
-    ],
-    "list_of"
-  ],
-  [
-    [
-      "list",
-      "str"
-    ],
-    "list_str"
-  ],
-  [
-    [
-      "set",
-      "str"
-    ],
-    "set_str"
-  ],
-  [
-    [
-      "testspassed",
-      "tests"
-    ],
-    "testspassed_tests"
-  ],
-  [
-    [
-      "fromword",
-      "from"
-    ],
-    "fromword_from"
-  ],
-  [
-    [
-      "asyncproc",
-      "async"
-    ],
-    "asyncproc_async"
-  ],
-  [
-    [
-      "async",
-      "proc"
-    ],
-    "async_proc"
-  ],
-  [
-    [
-      "similar",
-      "comment"
-    ],
-    "similar_comment"
-  ],
-  [
-    [
-      "for",
-      "each"
-    ],
-    "for_each"
-  ],
-  [
-    [
-      "will",
-      "be"
-    ],
-    "will_be"
-  ],
-  [
-    [
-      "fromtask",
-      "from"
-    ],
-    "fromtask_from"
-  ],
-  [
-    [
-      "from",
-      "task"
-    ],
-    "from_task"
-  ],
-  [
-    [
-      "testsfailed",
-      "tests"
-    ],
-    "testsfailed_tests"
-  ],
-  [
-    [
-      "tests",
-      "failed"
-    ],
-    "tests_failed"
-  ],
-  [
-    [
-      "dag",
-      "taskdag"
-    ],
-    "dag_taskdag"
-  ],
-  [
-    [
-      "error",
-      "if"
-    ],
-    "error_if"
-  ],
-  [
-    [
-      "raise",
-      "valueerror"
-    ],
-    "raise_valueerror"
-  ],
-  [
-    [
-      "docid",
-      "doc"
-    ],
-    "docid_doc"
-  ],
-  [
-    [
-      "doc",
-      "id"
-    ],
-    "doc_id"
-  ],
-  [
-    [
-      "minhash",
-      "min"
-    ],
-    "minhash_min"
-  ],
-  [
-    [
-      "min",
-      "hash"
-    ],
-    "min_hash"
-  ],
-  [
-    [
-      "self",
-      "nodes"
-    ],
-    "self_nodes"
-  ],
-  [
-    [
-      "nodes",
-      "nodes"
-    ],
-    "nodes_nodes"
-  ],
-  [
-    [
-      "totask",
-      "to"
-    ],
-    "totask_to"
-  ],
-  [
-    [
-      "to",
-      "task"
-    ],
-    "to_task"
-  ],
-  [
-    [
-      "asyncio",
-      "cancellederror"
-    ],
-    "asyncio_cancellederror"
-  ],
-  [
-    [
-      "cancellederror",
-      "cancelled"
-    ],
-    "cancellederror_cancelled"
-  ],
-  [
-    [
-      "cancelled",
-      "error"
-    ],
-    "cancelled_error"
-  ],
-  [
-    [
-      "similarcommentfinder",
-      "similar"
-    ],
-    "similarcommentfinder_similar"
-  ],
-  [
-    [
-      "comment",
-      "finder"
-    ],
-    "comment_finder"
-  ],
-  [
-    [
-      "dependency",
-      "dag"
-    ],
-    "dependency_dag"
-  ],
-  [
-    [
-      "if",
-      "self"
-    ],
-    "if_self"
-  ],
-  [
-    [
-      "pattern",
-      "frequency"
-    ],
-    "pattern_frequency"
-  ],
-  [
-    [
-      "bit",
-      "array"
-    ],
-    "bit_array"
-  ],
-  [
-    [
-      "check",
-      "if"
-    ],
-    "check_if"
-  ],
-  [
-    [
-      "findings",
-      "term"
-    ],
-    "findings_term"
-  ],
-  [
-    [
-      "minhashsignature",
-      "minhash"
-    ],
-    "minhashsignature_minhash"
-  ],
-  [
-    [
-      "minhash",
-      "signature"
-    ],
-    "minhash_signature"
-  ],
-  [
-    [
-      "bandidx",
-      "band"
-    ],
-    "bandidx_band"
-  ],
-  [
-    [
-      "band",
-      "idx"
-    ],
-    "band_idx"
-  ],
-  [
-    [
-      "future",
-      "when"
-    ],
-    "future_when"
-  ],
-  [
-    [
-      "next",
-      "word"
-    ],
-    "next_word"
-  ],
-  [
-    [
-      "return",
-      "result"
-    ],
-    "return_result"
+    "default_factory"
   ],
   [
     [
@@ -582,121 +274,429 @@
   ],
   [
     [
-      "dag",
-      "dag"
+      "len",
+      "self"
     ],
-    "dag_dag"
+    "len_self"
   ],
   [
     [
-      "self",
-      "edges"
+      "optional",
+      "str"
     ],
-    "self_edges"
+    "optional_str"
   ],
   [
     [
-      "edges",
-      "edges"
+      "is",
+      "none"
     ],
-    "edges_edges"
+    "is_none"
   ],
   [
     [
-      "taskid",
-      "task"
+      "from",
+      "cortical"
     ],
-    "taskid_task"
+    "from_cortical"
   ],
   [
     [
-      "task",
+      "returns",
+      "list"
+    ],
+    "returns_list"
+  ],
+  [
+    [
+      "source",
       "id"
     ],
-    "task_id"
+    "source_id"
   ],
   [
     [
-      "failed",
-      "test"
+      "sourceid",
+      "source"
     ],
-    "failed_test"
+    "sourceid_source"
   ],
   [
     [
-      "try",
-      "dag"
+      "not",
+      "none"
     ],
-    "try_dag"
+    "not_none"
   ],
   [
     [
-      "print",
-      "pass"
+      "number",
+      "of"
     ],
-    "print_pass"
+    "number_of"
   ],
   [
     [
-      "pass",
-      "pass"
+      "filepath",
+      "file"
     ],
-    "pass_pass"
+    "filepath_file"
   ],
   [
     [
-      "pass",
-      "testspassed"
+      "init",
+      "init"
     ],
-    "pass_testspassed"
+    "init_init"
   ],
   [
     [
-      "passed",
-      "except"
+      "check",
+      "if"
     ],
-    "passed_except"
+    "check_if"
   ],
   [
     [
-      "except",
-      "assertionerror"
+      "str",
+      "list"
     ],
-    "except_assertionerror"
+    "str_list"
   ],
   [
     [
-      "assertionerror",
-      "assertion"
+      "addargument",
+      "add"
     ],
-    "assertionerror_assertion"
+    "addargument_add"
   ],
   [
     [
-      "assertion",
-      "error"
+      "add",
+      "argument"
     ],
-    "assertion_error"
+    "add_argument"
   ],
   [
     [
       "error",
-      "as"
+      "if"
     ],
-    "error_as"
+    "error_if"
   ],
   [
     [
-      "as",
-      "print"
+      "not",
+      "self"
     ],
-    "as_print"
+    "not_self"
   ],
   [
     [
-      "print",
-      "fail"
+      "init",
+      "self"
     ],
-    "print_fail"
+    "init_self"
+  ],
+  [
+    [
+      "to",
+      "dict"
+    ],
+    "to_dict"
+  ],
+  [
+    [
+      "datetime",
+      "now"
+    ],
+    "datetime_now"
+  ],
+  [
+    [
+      "truth",
+      "value"
+    ],
+    "truth_value"
+  ],
+  [
+    [
+      "str",
+      "str"
+    ],
+    "str_str"
+  ],
+  [
+    [
+      "todict",
+      "to"
+    ],
+    "todict_to"
+  ],
+  [
+    [
+      "id",
+      "self"
+    ],
+    "id_self"
+  ],
+  [
+    [
+      "dataclass",
+      "class"
+    ],
+    "dataclass_class"
+  ],
+  [
+    [
+      "not",
+      "found"
+    ],
+    "not_found"
+  ],
+  [
+    [
+      "ids",
+      "ds"
+    ],
+    "ids_ds"
+  ],
+  [
+    [
+      "event",
+      "id"
+    ],
+    "event_id"
+  ],
+  [
+    [
+      "path",
+      "path"
+    ],
+    "path_path"
+  ],
+  [
+    [
+      "self",
+      "dict"
+    ],
+    "self_dict"
+  ],
+  [
+    [
+      "def",
+      "init"
+    ],
+    "def_init"
+  ],
+  [
+    [
+      "if",
+      "len"
+    ],
+    "if_len"
+  ],
+  [
+    [
+      "node",
+      "type"
+    ],
+    "node_type"
+  ],
+  [
+    [
+      "sprint",
+      "id"
+    ],
+    "sprint_id"
+  ],
+  [
+    [
+      "set",
+      "str"
+    ],
+    "set_str"
+  ],
+  [
+    [
+      "raise",
+      "valueerror"
+    ],
+    "raise_valueerror"
+  ],
+  [
+    [
+      "wal",
+      "wal"
+    ],
+    "wal_wal"
+  ],
+  [
+    [
+      "id",
+      "return"
+    ],
+    "id_return"
+  ],
+  [
+    [
+      "bool",
+      "true"
+    ],
+    "bool_true"
+  ],
+  [
+    [
+      "parser",
+      "addargument"
+    ],
+    "parser_addargument"
+  ],
+  [
+    [
+      "get",
+      "all"
+    ],
+    "get_all"
+  ],
+  [
+    [
+      "none",
+      "if"
+    ],
+    "none_if"
+  ],
+  [
+    [
+      "nodetype",
+      "node"
+    ],
+    "nodetype_node"
+  ],
+  [
+    [
+      "from",
+      "typing"
+    ],
+    "from_typing"
+  ],
+  [
+    [
+      "typing",
+      "import"
+    ],
+    "typing_import"
+  ],
+  [
+    [
+      "got",
+      "go"
+    ],
+    "got_go"
+  ],
+  [
+    [
+      "self",
+      "config"
+    ],
+    "self_config"
+  ],
+  [
+    [
+      "truthvalue",
+      "truth"
+    ],
+    "truthvalue_truth"
+  ],
+  [
+    [
+      "return",
+      "none"
+    ],
+    "return_none"
+  ],
+  [
+    [
+      "list",
+      "tuple"
+    ],
+    "list_tuple"
+  ],
+  [
+    [
+      "go",
+      "manager"
+    ],
+    "go_manager"
+  ],
+  [
+    [
+      "topn",
+      "top"
+    ],
+    "topn_top"
+  ],
+  [
+    [
+      "semantic",
+      "relations"
+    ],
+    "semantic_relations"
+  ],
+  [
+    [
+      "self",
+      "graph"
+    ],
+    "self_graph"
+  ],
+  [
+    [
+      "based",
+      "on"
+    ],
+    "based_on"
+  ],
+  [
+    [
+      "created",
+      "at"
+    ],
+    "created_at"
+  ],
+  [
+    [
+      "return",
+      "false"
+    ],
+    "return_false"
+  ],
+  [
+    [
+      "from",
+      "dict"
+    ],
+    "from_dict"
+  ],
+  [
+    [
+      "createdat",
+      "created"
+    ],
+    "createdat_created"
+  ],
+  [
+    [
+      "gotmanager",
+      "go"
+    ],
+    "gotmanager_go"
+  ],
+  [
+    [
+      "of",
+      "the"
+    ],
+    "of_the"
   ]
 ]

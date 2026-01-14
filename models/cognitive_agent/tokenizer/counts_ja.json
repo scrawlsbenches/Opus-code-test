@@ -2,9 +2,9 @@
   "january": 4,
   "jan": 4,
   "jargon": 5,
-  "javascript": 17,
-  "java": 26,
-  "jaccard": 35,
+  "javascript": 27,
+  "java": 29,
+  "jaccard": 80,
   "japanese": 21,
   "jars": 1,
   "jackets": 1,
@@ -30,5 +30,8 @@
   "janis": 1,
   "jackal": 2,
   "janka": 2,
-  "jaccardsimilarity": 6
+  "jaccardsimilarity": 13,
+  "javascriptfunction": 2,
+  "javascriptclass": 2,
+  "javascriptconstfn": 2
 }

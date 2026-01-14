@@ -1,6 +1,9 @@
 {
-  "ds": 107,
+  "ds": 393,
   "dss": 8,
-  "dst": 1,
-  "dso": 2
+  "dst": 13,
+  "dso": 2,
+  "dststr": 2,
+  "dstparentstr": 2,
+  "dsl": 14
 }

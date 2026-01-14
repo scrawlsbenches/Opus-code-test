@@ -1,8 +1,8 @@
 {
-  "cycle": 130,
+  "cycle": 303,
   "cy": 2,
-  "cycles": 78,
-  "cycledurationms": 2,
+  "cycles": 124,
+  "cycledurationms": 9,
   "cython": 1,
   "cypher": 2,
   "cyclical": 6,
@@ -13,7 +13,7 @@
   "cytoskeleton": 1,
   "cytoskeletal": 1,
   "cytotoxicity": 1,
-  "cycling": 11,
+  "cycling": 12,
   "cyclists": 1,
   "cyclic": 6,
   "cyc": 3,
@@ -24,5 +24,12 @@
   "cylinders": 2,
   "cymbidiums": 1,
   "cytochrome": 1,
-  "cyberbullying": 1
+  "cyberbullying": 1,
+  "cycledetectfunction": 3,
+  "cycledetect": 3,
+  "cyclestartidx": 2,
+  "cyclestart": 4,
+  "cytoscape": 2,
+  "cyan": 1,
+  "cyclecount": 9
 }

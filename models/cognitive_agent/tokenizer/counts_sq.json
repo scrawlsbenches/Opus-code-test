@@ -1,10 +1,10 @@
 {
-  "sqlite": 4,
-  "sq": 11,
-  "sql": 44,
+  "sqlite": 5,
+  "sq": 13,
+  "sql": 78,
   "squashing": 3,
   "squash": 2,
-  "squared": 17,
+  "squared": 18,
   "squares": 5,
   "square": 21,
   "squats": 2,
@@ -14,5 +14,8 @@
   "squads": 1,
   "squeeze": 1,
   "squad": 1,
-  "sqrt": 2
+  "sqrt": 18,
+  "sqliteeventstore": 1,
+  "sqlexpert": 1,
+  "sqloptimizer": 1
 }

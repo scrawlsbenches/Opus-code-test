@@ -1,12 +1,12 @@
 {
-  "glob": 5,
-  "global": 148,
+  "glob": 85,
+  "global": 257,
   "glue": 20,
   "glitch": 1,
   "glove": 9,
   "glo": 3,
   "glossary": 3,
-  "globally": 14,
+  "globally": 16,
   "glazing": 3,
   "glassy": 1,
   "globe": 3,
@@ -46,7 +46,14 @@
   "glutamic": 1,
   "glides": 1,
   "gluing": 1,
-  "globaliterations": 3,
+  "globaliterations": 7,
   "globaliter": 3,
-  "globaltfidf": 4
+  "globaltfidf": 6,
+  "globalstats": 9,
+  "globalversion": 16,
+  "globalhooks": 3,
+  "globalhandlers": 4,
+  "globpattern": 4,
+  "globaldf": 6,
+  "globalmetrics": 5
 }

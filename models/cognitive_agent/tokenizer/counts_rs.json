@@ -1,6 +1,8 @@
 {
-  "rs": 14,
-  "rsplit": 1,
+  "rs": 19,
+  "rsplit": 4,
   "rslqf": 2,
-  "rsi": 2
+  "rsi": 2,
+  "rstrip": 12,
+  "rst": 3
 }

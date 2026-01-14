@@ -1,8 +1,15 @@
 {
   "nltk": 4,
-  "nl": 15,
-  "nlquery": 7,
-  "nlp": 4,
-  "nlu": 32,
-  "nlg": 13
+  "nl": 35,
+  "nlquery": 20,
+  "nlp": 12,
+  "nlu": 36,
+  "nlg": 13,
+  "nlcp": 1,
+  "nlukeywords": 4,
+  "nlinks": 2,
+  "nlink": 1,
+  "nlesson": 1,
+  "nlimit": 1,
+  "nloop": 1
 }

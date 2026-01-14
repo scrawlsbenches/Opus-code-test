@@ -1,9 +1,17 @@
 {
-  "json": 554,
-  "jsondecodeerror": 3,
-  "jsonl": 61,
-  "js": 4,
+  "json": 1757,
+  "jsondecodeerror": 60,
+  "jsonl": 183,
+  "js": 15,
   "jsonserializer": 1,
   "jsonschema": 1,
-  "jsondata": 4
+  "jsondata": 4,
+  "jsonmodule": 6,
+  "jsx": 4,
+  "jsonencoder": 3,
+  "jsonlpath": 3,
+  "jsondir": 8,
+  "jsonpath": 7,
+  "jsonstr": 9,
+  "jsonline": 2
 }

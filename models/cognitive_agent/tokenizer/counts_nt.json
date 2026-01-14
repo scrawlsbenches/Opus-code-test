@@ -1,3 +1,13 @@
 {
-  "ntest": 19
+  "ntest": 30,
+  "ntext": 1,
+  "ntotal": 3,
+  "ntrend": 1,
+  "ntokenized": 1,
+  "ntraining": 1,
+  "nto": 1,
+  "ntimestamps": 2,
+  "ntip": 1,
+  "ntiming": 1,
+  "nterms": 6
 }

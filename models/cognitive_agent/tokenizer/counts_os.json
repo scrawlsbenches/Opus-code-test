@@ -1,7 +1,7 @@
 {
-  "os": 50,
+  "os": 190,
   "oscillations": 4,
-  "oserror": 1,
+  "oserror": 30,
   "oscillation": 5,
   "oscillators": 2,
   "osteology": 3,

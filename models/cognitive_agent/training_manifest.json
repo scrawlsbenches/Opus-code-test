@@ -1,10 +1,10 @@
 {
   "model_version": "1.0",
-  "last_training": "2026-01-13T04:00:20.429360",
-  "total_documents": 554,
+  "last_training": "2026-01-14T00:16:18.408949",
+  "total_documents": 816,
   "vocabulary_size": 10000,
-  "last_reindex_doc_count": 534,
-  "idf_epoch": 2,
+  "last_reindex_doc_count": 816,
+  "idf_epoch": 3,
   "documents": {
     "alignment/definitions.md": {
       "path": "alignment/definitions.md",
@@ -3302,9 +3302,9 @@
     },
     "audits/algorithms/dag.py": {
       "path": "audits/algorithms/dag.py",
-      "content_hash": "0bcf3a826192319a",
-      "trained_at": "2026-01-13T04:00:19.999759",
-      "word_count": 2007
+      "content_hash": "e0f87eea36d3a176",
+      "trained_at": "2026-01-14T00:15:52.546005",
+      "word_count": 1802
     },
     "audits/algorithms/decision_tree.py": {
       "path": "audits/algorithms/decision_tree.py",
@@ -3329,6 +3329,1578 @@
       "content_hash": "c213f63c1b18b681",
       "trained_at": "2026-01-13T04:00:20.429304",
       "word_count": 710
+    },
+    "audits/algorithms/naive_bayes.py": {
+      "path": "audits/algorithms/naive_bayes.py",
+      "content_hash": "f8ecf66dc125c15e",
+      "trained_at": "2026-01-14T00:15:52.585214",
+      "word_count": 885
+    },
+    "audits/algorithms/suffix_array.py": {
+      "path": "audits/algorithms/suffix_array.py",
+      "content_hash": "546a185707b21e7c",
+      "trained_at": "2026-01-14T00:15:52.634469",
+      "word_count": 2130
+    },
+    "audits/algorithms/trie.py": {
+      "path": "audits/algorithms/trie.py",
+      "content_hash": "911f7f821225234b",
+      "trained_at": "2026-01-14T00:15:52.673622",
+      "word_count": 1716
+    },
+    "audits/algorithms/union_find.py": {
+      "path": "audits/algorithms/union_find.py",
+      "content_hash": "8ba564b64a3b5384",
+      "trained_at": "2026-01-14T00:15:52.693498",
+      "word_count": 674
+    },
+    "audits/classifier.py": {
+      "path": "audits/classifier.py",
+      "content_hash": "4a4ccdedd5439778",
+      "trained_at": "2026-01-14T00:15:52.714074",
+      "word_count": 599
+    },
+    "audits/discovery.py": {
+      "path": "audits/discovery.py",
+      "content_hash": "eaf31c29cb0328e0",
+      "trained_at": "2026-01-14T00:15:52.785245",
+      "word_count": 2908
+    },
+    "audits/health.py": {
+      "path": "audits/health.py",
+      "content_hash": "fb4e6280ea0d1349",
+      "trained_at": "2026-01-14T00:15:52.865579",
+      "word_count": 3445
+    },
+    "audits/patterns.py": {
+      "path": "audits/patterns.py",
+      "content_hash": "473d5c17feab2ba7",
+      "trained_at": "2026-01-14T00:15:52.886138",
+      "word_count": 453
+    },
+    "audits/persistence.py": {
+      "path": "audits/persistence.py",
+      "content_hash": "caecebec1e232a88",
+      "trained_at": "2026-01-14T00:15:52.916319",
+      "word_count": 1397
+    },
+    "audits/reasoning.py": {
+      "path": "audits/reasoning.py",
+      "content_hash": "5b0547959d4caa64",
+      "trained_at": "2026-01-14T00:15:53.030575",
+      "word_count": 5803
+    },
+    "audits/scanner.py": {
+      "path": "audits/scanner.py",
+      "content_hash": "97f0678114841499",
+      "trained_at": "2026-01-14T00:15:53.047889",
+      "word_count": 534
+    },
+    "audits/training.py": {
+      "path": "audits/training.py",
+      "content_hash": "da727ada9e84d500",
+      "trained_at": "2026-01-14T00:15:53.068401",
+      "word_count": 796
+    },
+    "cdg/__init__.py": {
+      "path": "cdg/__init__.py",
+      "content_hash": "50efa6fd54f2c6b6",
+      "trained_at": "2026-01-14T00:15:53.091838",
+      "word_count": 384
+    },
+    "cdg/adapters/__init__.py": {
+      "path": "cdg/adapters/__init__.py",
+      "content_hash": "c89e772621c7a27b",
+      "trained_at": "2026-01-14T00:15:53.100229",
+      "word_count": 100
+    },
+    "cdg/btree.py": {
+      "path": "cdg/btree.py",
+      "content_hash": "51304d2760d20e62",
+      "trained_at": "2026-01-14T00:15:53.136850",
+      "word_count": 1747
+    },
+    "cdg/config.py": {
+      "path": "cdg/config.py",
+      "content_hash": "63fdcc7e05e9cf79",
+      "trained_at": "2026-01-14T00:15:53.173011",
+      "word_count": 1467
+    },
+    "cdg/errors.py": {
+      "path": "cdg/errors.py",
+      "content_hash": "380411b5766d64b3",
+      "trained_at": "2026-01-14T00:15:53.196085",
+      "word_count": 783
+    },
+    "cdg/index_manager.py": {
+      "path": "cdg/index_manager.py",
+      "content_hash": "a12bbeae29f48f32",
+      "trained_at": "2026-01-14T00:15:53.281293",
+      "word_count": 5834
+    },
+    "cdg/query/__init__.py": {
+      "path": "cdg/query/__init__.py",
+      "content_hash": "a0da8af5f1e6c047",
+      "trained_at": "2026-01-14T00:15:53.303679",
+      "word_count": 851
+    },
+    "cdg/query/ast.py": {
+      "path": "cdg/query/ast.py",
+      "content_hash": "08e0a139fa01ca85",
+      "trained_at": "2026-01-14T00:15:53.317539",
+      "word_count": 450
+    },
+    "cdg/query/errors.py": {
+      "path": "cdg/query/errors.py",
+      "content_hash": "d429b2c2471138db",
+      "trained_at": "2026-01-14T00:15:53.332611",
+      "word_count": 1028
+    },
+    "cdg/query/executor.py": {
+      "path": "cdg/query/executor.py",
+      "content_hash": "1511c6f9b52cf133",
+      "trained_at": "2026-01-14T00:15:53.366240",
+      "word_count": 2385
+    },
+    "cdg/query/functions/__init__.py": {
+      "path": "cdg/query/functions/__init__.py",
+      "content_hash": "9212a983876ed6c9",
+      "trained_at": "2026-01-14T00:15:53.382341",
+      "word_count": 248
+    },
+    "cdg/query/functions/core.py": {
+      "path": "cdg/query/functions/core.py",
+      "content_hash": "4688b62aeed8c728",
+      "trained_at": "2026-01-14T00:15:53.397721",
+      "word_count": 998
+    },
+    "cdg/query/functions/got.py": {
+      "path": "cdg/query/functions/got.py",
+      "content_hash": "b9f961c2e4027ab2",
+      "trained_at": "2026-01-14T00:15:53.445913",
+      "word_count": 4252
+    },
+    "cdg/query/lexer.py": {
+      "path": "cdg/query/lexer.py",
+      "content_hash": "35592538fcec51f3",
+      "trained_at": "2026-01-14T00:15:53.469381",
+      "word_count": 1179
+    },
+    "cdg/query/parser.py": {
+      "path": "cdg/query/parser.py",
+      "content_hash": "8f2f24f529007954",
+      "trained_at": "2026-01-14T00:15:53.504004",
+      "word_count": 2578
+    },
+    "cdg/query/planner.py": {
+      "path": "cdg/query/planner.py",
+      "content_hash": "c2856652bfea8243",
+      "trained_at": "2026-01-14T00:15:53.528231",
+      "word_count": 1879
+    },
+    "cdg/query/registry.py": {
+      "path": "cdg/query/registry.py",
+      "content_hash": "97904f9233eefa36",
+      "trained_at": "2026-01-14T00:15:53.542954",
+      "word_count": 837
+    },
+    "cdg/recovery.py": {
+      "path": "cdg/recovery.py",
+      "content_hash": "a13dd62009bf1379",
+      "trained_at": "2026-01-14T00:15:53.609719",
+      "word_count": 3663
+    },
+    "cdg/schema/__init__.py": {
+      "path": "cdg/schema/__init__.py",
+      "content_hash": "62c56ed9545d958e",
+      "trained_at": "2026-01-14T00:15:53.657316",
+      "word_count": 3212
+    },
+    "cdg/storage.py": {
+      "path": "cdg/storage.py",
+      "content_hash": "0706f16db2618f07",
+      "trained_at": "2026-01-14T00:15:53.735815",
+      "word_count": 6235
+    },
+    "cdg/transaction.py": {
+      "path": "cdg/transaction.py",
+      "content_hash": "e5a516e816fa9e6e",
+      "trained_at": "2026-01-14T00:15:53.759758",
+      "word_count": 1361
+    },
+    "cdg/transaction_manager.py": {
+      "path": "cdg/transaction_manager.py",
+      "content_hash": "779836836d533a6d",
+      "trained_at": "2026-01-14T00:15:53.793253",
+      "word_count": 2410
+    },
+    "cdg/types.py": {
+      "path": "cdg/types.py",
+      "content_hash": "42973a9c4fde801e",
+      "trained_at": "2026-01-14T00:15:53.815961",
+      "word_count": 1427
+    },
+    "cdg/wal.py": {
+      "path": "cdg/wal.py",
+      "content_hash": "6bbc0e2b7d8eccd0",
+      "trained_at": "2026-01-14T00:15:53.846378",
+      "word_count": 2087
+    },
+    "cel/__init__.py": {
+      "path": "cel/__init__.py",
+      "content_hash": "951660973ad09171",
+      "trained_at": "2026-01-14T00:15:53.863619",
+      "word_count": 385
+    },
+    "cel/adapters/__init__.py": {
+      "path": "cel/adapters/__init__.py",
+      "content_hash": "75390e554f19b6e1",
+      "trained_at": "2026-01-14T00:15:53.873837",
+      "word_count": 156
+    },
+    "cel/adapters/got.py": {
+      "path": "cel/adapters/got.py",
+      "content_hash": "929319ea8124b5f7",
+      "trained_at": "2026-01-14T00:15:53.916006",
+      "word_count": 2993
+    },
+    "cel/config.py": {
+      "path": "cel/config.py",
+      "content_hash": "b1cf2043c2ac0dbf",
+      "trained_at": "2026-01-14T00:15:53.969652",
+      "word_count": 1578
+    },
+    "cel/container.py": {
+      "path": "cel/container.py",
+      "content_hash": "fdd5ce4508c96bc8",
+      "trained_at": "2026-01-14T00:15:54.002677",
+      "word_count": 1733
+    },
+    "cel/core/__init__.py": {
+      "path": "cel/core/__init__.py",
+      "content_hash": "345674731ad7ea8a",
+      "trained_at": "2026-01-14T00:15:54.013400",
+      "word_count": 215
+    },
+    "cel/core/events.py": {
+      "path": "cel/core/events.py",
+      "content_hash": "261dd02d18b22b06",
+      "trained_at": "2026-01-14T00:15:54.050046",
+      "word_count": 2026
+    },
+    "cel/core/protocols.py": {
+      "path": "cel/core/protocols.py",
+      "content_hash": "94542d6c80a4d21d",
+      "trained_at": "2026-01-14T00:15:54.096750",
+      "word_count": 2382
+    },
+    "cel/core/references.py": {
+      "path": "cel/core/references.py",
+      "content_hash": "9d8a69a8a38248c5",
+      "trained_at": "2026-01-14T00:15:54.319001",
+      "word_count": 1881
+    },
+    "cel/performance/__init__.py": {
+      "path": "cel/performance/__init__.py",
+      "content_hash": "c7d51b8f5255e859",
+      "trained_at": "2026-01-14T00:15:54.328677",
+      "word_count": 186
+    },
+    "cel/performance/entity_index.py": {
+      "path": "cel/performance/entity_index.py",
+      "content_hash": "6472ea5e614b588c",
+      "trained_at": "2026-01-14T00:15:54.356650",
+      "word_count": 1969
+    },
+    "cel/performance/optimized_dag.py": {
+      "path": "cel/performance/optimized_dag.py",
+      "content_hash": "c57f92da33f8c0cf",
+      "trained_at": "2026-01-14T00:15:54.386353",
+      "word_count": 1920
+    },
+    "cel/performance/snapshots.py": {
+      "path": "cel/performance/snapshots.py",
+      "content_hash": "35f1f9e725db0341",
+      "trained_at": "2026-01-14T00:15:54.422004",
+      "word_count": 2042
+    },
+    "cel/performance/streaming_store.py": {
+      "path": "cel/performance/streaming_store.py",
+      "content_hash": "ec8fba13f54520e8",
+      "trained_at": "2026-01-14T00:15:57.110421",
+      "word_count": 3113
+    },
+    "cel/sanity/__init__.py": {
+      "path": "cel/sanity/__init__.py",
+      "content_hash": "f4610882f1cafaed",
+      "trained_at": "2026-01-14T00:15:57.282000",
+      "word_count": 186
+    },
+    "cel/sanity/compaction.py": {
+      "path": "cel/sanity/compaction.py",
+      "content_hash": "9904efe6162f724a",
+      "trained_at": "2026-01-14T00:15:57.326671",
+      "word_count": 2550
+    },
+    "cel/sanity/health.py": {
+      "path": "cel/sanity/health.py",
+      "content_hash": "952c633a72ddc6fc",
+      "trained_at": "2026-01-14T00:15:57.361966",
+      "word_count": 1876
+    },
+    "cel/sanity/migration.py": {
+      "path": "cel/sanity/migration.py",
+      "content_hash": "7ed27278fbcdbc07",
+      "trained_at": "2026-01-14T00:15:57.394835",
+      "word_count": 2073
+    },
+    "cel/tracing.py": {
+      "path": "cel/tracing.py",
+      "content_hash": "f0c8e5f8fa3c689c",
+      "trained_at": "2026-01-14T00:15:57.443108",
+      "word_count": 2784
+    },
+    "cel/tracing_integration.py": {
+      "path": "cel/tracing_integration.py",
+      "content_hash": "a39dee05b7521e21",
+      "trained_at": "2026-01-14T00:15:57.469671",
+      "word_count": 1839
+    },
+    "cel/wisdom/__init__.py": {
+      "path": "cel/wisdom/__init__.py",
+      "content_hash": "36d12db903774f6c",
+      "trained_at": "2026-01-14T00:15:57.476506",
+      "word_count": 159
+    },
+    "cel/wisdom/dag.py": {
+      "path": "cel/wisdom/dag.py",
+      "content_hash": "c4b8e1826df5a6bc",
+      "trained_at": "2026-01-14T00:15:57.497983",
+      "word_count": 2204
+    },
+    "cel/wisdom/materializer.py": {
+      "path": "cel/wisdom/materializer.py",
+      "content_hash": "36aeb887b41126a7",
+      "trained_at": "2026-01-14T00:15:57.522443",
+      "word_count": 2073
+    },
+    "cel/wisdom/semantic.py": {
+      "path": "cel/wisdom/semantic.py",
+      "content_hash": "94bbc925a8e6a8b7",
+      "trained_at": "2026-01-14T00:15:57.550291",
+      "word_count": 1815
+    },
+    "chunk_index.py": {
+      "path": "chunk_index.py",
+      "content_hash": "fe1963bafb82c2b1",
+      "trained_at": "2026-01-14T00:15:57.602426",
+      "word_count": 2424
+    },
+    "cli/__init__.py": {
+      "path": "cli/__init__.py",
+      "content_hash": "afbbe4e35d59c3ad",
+      "trained_at": "2026-01-14T00:15:57.616995",
+      "word_count": 408
+    },
+    "cli/_base.py": {
+      "path": "cli/_base.py",
+      "content_hash": "ae48c2acc3a5dc62",
+      "trained_at": "2026-01-14T00:15:57.630437",
+      "word_count": 370
+    },
+    "cli/audit/__init__.py": {
+      "path": "cli/audit/__init__.py",
+      "content_hash": "4f0c3a17f8ccb306",
+      "trained_at": "2026-01-14T00:15:57.645086",
+      "word_count": 469
+    },
+    "cli/audit/__main__.py": {
+      "path": "cli/audit/__main__.py",
+      "content_hash": "b0a2e8e64e8e60bf",
+      "trained_at": "2026-01-14T00:15:57.656518",
+      "word_count": 322
+    },
+    "cli/audit/_base.py": {
+      "path": "cli/audit/_base.py",
+      "content_hash": "dc2434361495c4f7",
+      "trained_at": "2026-01-14T00:15:57.668785",
+      "word_count": 295
+    },
+    "cli/audit/discover.py": {
+      "path": "cli/audit/discover.py",
+      "content_hash": "6c3674eb901fc7e8",
+      "trained_at": "2026-01-14T00:15:57.683223",
+      "word_count": 541
+    },
+    "cli/audit/generate.py": {
+      "path": "cli/audit/generate.py",
+      "content_hash": "b1f09f0928fe955c",
+      "trained_at": "2026-01-14T00:15:57.695633",
+      "word_count": 423
+    },
+    "cli/audit/health.py": {
+      "path": "cli/audit/health.py",
+      "content_hash": "b3cb0c787548c7fb",
+      "trained_at": "2026-01-14T00:15:57.707213",
+      "word_count": 554
+    },
+    "cli/audit/index.py": {
+      "path": "cli/audit/index.py",
+      "content_hash": "78f6d7d505cc9afa",
+      "trained_at": "2026-01-14T00:15:57.715723",
+      "word_count": 365
+    },
+    "cli/audit/pattern.py": {
+      "path": "cli/audit/pattern.py",
+      "content_hash": "a731f9eecab9d36c",
+      "trained_at": "2026-01-14T00:15:57.731842",
+      "word_count": 759
+    },
+    "cli/audit/patterns.py": {
+      "path": "cli/audit/patterns.py",
+      "content_hash": "c3a8392043d3b03f",
+      "trained_at": "2026-01-14T00:15:57.743481",
+      "word_count": 532
+    },
+    "cli/audit/reason.py": {
+      "path": "cli/audit/reason.py",
+      "content_hash": "3a908c5a5185254d",
+      "trained_at": "2026-01-14T00:15:57.769309",
+      "word_count": 1670
+    },
+    "cli/audit/scan.py": {
+      "path": "cli/audit/scan.py",
+      "content_hash": "d960084f33211a83",
+      "trained_at": "2026-01-14T00:15:57.780655",
+      "word_count": 605
+    },
+    "cli/audit/similar.py": {
+      "path": "cli/audit/similar.py",
+      "content_hash": "efa68c4eb0e7b2c2",
+      "trained_at": "2026-01-14T00:15:57.786120",
+      "word_count": 247
+    },
+    "cli/audit/train.py": {
+      "path": "cli/audit/train.py",
+      "content_hash": "abfa23cf42538f81",
+      "trained_at": "2026-01-14T00:15:57.795459",
+      "word_count": 379
+    },
+    "cli_wrapper.py": {
+      "path": "cli_wrapper.py",
+      "content_hash": "76a2a94e644c263c",
+      "trained_at": "2026-01-14T00:15:57.874532",
+      "word_count": 4503
+    },
+    "code_concepts.py": {
+      "path": "code_concepts.py",
+      "content_hash": "6c9465147fe34973",
+      "trained_at": "2026-01-14T00:15:57.905155",
+      "word_count": 973
+    },
+    "cognitive/__init__.py": {
+      "path": "cognitive/__init__.py",
+      "content_hash": "afc04da11065e74e",
+      "trained_at": "2026-01-14T00:15:57.924475",
+      "word_count": 592
+    },
+    "cognitive/__main__.py": {
+      "path": "cognitive/__main__.py",
+      "content_hash": "d9973549add736bf",
+      "trained_at": "2026-01-14T00:15:57.942435",
+      "word_count": 1220
+    },
+    "cognitive/aggregator.py": {
+      "path": "cognitive/aggregator.py",
+      "content_hash": "59c1fe1e3258af67",
+      "trained_at": "2026-01-14T00:15:57.976211",
+      "word_count": 2053
+    },
+    "cognitive/code_bridge.py": {
+      "path": "cognitive/code_bridge.py",
+      "content_hash": "2283e646d1738582",
+      "trained_at": "2026-01-14T00:15:58.020467",
+      "word_count": 3208
+    },
+    "cognitive/executors/__init__.py": {
+      "path": "cognitive/executors/__init__.py",
+      "content_hash": "76b37f49669b98d4",
+      "trained_at": "2026-01-14T00:15:58.026359",
+      "word_count": 124
+    },
+    "cognitive/executors/audit_executor.py": {
+      "path": "cognitive/executors/audit_executor.py",
+      "content_hash": "2631ad383d30f0c5",
+      "trained_at": "2026-01-14T00:15:58.043024",
+      "word_count": 1112
+    },
+    "cognitive/executors/cdg_executor.py": {
+      "path": "cognitive/executors/cdg_executor.py",
+      "content_hash": "74eafaba5bf38ffe",
+      "trained_at": "2026-01-14T00:15:58.050797",
+      "word_count": 504
+    },
+    "cognitive/executors/code_executor.py": {
+      "path": "cognitive/executors/code_executor.py",
+      "content_hash": "3864fca150bb6ffc",
+      "trained_at": "2026-01-14T00:15:58.065507",
+      "word_count": 1098
+    },
+    "cognitive/executors/protocol.py": {
+      "path": "cognitive/executors/protocol.py",
+      "content_hash": "977d06740383475e",
+      "trained_at": "2026-01-14T00:15:58.072024",
+      "word_count": 397
+    },
+    "cognitive/executors/semantic_executor.py": {
+      "path": "cognitive/executors/semantic_executor.py",
+      "content_hash": "9e9fcc1228ff525a",
+      "trained_at": "2026-01-14T00:15:58.095160",
+      "word_count": 1336
+    },
+    "cognitive/formatter.py": {
+      "path": "cognitive/formatter.py",
+      "content_hash": "3cabdcf8c2509d97",
+      "trained_at": "2026-01-14T00:15:58.126445",
+      "word_count": 2106
+    },
+    "cognitive/graph.py": {
+      "path": "cognitive/graph.py",
+      "content_hash": "9b2972f69e9f0b4f",
+      "trained_at": "2026-01-14T00:15:58.301704",
+      "word_count": 12568
+    },
+    "cognitive/graph_storage.py": {
+      "path": "cognitive/graph_storage.py",
+      "content_hash": "7d4da3b4437c12a3",
+      "trained_at": "2026-01-14T00:15:58.335768",
+      "word_count": 1837
+    },
+    "cognitive/nl_query.py": {
+      "path": "cognitive/nl_query.py",
+      "content_hash": "b04c6e31cb300978",
+      "trained_at": "2026-01-14T00:15:58.379859",
+      "word_count": 2797
+    },
+    "cognitive/text_bridge.py": {
+      "path": "cognitive/text_bridge.py",
+      "content_hash": "79caf7c84b2e1fde",
+      "trained_at": "2026-01-14T00:15:58.473896",
+      "word_count": 6050
+    },
+    "cognitive/tokenizer_storage.py": {
+      "path": "cognitive/tokenizer_storage.py",
+      "content_hash": "c95f9a97d6e93391",
+      "trained_at": "2026-01-14T00:15:58.508515",
+      "word_count": 2496
+    },
+    "cognitive/tool_registry.py": {
+      "path": "cognitive/tool_registry.py",
+      "content_hash": "ea2261e017b708aa",
+      "trained_at": "2026-01-14T00:15:58.517719",
+      "word_count": 458
+    },
+    "cognitive/training.py": {
+      "path": "cognitive/training.py",
+      "content_hash": "d9b40cf41cffc2a9",
+      "trained_at": "2026-01-14T00:15:58.614580",
+      "word_count": 7989
+    },
+    "cognitive/unified_query.py": {
+      "path": "cognitive/unified_query.py",
+      "content_hash": "9f04088bc042b975",
+      "trained_at": "2026-01-14T00:15:58.635863",
+      "word_count": 1258
+    },
+    "common/__init__.py": {
+      "path": "common/__init__.py",
+      "content_hash": "fe335fb433589798",
+      "trained_at": "2026-01-14T00:15:58.643453",
+      "word_count": 185
+    },
+    "common/container.py": {
+      "path": "common/container.py",
+      "content_hash": "42ba7f7aaa5d49bf",
+      "trained_at": "2026-01-14T00:15:58.673812",
+      "word_count": 1790
+    },
+    "common/filesystem.py": {
+      "path": "common/filesystem.py",
+      "content_hash": "2c398a606a0bb471",
+      "trained_at": "2026-01-14T00:16:01.812740",
+      "word_count": 2744
+    },
+    "common/recovery_types.py": {
+      "path": "common/recovery_types.py",
+      "content_hash": "db926b7b7be10515",
+      "trained_at": "2026-01-14T00:16:01.820173",
+      "word_count": 323
+    },
+    "config.py": {
+      "path": "config.py",
+      "content_hash": "ff9763789e442185",
+      "trained_at": "2026-01-14T00:16:01.850193",
+      "word_count": 1938
+    },
+    "constants.py": {
+      "path": "constants.py",
+      "content_hash": "acc477fa02b97a52",
+      "trained_at": "2026-01-14T00:16:01.864336",
+      "word_count": 465
+    },
+    "core/__init__.py": {
+      "path": "core/__init__.py",
+      "content_hash": "3a8b5924d31b32f2",
+      "trained_at": "2026-01-14T00:16:01.870958",
+      "word_count": 133
+    },
+    "core/bootstrap.py": {
+      "path": "core/bootstrap.py",
+      "content_hash": "e9a44007e8c1a266",
+      "trained_at": "2026-01-14T00:16:01.882317",
+      "word_count": 678
+    },
+    "core/modules/__init__.py": {
+      "path": "core/modules/__init__.py",
+      "content_hash": "5e97576552bac0a0",
+      "trained_at": "2026-01-14T00:16:01.888991",
+      "word_count": 189
+    },
+    "core/modules/audit_module.py": {
+      "path": "core/modules/audit_module.py",
+      "content_hash": "f8c7d87d8c443a3c",
+      "trained_at": "2026-01-14T00:16:01.903896",
+      "word_count": 771
+    },
+    "core/modules/cdg_module.py": {
+      "path": "core/modules/cdg_module.py",
+      "content_hash": "e8f3d01be12a1377",
+      "trained_at": "2026-01-14T00:16:01.913274",
+      "word_count": 689
+    },
+    "core/modules/cognitive_module.py": {
+      "path": "core/modules/cognitive_module.py",
+      "content_hash": "2f5a67d62f817f86",
+      "trained_at": "2026-01-14T00:16:01.922471",
+      "word_count": 604
+    },
+    "core/modules/got_module.py": {
+      "path": "core/modules/got_module.py",
+      "content_hash": "31cddf4f2c6ac536",
+      "trained_at": "2026-01-14T00:16:01.930919",
+      "word_count": 587
+    },
+    "core/modules/schema_module.py": {
+      "path": "core/modules/schema_module.py",
+      "content_hash": "81648b4907fe55d3",
+      "trained_at": "2026-01-14T00:16:01.939315",
+      "word_count": 281
+    },
+    "diff.py": {
+      "path": "diff.py",
+      "content_hash": "56b8828ef5646c81",
+      "trained_at": "2026-01-14T00:16:01.993264",
+      "word_count": 3152
+    },
+    "embeddings.py": {
+      "path": "embeddings.py",
+      "content_hash": "4c5555d222b144ff",
+      "trained_at": "2026-01-14T00:16:02.030313",
+      "word_count": 2273
+    },
+    "fingerprint.py": {
+      "path": "fingerprint.py",
+      "content_hash": "e76560cdb5aec289",
+      "trained_at": "2026-01-14T00:16:02.051331",
+      "word_count": 1218
+    },
+    "fluent.py": {
+      "path": "fluent.py",
+      "content_hash": "5d516666870877f7",
+      "trained_at": "2026-01-14T00:16:02.078049",
+      "word_count": 1845
+    },
+    "gaps.py": {
+      "path": "gaps.py",
+      "content_hash": "704e7c059ee4beaf",
+      "trained_at": "2026-01-14T00:16:02.102735",
+      "word_count": 1219
+    },
+    "got/__init__.py": {
+      "path": "got/__init__.py",
+      "content_hash": "4b9c52ba898d71fc",
+      "trained_at": "2026-01-14T00:16:02.127269",
+      "word_count": 905
+    },
+    "got/__main__.py": {
+      "path": "got/__main__.py",
+      "content_hash": "a0c9033f4782ca75",
+      "trained_at": "2026-01-14T00:16:02.153774",
+      "word_count": 949
+    },
+    "got/api.py": {
+      "path": "got/api.py",
+      "content_hash": "5bc72a437487a7eb",
+      "trained_at": "2026-01-14T00:16:02.294028",
+      "word_count": 12472
+    },
+    "got/claudemd.py": {
+      "path": "got/claudemd.py",
+      "content_hash": "66ea1a7221a530aa",
+      "trained_at": "2026-01-14T00:16:02.336830",
+      "word_count": 2621
+    },
+    "got/cli/__init__.py": {
+      "path": "got/cli/__init__.py",
+      "content_hash": "a04757d6445eae78",
+      "trained_at": "2026-01-14T00:16:02.367463",
+      "word_count": 776
+    },
+    "got/cli/analyze.py": {
+      "path": "got/cli/analyze.py",
+      "content_hash": "6e098bcda167e098",
+      "trained_at": "2026-01-14T00:16:02.396171",
+      "word_count": 1770
+    },
+    "got/cli/backlog.py": {
+      "path": "got/cli/backlog.py",
+      "content_hash": "daa003d60cb59e4d",
+      "trained_at": "2026-01-14T00:16:02.422496",
+      "word_count": 1490
+    },
+    "got/cli/backup.py": {
+      "path": "got/cli/backup.py",
+      "content_hash": "9a8559ef5f25e065",
+      "trained_at": "2026-01-14T00:16:02.445971",
+      "word_count": 1565
+    },
+    "got/cli/batch.py": {
+      "path": "got/cli/batch.py",
+      "content_hash": "a3826abb9d923b1b",
+      "trained_at": "2026-01-14T00:16:02.473736",
+      "word_count": 2138
+    },
+    "got/cli/decision.py": {
+      "path": "got/cli/decision.py",
+      "content_hash": "f95ad7df2c077fcf",
+      "trained_at": "2026-01-14T00:16:02.498005",
+      "word_count": 1909
+    },
+    "got/cli/doc.py": {
+      "path": "got/cli/doc.py",
+      "content_hash": "ff0ef10a920fe89a",
+      "trained_at": "2026-01-14T00:16:02.532735",
+      "word_count": 2844
+    },
+    "got/cli/edge.py": {
+      "path": "got/cli/edge.py",
+      "content_hash": "28b1f04989e0d462",
+      "trained_at": "2026-01-14T00:16:02.549871",
+      "word_count": 1288
+    },
+    "got/cli/failure.py": {
+      "path": "got/cli/failure.py",
+      "content_hash": "247ede55890f48dc",
+      "trained_at": "2026-01-14T00:16:02.587003",
+      "word_count": 2630
+    },
+    "got/cli/handoff.py": {
+      "path": "got/cli/handoff.py",
+      "content_hash": "77471e71188edaf8",
+      "trained_at": "2026-01-14T00:16:02.616479",
+      "word_count": 2053
+    },
+    "got/cli/knowledge_transfer.py": {
+      "path": "got/cli/knowledge_transfer.py",
+      "content_hash": "f892467395e225de",
+      "trained_at": "2026-01-14T00:16:02.655629",
+      "word_count": 3105
+    },
+    "got/cli/orphan.py": {
+      "path": "got/cli/orphan.py",
+      "content_hash": "fb2cbc0c88af664a",
+      "trained_at": "2026-01-14T00:16:02.674649",
+      "word_count": 1761
+    },
+    "got/cli/query.py": {
+      "path": "got/cli/query.py",
+      "content_hash": "2f0d5ad1dbc3e642",
+      "trained_at": "2026-01-14T00:16:02.717684",
+      "word_count": 3497
+    },
+    "got/cli/shared.py": {
+      "path": "got/cli/shared.py",
+      "content_hash": "9689d6e36d5863f2",
+      "trained_at": "2026-01-14T00:16:02.730475",
+      "word_count": 688
+    },
+    "got/cli/sprint.py": {
+      "path": "got/cli/sprint.py",
+      "content_hash": "6d72149309d05f85",
+      "trained_at": "2026-01-14T00:16:02.757823",
+      "word_count": 2622
+    },
+    "got/cli/task.py": {
+      "path": "got/cli/task.py",
+      "content_hash": "4bd138e742eb8cf4",
+      "trained_at": "2026-01-14T00:16:02.801883",
+      "word_count": 3985
+    },
+    "got/config.py": {
+      "path": "got/config.py",
+      "content_hash": "ad4abdeaef775436",
+      "trained_at": "2026-01-14T00:16:02.805506",
+      "word_count": 118
+    },
+    "got/conflict.py": {
+      "path": "got/conflict.py",
+      "content_hash": "e71141d38f9ef50b",
+      "trained_at": "2026-01-14T00:16:02.821734",
+      "word_count": 902
+    },
+    "got/entity_schemas.py": {
+      "path": "got/entity_schemas.py",
+      "content_hash": "2c80a50232ba2bbd",
+      "trained_at": "2026-01-14T00:16:02.853955",
+      "word_count": 3523
+    },
+    "got/errors.py": {
+      "path": "got/errors.py",
+      "content_hash": "54be4c4f00d6ce9b",
+      "trained_at": "2026-01-14T00:16:02.859709",
+      "word_count": 214
+    },
+    "got/factory.py": {
+      "path": "got/factory.py",
+      "content_hash": "a87e16b652c94d00",
+      "trained_at": "2026-01-14T00:16:02.864855",
+      "word_count": 185
+    },
+    "got/graph_walker.py": {
+      "path": "got/graph_walker.py",
+      "content_hash": "724d3555b8c3ca04",
+      "trained_at": "2026-01-14T00:16:02.895307",
+      "word_count": 2410
+    },
+    "got/learning_integration.py": {
+      "path": "got/learning_integration.py",
+      "content_hash": "2b971147c44a67d3",
+      "trained_at": "2026-01-14T00:16:02.968069",
+      "word_count": 3802
+    },
+    "got/orphan.py": {
+      "path": "got/orphan.py",
+      "content_hash": "011110417b2e4e43",
+      "trained_at": "2026-01-14T00:16:02.998939",
+      "word_count": 2340
+    },
+    "got/path_finder.py": {
+      "path": "got/path_finder.py",
+      "content_hash": "14f8c13184b511f4",
+      "trained_at": "2026-01-14T00:16:03.029035",
+      "word_count": 2749
+    },
+    "got/pattern_matcher.py": {
+      "path": "got/pattern_matcher.py",
+      "content_hash": "3a0e2f91b7842225",
+      "trained_at": "2026-01-14T00:16:03.058131",
+      "word_count": 2727
+    },
+    "got/protocol.py": {
+      "path": "got/protocol.py",
+      "content_hash": "ef0197946283bd25",
+      "trained_at": "2026-01-14T00:16:03.069286",
+      "word_count": 1058
+    },
+    "got/query_api.py": {
+      "path": "got/query_api.py",
+      "content_hash": "e59f545a43c4e400",
+      "trained_at": "2026-01-14T00:16:03.086196",
+      "word_count": 2045
+    },
+    "got/query_builder.py": {
+      "path": "got/query_builder.py",
+      "content_hash": "85cfdb57f139bde8",
+      "trained_at": "2026-01-14T00:16:03.153157",
+      "word_count": 6699
+    },
+    "got/sync.py": {
+      "path": "got/sync.py",
+      "content_hash": "0e75dded4e4b0779",
+      "trained_at": "2026-01-14T00:16:06.639019",
+      "word_count": 1106
+    },
+    "got/types.py": {
+      "path": "got/types.py",
+      "content_hash": "08efedfaa7e7008b",
+      "trained_at": "2026-01-14T00:16:06.708403",
+      "word_count": 7284
+    },
+    "got/validation.py": {
+      "path": "got/validation.py",
+      "content_hash": "1f601438188000ab",
+      "trained_at": "2026-01-14T00:16:06.749909",
+      "word_count": 4128
+    },
+    "graph/__init__.py": {
+      "path": "graph/__init__.py",
+      "content_hash": "631cbe2509101ba5",
+      "trained_at": "2026-01-14T00:16:06.765995",
+      "word_count": 494
+    },
+    "graph/algorithms.py": {
+      "path": "graph/algorithms.py",
+      "content_hash": "7385da5ba0809c32",
+      "trained_at": "2026-01-14T00:16:06.797186",
+      "word_count": 1786
+    },
+    "graph/base.py": {
+      "path": "graph/base.py",
+      "content_hash": "109fb55a5ea2a7be",
+      "trained_at": "2026-01-14T00:16:06.826055",
+      "word_count": 3452
+    },
+    "graph/implementations.py": {
+      "path": "graph/implementations.py",
+      "content_hash": "3f340b589e488005",
+      "trained_at": "2026-01-14T00:16:06.846366",
+      "word_count": 2192
+    },
+    "graph/integrations.py": {
+      "path": "graph/integrations.py",
+      "content_hash": "f7609870cbe5c8e0",
+      "trained_at": "2026-01-14T00:16:06.883292",
+      "word_count": 2701
+    },
+    "graph/knowledge_graph.py": {
+      "path": "graph/knowledge_graph.py",
+      "content_hash": "1fe95c50f7c74700",
+      "trained_at": "2026-01-14T00:16:06.974920",
+      "word_count": 8022
+    },
+    "graph/protocols.py": {
+      "path": "graph/protocols.py",
+      "content_hash": "92b064cd86758f1b",
+      "trained_at": "2026-01-14T00:16:06.988652",
+      "word_count": 1324
+    },
+    "graph/storage.py": {
+      "path": "graph/storage.py",
+      "content_hash": "0b51338a1053ed3c",
+      "trained_at": "2026-01-14T00:16:07.004830",
+      "word_count": 1988
+    },
+    "layers.py": {
+      "path": "layers.py",
+      "content_hash": "ddc91921e09dfc2b",
+      "trained_at": "2026-01-14T00:16:07.022949",
+      "word_count": 1234
+    },
+    "minicolumn.py": {
+      "path": "minicolumn.py",
+      "content_hash": "70997a494d410c0f",
+      "trained_at": "2026-01-14T00:16:07.051370",
+      "word_count": 2624
+    },
+    "ml_experiments/__init__.py": {
+      "path": "ml_experiments/__init__.py",
+      "content_hash": "743177893c3c622d",
+      "trained_at": "2026-01-14T00:16:07.066519",
+      "word_count": 290
+    },
+    "ml_experiments/dataset.py": {
+      "path": "ml_experiments/dataset.py",
+      "content_hash": "6d76ffc1cd0d2a60",
+      "trained_at": "2026-01-14T00:16:07.099599",
+      "word_count": 2110
+    },
+    "ml_experiments/experiment.py": {
+      "path": "ml_experiments/experiment.py",
+      "content_hash": "ec97a51699d025c1",
+      "trained_at": "2026-01-14T00:16:07.125252",
+      "word_count": 1626
+    },
+    "ml_experiments/file_prediction_adapter.py": {
+      "path": "ml_experiments/file_prediction_adapter.py",
+      "content_hash": "9e2e60c2f35627cf",
+      "trained_at": "2026-01-14T00:16:07.161337",
+      "word_count": 2483
+    },
+    "ml_experiments/metrics.py": {
+      "path": "ml_experiments/metrics.py",
+      "content_hash": "921a4e0d6f447253",
+      "trained_at": "2026-01-14T00:16:07.180787",
+      "word_count": 1334
+    },
+    "ml_experiments/utils.py": {
+      "path": "ml_experiments/utils.py",
+      "content_hash": "8070fee984446dd8",
+      "trained_at": "2026-01-14T00:16:07.195592",
+      "word_count": 1098
+    },
+    "ml_storage.py": {
+      "path": "ml_storage.py",
+      "content_hash": "7b736e3d4cf4800e",
+      "trained_at": "2026-01-14T00:16:07.267830",
+      "word_count": 6179
+    },
+    "observability.py": {
+      "path": "observability.py",
+      "content_hash": "569ef02fe3765466",
+      "trained_at": "2026-01-14T00:16:07.297119",
+      "word_count": 1799
+    },
+    "patterns.py": {
+      "path": "patterns.py",
+      "content_hash": "873d5db668161a4d",
+      "trained_at": "2026-01-14T00:16:07.597910",
+      "word_count": 1758
+    },
+    "persistence.py": {
+      "path": "persistence.py",
+      "content_hash": "5701d1e257767913",
+      "trained_at": "2026-01-14T00:16:07.627110",
+      "word_count": 2318
+    },
+    "processor/__init__.py": {
+      "path": "processor/__init__.py",
+      "content_hash": "4f4de285e08a8029",
+      "trained_at": "2026-01-14T00:16:07.637212",
+      "word_count": 362
+    },
+    "processor/compute.py": {
+      "path": "processor/compute.py",
+      "content_hash": "d1658910531d72fa",
+      "trained_at": "2026-01-14T00:16:07.726341",
+      "word_count": 5847
+    },
+    "processor/core.py": {
+      "path": "processor/core.py",
+      "content_hash": "670f4978bb3d7998",
+      "trained_at": "2026-01-14T00:16:07.739976",
+      "word_count": 1065
+    },
+    "processor/documents.py": {
+      "path": "processor/documents.py",
+      "content_hash": "4b73435ebfedff4c",
+      "trained_at": "2026-01-14T00:16:07.763642",
+      "word_count": 2164
+    },
+    "processor/introspection.py": {
+      "path": "processor/introspection.py",
+      "content_hash": "e24d9092516c1d48",
+      "trained_at": "2026-01-14T00:16:07.782474",
+      "word_count": 1464
+    },
+    "processor/persistence_api.py": {
+      "path": "processor/persistence_api.py",
+      "content_hash": "25f7bac329afc53a",
+      "trained_at": "2026-01-14T00:16:07.792041",
+      "word_count": 1092
+    },
+    "processor/query_api.py": {
+      "path": "processor/query_api.py",
+      "content_hash": "9d96967f9ef03ae1",
+      "trained_at": "2026-01-14T00:16:07.830018",
+      "word_count": 3897
+    },
+    "processor/spark_api.py": {
+      "path": "processor/spark_api.py",
+      "content_hash": "dbefd8e75d802729",
+      "trained_at": "2026-01-14T00:16:07.902168",
+      "word_count": 5263
+    },
+    "progress.py": {
+      "path": "progress.py",
+      "content_hash": "90671b9cb05cd652",
+      "trained_at": "2026-01-14T00:16:07.919728",
+      "word_count": 1181
+    },
+    "projects/__init__.py": {
+      "path": "projects/__init__.py",
+      "content_hash": "7a534accec283fda",
+      "trained_at": "2026-01-14T00:16:07.921570",
+      "word_count": 47
+    },
+    "projects/cli/__init__.py": {
+      "path": "projects/cli/__init__.py",
+      "content_hash": "f0fbc5a131375659",
+      "trained_at": "2026-01-14T00:16:07.924180",
+      "word_count": 94
+    },
+    "query/__init__.py": {
+      "path": "query/__init__.py",
+      "content_hash": "a1435a3fb3b7f406",
+      "trained_at": "2026-01-14T00:16:07.939468",
+      "word_count": 624
+    },
+    "query/analogy.py": {
+      "path": "query/analogy.py",
+      "content_hash": "58528ee5832cb9f2",
+      "trained_at": "2026-01-14T00:16:07.959747",
+      "word_count": 1526
+    },
+    "query/chunking.py": {
+      "path": "query/chunking.py",
+      "content_hash": "fdf8375893b3d04b",
+      "trained_at": "2026-01-14T00:16:07.980084",
+      "word_count": 1405
+    },
+    "query/definitions.py": {
+      "path": "query/definitions.py",
+      "content_hash": "0fbd64fc4015f83a",
+      "trained_at": "2026-01-14T00:16:08.001700",
+      "word_count": 1647
+    },
+    "query/expansion.py": {
+      "path": "query/expansion.py",
+      "content_hash": "661b5f3b5f8c2710",
+      "trained_at": "2026-01-14T00:16:08.030332",
+      "word_count": 2347
+    },
+    "query/intent.py": {
+      "path": "query/intent.py",
+      "content_hash": "5b2fcc557172a9d0",
+      "trained_at": "2026-01-14T00:16:08.042070",
+      "word_count": 933
+    },
+    "query/passages.py": {
+      "path": "query/passages.py",
+      "content_hash": "bc6fd407c963126e",
+      "trained_at": "2026-01-14T00:16:08.062089",
+      "word_count": 2270
+    },
+    "query/ranking.py": {
+      "path": "query/ranking.py",
+      "content_hash": "8b3f18aaf4700c5b",
+      "trained_at": "2026-01-14T00:16:08.085229",
+      "word_count": 2481
+    },
+    "query/search.py": {
+      "path": "query/search.py",
+      "content_hash": "b5ded8a1ebc4a2ec",
+      "trained_at": "2026-01-14T00:16:08.123908",
+      "word_count": 3502
+    },
+    "query/utils.py": {
+      "path": "query/utils.py",
+      "content_hash": "be1afd13639e7408",
+      "trained_at": "2026-01-14T00:16:08.130795",
+      "word_count": 385
+    },
+    "reasoning/__init__.py": {
+      "path": "reasoning/__init__.py",
+      "content_hash": "09def974c458440e",
+      "trained_at": "2026-01-14T00:16:08.201941",
+      "word_count": 2036
+    },
+    "reasoning/abstraction.py": {
+      "path": "reasoning/abstraction.py",
+      "content_hash": "1513d56182a14a41",
+      "trained_at": "2026-01-14T00:16:08.237054",
+      "word_count": 2473
+    },
+    "reasoning/abstraction_pln.py": {
+      "path": "reasoning/abstraction_pln.py",
+      "content_hash": "03195266f9685d70",
+      "trained_at": "2026-01-14T00:16:08.264297",
+      "word_count": 1796
+    },
+    "reasoning/attention_router.py": {
+      "path": "reasoning/attention_router.py",
+      "content_hash": "04789b4f08787d15",
+      "trained_at": "2026-01-14T00:16:08.287810",
+      "word_count": 1417
+    },
+    "reasoning/claude_code_spawner.py": {
+      "path": "reasoning/claude_code_spawner.py",
+      "content_hash": "8a92a4cb15c3104e",
+      "trained_at": "2026-01-14T00:16:08.349091",
+      "word_count": 5314
+    },
+    "reasoning/cognitive_loop.py": {
+      "path": "reasoning/cognitive_loop.py",
+      "content_hash": "6d730d93935539ab",
+      "trained_at": "2026-01-14T00:16:08.406118",
+      "word_count": 4257
+    },
+    "reasoning/collaboration.py": {
+      "path": "reasoning/collaboration.py",
+      "content_hash": "0e2979506ea34df2",
+      "trained_at": "2026-01-14T00:16:12.271405",
+      "word_count": 5477
+    },
+    "reasoning/consolidation.py": {
+      "path": "reasoning/consolidation.py",
+      "content_hash": "247946d62ce0519b",
+      "trained_at": "2026-01-14T00:16:12.309984",
+      "word_count": 2749
+    },
+    "reasoning/context_pool.py": {
+      "path": "reasoning/context_pool.py",
+      "content_hash": "8e7847bb630967ab",
+      "trained_at": "2026-01-14T00:16:12.327323",
+      "word_count": 1550
+    },
+    "reasoning/crisis_manager.py": {
+      "path": "reasoning/crisis_manager.py",
+      "content_hash": "5289977fb30468cb",
+      "trained_at": "2026-01-14T00:16:12.400332",
+      "word_count": 4979
+    },
+    "reasoning/goal_stack.py": {
+      "path": "reasoning/goal_stack.py",
+      "content_hash": "302076abeb586ffa",
+      "trained_at": "2026-01-14T00:16:12.428556",
+      "word_count": 2129
+    },
+    "reasoning/graph_of_thought.py": {
+      "path": "reasoning/graph_of_thought.py",
+      "content_hash": "8dd0ceef5c2e11fa",
+      "trained_at": "2026-01-14T00:16:12.451505",
+      "word_count": 1701
+    },
+    "reasoning/graph_persistence.py": {
+      "path": "reasoning/graph_persistence.py",
+      "content_hash": "e68ffbbca2e8bc8c",
+      "trained_at": "2026-01-14T00:16:12.528167",
+      "word_count": 8200
+    },
+    "reasoning/homeostasis.py": {
+      "path": "reasoning/homeostasis.py",
+      "content_hash": "a5bd973d0d2d0a73",
+      "trained_at": "2026-01-14T00:16:12.567205",
+      "word_count": 2359
+    },
+    "reasoning/hubris/__init__.py": {
+      "path": "reasoning/hubris/__init__.py",
+      "content_hash": "3e77edd0398923b6",
+      "trained_at": "2026-01-14T00:16:12.582867",
+      "word_count": 383
+    },
+    "reasoning/hubris/credit.py": {
+      "path": "reasoning/hubris/credit.py",
+      "content_hash": "699b44491c0dd848",
+      "trained_at": "2026-01-14T00:16:12.610107",
+      "word_count": 1804
+    },
+    "reasoning/hubris/expert.py": {
+      "path": "reasoning/hubris/expert.py",
+      "content_hash": "9767699ab521db72",
+      "trained_at": "2026-01-14T00:16:12.647656",
+      "word_count": 2095
+    },
+    "reasoning/hubris/orchestrator.py": {
+      "path": "reasoning/hubris/orchestrator.py",
+      "content_hash": "2d5b354b63ec1891",
+      "trained_at": "2026-01-14T00:16:12.685778",
+      "word_count": 2969
+    },
+    "reasoning/hubris/staking.py": {
+      "path": "reasoning/hubris/staking.py",
+      "content_hash": "b2a1e726f4d15ab9",
+      "trained_at": "2026-01-14T00:16:12.717623",
+      "word_count": 1874
+    },
+    "reasoning/hubris/value.py": {
+      "path": "reasoning/hubris/value.py",
+      "content_hash": "c210298898d58d70",
+      "trained_at": "2026-01-14T00:16:12.742544",
+      "word_count": 1628
+    },
+    "reasoning/loom.py": {
+      "path": "reasoning/loom.py",
+      "content_hash": "986813bbee99544b",
+      "trained_at": "2026-01-14T00:16:12.791034",
+      "word_count": 4124
+    },
+    "reasoning/loom_cortex.py": {
+      "path": "reasoning/loom_cortex.py",
+      "content_hash": "81ae277768001e92",
+      "trained_at": "2026-01-14T00:16:12.809548",
+      "word_count": 1570
+    },
+    "reasoning/loom_hive.py": {
+      "path": "reasoning/loom_hive.py",
+      "content_hash": "a8ac6600045db9d6",
+      "trained_at": "2026-01-14T00:16:12.830186",
+      "word_count": 1648
+    },
+    "reasoning/loop_validator.py": {
+      "path": "reasoning/loop_validator.py",
+      "content_hash": "ff9d156525c521eb",
+      "trained_at": "2026-01-14T00:16:12.855819",
+      "word_count": 1737
+    },
+    "reasoning/metrics.py": {
+      "path": "reasoning/metrics.py",
+      "content_hash": "7a695946e8af4c3b",
+      "trained_at": "2026-01-14T00:16:12.882718",
+      "word_count": 2420
+    },
+    "reasoning/nested_loop.py": {
+      "path": "reasoning/nested_loop.py",
+      "content_hash": "ed3662acba739656",
+      "trained_at": "2026-01-14T00:16:12.909421",
+      "word_count": 2286
+    },
+    "reasoning/prism_attention.py": {
+      "path": "reasoning/prism_attention.py",
+      "content_hash": "a7cfe55e2f40e653",
+      "trained_at": "2026-01-14T00:16:12.946694",
+      "word_count": 2468
+    },
+    "reasoning/prism_causal.py": {
+      "path": "reasoning/prism_causal.py",
+      "content_hash": "0fd9d634b7b8bdad",
+      "trained_at": "2026-01-14T00:16:13.014345",
+      "word_count": 4936
+    },
+    "reasoning/prism_got.py": {
+      "path": "reasoning/prism_got.py",
+      "content_hash": "0ffbdd49e8f504aa",
+      "trained_at": "2026-01-14T00:16:13.065706",
+      "word_count": 4662
+    },
+    "reasoning/prism_pln.py": {
+      "path": "reasoning/prism_pln.py",
+      "content_hash": "bc172445873da9a7",
+      "trained_at": "2026-01-14T00:16:13.177412",
+      "word_count": 9921
+    },
+    "reasoning/prism_slm.py": {
+      "path": "reasoning/prism_slm.py",
+      "content_hash": "bf91310355875bde",
+      "trained_at": "2026-01-14T00:16:13.214976",
+      "word_count": 3396
+    },
+    "reasoning/production_state.py": {
+      "path": "reasoning/production_state.py",
+      "content_hash": "c233ce99798364d9",
+      "trained_at": "2026-01-14T00:16:13.286630",
+      "word_count": 5946
+    },
+    "reasoning/pubsub.py": {
+      "path": "reasoning/pubsub.py",
+      "content_hash": "e3f52c8e38141fc2",
+      "trained_at": "2026-01-14T00:16:13.334740",
+      "word_count": 3498
+    },
+    "reasoning/qapv_verification.py": {
+      "path": "reasoning/qapv_verification.py",
+      "content_hash": "74f65fcd1e718db8",
+      "trained_at": "2026-01-14T00:16:13.365827",
+      "word_count": 2238
+    },
+    "reasoning/rejection_protocol.py": {
+      "path": "reasoning/rejection_protocol.py",
+      "content_hash": "787e0ba5421b1ff8",
+      "trained_at": "2026-01-14T00:16:13.399183",
+      "word_count": 2289
+    },
+    "reasoning/thought_graph.py": {
+      "path": "reasoning/thought_graph.py",
+      "content_hash": "9285ba974cebf4ad",
+      "trained_at": "2026-01-14T00:16:13.454968",
+      "word_count": 5506
+    },
+    "reasoning/thought_patterns.py": {
+      "path": "reasoning/thought_patterns.py",
+      "content_hash": "71497fe0782697db",
+      "trained_at": "2026-01-14T00:16:13.476558",
+      "word_count": 1724
+    },
+    "reasoning/verification.py": {
+      "path": "reasoning/verification.py",
+      "content_hash": "b79701d3580d67ab",
+      "trained_at": "2026-01-14T00:16:13.546686",
+      "word_count": 4990
+    },
+    "reasoning/workflow.py": {
+      "path": "reasoning/workflow.py",
+      "content_hash": "9d7960dcca177bc6",
+      "trained_at": "2026-01-14T00:16:13.580604",
+      "word_count": 3383
+    },
+    "reasoning/woven_mind.py": {
+      "path": "reasoning/woven_mind.py",
+      "content_hash": "b6252754f3ffcc9e",
+      "trained_at": "2026-01-14T00:16:13.596893",
+      "word_count": 1740
+    },
+    "results.py": {
+      "path": "results.py",
+      "content_hash": "0e7b078966cdacdb",
+      "trained_at": "2026-01-14T00:16:13.614456",
+      "word_count": 1789
+    },
+    "semantics.py": {
+      "path": "semantics.py",
+      "content_hash": "168c7e0e0b25fb6f",
+      "trained_at": "2026-01-14T00:16:13.667248",
+      "word_count": 4032
+    },
+    "spark/__init__.py": {
+      "path": "spark/__init__.py",
+      "content_hash": "bcb3032fb8f5262f",
+      "trained_at": "2026-01-14T00:16:13.682770",
+      "word_count": 596
+    },
+    "spark/alignment.py": {
+      "path": "spark/alignment.py",
+      "content_hash": "1740ee100455e8b0",
+      "trained_at": "2026-01-14T00:16:13.699205",
+      "word_count": 1651
+    },
+    "spark/anomaly.py": {
+      "path": "spark/anomaly.py",
+      "content_hash": "aefda15171229da7",
+      "trained_at": "2026-01-14T00:16:13.723106",
+      "word_count": 1388
+    },
+    "spark/ast_index.py": {
+      "path": "spark/ast_index.py",
+      "content_hash": "b1d292e5dc2490e8",
+      "trained_at": "2026-01-14T00:16:13.746654",
+      "word_count": 2238
+    },
+    "spark/co_change.py": {
+      "path": "spark/co_change.py",
+      "content_hash": "62e098a1265b1461",
+      "trained_at": "2026-01-14T00:16:13.769190",
+      "word_count": 1983
+    },
+    "spark/diff_tokenizer.py": {
+      "path": "spark/diff_tokenizer.py",
+      "content_hash": "05497e0a1995e29d",
+      "trained_at": "2026-01-14T00:16:13.799809",
+      "word_count": 2189
+    },
+    "spark/git_trainer.py": {
+      "path": "spark/git_trainer.py",
+      "content_hash": "a12d28ed6fdce812",
+      "trained_at": "2026-01-14T00:16:13.827712",
+      "word_count": 1705
+    },
+    "spark/intelligence.py": {
+      "path": "spark/intelligence.py",
+      "content_hash": "4e22070c2dcbea18",
+      "trained_at": "2026-01-14T00:16:13.859772",
+      "word_count": 2601
+    },
+    "spark/intent_parser.py": {
+      "path": "spark/intent_parser.py",
+      "content_hash": "2df0925b1833162a",
+      "trained_at": "2026-01-14T00:16:13.889179",
+      "word_count": 1547
+    },
+    "spark/ngram.py": {
+      "path": "spark/ngram.py",
+      "content_hash": "3656ac86cbcedb57",
+      "trained_at": "2026-01-14T00:16:13.905943",
+      "word_count": 1589
+    },
+    "spark/predictor.py": {
+      "path": "spark/predictor.py",
+      "content_hash": "131b4b1c4007c8e0",
+      "trained_at": "2026-01-14T00:16:13.921964",
+      "word_count": 1359
+    },
+    "spark/quality.py": {
+      "path": "spark/quality.py",
+      "content_hash": "ee853e58f0946281",
+      "trained_at": "2026-01-14T00:16:13.961497",
+      "word_count": 2565
+    },
+    "spark/suggester.py": {
+      "path": "spark/suggester.py",
+      "content_hash": "503504fafdda7b5c",
+      "trained_at": "2026-01-14T00:16:13.985823",
+      "word_count": 1838
+    },
+    "spark/tokenizer.py": {
+      "path": "spark/tokenizer.py",
+      "content_hash": "ab853393cc06e1bd",
+      "trained_at": "2026-01-14T00:16:14.000392",
+      "word_count": 675
+    },
+    "spark/transfer.py": {
+      "path": "spark/transfer.py",
+      "content_hash": "46a9c7806ad94d3d",
+      "trained_at": "2026-01-14T00:16:18.195606",
+      "word_count": 2455
+    },
+    "state_storage.py": {
+      "path": "state_storage.py",
+      "content_hash": "c18d166552bef2fa",
+      "trained_at": "2026-01-14T00:16:18.223184",
+      "word_count": 2907
+    },
+    "tokenizer.py": {
+      "path": "tokenizer.py",
+      "content_hash": "29b997267341cb61",
+      "trained_at": "2026-01-14T00:16:18.266963",
+      "word_count": 1983
+    },
+    "top_words.py": {
+      "path": "top_words.py",
+      "content_hash": "fa735c68808d07ec",
+      "trained_at": "2026-01-14T00:16:18.277745",
+      "word_count": 455
+    },
+    "types.py": {
+      "path": "types.py",
+      "content_hash": "d38259c925d22b9c",
+      "trained_at": "2026-01-14T00:16:18.292285",
+      "word_count": 644
+    },
+    "utils/__init__.py": {
+      "path": "utils/__init__.py",
+      "content_hash": "59de98e1414d958f",
+      "trained_at": "2026-01-14T00:16:18.297891",
+      "word_count": 191
+    },
+    "utils/checksums.py": {
+      "path": "utils/checksums.py",
+      "content_hash": "27bea1ac112f406d",
+      "trained_at": "2026-01-14T00:16:18.306025",
+      "word_count": 463
+    },
+    "utils/id_generation.py": {
+      "path": "utils/id_generation.py",
+      "content_hash": "dc48a5955a41666b",
+      "trained_at": "2026-01-14T00:16:18.327413",
+      "word_count": 1881
+    },
+    "utils/locking.py": {
+      "path": "utils/locking.py",
+      "content_hash": "e398cabbec74ecb8",
+      "trained_at": "2026-01-14T00:16:18.348745",
+      "word_count": 1176
+    },
+    "utils/persistence.py": {
+      "path": "utils/persistence.py",
+      "content_hash": "c149d236bef86849",
+      "trained_at": "2026-01-14T00:16:18.354415",
+      "word_count": 396
+    },
+    "utils/text.py": {
+      "path": "utils/text.py",
+      "content_hash": "272adb0dede5ef90",
+      "trained_at": "2026-01-14T00:16:18.359309",
+      "word_count": 109
+    },
+    "validation.py": {
+      "path": "validation.py",
+      "content_hash": "5df43ac1444f10b9",
+      "trained_at": "2026-01-14T00:16:18.375101",
+      "word_count": 1104
+    },
+    "wal.py": {
+      "path": "wal.py",
+      "content_hash": "cd67358399c6e612",
+      "trained_at": "2026-01-14T00:16:18.408822",
+      "word_count": 3337
     }
   }
 }

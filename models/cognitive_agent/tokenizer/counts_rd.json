@@ -1,5 +1,6 @@
 {
   "rds": 2,
   "rdfs": 4,
-  "rdf": 8
+  "rdf": 8,
+  "rdonly": 1
 }

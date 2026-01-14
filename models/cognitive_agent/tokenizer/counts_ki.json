@@ -1,9 +1,9 @@
 {
-  "kind": 9,
+  "kind": 13,
   "king": 2,
   "kikj": 1,
-  "ki": 19,
-  "kill": 12,
+  "ki": 21,
+  "kill": 17,
   "kilns": 2,
   "kingdoms": 1,
   "kiln": 2,
@@ -62,5 +62,7 @@
   "kikunae": 1,
   "kingshott": 1,
   "kickback": 2,
-  "kiin": 4
+  "kiin": 4,
+  "kids": 3,
+  "kilobytes": 1
 }

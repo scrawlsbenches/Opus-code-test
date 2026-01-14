@@ -4,5 +4,6 @@
   "rmi": 2,
   "rmin": 3,
   "rma": 12,
-  "rmsprop": 1
+  "rmsprop": 1,
+  "rmdir": 1
 }

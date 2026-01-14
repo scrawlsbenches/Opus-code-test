@@ -1,12 +1,12 @@
 {
-  "ml": 447,
+  "ml": 557,
   "mlregression": 2,
   "mlguide": 1,
   "mlintro": 1,
-  "mlstorage": 3,
-  "mlexperiments": 13,
+  "mlstorage": 5,
+  "mlexperiments": 14,
   "mldatacollector": 34,
-  "mlfileprediction": 15,
+  "mlfileprediction": 23,
   "mlsuggestenabled": 2,
   "mlsuggestthreshold": 2,
   "mlsuggestblocking": 2,
@@ -15,5 +15,7 @@
   "mlcollector": 16,
   "mlintelligencegenerator": 4,
   "mlintelligence": 1,
-  "mlp": 4
+  "mlp": 4,
+  "mlstore": 12,
+  "mlpredictionmodule": 4
 }

@@ -1,12 +1,12 @@
 {
-  "after": 447,
-  "affect": 107,
-  "affects": 121,
-  "affected": 35,
+  "after": 715,
+  "affect": 114,
+  "affects": 172,
+  "affected": 111,
   "afterthought": 3,
   "afraid": 2,
   "afterthoughts": 1,
-  "affecting": 39,
+  "affecting": 44,
   "affiliation": 5,
   "africa": 11,
   "affordable": 4,
@@ -17,7 +17,7 @@
   "african": 10,
   "afghanistan": 1,
   "afternoon": 1,
-  "afterward": 2,
+  "afterward": 3,
   "affinage": 5,
   "affineurs": 1,
   "affordances": 8,
@@ -40,5 +40,9 @@
   "affairs": 1,
   "affirmation": 2,
   "affliction": 1,
-  "affluent": 1
+  "affluent": 1,
+  "aftertests": 2,
+  "affectedabstractions": 3,
+  "afterperplexity": 2,
+  "affectedcomputations": 6
 }

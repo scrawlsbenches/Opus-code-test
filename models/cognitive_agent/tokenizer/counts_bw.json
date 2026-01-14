@@ -1,4 +1,12 @@
 {
   "bw": 16,
-  "bwar": 1
+  "bwar": 1,
+  "bworkaround": 1,
+  "bwip": 1,
+  "bwhere": 2,
+  "bwhy": 1,
+  "bwith": 1,
+  "bwho": 1,
+  "bwhat": 1,
+  "bwrite": 1
 }

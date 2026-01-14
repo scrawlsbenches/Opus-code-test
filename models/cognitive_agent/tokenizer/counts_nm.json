@@ -1,5 +1,10 @@
 {
   "nmda": 4,
   "nms": 10,
-  "nm": 10
+  "nm": 10,
+  "nmind": 1,
+  "nmanual": 1,
+  "nmost": 2,
+  "nmerges": 9,
+  "nmodel": 2
 }

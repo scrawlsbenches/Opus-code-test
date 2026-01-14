@@ -1,11 +1,11 @@
 {
-  "https": 7,
-  "html": 10,
+  "https": 8,
+  "html": 13,
   "htmlcov": 1,
   "httpx": 1,
   "htp": 2,
   "httponly": 1,
-  "http": 9,
+  "http": 22,
   "htri": 2,
   "htfs": 2
 }

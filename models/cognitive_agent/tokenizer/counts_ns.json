@@ -1,7 +1,20 @@
 {
-  "ns": 10,
+  "ns": 12,
   "nslookup": 2,
   "nservicebus": 1,
   "nsca": 2,
-  "nsense": 1
+  "nsense": 1,
+  "nsuffixes": 1,
+  "nslowest": 1,
+  "nstate": 3,
+  "nsample": 2,
+  "nsimilar": 1,
+  "nsaving": 1,
+  "nsuggestions": 1,
+  "nsummary": 2,
+  "nsnapshot": 1,
+  "nsections": 1,
+  "nsprint": 2,
+  "nstarted": 1,
+  "nstep": 1
 }

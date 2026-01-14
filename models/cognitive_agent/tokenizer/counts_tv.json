@@ -1,5 +1,13 @@
 {
   "tversky": 1,
-  "tvs": 1,
-  "tv": 6
+  "tvs": 6,
+  "tv": 229,
+  "tvstrength": 6,
+  "tvconfidence": 3,
+  "tvantecedent": 3,
+  "tvimplication": 3,
+  "tvab": 9,
+  "tvbc": 3,
+  "tvac": 3,
+  "tvb": 3
 }

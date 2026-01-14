@@ -1,5 +1,7 @@
 {
-  "tf": 9072,
-  "tfidf": 9073,
-  "tfidfcore": 9074
+  "tf": 9002,
+  "tfidf": 9003,
+  "tfidfcore": 9004,
+  "tfidfperdoc": 9005,
+  "tfidfscore": 9006
 }

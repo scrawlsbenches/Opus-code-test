@@ -1,4 +1,6 @@
 {
-  "dt": 4,
-  "dtam": 2
+  "dt": 30,
+  "dtam": 2,
+  "dtclass": 1,
+  "dtype": 1
 }

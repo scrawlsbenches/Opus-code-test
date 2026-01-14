@@ -1,6 +1,6 @@
 {
   "irrelevant": 45,
-  "irreversible": 11,
+  "irreversible": 12,
   "ir": 8,
   "irreplaceable": 5,
   "irony": 4,
@@ -27,5 +27,6 @@
   "irreconcilably": 1,
   "iran": 1,
   "irving": 1,
-  "irregularities": 2
+  "irregularities": 2,
+  "irreversiblemigrationerror": 1
 }

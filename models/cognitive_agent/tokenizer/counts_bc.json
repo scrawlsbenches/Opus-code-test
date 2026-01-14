@@ -1,5 +1,10 @@
 {
-  "bc": 1,
+  "bc": 12,
   "bce": 32,
-  "bcrypt": 2
+  "bcrypt": 2,
+  "bcritical": 1,
+  "bclass": 3,
+  "bcreate": 1,
+  "bcorrect": 1,
+  "bclarify": 1
 }
