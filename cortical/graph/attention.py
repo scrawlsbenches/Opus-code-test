@@ -682,6 +682,7 @@ class AttentionLayer(ProcessingLayer):
             "values": {},
             "attention_weights": {},
             "pre_output": {},
+            "dropout_mask": {},  # Store dropout masks for correct backward pass
         }
 
         outputs: Dict[str, Array] = {}
@@ -772,12 +773,18 @@ class AttentionLayer(ProcessingLayer):
                 "weights": attn_weights.copy(),
             }
 
-            # Apply dropout during training
-            if self._training and self.dropout > 0:
-                mask = np.random.binomial(1, 1 - self.dropout, attended.shape)
-                attended = attended * mask / (1 - self.dropout)
-
+            # Store pre-dropout value for backward pass
             self._cache["pre_output"][node_id] = attended.copy()
+
+            # Apply dropout during training
+            # IMPORTANT: Store mask for backward pass to ensure correct gradient flow
+            if self._training and self.dropout > 0:
+                dropout_mask = np.random.binomial(1, 1 - self.dropout, attended.shape)
+                dropout_scale = 1.0 / (1 - self.dropout)
+                attended = attended * dropout_mask * dropout_scale
+                self._cache["dropout_mask"][node_id] = (dropout_mask, dropout_scale)
+            else:
+                self._cache["dropout_mask"][node_id] = None
 
             # Output projection
             output = attended @ self.W_o.data
@@ -819,11 +826,30 @@ class AttentionLayer(ProcessingLayer):
 
             if pre_output is not None:
                 # Has attention (not first position)
-                self.W_o.add_grad(np.outer(pre_output, grad_output))
+                # Note: W_o gradient uses the POST-dropout value (what was actually
+                # multiplied with W_o), so we need to apply dropout to pre_output
+                dropout_info = self._cache.get("dropout_mask", {}).get(node_id)
+                if dropout_info is not None:
+                    dropout_mask, dropout_scale = dropout_info
+                    post_dropout = pre_output * dropout_mask * dropout_scale
+                else:
+                    post_dropout = pre_output
+
+                self.W_o.add_grad(np.outer(post_dropout, grad_output))
                 if self.use_bias:
                     self.b_o.add_grad(grad_output)
 
-                grad_attended = grad_output @ self.W_o.data.T
+                # Gradient through W_o projection
+                grad_post_dropout = grad_output @ self.W_o.data.T
+
+                # CRITICAL: Apply dropout mask to gradient
+                # Dropout zeros some elements during forward, so gradients
+                # should not flow through those elements during backward
+                if dropout_info is not None:
+                    dropout_mask, dropout_scale = dropout_info
+                    grad_attended = grad_post_dropout * dropout_mask * dropout_scale
+                else:
+                    grad_attended = grad_post_dropout
 
                 # Get cached values for attention backward
                 attn_cache = self._cache["attention_weights"].get(node_id, {})
@@ -1213,13 +1239,26 @@ class AttentionGraph(BaseGraph[AttentionNode, AttentionEdge]):
         return state
 
     def load_state(self, state: Dict[str, Any]) -> None:
-        """Load graph state from checkpoint."""
+        """
+        Load graph state from checkpoint.
+
+        Restores:
+        - Node embeddings
+        - Attention layer parameters (creates layers if needed)
+        """
+        # Restore node embeddings
         for node_id, embedding in state.get("embeddings", {}).items():
             node = self.get_node(node_id)
             if node is not None and node.embedding is not None:
                 node.embedding.data = embedding.copy()
 
-        for i, layer_state in enumerate(state.get("layers", [])):
+        # Ensure we have enough layers to load the saved state
+        saved_layers = state.get("layers", [])
+        if saved_layers:
+            self._ensure_layers(len(saved_layers))
+
+        # Restore layer parameters
+        for i, layer_state in enumerate(saved_layers):
             if i < len(self._attention_layers):
                 layer = self._attention_layers[i]
                 layer.W_q.data = layer_state["W_q"].copy()
