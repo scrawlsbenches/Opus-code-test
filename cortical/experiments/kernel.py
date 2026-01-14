@@ -134,6 +134,7 @@ class ExperimentKernel:
         profiling: bool = True,
         track_memory: bool = True,
         position_encoding: Any = None,  # Optional position encoding module
+        vocab_projection: Any = None,  # Optional vocab projection for cross-entropy
     ):
         """
         Initialize the experiment kernel.
@@ -146,11 +147,14 @@ class ExperimentKernel:
             track_memory: Whether to track memory allocation
             position_encoding: Optional position encoding module (e.g., LearnedPositionEncoding)
                              Must have a backward(input_gradients) method for gradient propagation
+            vocab_projection: Optional vocabulary projection for cross-entropy loss
+                            Must have forward() and backward() methods
         """
         self.graph = graph
         self.optimizer = optimizer
         self.loss_fn = loss_fn
         self.position_encoding = position_encoding
+        self.vocab_projection = vocab_projection
         self.profiler = Profiler(enabled=profiling, track_memory=track_memory)
         self._history = TrainingHistory()
 
@@ -183,23 +187,42 @@ class ExperimentKernel:
                     input_nodes=input_nodes,
                 )
 
+                # Apply vocab projection if present (for cross-entropy)
+                if self.vocab_projection is not None:
+                    projected = self.vocab_projection.forward(outputs, apply_softmax=False)
+                else:
+                    projected = outputs
+
             # Compute loss and gradients
             total_loss = 0.0
             output_grads: Dict[str, Array] = {}
 
             for node_id, target in targets.items():
-                if node_id in outputs:
-                    loss = self.loss_fn(outputs[node_id], target)
+                if node_id in projected:
+                    # For cross-entropy with logits, pass node_id for caching
+                    if hasattr(self.loss_fn, '_probs_cache'):
+                        loss = self.loss_fn(projected[node_id], target, node_id=node_id)
+                        output_grads[node_id] = self.loss_fn.gradient(
+                            projected[node_id], target, node_id=node_id
+                        )
+                    else:
+                        loss = self.loss_fn(projected[node_id], target)
+                        output_grads[node_id] = self.loss_fn.gradient(
+                            projected[node_id], target
+                        )
                     total_loss += loss
-                    output_grads[node_id] = self.loss_fn.gradient(
-                        outputs[node_id], target
-                    )
 
             metrics.loss = total_loss
 
             # Backward pass
             with self.profiler.backward():
-                input_gradients = self.graph.backward(output_grads, num_layers=num_layers)
+                # If vocab projection is present, backprop through it first
+                if self.vocab_projection is not None:
+                    graph_grads = self.vocab_projection.backward(output_grads, from_softmax=False)
+                else:
+                    graph_grads = output_grads
+
+                input_gradients = self.graph.backward(graph_grads, num_layers=num_layers)
 
                 # Propagate gradients to position encoding if present
                 # This is critical: position encoding is added BEFORE forward,
@@ -207,14 +230,16 @@ class ExperimentKernel:
                 if self.position_encoding is not None and input_gradients is not None:
                     self.position_encoding.backward(input_gradients)
 
-            # Compute gradient norm before clipping (include position encoding params)
+            # Compute gradient norm before clipping (include all trainable params)
             all_params = self.graph.parameters()
             if self.position_encoding is not None:
                 all_params = all_params + self.position_encoding.parameters()
+            if self.vocab_projection is not None:
+                all_params = all_params + self.vocab_projection.parameters()
             grad_norm = compute_gradient_norm(all_params)
             metrics.gradient_norm = grad_norm
 
-            # Gradient clipping (include position encoding if present)
+            # Gradient clipping
             if clip_grad is not None:
                 clip_gradients(all_params, clip_grad)
 

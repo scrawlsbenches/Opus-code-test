@@ -107,11 +107,13 @@ def create_parser() -> argparse.ArgumentParser:
         default="none",
         help="Position encoding type (default: none)",
     )
-
-    # TODO(agent): Add these arguments when features are implemented
-    # run_parser.add_argument("--dropout", type=float, default=0.0)
-    # run_parser.add_argument("--use-bias", action="store_true")
-    # run_parser.add_argument("--loss-fn", choices=["mse", "cross_entropy"], default="mse")
+    run_parser.add_argument(
+        "--loss-fn",
+        type=str,
+        choices=["mse", "cross_entropy"],
+        default="mse",
+        help="Loss function: 'mse' for embedding matching, 'cross_entropy' for language modeling (default: mse)",
+    )
 
     # Compare command
     compare_parser = subparsers.add_parser("compare", help="Compare experiment results")
@@ -142,6 +144,7 @@ def run_experiment(args: argparse.Namespace) -> int:
     from cortical.experiments.kernel import ExperimentKernel
     from cortical.experiments.tokenizer import tokenize, build_vocab, tokens_to_ids, load_text
     from cortical.experiments.position import create_position_encoding
+    from cortical.experiments.projection import VocabProjection, CrossEntropyWithLogits
 
     # Create config
     config = ExperimentConfig.from_args(args)
@@ -207,12 +210,6 @@ def run_experiment(args: argparse.Namespace) -> int:
     if pos_encoding:
         input_nodes = pos_encoding.add_to_inputs(input_nodes)
 
-    # Targets are next-token embeddings (without position encoding)
-    targets = {
-        f"pos_{i}": embeddings[token_ids[i + 1]].copy()
-        for i in range(len(tokens) - 1)
-    }
-
     # Initialize graph
     _ = graph.forward(num_layers=config.num_layers, input_nodes=input_nodes)
 
@@ -221,12 +218,37 @@ def run_experiment(args: argparse.Namespace) -> int:
     if pos_encoding:
         all_params = all_params + pos_encoding.parameters()
 
+    # Setup loss function and targets based on config
+    vocab_proj = None
+    if config.loss_fn == "cross_entropy":
+        # Cross-entropy mode: use vocab projection and token indices as targets
+        vocab_proj = VocabProjection(
+            embedding_dim=config.embedding_dim,
+            vocab_size=len(vocab),
+        )
+        all_params = all_params + vocab_proj.parameters()
+        loss_fn = CrossEntropyWithLogits()
+
+        # Targets are next-token indices (as one-hot for compatibility)
+        targets = {
+            f"pos_{i}": np.eye(len(vocab))[token_ids[i + 1]]
+            for i in range(len(tokens) - 1)
+        }
+        print(f"Using cross-entropy loss with vocabulary projection")
+    else:
+        # MSE mode: targets are next-token embeddings
+        loss_fn = MSELoss()
+        targets = {
+            f"pos_{i}": embeddings[token_ids[i + 1]].copy()
+            for i in range(len(tokens) - 1)
+        }
+
     optimizer = Adam(all_params, lr=config.lr)
-    loss_fn = MSELoss()
     kernel = ExperimentKernel(
         graph, optimizer, loss_fn,
         profiling=False,
         position_encoding=pos_encoding,
+        vocab_projection=vocab_proj,
     )
 
     # Setup logging
@@ -252,17 +274,31 @@ def run_experiment(args: argparse.Namespace) -> int:
     correct = 0
     total = 0
 
-    for i in range(len(tokens) - 1):
-        node_id = f"pos_{i}"
-        if node_id in outputs:
-            output_vec = outputs[node_id]
-            distances = np.linalg.norm(embeddings - output_vec, axis=1)
-            predicted_id = np.argmin(distances)
-            predicted_token = id_to_token.get(predicted_id, "<UNK>")
-            actual_token = tokens[i + 1]
-            if predicted_token == actual_token:
-                correct += 1
-            total += 1
+    if config.loss_fn == "cross_entropy" and vocab_proj is not None:
+        # For cross-entropy: use vocab projection to get logits, then argmax
+        logits = vocab_proj.forward(outputs, apply_softmax=False)
+        for i in range(len(tokens) - 1):
+            node_id = f"pos_{i}"
+            if node_id in logits:
+                predicted_id = int(np.argmax(logits[node_id]))
+                predicted_token = id_to_token.get(predicted_id, "<UNK>")
+                actual_token = tokens[i + 1]
+                if predicted_token == actual_token:
+                    correct += 1
+                total += 1
+    else:
+        # For MSE: find nearest embedding vector
+        for i in range(len(tokens) - 1):
+            node_id = f"pos_{i}"
+            if node_id in outputs:
+                output_vec = outputs[node_id]
+                distances = np.linalg.norm(embeddings - output_vec, axis=1)
+                predicted_id = np.argmin(distances)
+                predicted_token = id_to_token.get(predicted_id, "<UNK>")
+                actual_token = tokens[i + 1]
+                if predicted_token == actual_token:
+                    correct += 1
+                total += 1
 
     accuracy = correct / total if total > 0 else 0.0
 

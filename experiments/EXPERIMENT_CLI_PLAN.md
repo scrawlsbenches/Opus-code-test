@@ -1,7 +1,8 @@
 # Experiment CLI and Management System Plan
 
-**Status**: Planning
+**Status**: Implemented
 **Created**: 2026-01-14
+**Updated**: 2026-01-14
 **Branch**: claude/review-attention-graph-icHzv
 
 ## Overview
@@ -241,11 +242,17 @@ Example:
 ## Success Criteria
 
 MVP is complete when:
-- [ ] `python -m cortical.experiments.cli run --input samples/unix_evolution.txt --name test` works
-- [ ] Config is saved to `experiments/runs/{date}_test/config.json`
-- [ ] Metrics are saved to `experiments/runs/{date}_test/metrics.json`
-- [ ] All hyperparameters can be overridden via CLI
-- [ ] Experiments are reproducible with same seed
+- [x] `python -m cortical.experiments.cli run --input samples/unix_evolution.txt --name test` works
+- [x] Config is saved to `experiments/runs/{date}_test/config.json`
+- [x] Metrics are saved to `experiments/runs/{date}_test/metrics.json`
+- [x] All hyperparameters can be overridden via CLI
+- [x] Experiments are reproducible with same seed
+
+Additional features implemented:
+- [x] Cross-entropy loss with vocabulary projection (`--loss-fn cross_entropy`)
+- [x] Checkpoint saving/loading using pickle format
+- [x] Compare command for experiment comparison
+- [x] List command to show all experiments
 
 ## Testing Strategy
 
@@ -259,3 +266,5 @@ MVP is complete when:
 - Integrates with existing `ExperimentKernel` from `cortical/experiments/kernel.py`
 - Uses existing tokenizer from `cortical/experiments/tokenizer.py`
 - Uses existing profiler from `cortical/experiments/profiler.py`
+- New `cortical/experiments/projection.py` provides `VocabProjection` and `CrossEntropyWithLogits` for language modeling
+- Checkpoint saving uses pickle format (see `cortical/experiments/logging.py`)

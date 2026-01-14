@@ -3,18 +3,23 @@ Experiment Logging
 ==================
 
 JSON-based logging for experiment results and metrics.
+Includes checkpoint saving/loading using pickle format.
 """
 
 from __future__ import annotations
 
 import json
+import pickle
 import subprocess
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from .config import ExperimentConfig
+
+if TYPE_CHECKING:
+    from cortical.graph.trainable import Parameter
 
 
 def get_git_commit() -> Optional[str]:
@@ -131,6 +136,11 @@ class ExperimentLog:
         """Path to summary.txt."""
         return self.run_dir / "summary.txt"
 
+    @property
+    def checkpoint_path(self) -> Path:
+        """Path to checkpoint.pkl."""
+        return self.run_dir / "checkpoint.pkl"
+
     def log_epoch(
         self,
         loss: float,
@@ -245,6 +255,93 @@ class ExperimentLog:
         log._saved = True
         return log
 
+    def save_checkpoint(self, parameters: List["Parameter"]) -> Path:
+        """
+        Save model parameters to a checkpoint file.
+
+        Saves parameter data (not gradients) using pickle format.
+        The checkpoint can be loaded later to restore model state.
+
+        Args:
+            parameters: List of Parameter objects to save
+
+        Returns:
+            Path to the checkpoint file
+        """
+        # Ensure directory exists
+        self.run_dir.mkdir(parents=True, exist_ok=True)
+
+        # Extract parameter data and names
+        checkpoint_data = {
+            "parameters": [
+                {
+                    "name": p.name,
+                    "data": p.data,
+                    "requires_grad": p.requires_grad,
+                }
+                for p in parameters
+            ],
+            "config": self.config.to_dict(),
+            "timestamp": datetime.now().isoformat(),
+        }
+
+        with open(self.checkpoint_path, "wb") as f:
+            pickle.dump(checkpoint_data, f)
+
+        return self.checkpoint_path
+
+    @classmethod
+    def load_checkpoint(cls, checkpoint_path: Path) -> Dict[str, Any]:
+        """
+        Load checkpoint data from a file.
+
+        Args:
+            checkpoint_path: Path to checkpoint.pkl file
+
+        Returns:
+            Dictionary containing:
+                - parameters: List of dicts with 'name', 'data', 'requires_grad'
+                - config: Experiment config dict
+                - timestamp: When checkpoint was saved
+        """
+        checkpoint_path = Path(checkpoint_path)
+        if not checkpoint_path.exists():
+            raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
+
+        with open(checkpoint_path, "rb") as f:
+            return pickle.load(f)
+
+    @staticmethod
+    def restore_parameters(
+        parameters: List["Parameter"],
+        checkpoint_data: Dict[str, Any],
+    ) -> int:
+        """
+        Restore parameter values from checkpoint data.
+
+        Matches parameters by name and restores their data arrays.
+
+        Args:
+            parameters: List of Parameter objects to restore
+            checkpoint_data: Data loaded from load_checkpoint()
+
+        Returns:
+            Number of parameters successfully restored
+        """
+        # Build lookup by name
+        saved_params = {p["name"]: p for p in checkpoint_data["parameters"]}
+
+        restored = 0
+        for param in parameters:
+            if param.name in saved_params:
+                saved = saved_params[param.name]
+                # Verify shape matches
+                if param.data.shape == saved["data"].shape:
+                    param.data[:] = saved["data"]
+                    restored += 1
+
+        return restored
+
 
 def list_experiments(base_dir: Path = Path("experiments/runs")) -> List[Path]:
     """
@@ -262,9 +359,3 @@ def list_experiments(base_dir: Path = Path("experiments/runs")) -> List[Path]:
 
     runs = [p for p in base_dir.iterdir() if p.is_dir() and (p / "config.json").exists()]
     return sorted(runs)
-
-
-# TODO(agent): Implement checkpoint saving/loading
-# SESSION_HANDOFF: Should save model parameters to checkpoint.npz
-# BLOCKED_BY: Need to decide checkpoint format (numpy .npz vs pickle vs safetensors)
-# CONTEXT: Currently only config and metrics are saved
