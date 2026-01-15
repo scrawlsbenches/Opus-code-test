@@ -262,10 +262,10 @@ python -m cortical.experiments.cli vocab rebuild \
 ## Implementation Plan
 
 ### Phase 1: Core Vocabulary Management
-- [ ] `Vocabulary` class with save/load/extend methods
-- [ ] `vocab create` command
-- [ ] `vocab inspect` command
-- [ ] Modify `run` to accept `--vocab` parameter
+- [x] `Vocabulary` class with save/load/extend methods
+- [x] `vocab create` command
+- [x] `vocab inspect` command
+- [x] Modify `run` to accept `--vocab` parameter
 - [ ] Store vocab reference in checkpoint
 
 ### Phase 2: OOV Handling
