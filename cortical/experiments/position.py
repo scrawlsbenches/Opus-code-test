@@ -9,7 +9,7 @@ where tokens appear in the sequence. Position encodings add this information.
 
 Supported types:
 - learned: Trainable embedding per position (default)
-- sinusoidal: Fixed sin/cos patterns (TODO)
+- sinusoidal: Fixed sin/cos patterns from "Attention Is All You Need"
 
 TODO(agent): Position encoding shows mixed results in experiments.
 SESSION_HANDOFF: Initial tests show learned position encoding doesn't consistently
