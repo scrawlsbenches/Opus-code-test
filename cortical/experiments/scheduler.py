@@ -2,13 +2,14 @@
 Learning Rate Schedulers
 ========================
 
-Stub implementations for learning rate scheduling.
+Implementations for learning rate scheduling during training.
 
-TODO(agent): Implement these schedulers for the experiment CLI
-SESSION_HANDOFF: These classes are stubbed out with NotImplementedError
-CONTEXT: Optimizer.lr can be modified dynamically - schedulers should do this
+Available schedulers:
+- StepLR: Decay by gamma every step_size epochs
+- CosineAnnealingLR: Smooth cosine decay from base_lr to lr_min
+- ReduceLROnPlateau: Reduce LR when validation metric plateaus
 
-Usage (once implemented):
+Usage:
     optimizer = Adam(params, lr=0.01)
     scheduler = StepLR(optimizer, step_size=100, gamma=0.1)
 
@@ -124,17 +125,14 @@ class StepLR(LRScheduler):
         """
         Compute stepped learning rate.
 
-        TODO(agent): Implement this method
         Formula: base_lr * gamma^(epoch // step_size)
+
+        Returns:
+            Learning rate for current epoch
         """
-        raise NotImplementedError(
-            "StepLR.get_lr() is not yet implemented.\n"
-            "Formula: base_lr * gamma^(epoch // step_size)\n"
-            "Example: With step_size=100, gamma=0.1:\n"
-            "  epoch 0-99: base_lr\n"
-            "  epoch 100-199: base_lr * 0.1\n"
-            "  epoch 200-299: base_lr * 0.01"
-        )
+        # Number of step decays that have occurred
+        num_decays = self.last_epoch // self.step_size
+        return self.base_lr * (self.gamma ** num_decays)
 
 
 class CosineAnnealingLR(LRScheduler):
@@ -174,16 +172,21 @@ class CosineAnnealingLR(LRScheduler):
         """
         Compute cosine-annealed learning rate.
 
-        TODO(agent): Implement this method
         Formula: lr_min + (base_lr - lr_min) * (1 + cos(pi * epoch / T_max)) / 2
 
-        Use: import math; math.cos(math.pi * epoch / T_max)
+        At epoch 0: cos(0) = 1, so (1+1)/2 = 1 -> lr = base_lr
+        At epoch T_max: cos(pi) = -1, so (1-1)/2 = 0 -> lr = lr_min
+
+        Returns:
+            Learning rate for current epoch
         """
-        raise NotImplementedError(
-            "CosineAnnealingLR.get_lr() is not yet implemented.\n"
-            "Formula: lr_min + (base_lr - lr_min) * (1 + cos(pi * epoch / T_max)) / 2\n"
-            "This creates a smooth cosine curve from base_lr to lr_min."
-        )
+        import math
+
+        # Compute cosine factor (ranges from 1 at start to 0 at end)
+        cosine_factor = (1 + math.cos(math.pi * self.last_epoch / self.T_max)) / 2
+
+        # Interpolate between base_lr and lr_min
+        return self.lr_min + (self.base_lr - self.lr_min) * cosine_factor
 
 
 class ReduceLROnPlateau(LRScheduler):
@@ -244,7 +247,6 @@ class ReduceLROnPlateau(LRScheduler):
         """
         Update LR based on metric value.
 
-        TODO(agent): Implement this method
         Logic:
             1. Check if metric improved (considering mode and threshold)
             2. If improved: reset num_bad_epochs, update best
@@ -254,14 +256,44 @@ class ReduceLROnPlateau(LRScheduler):
         Args:
             metric: Current metric value (e.g., validation loss)
         """
-        raise NotImplementedError(
-            "ReduceLROnPlateau.step() is not yet implemented.\n"
-            "Logic:\n"
-            "  1. Check if metric improved (mode='min' means lower is better)\n"
-            "  2. If improved by threshold: reset patience counter, update best\n"
-            "  3. If not improved: increment bad epoch counter\n"
-            "  4. If counter >= patience: new_lr = max(current_lr * factor, min_lr)"
-        )
+        self._step_count += 1
+        self.last_epoch = self._step_count
+
+        # Initialize best on first call
+        if self.best is None:
+            self.best = metric
+            return
+
+        # Check if metric improved
+        if self._is_better(metric):
+            self.best = metric
+            self.num_bad_epochs = 0
+        else:
+            self.num_bad_epochs += 1
+
+            # Check if we should reduce LR
+            if self.num_bad_epochs >= self.patience:
+                new_lr = max(self.current_lr * self.factor, self.min_lr)
+                self.current_lr = new_lr
+                self.optimizer.lr = new_lr
+                self.num_bad_epochs = 0  # Reset counter after reduction
+
+    def _is_better(self, metric: float) -> bool:
+        """
+        Check if metric improved considering mode and threshold.
+
+        Args:
+            metric: Current metric value
+
+        Returns:
+            True if metric improved by at least threshold
+        """
+        if self.mode == "min":
+            # Lower is better: improved if metric < best - threshold
+            return metric < self.best - self.threshold
+        else:
+            # Higher is better: improved if metric > best + threshold
+            return metric > self.best + self.threshold
 
     def state_dict(self) -> dict:
         """Return scheduler state for checkpointing."""

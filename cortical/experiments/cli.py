@@ -179,36 +179,35 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     # Learning rate scheduling
-    # TODO(agent): Implement LR schedulers (StepLR, CosineAnnealing, ReduceLROnPlateau)
-    # CONTEXT: Optimizer.lr can be modified dynamically
     run_parser.add_argument(
         "--lr-schedule",
         type=str,
         choices=["step", "cosine", "plateau"],
         default=None,
         metavar="TYPE",
-        help="[EXPERIMENTAL] LR schedule: 'step', 'cosine', or 'plateau' (not yet implemented)",
+        help="LR schedule: 'step' (decay every N epochs), 'cosine' (smooth decay), "
+             "or 'plateau' (reduce on val loss stall)",
     )
     run_parser.add_argument(
         "--lr-step-size",
         type=int,
         default=100,
         metavar="N",
-        help="[EXPERIMENTAL] Epochs between LR reductions for 'step' schedule (default: 100)",
+        help="Epochs between LR reductions for 'step' schedule (default: 100)",
     )
     run_parser.add_argument(
         "--lr-gamma",
         type=float,
         default=0.1,
         metavar="FACTOR",
-        help="[EXPERIMENTAL] LR decay factor (default: 0.1)",
+        help="LR decay factor for 'step' and 'plateau' schedules (default: 0.1)",
     )
     run_parser.add_argument(
         "--lr-min",
         type=float,
         default=1e-6,
         metavar="LR",
-        help="[EXPERIMENTAL] Minimum learning rate (default: 1e-6)",
+        help="Minimum learning rate for 'cosine' and 'plateau' (default: 1e-6)",
     )
 
     # Compare command
@@ -277,21 +276,8 @@ def _check_experimental_features(args: argparse.Namespace) -> None:
             "Requires: patience counter, best model tracking, min_delta comparison"
         )
 
-    # Check --lr-schedule
-    if args.lr_schedule is not None:
-        experimental_features.append(f"--lr-schedule={args.lr_schedule}")
-        # TODO(agent): Implement LR scheduling
-        # Steps:
-        #   1. Create scheduler.py with LRScheduler base class
-        #   2. Implement StepLR: decay every N epochs
-        #   3. Implement CosineAnnealingLR: smooth decay to lr_min
-        #   4. Implement ReduceLROnPlateau: decay when val_loss stalls
-        #   5. Call scheduler.step() in training loop
-        raise NotImplementedError(
-            f"LR scheduling (--lr-schedule={args.lr_schedule}) is not yet implemented.\n"
-            "Optimizer.lr can be modified dynamically but scheduler classes are needed.\n"
-            "Types to implement: step, cosine, plateau"
-        )
+    # LR scheduling is now implemented!
+    # See cortical/experiments/scheduler.py for StepLR, CosineAnnealingLR, ReduceLROnPlateau
 
     # Print warning if any experimental features are used (before NotImplementedError)
     if experimental_features:
@@ -317,6 +303,7 @@ def run_experiment(args: argparse.Namespace) -> int:
     from cortical.experiments.tokenizer import tokenize, build_vocab, tokens_to_ids, load_text
     from cortical.experiments.position import create_position_encoding
     from cortical.experiments.projection import VocabProjection, CrossEntropyWithLogits
+    from cortical.experiments.scheduler import create_scheduler
 
     # ============================================================================
     # Check for experimental features and warn/fail
@@ -457,6 +444,19 @@ def run_experiment(args: argparse.Namespace) -> int:
         vocab_projection=vocab_proj,
     )
 
+    # Setup LR scheduler if requested
+    scheduler = None
+    if config.lr_schedule is not None:
+        scheduler = create_scheduler(
+            optimizer,
+            schedule_type=config.lr_schedule,
+            epochs=config.epochs,
+            step_size=config.lr_step_size,
+            gamma=config.lr_gamma,
+            lr_min=config.lr_min,
+        )
+        print(f"Using {config.lr_schedule} LR schedule (gamma={config.lr_gamma})")
+
     # Setup logging
     log = ExperimentLog(config)
 
@@ -543,11 +543,23 @@ def run_experiment(args: argparse.Namespace) -> int:
         # Log epoch
         log.log_epoch(train_loss, val_loss=val_loss)
 
+        # Update learning rate schedule
+        if scheduler is not None:
+            if config.lr_schedule == "plateau":
+                # ReduceLROnPlateau needs metric (use val_loss or train_loss)
+                metric = val_loss if val_loss is not None else train_loss
+                scheduler.step(metric)
+            else:
+                # StepLR and CosineAnnealing use epoch
+                scheduler.step(epoch=epoch)
+
         # Verbose output
         if args.verbose and (epoch + 1) % max(1, config.epochs // 20) == 0:
             msg = f"Epoch {epoch + 1}/{config.epochs}: train_loss={train_loss:.4f}"
             if val_loss is not None:
                 msg += f", val_loss={val_loss:.4f}"
+            if scheduler is not None:
+                msg += f", lr={optimizer.lr:.2e}"
             print(msg)
 
     training_time = time.time() - start_time
@@ -579,12 +591,12 @@ def run_experiment(args: argparse.Namespace) -> int:
     # Save results
     run_dir = log.save()
 
-    # Save model checkpoint
-    # TODO(agent): Pass scheduler when LR scheduling is implemented
+    # Save model checkpoint (includes optimizer and scheduler state for resume)
     checkpoint_path = log.save_checkpoint(
         all_params,
         optimizer=optimizer,
         epoch=config.epochs,  # Final epoch
+        scheduler=scheduler,  # May be None if no LR schedule
     )
 
     # Print results
