@@ -54,7 +54,7 @@ class ExperimentConfig:
     # Position encoding type: "none", "learned", or "sinusoidal"
     # - none: No position information (default for backward compatibility)
     # - learned: Trainable position embeddings (recommended)
-    # - sinusoidal: Fixed sin/cos patterns (TODO)
+    # - sinusoidal: Fixed sin/cos patterns from "Attention Is All You Need"
     position_encoding: str = "none"
 
     def __post_init__(self) -> None:
