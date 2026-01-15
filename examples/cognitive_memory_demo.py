@@ -14,10 +14,9 @@ Run: python examples/cognitive_memory_demo.py
 from __future__ import annotations
 
 import sys
-from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -32,7 +31,7 @@ from cortical.cel.core.events import (
 )
 from cortical.cel.core.references import MerkleRoot
 from cortical.cel.stores import MemoryEventStore
-from cortical.cel.container import LatticeBuilder
+from cortical.cel.wisdom.dag import FileSystemEventStore
 
 
 # =============================================================================
@@ -41,7 +40,7 @@ from cortical.cel.container import LatticeBuilder
 
 class CognitiveMemory:
     """
-    AI agent memory built on CEL.
+    AI agent memory built on CEL with persistent storage.
 
     Memory types:
     - Episodic: Observations of what happened
@@ -50,22 +49,111 @@ class CognitiveMemory:
     - Meta: Self-awareness (errors, confusion, insights)
 
     Enhanced features:
+    - Persistent storage via FileSystemEventStore
     - Concept indexing for O(1) lookups
     - Working memory tracking (pending vs completed intentions)
     - Associative recall by shared concepts
     - Importance scoring for memory prioritization
+
+    Usage:
+        # Create or load memory (persists to .cognitive/)
+        memory = CognitiveMemory.open()
+
+        # Or use in-memory only (for testing)
+        memory = CognitiveMemory(persistent=False)
     """
 
-    def __init__(self, session_id: Optional[str] = None):
-        lattice = LatticeBuilder().with_storage(MemoryEventStore).build()
-        self._store = lattice.event_store
+    # Default storage location
+    DEFAULT_STORAGE_PATH = Path(".cognitive")
+
+    def __init__(
+        self,
+        session_id: Optional[str] = None,
+        storage_path: Optional[Union[str, Path]] = None,
+        persistent: bool = True,
+    ):
+        """
+        Initialize cognitive memory.
+
+        Args:
+            session_id: Session identifier (auto-generated if None)
+            storage_path: Where to persist events (default: .cognitive/)
+            persistent: If True, use FileSystemEventStore. If False, use MemoryEventStore.
+        """
+        self._storage_path = Path(storage_path) if storage_path else self.DEFAULT_STORAGE_PATH
+        self._persistent = persistent
+
+        if persistent:
+            self._store = FileSystemEventStore(self._storage_path / "events")
+        else:
+            self._store = MemoryEventStore()
+
         self._session_id = session_id or f"session-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
         self._last_event: Optional[str] = None
 
-        # Indexes for fast queries
+        # Indexes for fast queries (rebuilt from events)
         self._concept_index: Dict[str, set] = {}  # concept -> event_ids
         self._pending_intentions: Dict[str, str] = {}  # event_id -> title
         self._importance_scores: Dict[str, float] = {}  # event_id -> importance
+
+        # Rebuild indexes from existing events
+        self._rebuild_indexes()
+
+    def _rebuild_indexes(self) -> None:
+        """Rebuild in-memory indexes from persisted events."""
+        for event in self._store.iterate():
+            event_id = event.id
+
+            # Track last event
+            self._last_event = event_id
+
+            # Rebuild concept index
+            self._index_concepts(event_id, event.concepts)
+
+            # Rebuild pending intentions
+            if event.event_type == EventType.INTENTION:
+                self._pending_intentions[event_id] = event.content.get('title', '')
+
+            # Check for fulfillments that close intentions
+            if event.event_type == EventType.FULFILLMENT:
+                intention_id = event.content.get('intention_id')
+                if intention_id:
+                    self._pending_intentions.pop(intention_id, None)
+
+            # Check for abandoned intentions
+            if event.event_type == EventType.METACOGNITION:
+                if event.content.get('observation_type') == 'abandoned_intention':
+                    intention_id = event.content.get('metrics', {}).get('intention_id')
+                    if intention_id:
+                        self._pending_intentions.pop(intention_id, None)
+
+            # Default importance (could store in metadata if needed)
+            self._importance_scores[event_id] = 1.0
+
+    @classmethod
+    def open(
+        cls,
+        storage_path: Optional[Union[str, Path]] = None,
+        session_id: Optional[str] = None,
+    ) -> 'CognitiveMemory':
+        """
+        Open or create a persistent cognitive memory.
+
+        This is the recommended way to get a memory instance.
+        Events persist across sessions.
+
+        Args:
+            storage_path: Where to store events (default: .cognitive/)
+            session_id: Session identifier (auto-generated if None)
+
+        Returns:
+            CognitiveMemory instance with loaded events
+        """
+        return cls(
+            session_id=session_id,
+            storage_path=storage_path,
+            persistent=True,
+        )
 
     def _append(self, event: CognitiveEvent, importance: float = 1.0) -> str:
         """Append event and track causal chain."""
@@ -409,7 +497,10 @@ def run_demo():
     print("COGNITIVE MEMORY SYSTEM - AI Agent Memory Demo")
     print("=" * 60)
 
-    memory = CognitiveMemory()
+    # Use in-memory for demo (no disk writes)
+    # For persistent memory across sessions, use:
+    #   memory = CognitiveMemory.open()  # Stores in .cognitive/
+    memory = CognitiveMemory(persistent=False)
 
     # --- Phase 1: User Request ---
     print("\n[Phase 1] Processing user request...")

@@ -26,7 +26,7 @@ class TestCognitiveMemoryBasics:
 
     def test_init_creates_session(self):
         """Memory should create a unique session ID."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         assert memory._session_id.startswith("session-")
 
     def test_init_with_custom_session(self):
@@ -36,12 +36,12 @@ class TestCognitiveMemoryBasics:
 
     def test_current_horizon_initially_none(self):
         """Current horizon should be None before any events."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         assert memory.current_horizon() is None
 
     def test_current_horizon_after_event(self):
         """Current horizon should return the last event ID."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         event_id = memory.observe("test observation")
         assert memory.current_horizon() == event_id
 
@@ -51,14 +51,14 @@ class TestEpisodicMemory:
 
     def test_observe_returns_event_id(self):
         """Observe should return an event ID."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         event_id = memory.observe("something happened")
         assert event_id is not None
         assert len(event_id) > 0
 
     def test_observe_with_details(self):
         """Observe should include additional details."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         memory.observe("file read", {"path": "/test.py", "lines": 100})
         observations = memory.recall_observations()
         assert len(observations) == 1
@@ -66,7 +66,7 @@ class TestEpisodicMemory:
 
     def test_observe_user_request(self):
         """User request should be recorded as observation."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         memory.observe_user_request("fix the bug")
         observations = memory.recall_observations()
         assert len(observations) == 1
@@ -74,7 +74,7 @@ class TestEpisodicMemory:
 
     def test_observe_error(self):
         """Errors should be recorded and recallable."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         memory.observe_error("TypeError: NoneType", context="test.py:42")
         errors = memory.recall_errors()
         assert len(errors) == 1
@@ -83,7 +83,7 @@ class TestEpisodicMemory:
 
     def test_observe_file_change(self):
         """File changes should be recorded."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         memory.observe_file_change("/path/to/file.py", "modified")
         observations = memory.recall_observations()
         assert len(observations) == 1
@@ -95,7 +95,7 @@ class TestWorkingMemory:
 
     def test_intend_creates_pending_intention(self):
         """Intend should create a pending intention."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         task_id = memory.intend("fix bug")
         pending = memory.pending_intentions()
         assert len(pending) == 1
@@ -104,7 +104,7 @@ class TestWorkingMemory:
 
     def test_complete_intention_removes_from_pending(self):
         """Completing an intention should remove it from pending."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         task_id = memory.intend("fix bug")
         assert len(memory.pending_intentions()) == 1
 
@@ -113,7 +113,7 @@ class TestWorkingMemory:
 
     def test_abandon_intention_removes_from_pending(self):
         """Abandoning an intention should remove it from pending."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         task_id = memory.intend("fix bug")
         assert len(memory.pending_intentions()) == 1
 
@@ -122,7 +122,7 @@ class TestWorkingMemory:
 
     def test_multiple_intentions_tracked(self):
         """Multiple intentions should be tracked separately."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         id1 = memory.intend("task 1", priority="high")
         id2 = memory.intend("task 2", priority="low")
         id3 = memory.intend("task 3", priority="medium")
@@ -141,14 +141,14 @@ class TestMetaCognition:
 
     def test_reflect_creates_metacognition_event(self):
         """Reflect should create a metacognition event."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         memory.reflect("I understand the problem now", category="insight")
         stats = memory.stats
         assert stats['by_type'].get('METACOGNITION', 0) == 1
 
     def test_learn_records_problem_solution_pair(self):
         """Learn should record problem-solution pairs."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         memory.learn("null pointer error", "add null check")
         learnings = memory.recall_learnings()
         assert len(learnings) == 1
@@ -157,7 +157,7 @@ class TestMetaCognition:
 
     def test_note_confusion_records_confusion(self):
         """Note confusion should record areas of confusion."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         memory.note_confusion("how does authentication work?")
         stats = memory.stats
         assert stats['by_type'].get('METACOGNITION', 0) == 1
@@ -168,14 +168,14 @@ class TestConceptIndexing:
 
     def test_concepts_extracted_from_observation(self):
         """Concepts should be extracted from observation text."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         memory.observe("examining authentication module")
         # Should have indexed 'examining', 'authentication', 'module'
         assert len(memory._concept_index) >= 2
 
     def test_concept_index_enables_fast_recall(self):
         """Concept index should enable fast concept-based recall."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         memory.observe("authentication bug found")
         memory.observe("database connection issue")
         memory.observe("authentication fix applied")
@@ -186,7 +186,7 @@ class TestConceptIndexing:
 
     def test_recall_by_multiple_concepts(self):
         """Should find memories matching any of multiple concepts."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         memory.observe("authentication bug")
         memory.observe("database error")
         memory.observe("authentication fixed")
@@ -200,7 +200,7 @@ class TestAssociativeRecall:
 
     def test_find_related_returns_related_memories(self):
         """Should find memories related by shared concepts."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         id1 = memory.observe("authentication module has a bug")
         memory.observe("database connection works")
         memory.observe("authentication fix needed")
@@ -212,14 +212,14 @@ class TestAssociativeRecall:
 
     def test_find_related_excludes_source_event(self):
         """Source event should not be in related results."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         id1 = memory.observe("test observation")
         related = memory.find_related(id1)
         assert all(r['id'] != id1[:12] for r in related)
 
     def test_find_related_respects_limit(self):
         """Should respect the limit parameter."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         id1 = memory.observe("authentication module")
         for i in range(10):
             memory.observe(f"authentication issue {i}")
@@ -233,7 +233,7 @@ class TestTemporalQueries:
 
     def test_state_at_returns_counts_up_to_horizon(self):
         """State at horizon should only count events up to that point."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
 
         memory.observe("observation 1")
         memory.observe("observation 2")
@@ -251,7 +251,7 @@ class TestContextWindow:
 
     def test_context_window_returns_limited_results(self):
         """Context window should respect limit."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         for i in range(20):
             memory.observe(f"observation {i}")
 
@@ -260,7 +260,7 @@ class TestContextWindow:
 
     def test_context_window_filters_by_concepts(self):
         """Context window should filter by concepts when provided."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         memory.observe("authentication bug")
         memory.observe("database issue")
         memory.observe("authentication fix")
@@ -274,7 +274,7 @@ class TestImportanceScoring:
 
     def test_high_priority_intentions_have_higher_importance(self):
         """High priority intentions should have higher importance scores."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         id_high = memory.intend("critical task", priority="high")
         id_low = memory.intend("minor task", priority="low")
 
@@ -282,7 +282,7 @@ class TestImportanceScoring:
 
     def test_completions_have_elevated_importance(self):
         """Fulfillment events should have elevated importance."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         task_id = memory.intend("task")
         completion_id = memory.complete_intention(task_id, "done")
 
@@ -294,7 +294,7 @@ class TestStats:
 
     def test_stats_includes_event_counts(self):
         """Stats should include counts by event type."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         memory.observe("obs 1")
         memory.observe("obs 2")
         memory.intend("task 1")
@@ -308,7 +308,7 @@ class TestStats:
 
     def test_stats_includes_pending_count(self):
         """Stats should include pending intentions count."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         memory.intend("task 1")
         memory.intend("task 2")
 
@@ -317,7 +317,7 @@ class TestStats:
 
     def test_stats_includes_concept_count(self):
         """Stats should include indexed concept count."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         memory.observe("authentication bug")
         memory.observe("database issue")
 
@@ -330,7 +330,7 @@ class TestSessionSummarization:
 
     def test_summarize_session_creates_compaction_event(self):
         """Summarize should create a compaction event."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         memory.observe("did some work")
         memory.intend("task")
 
@@ -344,7 +344,7 @@ class TestCausalChaining:
 
     def test_events_linked_causally(self):
         """Each event should be causally linked to the previous one."""
-        memory = CognitiveMemory()
+        memory = CognitiveMemory(persistent=False)
         id1 = memory.observe("first")
         id2 = memory.observe("second")
         id3 = memory.observe("third")
