@@ -26,6 +26,7 @@ from cortical.cel.core.events import (
     EventType,
     Observation,
     Intention,
+    Fulfillment,
     MetaCognition,
     Compaction,
 )
@@ -47,21 +48,50 @@ class CognitiveMemory:
     - Working: Intentions (current tasks/goals)
     - Semantic: Learned facts (extracted from experience)
     - Meta: Self-awareness (errors, confusion, insights)
+
+    Enhanced features:
+    - Concept indexing for O(1) lookups
+    - Working memory tracking (pending vs completed intentions)
+    - Associative recall by shared concepts
+    - Importance scoring for memory prioritization
     """
 
-    def __init__(self):
+    def __init__(self, session_id: Optional[str] = None):
         lattice = LatticeBuilder().with_storage(MemoryEventStore).build()
         self._store = lattice.event_store
-        self._session_id = f"session-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+        self._session_id = session_id or f"session-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
         self._last_event: Optional[str] = None
 
-    def _append(self, event: CognitiveEvent) -> str:
+        # Indexes for fast queries
+        self._concept_index: Dict[str, set] = {}  # concept -> event_ids
+        self._pending_intentions: Dict[str, str] = {}  # event_id -> title
+        self._importance_scores: Dict[str, float] = {}  # event_id -> importance
+
+    def _append(self, event: CognitiveEvent, importance: float = 1.0) -> str:
         """Append event and track causal chain."""
         if self._last_event and not event.causal_parents:
             event = event.with_parent(self._last_event)
         root = self._store.append(event)
-        self._last_event = root.value
-        return root.value
+        event_id = root.value
+        self._last_event = event_id
+
+        # Update indexes
+        self._index_concepts(event_id, event.concepts)
+        self._importance_scores[event_id] = importance
+
+        return event_id
+
+    def _index_concepts(self, event_id: str, concepts: tuple) -> None:
+        """Add event to concept index for fast lookups."""
+        for concept in concepts:
+            normalized = concept.lower()
+            if normalized not in self._concept_index:
+                self._concept_index[normalized] = set()
+            self._concept_index[normalized].add(event_id)
+
+    def current_horizon(self) -> Optional[str]:
+        """Get the ID of the most recent event (public API)."""
+        return self._last_event
 
     # --- Episodic Memory (Observations) ---
 
@@ -92,27 +122,56 @@ class CognitiveMemory:
     # --- Working Memory (Intentions) ---
 
     def intend(self, goal: str, priority: str = 'medium') -> str:
-        """Create an intention (task/goal)."""
+        """Create an intention (task/goal) and track it as pending."""
         event = Intention(
             title=goal,
             priority=priority,
             concepts=self._extract_concepts(goal),
             metadata={'session': self._session_id},
         )
-        return self._append(event)
+        # Higher importance for high-priority intentions
+        importance = {'high': 2.0, 'medium': 1.0, 'low': 0.5}.get(priority, 1.0)
+        event_id = self._append(event, importance=importance)
+
+        # Track as pending
+        self._pending_intentions[event_id] = goal
+        return event_id
 
     def complete_intention(self, intention_id: str, result: str) -> str:
-        """Mark an intention as fulfilled."""
-        event = Observation(
-            content={
-                'type': 'fulfillment',
-                'intention_id': intention_id,
-                'result': result,
-            },
-            causal_parents=(intention_id,),
+        """Mark an intention as fulfilled using proper Fulfillment event."""
+        event = Fulfillment(
+            intention_id=intention_id,
+            result={'summary': result},
             metadata={'session': self._session_id},
+            causal_parents=(intention_id,),
         )
-        return self._append(event)
+        event_id = self._append(event, importance=1.5)  # Completions are important
+
+        # Remove from pending
+        self._pending_intentions.pop(intention_id, None)
+        return event_id
+
+    def pending_intentions(self) -> List[Dict]:
+        """Get all pending (uncompleted) intentions - working memory."""
+        return [
+            {'id': eid, 'goal': goal}
+            for eid, goal in self._pending_intentions.items()
+        ]
+
+    def abandon_intention(self, intention_id: str, reason: str) -> str:
+        """Abandon an intention that won't be completed."""
+        event = MetaCognition(
+            observation_type='abandoned_intention',
+            metrics={'intention_id': intention_id, 'reason': reason},
+            conclusions=[f"Abandoned: {reason}"],
+            metadata={'session': self._session_id},
+            causal_parents=(intention_id,),
+        )
+        event_id = self._append(event)
+
+        # Remove from pending
+        self._pending_intentions.pop(intention_id, None)
+        return event_id
 
     # --- Meta-Cognition (Self-Awareness) ---
 
@@ -168,17 +227,32 @@ class CognitiveMemory:
     # --- Querying Memory ---
 
     def recall_observations(self, concept: str = None) -> List[Dict]:
-        """Recall observations, optionally filtered by concept."""
+        """Recall observations, optionally filtered by concept (O(1) with index)."""
+        if concept:
+            # Fast path: use concept index
+            event_ids = self._concept_index.get(concept.lower(), set())
+            results = []
+            for event_id in event_ids:
+                event = self._store.get(event_id)
+                if event and event.event_type == EventType.OBSERVATION:
+                    results.append({
+                        'id': event.id[:12],
+                        'time': event.timestamp[:19],
+                        'content': event.content,
+                        'importance': self._importance_scores.get(event_id, 1.0),
+                    })
+            return sorted(results, key=lambda x: x['time'], reverse=True)
+
+        # Full scan if no concept filter
         results = []
         for event in self._store.iterate():
             if event.event_type != EventType.OBSERVATION:
-                continue
-            if concept and concept.lower() not in ' '.join(event.concepts).lower():
                 continue
             results.append({
                 'id': event.id[:12],
                 'time': event.timestamp[:19],
                 'content': event.content,
+                'importance': self._importance_scores.get(event.id, 1.0),
             })
         return results
 
@@ -204,6 +278,58 @@ class CognitiveMemory:
             if event.content.get('observation') == 'error_encountered':
                 errors.append(event.content)
         return errors
+
+    def recall_by_concepts(self, concepts: List[str]) -> List[Dict]:
+        """Associative recall: find memories that share any of the given concepts."""
+        matching_ids: set = set()
+        for concept in concepts:
+            matching_ids.update(self._concept_index.get(concept.lower(), set()))
+
+        results = []
+        for event_id in matching_ids:
+            event = self._store.get(event_id)
+            if event:
+                results.append({
+                    'id': event.id[:12],
+                    'type': event.event_type.name,
+                    'time': event.timestamp[:19],
+                    'concepts': event.concepts,
+                    'importance': self._importance_scores.get(event_id, 1.0),
+                })
+
+        # Sort by importance (descending), then by time (most recent first)
+        return sorted(results, key=lambda x: (-x['importance'], x['time']), reverse=True)
+
+    def find_related(self, event_id: str, limit: int = 5) -> List[Dict]:
+        """Find memories related to a given event through shared concepts."""
+        event = self._store.get(event_id)
+        if not event:
+            return []
+
+        # Find all events sharing concepts with this one
+        related_ids: set = set()
+        for concept in event.concepts:
+            related_ids.update(self._concept_index.get(concept.lower(), set()))
+        related_ids.discard(event_id)  # Don't include the source event
+
+        results = []
+        for rid in related_ids:
+            related_event = self._store.get(rid)
+            if related_event:
+                # Calculate relevance based on shared concepts
+                shared = set(c.lower() for c in event.concepts) & set(c.lower() for c in related_event.concepts)
+                relevance = len(shared) / max(len(event.concepts), 1)
+                results.append({
+                    'id': related_event.id[:12],
+                    'type': related_event.event_type.name,
+                    'shared_concepts': list(shared),
+                    'relevance': relevance,
+                    'importance': self._importance_scores.get(rid, 1.0),
+                })
+
+        # Sort by relevance * importance
+        results.sort(key=lambda x: x['relevance'] * x['importance'], reverse=True)
+        return results[:limit]
 
     def state_at(self, horizon_id: str) -> Dict:
         """Get memory state at a specific point in time."""
@@ -243,7 +369,35 @@ class CognitiveMemory:
             'total_events': self._store.count,
             'by_type': by_type,
             'session': self._session_id,
+            'pending_intentions': len(self._pending_intentions),
+            'indexed_concepts': len(self._concept_index),
         }
+
+    def context_window(self, concepts: List[str] = None, limit: int = 10) -> List[Dict]:
+        """
+        Build a context window for the AI - most relevant recent memories.
+
+        This is the key integration point: when the AI needs context,
+        call this method to get the most relevant memories.
+        """
+        if concepts:
+            # Associative recall by concepts
+            memories = self.recall_by_concepts(concepts)
+        else:
+            # Just get recent memories sorted by importance
+            memories = []
+            for event in self._store.iterate():
+                memories.append({
+                    'id': event.id[:12],
+                    'type': event.event_type.name,
+                    'time': event.timestamp[:19],
+                    'concepts': event.concepts,
+                    'importance': self._importance_scores.get(event.id, 1.0),
+                })
+
+        # Sort by importance * recency
+        memories.sort(key=lambda x: x['importance'], reverse=True)
+        return memories[:limit]
 
 
 # =============================================================================
@@ -272,8 +426,8 @@ def run_demo():
         context="auth.py:42 in validate_session()"
     )
 
-    # Capture the horizon before we find the solution
-    pre_solution_horizon = memory._last_event
+    # Capture the horizon before we find the solution (using public API)
+    pre_solution_horizon = memory.current_horizon()
 
     # --- Phase 3: Solution ---
     print("[Phase 3] Found and applied solution...")
@@ -296,8 +450,24 @@ def run_demo():
     for learning in memory.recall_learnings():
         print(f"    - {learning['problem'][:30]} -> {learning['solution'][:30]}")
 
-    # --- Phase 5: Temporal Query ---
-    print("\n[Phase 5] Temporal query (state before solution)...")
+    # --- Phase 5: Working Memory ---
+    print("\n[Phase 5] Working memory (pending intentions)...")
+
+    pending = memory.pending_intentions()
+    print(f"  Pending tasks: {len(pending)}")
+    for p in pending:
+        print(f"    - {p['goal'][:50]}")
+
+    # --- Phase 6: Associative Recall ---
+    print("\n[Phase 6] Associative recall by concept...")
+
+    auth_memories = memory.recall_by_concepts(['authentication', 'auth.py'])
+    print(f"  Memories related to 'authentication': {len(auth_memories)}")
+    for mem in auth_memories[:3]:
+        print(f"    - [{mem['type']}] concepts: {mem['concepts'][:3]}")
+
+    # --- Phase 7: Temporal Query ---
+    print("\n[Phase 7] Temporal query (state before solution)...")
 
     state_before = memory.state_at(pre_solution_horizon)
     state_now = memory.stats
@@ -305,8 +475,17 @@ def run_demo():
     print(f"  Before solution: {state_before}")
     print(f"  After solution:  {state_now['by_type']}")
 
-    # --- Phase 6: Session Handoff ---
-    print("\n[Phase 6] Creating session handoff...")
+    # --- Phase 8: Context Window ---
+    print("\n[Phase 8] Context window for AI...")
+
+    # Use concepts that are actually in the indexed memories
+    context = memory.context_window(concepts=['authentication', 'auth.py'], limit=5)
+    print(f"  Top {len(context)} relevant memories for auth context:")
+    for ctx in context:
+        print(f"    - [{ctx['type']}] importance={ctx['importance']:.1f} concepts={ctx['concepts'][:2]}")
+
+    # --- Phase 9: Session Handoff ---
+    print("\n[Phase 9] Creating session handoff...")
 
     memory.summarize_session(
         "Fixed auth bug: added null check in validate_session(). "
@@ -320,6 +499,8 @@ def run_demo():
     stats = memory.stats
     print(f"  Session: {stats['session']}")
     print(f"  Total events: {stats['total_events']}")
+    print(f"  Indexed concepts: {stats['indexed_concepts']}")
+    print(f"  Pending intentions: {stats['pending_intentions']}")
     print(f"  By type:")
     for t, count in stats['by_type'].items():
         print(f"    {t}: {count}")
