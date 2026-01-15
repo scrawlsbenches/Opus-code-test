@@ -299,8 +299,184 @@ python -m cortical.experiments.cli vocab rebuild \
    - Code will need case sensitivity
    - Make configurable in vocab config
 
+## Hybrid Tokenization Strategy
+
+### Existing Infrastructure
+
+| Component | Location | What It Does |
+|-----------|----------|--------------|
+| Word tokenizer | `experiments/tokenizer.py` | Split text, build vocab, UNK support |
+| BPE tokenizer | `cognitive/text_bridge.py` | Word-pair merging, underscore_style splitting |
+| Sharded storage | `cognitive/tokenizer_storage.py` | Conflict-free vocab storage |
+
+### Design: Word-First with Subword Fallback
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     Input Token: "get_user_data"                │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ TIER 1: Direct Lookup                                           │
+│   Is "get_user_data" in word_vocab?                             │
+│   YES → Return ID                                               │
+│   NO  → Continue to Tier 2                                      │
+└─────────────────────────────────────────────────────────────────┘
+                                │ NO
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ TIER 2: Identifier Splitting                                    │
+│   Split by underscore_style: ["get", "user", "data"]            │
+│   All parts in vocab? YES → Return [ID, ID, ID]                 │
+│   Some missing? → Continue to Tier 3                            │
+└─────────────────────────────────────────────────────────────────┘
+                                │ SOME MISSING
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ TIER 3: Fallback Strategy (configurable)                        │
+│   --strict (default): ERROR with list of missing tokens         │
+│   --extend-vocab: Add missing + random embeddings               │
+│   --allow-unk: Map to <UNK> + log for transparency              │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Vocabulary Structure
+
+```json
+{
+  "version": 2,
+  "tokenizer_type": "hybrid_word_subword",
+  "config": {
+    "min_freq": 2,
+    "lowercase": true,
+    "split_identifiers": true,
+    "embedding_scale": 0.35
+  },
+  "word_vocab": {
+    "token_to_id": {
+      "<PAD>": 0, "<UNK>": 1, "<BOS>": 2, "<EOS>": 3,
+      "the": 4, "unix": 5, "system": 6, "get": 7, "user": 8, "data": 9
+    },
+    "id_to_token": ["<PAD>", "<UNK>", "<BOS>", "<EOS>", "the", "unix", ...]
+  },
+  "compound_tokens": {
+    "get_user_data": [7, 8, 9],
+    "unix_system": [5, 6]
+  },
+  "statistics": {
+    "total_tokens": 25000,
+    "unique_words": 11202,
+    "after_min_freq_filter": 6340,
+    "hapax_filtered": 4862
+  }
+}
+```
+
+### Token Count Reduction Strategy
+
+Based on repository analysis:
+- **Raw vocabulary**: 137,680 tokens
+- **54% are hapax** (appear once): UUIDs, hashes, rare identifiers
+
+| Strategy | Vocab Size | Coverage | Notes |
+|----------|-----------|----------|-------|
+| All tokens | 137,680 | 100% | Wasteful, most unused |
+| min_freq ≥ 2 | ~63,000 | ~99% | Removes hapax |
+| min_freq ≥ 5 | ~36,000 | ~97% | Good balance |
+| min_freq ≥ 10 | ~25,000 | ~95% | Recommended |
+| + identifier splitting | ~20,000 | ~95% | Reuses subwords |
+
+**Recommendation**: `min_freq=10` + identifier splitting → ~20K vocab
+
+### Identifier Splitting Rules
+
+Reuse logic from `cognitive/text_bridge.py:_normalize()`:
+
+```python
+def split_identifier(token: str) -> List[str]:
+    """
+    Split identifier into component words.
+
+    Examples:
+        "getUserData"     → ["get", "user", "data"]
+        "get_user_data"   → ["get", "user", "data"]
+        "XMLParser"       → ["xml", "parser"]
+        "parseHTTPResponse" → ["parse", "http", "response"]
+        "word2vec"        → ["word", "2", "vec"]
+    """
+    # Handle underscore_style
+    if '_' in token:
+        parts = token.split('_')
+        return [p.lower() for p in parts if p]
+
+    # Handle CamelCase/PascalCase
+    # Split on transitions: lowercase→uppercase, letter→digit
+    parts = re.findall(r'[A-Z]?[a-z]+|[A-Z]+(?=[A-Z]|$)|[0-9]+', token)
+    return [p.lower() for p in parts if p]
+```
+
+### Incremental Training Flow
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ DAY 1: Initial Training                                      │
+├──────────────────────────────────────────────────────────────┤
+│ 1. vocab create --from samples/ --min-freq 10                │
+│    → Creates vocab.json with ~20K words                      │
+│                                                              │
+│ 2. run --vocab vocab.json --input samples/doc1.txt           │
+│    → Trains model, saves checkpoint with vocab reference     │
+└──────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌──────────────────────────────────────────────────────────────┐
+│ DAY 2: New Document                                          │
+├──────────────────────────────────────────────────────────────┤
+│ 1. vocab diff --vocab vocab.json --document new_doc.txt      │
+│    → Shows: 5 new tokens, 3 can be split into known words    │
+│                                                              │
+│ 2. Option A: vocab extend (if new terms important)           │
+│    → Adds 2 truly-new tokens, extends embedding matrix       │
+│                                                              │
+│ 3. run --resume checkpoint.pkl --input new_doc.txt           │
+│    → Continues training with extended vocab                  │
+└──────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌──────────────────────────────────────────────────────────────┐
+│ DAY N: Periodic Audit                                        │
+├──────────────────────────────────────────────────────────────┤
+│ 1. vocab audit --vocab vocab.json --corpus samples/          │
+│    → Shows: 500 unused tokens, 50 high-freq tokens missing   │
+│                                                              │
+│ 2. Decision: rebuild vocab or continue extending?            │
+│    → Rebuild requires retraining, but cleaner                │
+│    → Extend preserves weights, but accumulates cruft         │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### Compromises Acknowledged
+
+1. **No character-level BPE**: Truly novel tokens (new abbreviations, typos)
+   will map to `<UNK>` or require vocab extension. This is acceptable because:
+   - Most OOV can be split into known subwords
+   - Explicit extension is safer than silent degradation
+   - Character-level BPE can be added later if needed
+
+2. **Embedding matrix can only grow**: Once a token is added, removing it
+   would invalidate trained weights. Mitigation:
+   - Use `min_freq` filter to avoid adding rare tokens
+   - Periodic vocab rebuild (requires retraining)
+
+3. **Split tokens vs whole tokens**: "get_user_data" as [get, user, data]
+   loses some information vs a single compound token. Mitigation:
+   - Keep high-frequency compounds as single tokens
+   - Store `compound_tokens` mapping for reconstruction
+
 ## Notes
 
-- BPE exists in `cortical/cognitive/tokenizer_storage.py` but not integrated with experiments
-- Current tokenizer is simple word-based (`cortical/experiments/__init__.py:tokenize`)
+- BPE exists in `cortical/cognitive/text_bridge.py` (word-level, not character-level)
+- Sharded storage in `cortical/cognitive/tokenizer_storage.py` for conflict-free updates
+- Current tokenizer is simple word-based (`cortical/experiments/tokenizer.py`)
 - `EMBEDDING_INIT_SCALE = 0.35` must be consistent across vocab extensions
