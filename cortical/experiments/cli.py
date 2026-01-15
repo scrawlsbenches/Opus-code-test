@@ -211,6 +211,20 @@ def create_parser() -> argparse.ArgumentParser:
         metavar="LR",
         help="Minimum learning rate for 'cosine' and 'plateau' (default: 1e-6)",
     )
+    run_parser.add_argument(
+        "--warmup-epochs",
+        type=int,
+        default=0,
+        metavar="N",
+        help="Number of epochs for linear LR warmup (default: 0, disabled)",
+    )
+    run_parser.add_argument(
+        "--warmup-start-lr",
+        type=float,
+        default=0.0,
+        metavar="LR",
+        help="Starting learning rate for warmup (default: 0)",
+    )
 
     # Compare command
     compare_parser = subparsers.add_parser("compare", help="Compare experiment results")
@@ -243,6 +257,7 @@ def _validate_feature_requirements(args: argparse.Namespace) -> None:
     Features:
         - --resume: Checkpoint loading with optimizer/scheduler state
         - --lr-schedule: Learning rate scheduling (step, cosine, plateau)
+        - --warmup-epochs: Linear LR warmup to prevent gradient explosion
         - --early-stop: Patience-based early stopping with best model tracking
     """
     # --early-stop requires --val-split > 0
@@ -397,6 +412,8 @@ def run_experiment(args: argparse.Namespace) -> int:
     targets = train_targets  # Use train_targets for training loop
 
     optimizer = Adam(all_params, lr=config.lr, weight_decay=config.weight_decay)
+    # TODO: Add --profile CLI flag to enable profiling with memory tracking.
+    # Simplest option: always track memory when profiling is enabled.
     kernel = ExperimentKernel(
         graph, optimizer, loss_fn,
         profiling=False,
@@ -414,8 +431,13 @@ def run_experiment(args: argparse.Namespace) -> int:
             step_size=config.lr_step_size,
             gamma=config.lr_gamma,
             lr_min=config.lr_min,
+            warmup_epochs=config.warmup_epochs,
+            warmup_start_lr=config.warmup_start_lr,
         )
-        print(f"Using {config.lr_schedule} LR schedule (gamma={config.lr_gamma})")
+        schedule_info = f"Using {config.lr_schedule} LR schedule (gamma={config.lr_gamma})"
+        if config.warmup_epochs > 0:
+            schedule_info += f" with {config.warmup_epochs} warmup epochs"
+        print(schedule_info)
 
     # Setup early stopping if requested
     early_stopper = None

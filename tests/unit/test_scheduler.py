@@ -18,6 +18,7 @@ from cortical.experiments.scheduler import (
     StepLR,
     CosineAnnealingLR,
     ReduceLROnPlateau,
+    WarmupScheduler,
     create_scheduler,
 )
 
@@ -470,3 +471,220 @@ class TestSchedulerIntegration:
 
         # Should have reduced after patience (5) exceeded
         assert optimizer.lr < 0.01
+
+
+# =============================================================================
+# WarmupScheduler Tests
+# =============================================================================
+
+
+class TestWarmupScheduler:
+    """Tests for WarmupScheduler wrapper."""
+
+    def test_linear_warmup_from_zero(self):
+        """LR should linearly increase from 0 to base_lr during warmup."""
+        optimizer = MockOptimizer(lr=0.01)
+        base_scheduler = StepLR(optimizer, step_size=100, gamma=0.1)
+        scheduler = WarmupScheduler(base_scheduler, warmup_epochs=10)
+
+        # At epoch 0: lr = 0
+        scheduler.step(epoch=0)
+        assert optimizer.lr == pytest.approx(0.0)
+
+        # At epoch 5: lr = 0.01 * (5/10) = 0.005
+        scheduler.step(epoch=5)
+        assert optimizer.lr == pytest.approx(0.005)
+
+        # At epoch 10: lr = 0.01 (warmup complete)
+        scheduler.step(epoch=10)
+        assert optimizer.lr == pytest.approx(0.01)
+
+    def test_linear_warmup_from_custom_start(self):
+        """LR should warmup from custom start value."""
+        optimizer = MockOptimizer(lr=0.01)
+        base_scheduler = StepLR(optimizer, step_size=100, gamma=0.1)
+        scheduler = WarmupScheduler(base_scheduler, warmup_epochs=10, warmup_start_lr=0.001)
+
+        # At epoch 0: lr = 0.001
+        scheduler.step(epoch=0)
+        assert optimizer.lr == pytest.approx(0.001)
+
+        # At epoch 5: lr = 0.001 + (0.01 - 0.001) * (5/10) = 0.0055
+        scheduler.step(epoch=5)
+        assert optimizer.lr == pytest.approx(0.0055)
+
+        # At epoch 10: lr = 0.01 (warmup complete)
+        scheduler.step(epoch=10)
+        assert optimizer.lr == pytest.approx(0.01)
+
+    def test_delegates_after_warmup(self):
+        """After warmup, should delegate to wrapped scheduler."""
+        optimizer = MockOptimizer(lr=0.01)
+        base_scheduler = StepLR(optimizer, step_size=10, gamma=0.5)
+        scheduler = WarmupScheduler(base_scheduler, warmup_epochs=5)
+
+        # Warmup phase
+        scheduler.step(epoch=5)  # warmup complete, lr = 0.01
+        assert optimizer.lr == pytest.approx(0.01)
+
+        # After warmup, StepLR takes over with adjusted epochs
+        # epoch 15: adjusted epoch = 15-5 = 10, step_size decay (10 // 10 = 1 decay)
+        scheduler.step(epoch=15)
+        assert optimizer.lr == pytest.approx(0.005)
+
+        # epoch 25: adjusted epoch = 25-5 = 20, 2 decays
+        scheduler.step(epoch=25)
+        assert optimizer.lr == pytest.approx(0.0025)
+
+    def test_warmup_with_cosine_scheduler(self):
+        """Warmup should work with CosineAnnealingLR."""
+        optimizer = MockOptimizer(lr=0.1)
+        base_scheduler = CosineAnnealingLR(optimizer, T_max=100, lr_min=0.001)
+        scheduler = WarmupScheduler(base_scheduler, warmup_epochs=10)
+
+        # During warmup
+        scheduler.step(epoch=5)
+        assert optimizer.lr == pytest.approx(0.05)  # 0.1 * (5/10)
+
+        # After warmup, cosine takes over
+        scheduler.step(epoch=10)
+        assert optimizer.lr == pytest.approx(0.1)  # warmup complete
+
+        # At epoch 50 (40 effective epochs into cosine), LR should be lower
+        scheduler.step(epoch=50)
+        assert optimizer.lr < 0.1
+        assert optimizer.lr > 0.001
+
+    def test_warmup_epochs_zero_skips_warmup(self):
+        """warmup_epochs=0 should skip warmup entirely."""
+        optimizer = MockOptimizer(lr=0.01)
+        base_scheduler = StepLR(optimizer, step_size=10, gamma=0.5)
+        scheduler = WarmupScheduler(base_scheduler, warmup_epochs=0)
+
+        # Should immediately use base scheduler
+        scheduler.step(epoch=0)
+        assert optimizer.lr == pytest.approx(0.01)
+
+        scheduler.step(epoch=10)
+        assert optimizer.lr == pytest.approx(0.005)
+
+    def test_warmup_monotonically_increasing(self):
+        """LR should monotonically increase during warmup."""
+        optimizer = MockOptimizer(lr=0.01)
+        base_scheduler = StepLR(optimizer, step_size=100, gamma=0.1)
+        scheduler = WarmupScheduler(base_scheduler, warmup_epochs=20)
+
+        prev_lr = 0.0
+        for epoch in range(21):
+            scheduler.step(epoch=epoch)
+            assert optimizer.lr >= prev_lr, f"LR decreased at epoch {epoch}"
+            prev_lr = optimizer.lr
+
+    def test_state_dict_save_restore(self):
+        """Test state persistence including warmup state."""
+        optimizer = MockOptimizer(lr=0.01)
+        base_scheduler = StepLR(optimizer, step_size=100, gamma=0.1)
+        scheduler = WarmupScheduler(base_scheduler, warmup_epochs=10)
+
+        # Advance past warmup
+        for epoch in range(15):
+            scheduler.step(epoch=epoch)
+
+        # Save state
+        state = scheduler.state_dict()
+
+        # Create new scheduler and restore
+        optimizer2 = MockOptimizer(lr=0.01)
+        base_scheduler2 = StepLR(optimizer2, step_size=100, gamma=0.1)
+        scheduler2 = WarmupScheduler(base_scheduler2, warmup_epochs=10)
+        scheduler2.load_state_dict(state)
+
+        assert scheduler2.last_epoch == scheduler.last_epoch
+        assert scheduler2.warmup_epochs == scheduler.warmup_epochs
+        assert scheduler2.warmup_start_lr == scheduler.warmup_start_lr
+
+    def test_step_without_explicit_epoch(self):
+        """Test using internal epoch counter."""
+        optimizer = MockOptimizer(lr=0.01)
+        base_scheduler = StepLR(optimizer, step_size=100, gamma=0.1)
+        scheduler = WarmupScheduler(base_scheduler, warmup_epochs=5)
+
+        # Steps 1-5 are warmup
+        for i in range(5):
+            scheduler.step()
+            expected_lr = 0.01 * ((i + 1) / 5)
+            assert optimizer.lr == pytest.approx(expected_lr, rel=1e-5)
+
+        # Step 6 is after warmup
+        scheduler.step()
+        assert optimizer.lr == pytest.approx(0.01)
+
+
+class TestCreateSchedulerWithWarmup:
+    """Tests for create_scheduler with warmup parameters."""
+
+    def test_create_cosine_with_warmup(self):
+        """Test creating CosineAnnealingLR with warmup."""
+        optimizer = MockOptimizer(lr=0.01)
+
+        scheduler = create_scheduler(
+            optimizer,
+            schedule_type="cosine",
+            epochs=500,
+            lr_min=1e-5,
+            warmup_epochs=50,
+        )
+
+        # Should return a WarmupScheduler wrapping CosineAnnealingLR
+        assert isinstance(scheduler, WarmupScheduler)
+
+        # During warmup
+        scheduler.step(epoch=25)
+        assert optimizer.lr == pytest.approx(0.005)  # 0.01 * (25/50)
+
+        # After warmup
+        scheduler.step(epoch=50)
+        assert optimizer.lr == pytest.approx(0.01)
+
+    def test_create_step_with_warmup(self):
+        """Test creating StepLR with warmup."""
+        optimizer = MockOptimizer(lr=0.1)
+
+        scheduler = create_scheduler(
+            optimizer,
+            schedule_type="step",
+            epochs=500,
+            step_size=100,
+            gamma=0.1,
+            warmup_epochs=20,
+            warmup_start_lr=0.01,
+        )
+
+        assert isinstance(scheduler, WarmupScheduler)
+
+        # At epoch 0: lr = warmup_start_lr
+        scheduler.step(epoch=0)
+        assert optimizer.lr == pytest.approx(0.01)
+
+        # At epoch 20: warmup complete, lr = base_lr
+        scheduler.step(epoch=20)
+        assert optimizer.lr == pytest.approx(0.1)
+
+        # After warmup, StepLR decay applies with adjusted epochs
+        # epoch 120: adjusted = 120-20 = 100, 1 decay (100 // 100 = 1)
+        scheduler.step(epoch=120)
+        assert optimizer.lr == pytest.approx(0.01)  # 0.1 * 0.1
+
+    def test_create_without_warmup_returns_base(self):
+        """Without warmup params, should return base scheduler."""
+        optimizer = MockOptimizer(lr=0.01)
+
+        scheduler = create_scheduler(
+            optimizer,
+            schedule_type="cosine",
+            epochs=500,
+        )
+
+        # Should be plain CosineAnnealingLR, not wrapped
+        assert isinstance(scheduler, CosineAnnealingLR)
+        assert not isinstance(scheduler, WarmupScheduler)

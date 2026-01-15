@@ -74,6 +74,8 @@ class ExperimentConfig:
     lr_step_size: int = 100  # Epochs between LR decay (for "step")
     lr_gamma: float = 0.1  # LR decay factor
     lr_min: float = 1e-6  # Minimum LR (for "cosine" and "plateau")
+    warmup_epochs: int = 0  # Number of epochs for linear LR warmup
+    warmup_start_lr: float = 0.0  # Starting LR for warmup (default: 0)
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization."""
@@ -173,6 +175,8 @@ class ExperimentConfig:
             lr_step_size=getattr(args, "lr_step_size", 100),
             lr_gamma=getattr(args, "lr_gamma", 0.1),
             lr_min=getattr(args, "lr_min", 1e-6),
+            warmup_epochs=getattr(args, "warmup_epochs", 0),
+            warmup_start_lr=getattr(args, "warmup_start_lr", 0.0),
         )
 
     def summary(self) -> str:

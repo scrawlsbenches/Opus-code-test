@@ -304,6 +304,104 @@ class ReduceLROnPlateau(LRScheduler):
         self.current_lr = state["current_lr"]
 
 
+class WarmupScheduler(LRScheduler):
+    """
+    Wrapper that adds linear warmup to any LR scheduler.
+
+    During warmup phase (epochs < warmup_epochs), LR linearly increases
+    from warmup_start_lr to base_lr. After warmup, delegates to the
+    wrapped scheduler.
+
+    This prevents gradient explosion in early training by starting with
+    a lower learning rate and gradually increasing it.
+
+    Example:
+        base_scheduler = CosineAnnealingLR(optimizer, T_max=500)
+        scheduler = WarmupScheduler(base_scheduler, warmup_epochs=50)
+
+        for epoch in range(500):
+            train_step(...)
+            scheduler.step(epoch=epoch)
+            # epochs 0-49: LR warms up from 0 to base_lr
+            # epochs 50-499: cosine annealing takes over
+    """
+
+    def __init__(
+        self,
+        base_scheduler: LRScheduler,
+        warmup_epochs: int = 10,
+        warmup_start_lr: float = 0.0,
+    ):
+        """
+        Args:
+            base_scheduler: The scheduler to wrap (handles post-warmup LR)
+            warmup_epochs: Number of epochs for linear warmup
+            warmup_start_lr: Starting LR for warmup (default: 0)
+        """
+        # Share optimizer with base scheduler
+        super().__init__(base_scheduler.optimizer, base_scheduler.last_epoch)
+        self.base_scheduler = base_scheduler
+        self.warmup_epochs = warmup_epochs
+        self.warmup_start_lr = warmup_start_lr
+
+    def get_lr(self) -> float:
+        """
+        Compute learning rate with warmup.
+
+        During warmup (epoch < warmup_epochs):
+            lr = warmup_start_lr + (base_lr - warmup_start_lr) * (epoch / warmup_epochs)
+
+        After warmup:
+            Delegates to base_scheduler.get_lr() with adjusted epoch
+        """
+        if self.warmup_epochs == 0 or self.last_epoch >= self.warmup_epochs:
+            # Delegate to base scheduler (epoch adjusted for warmup offset)
+            return self.base_scheduler.get_lr()
+
+        # Linear warmup
+        progress = self.last_epoch / self.warmup_epochs
+        return self.warmup_start_lr + (self.base_lr - self.warmup_start_lr) * progress
+
+    def step(self, epoch: Optional[int] = None) -> None:
+        """
+        Update learning rate with warmup logic.
+
+        Args:
+            epoch: Optional epoch number (uses internal counter if None)
+        """
+        if epoch is None:
+            self._step_count += 1
+            epoch = self._step_count
+
+        self.last_epoch = epoch
+
+        # Update base scheduler's epoch tracking (offset by warmup epochs)
+        # After warmup, the base scheduler starts from epoch 0
+        adjusted_epoch = max(0, epoch - self.warmup_epochs)
+        self.base_scheduler.last_epoch = adjusted_epoch
+        self.base_scheduler._step_count = adjusted_epoch
+
+        new_lr = self.get_lr()
+        self.optimizer.lr = new_lr
+
+    def state_dict(self) -> dict:
+        """Return scheduler state for checkpointing."""
+        state = super().state_dict()
+        state.update({
+            "warmup_epochs": self.warmup_epochs,
+            "warmup_start_lr": self.warmup_start_lr,
+            "base_scheduler_state": self.base_scheduler.state_dict(),
+        })
+        return state
+
+    def load_state_dict(self, state: dict) -> None:
+        """Load scheduler state from checkpoint."""
+        super().load_state_dict(state)
+        self.warmup_epochs = state["warmup_epochs"]
+        self.warmup_start_lr = state["warmup_start_lr"]
+        self.base_scheduler.load_state_dict(state["base_scheduler_state"])
+
+
 def create_scheduler(
     optimizer: "Optimizer",
     schedule_type: str,
@@ -321,27 +419,34 @@ def create_scheduler(
             - step: step_size, gamma
             - cosine: lr_min
             - plateau: factor, patience, min_lr, threshold
+            - warmup_epochs: Number of epochs for linear warmup (default: 0)
+            - warmup_start_lr: Starting LR for warmup (default: 0)
 
     Returns:
-        LRScheduler instance
+        LRScheduler instance (wrapped in WarmupScheduler if warmup_epochs > 0)
 
     Raises:
         ValueError: If schedule_type is not recognized
     """
+    # Extract warmup parameters
+    warmup_epochs = kwargs.get("warmup_epochs", 0)
+    warmup_start_lr = kwargs.get("warmup_start_lr", 0.0)
+
+    # Create base scheduler
     if schedule_type == "step":
-        return StepLR(
+        base_scheduler = StepLR(
             optimizer,
             step_size=kwargs.get("step_size", 100),
             gamma=kwargs.get("gamma", 0.1),
         )
     elif schedule_type == "cosine":
-        return CosineAnnealingLR(
+        base_scheduler = CosineAnnealingLR(
             optimizer,
             T_max=epochs,
             lr_min=kwargs.get("lr_min", 1e-6),
         )
     elif schedule_type == "plateau":
-        return ReduceLROnPlateau(
+        base_scheduler = ReduceLROnPlateau(
             optimizer,
             factor=kwargs.get("gamma", 0.1),  # Use gamma for consistency
             patience=kwargs.get("patience", 10),
@@ -353,3 +458,13 @@ def create_scheduler(
             f"Unknown schedule_type '{schedule_type}'. "
             "Use 'step', 'cosine', or 'plateau'."
         )
+
+    # Wrap with warmup if requested
+    if warmup_epochs > 0:
+        return WarmupScheduler(
+            base_scheduler,
+            warmup_epochs=warmup_epochs,
+            warmup_start_lr=warmup_start_lr,
+        )
+
+    return base_scheduler
