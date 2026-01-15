@@ -13,6 +13,7 @@ from pathlib import Path
 from cortical.graph.attention import create_causal_attention_graph
 from cortical.experiments.tokenizer import tokenize, build_vocab, load_text
 from cortical.experiments.logging import ExperimentLog
+from cortical.experiments.cli import EMBEDDING_INIT_SCALE
 
 
 def load_model(checkpoint_path: Path):
@@ -29,7 +30,7 @@ def load_model(checkpoint_path: Path):
 
     # Create embeddings (same seed and scale as training)
     np.random.seed(config["seed"])
-    embeddings = np.random.randn(len(token_to_id), config["embedding_dim"]) * 0.35
+    embeddings = np.random.randn(len(token_to_id), config["embedding_dim"]) * EMBEDDING_INIT_SCALE
 
     # Create graph (same architecture as training)
     graph = create_causal_attention_graph(

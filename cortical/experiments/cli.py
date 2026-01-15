@@ -23,6 +23,11 @@ import numpy as np
 from .config import ExperimentConfig
 from .logging import ExperimentLog, ExperimentMetrics, list_experiments
 
+# Token embedding initialization scale
+# This value is used to scale random embeddings for stable training.
+# Must match between training (cli.py) and inference (predict.py).
+EMBEDDING_INIT_SCALE = 0.35
+
 
 def create_parser() -> argparse.ArgumentParser:
     """Create the argument parser."""
@@ -300,7 +305,7 @@ def run_experiment(args: argparse.Namespace) -> int:
     np.random.seed(config.seed)
 
     # Create embeddings
-    embeddings = np.random.randn(len(vocab), config.embedding_dim) * 0.35
+    embeddings = np.random.randn(len(vocab), config.embedding_dim) * EMBEDDING_INIT_SCALE
 
     # Create position encoding if requested
     pos_encoding = create_position_encoding(

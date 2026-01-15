@@ -23,6 +23,7 @@ from cortical.graph.attention import (
 from cortical.experiments.logging import ExperimentLog
 from cortical.experiments.config import ExperimentConfig
 from cortical.experiments.projection import VocabProjection
+from cortical.experiments.cli import EMBEDDING_INIT_SCALE
 
 
 class TestAttentionLayerParameterNaming:
@@ -312,7 +313,7 @@ class TestEndToEndCheckpoint:
         id_to_token = {i: t for t, i in token_to_id.items()}
         token_ids = [token_to_id[t] for t in tokens]
 
-        embeddings = np.random.randn(len(vocab), 16) * 0.35
+        embeddings = np.random.randn(len(vocab), 16) * EMBEDDING_INIT_SCALE
 
         # Create and train
         graph = create_causal_attention_graph(
@@ -355,7 +356,7 @@ class TestEndToEndCheckpoint:
 
         # Create fresh model
         np.random.seed(42)
-        embeddings2 = np.random.randn(len(vocab), 16) * 0.35
+        embeddings2 = np.random.randn(len(vocab), 16) * EMBEDDING_INIT_SCALE
 
         graph2 = create_causal_attention_graph(
             seq_len=len(tokens), embedding_dim=16, num_heads=2, seed=42, use_residual=True
