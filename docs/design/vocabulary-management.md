@@ -269,10 +269,10 @@ python -m cortical.experiments.cli vocab rebuild \
 - [ ] Store vocab reference in checkpoint
 
 ### Phase 2: OOV Handling
-- [ ] OOV detection before training starts
+- [x] OOV detection before training starts
 - [ ] `--extend-vocab` flag with embedding expansion
 - [ ] `--allow-unk` flag with logging
-- [ ] `vocab diff` command
+- [x] `vocab diff` command
 
 ### Phase 3: Iterative Training
 - [ ] `vocab extend` command
