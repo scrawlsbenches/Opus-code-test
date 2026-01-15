@@ -20,6 +20,7 @@ Usage:
 
 from __future__ import annotations
 
+import math
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Optional
 
@@ -33,8 +34,6 @@ class LRScheduler(ABC):
 
     All schedulers modify the optimizer's learning rate based on
     training progress (epoch count or metrics).
-
-    TODO(agent): Implement the step() method in subclasses
     """
 
     def __init__(self, optimizer: "Optimizer", last_epoch: int = -1):
@@ -99,8 +98,6 @@ class StepLR(LRScheduler):
     Example:
         scheduler = StepLR(optimizer, step_size=100, gamma=0.1)
         # LR: 0.01 -> 0.001 (at epoch 100) -> 0.0001 (at epoch 200)
-
-    TODO(agent): Implement get_lr() method
     """
 
     def __init__(
@@ -146,8 +143,6 @@ class CosineAnnealingLR(LRScheduler):
     Example:
         scheduler = CosineAnnealingLR(optimizer, T_max=500, lr_min=1e-6)
         # Smooth decay from 0.01 to 1e-6 over 500 epochs
-
-    TODO(agent): Implement get_lr() method
     """
 
     def __init__(
@@ -180,8 +175,6 @@ class CosineAnnealingLR(LRScheduler):
         Returns:
             Learning rate for current epoch
         """
-        import math
-
         # Compute cosine factor (ranges from 1 at start to 0 at end)
         cosine_factor = (1 + math.cos(math.pi * self.last_epoch / self.T_max)) / 2
 
@@ -203,8 +196,6 @@ class ReduceLROnPlateau(LRScheduler):
             train_loss = train_step(...)
             val_loss = evaluate(...)
             scheduler.step(val_loss)  # Pass metric, not epoch
-
-    TODO(agent): Implement step() and get_lr() methods
     """
 
     def __init__(
@@ -321,8 +312,6 @@ def create_scheduler(
 ) -> LRScheduler:
     """
     Factory function to create a learning rate scheduler.
-
-    TODO(agent): This function works once scheduler implementations are complete
 
     Args:
         optimizer: Optimizer instance
