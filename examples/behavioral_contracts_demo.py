@@ -851,6 +851,95 @@ print()
 
 
 # =============================================================================
+# STEP 9: Recovery to Healthy State
+# =============================================================================
+
+print("[9] Recovery to Healthy State")
+print()
+print("    Current state: UNHEALTHY (violation rate > 5%)")
+print("    Strategy: Execute successful operations to dilute violation rate")
+print()
+
+# Calculate how many successful operations we need
+current_checks = final_state.total_checks
+current_violations = final_state.total_violations
+target_rate = 0.05  # 5% threshold
+
+# Formula: violations / (checks + N) < target_rate
+# Solving: N > (violations / target_rate) - checks
+needed_checks = int((current_violations / target_rate) - current_checks) + 1
+print(f"    Need {needed_checks} successful operations to reach < 5% violation rate")
+print()
+
+# Execute successful operations
+print("    Executing successful cognitive operations...")
+
+for i in range(needed_checks):
+    # Create a new session and complete a full successful workflow
+    recovery_sess = CognitiveSession(f"S-RECOVERY-{i:03d}")
+    recovery_sess.begin()
+    recovery_task = recovery_sess.create_task(f"T-RECOVERY-{i:03d}", "Recovery task")
+    recovery_task.start()
+    recovery_task.complete("Successfully completed recovery operation")
+    recovery_sess.save_state()
+    recovery_sess.handoff("archive")
+
+print(f"    Completed {needed_checks} successful session cycles")
+print()
+
+# Check final health status
+final_final_state = materializer.current_state()
+final_report = materializer.health_report()
+
+print("    Final Health Report:")
+print(f"      Status: {final_report['status']}")
+print(f"      Total checks: {final_final_state.total_checks}")
+print(f"      Total violations: {final_final_state.total_violations}")
+print(f"      Violation rate: {final_final_state.violation_rate:.2f}%")
+print(f"      Is healthy: {final_final_state.is_healthy}")
+print()
+
+if final_report['status'] == 'HEALTHY':
+    print("    System recovered to HEALTHY state.")
+else:
+    print("    Note: System still unhealthy. May need more successful operations.")
+print()
+
+
+# =============================================================================
+# STEP 10: Next Steps / Production Guidance
+# =============================================================================
+
+print("[10] Production Guidance")
+print()
+print("    What to do when system is UNHEALTHY:")
+print()
+print("      1. IDENTIFY: Use temporal queries to find when violations occurred")
+print("         state_at_horizon(violation_horizon)")
+print()
+print("      2. ANALYZE: Check violations_by_method to find problem areas")
+print("         materializer.current_state().violations_by_method")
+print()
+print("      3. FIX: Either fix the code OR adjust the contract")
+print("         - If contract is too strict: relax preconditions")
+print("         - If code is buggy: fix the implementation")
+print()
+print("      4. RECOVER: Execute successful operations to dilute rate")
+print("         - Violation rate = violations / total_checks")
+print("         - More successful checks -> lower rate")
+print()
+print("      5. MONITOR: Use health_report() for ongoing monitoring")
+print("         - Set up alerts when status != 'HEALTHY'")
+print("         - Track violation rate trends over time")
+print()
+print("    Contract Health Thresholds:")
+print("      - HEALTHY: violation rate < 5%")
+print("      - UNHEALTHY: violation rate >= 5%")
+print("      - CRITICAL: violation rate >= 10% (immediate attention)")
+print()
+
+
+# =============================================================================
 # SUMMARY
 # =============================================================================
 
