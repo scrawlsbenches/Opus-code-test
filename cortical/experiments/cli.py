@@ -816,15 +816,20 @@ def compare_experiments(args: argparse.Namespace) -> int:
 
 def vocab_create(args: argparse.Namespace) -> int:
     """Create vocabulary from corpus."""
+    import json
     from .vocabulary import Vocabulary
 
     print(f"Creating vocabulary from: {args.from_path}")
 
-    vocab = Vocabulary.from_file(
-        args.from_path,
-        min_freq=args.min_freq,
-        max_vocab_size=args.max_vocab,
-    )
+    try:
+        vocab = Vocabulary.from_file(
+            args.from_path,
+            min_freq=args.min_freq,
+            max_vocab_size=args.max_vocab,
+        )
+    except FileNotFoundError as e:
+        print(f"ERROR: {e}")
+        return 1
 
     vocab.save(args.output)
 
@@ -840,9 +845,17 @@ def vocab_create(args: argparse.Namespace) -> int:
 
 def vocab_inspect(args: argparse.Namespace) -> int:
     """Inspect vocabulary file."""
+    import json
     from .vocabulary import Vocabulary
 
-    vocab = Vocabulary.load(args.vocab_path)
+    try:
+        vocab = Vocabulary.load(args.vocab_path)
+    except FileNotFoundError:
+        print(f"ERROR: Vocabulary file not found: {args.vocab_path}")
+        return 1
+    except json.JSONDecodeError as e:
+        print(f"ERROR: Invalid JSON in vocabulary file: {e}")
+        return 1
 
     print(f"\nVocabulary: {args.vocab_path}")
     print("-" * 50)
