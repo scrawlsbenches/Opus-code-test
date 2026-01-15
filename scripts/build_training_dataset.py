@@ -50,7 +50,8 @@ logger = logging.getLogger(__name__)
 
 # Paths
 PROJECT_ROOT = Path(__file__).parent.parent
-COMMITS_FILE = PROJECT_ROOT / ".git-ml" / "tracked" / "commits.jsonl"
+COMMITS_LITE_FILE = PROJECT_ROOT / ".git-ml" / "tracked" / "commits.jsonl"
+COMMITS_FULL_DIR = PROJECT_ROOT / ".git-ml" / "commits"
 DEFAULT_OUTPUT = PROJECT_ROOT / "datasets" / "git_training_data.jsonl"
 
 
@@ -226,19 +227,45 @@ class DatasetBuilder:
             logger.debug(f"Could not fetch diff for {commit_hash[:8]}: {e}")
         return ""
 
-    def load_commits(self, max_commits: Optional[int] = None) -> List[WeightedCommit]:
-        """Load commits from the JSONL file."""
-        if not COMMITS_FILE.exists():
-            logger.error(f"Commits file not found: {COMMITS_FILE}")
-            return []
+    def load_commits(
+        self,
+        max_commits: Optional[int] = None,
+        use_full: bool = True
+    ) -> List[WeightedCommit]:
+        """Load commits from full JSON files or lite JSONL.
 
+        Args:
+            max_commits: Maximum number of commits to load
+            use_full: If True, load from .git-ml/commits/ (has code diffs)
+                     If False, load from .git-ml/tracked/commits.jsonl (metadata only)
+        """
         commits = []
-        with open(COMMITS_FILE, 'r') as f:
-            for i, line in enumerate(f):
+
+        if use_full and COMMITS_FULL_DIR.exists():
+            # Load from full commits directory (has actual code diffs)
+            commit_files = sorted(
+                COMMITS_FULL_DIR.glob("*.json"),
+                key=lambda f: f.stat().st_mtime,
+                reverse=True  # Most recent first
+            )
+
+            for i, commit_file in enumerate(commit_files):
                 if max_commits and i >= max_commits:
                     break
                 try:
-                    data = json.loads(line.strip())
+                    with open(commit_file, 'r') as f:
+                        data = json.load(f)
+
+                    # Extract diff content from hunks
+                    diff_lines = []
+                    for hunk in data.get('hunks', []):
+                        if hunk.get('file'):
+                            diff_lines.append(f"--- {hunk['file']}")
+                        for line in hunk.get('lines_removed', []):
+                            diff_lines.append(f"-{line}")
+                        for line in hunk.get('lines_added', []):
+                            diff_lines.append(f"+{line}")
+
                     commit = WeightedCommit(
                         hash=data['hash'],
                         message=data['message'],
@@ -252,12 +279,46 @@ class DatasetBuilder:
                         day_of_week=data.get('day_of_week', 'Unknown'),
                         is_merge=data.get('is_merge', False),
                         is_initial=data.get('is_initial', False),
+                        diff_content='\n'.join(diff_lines),
                     )
                     commits.append(commit)
                 except (json.JSONDecodeError, KeyError) as e:
-                    logger.warning(f"Skipping malformed line {i}: {e}")
+                    logger.warning(f"Skipping {commit_file.name}: {e}")
 
-        logger.info(f"Loaded {len(commits)} commits from {COMMITS_FILE}")
+            logger.info(f"Loaded {len(commits)} full commits from {COMMITS_FULL_DIR}")
+
+        else:
+            # Fallback to lite commits (metadata only)
+            if not COMMITS_LITE_FILE.exists():
+                logger.error(f"Commits file not found: {COMMITS_LITE_FILE}")
+                return []
+
+            with open(COMMITS_LITE_FILE, 'r') as f:
+                for i, line in enumerate(f):
+                    if max_commits and i >= max_commits:
+                        break
+                    try:
+                        data = json.loads(line.strip())
+                        commit = WeightedCommit(
+                            hash=data['hash'],
+                            message=data['message'],
+                            author=data['author'],
+                            timestamp=data['timestamp'],
+                            branch=data['branch'],
+                            files_changed=data['files_changed'],
+                            insertions=data.get('insertions', 0),
+                            deletions=data.get('deletions', 0),
+                            hour_of_day=data.get('hour_of_day', 12),
+                            day_of_week=data.get('day_of_week', 'Unknown'),
+                            is_merge=data.get('is_merge', False),
+                            is_initial=data.get('is_initial', False),
+                        )
+                        commits.append(commit)
+                    except (json.JSONDecodeError, KeyError) as e:
+                        logger.warning(f"Skipping malformed line {i}: {e}")
+
+            logger.info(f"Loaded {len(commits)} lite commits from {COMMITS_LITE_FILE}")
+
         return commits
 
     def process_commits(
@@ -284,10 +345,25 @@ class DatasetBuilder:
 
     def create_training_example(self, commit: WeightedCommit) -> Dict:
         """Create a training example from a commit."""
-        # Format: instruction-style for fine-tuning
+        # Build text content
+        text_parts = [f"### Commit Message\n{commit.message}"]
+
+        # Add files changed
+        files_list = "\n".join(f"- {f}" for f in commit.files_changed[:20])
+        if len(commit.files_changed) > 20:
+            files_list += f"\n... and {len(commit.files_changed) - 20} more files"
+        text_parts.append(f"\n### Files Changed\n{files_list}")
+
+        # Add diff if available (this is the actual code content)
+        if commit.diff_content:
+            # Truncate very long diffs
+            diff = commit.diff_content
+            if len(diff) > 10000:
+                diff = diff[:10000] + "\n... (truncated)"
+            text_parts.append(f"\n### Code Changes\n```diff\n{diff}\n```")
+
         example = {
-            "text": f"### Commit Message\n{commit.message}\n\n### Files Changed\n" +
-                    "\n".join(f"- {f}" for f in commit.files_changed[:20]),
+            "text": "\n".join(text_parts),
             "weight": round(commit.weight, 4),
             "metadata": {
                 "hash": commit.hash[:8],
@@ -298,13 +374,10 @@ class DatasetBuilder:
                 "deletions": commit.deletions,
                 "is_merge": commit.is_merge,
                 "has_tests": commit.has_tests,
+                "has_diff": bool(commit.diff_content),
                 "weight_breakdown": commit.weight_breakdown,
             }
         }
-
-        # Add diff if available
-        if commit.diff_content:
-            example["text"] += f"\n\n### Diff\n```\n{commit.diff_content}\n```"
 
         return example
 
@@ -399,7 +472,11 @@ def main():
     )
     parser.add_argument(
         "--include-diffs", action="store_true",
-        help="Include diff content (slower but richer data)"
+        help="Fetch diffs from git for lite commits (slower)"
+    )
+    parser.add_argument(
+        "--lite-only", action="store_true",
+        help="Use lite commits only (metadata, no code diffs)"
     )
     parser.add_argument(
         "--output", type=str, default=str(DEFAULT_OUTPUT),
@@ -438,10 +515,16 @@ def main():
     )
 
     # Load commits
-    commits = builder.load_commits(max_commits=args.max_commits)
+    use_full = not args.lite_only
+    commits = builder.load_commits(max_commits=args.max_commits, use_full=use_full)
     if not commits:
         print("No commits found!")
+        if use_full:
+            print("Tip: Run 'python scripts/ml_data_collector.py backfill -n 500' to collect full commits with diffs")
         return 1
+
+    # Count commits with actual diffs
+    with_diffs = sum(1 for c in commits if c.diff_content)
 
     # Process commits
     print(f"\nProcessing {len(commits)} commits...")
@@ -451,6 +534,7 @@ def main():
     stats = builder.compute_stats(commits)
     print(f"\n📊 Dataset Statistics:")
     print(f"   Total commits: {stats['total_commits']}")
+    print(f"   With code diffs: {with_diffs} ({100*with_diffs//max(1,stats['total_commits'])}%)")
     print(f"   Weight range: {stats['weight_stats']['min']} - {stats['weight_stats']['max']}")
     print(f"   Mean weight: {stats['weight_stats']['mean']}")
     print(f"   Total weight: {stats['weight_stats']['total']}")
@@ -461,6 +545,11 @@ def main():
     print(f"\n   Top branches:")
     for branch, count in list(stats['branch_distribution'].items())[:5]:
         print(f"     {branch}: {count}")
+
+    if with_diffs == 0:
+        print(f"\n⚠️  No commits have code diffs!")
+        print(f"   Run: python scripts/ml_data_collector.py backfill -n 500")
+        print(f"   to collect commits with actual code content.")
 
     if args.stats_only:
         return 0
