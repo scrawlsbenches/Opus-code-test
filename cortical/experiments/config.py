@@ -165,7 +165,7 @@ class ExperimentConfig:
             val_split=getattr(args, "val_split", 0.0),
             loss_fn=getattr(args, "loss_fn", "mse"),
             position_encoding=getattr(args, "position_encoding", "none"),
-            # Experimental features (stub)
+            # Advanced training features
             resume_checkpoint=getattr(args, "resume", None),
             early_stop_patience=getattr(args, "early_stop", None),
             early_stop_min_delta=getattr(args, "early_stop_min_delta", 1e-4),
