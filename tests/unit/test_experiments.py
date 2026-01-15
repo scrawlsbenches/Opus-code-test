@@ -1141,6 +1141,137 @@ class TestVocabCLI:
         # Should show size and some tokens
         assert "7" in result.stdout  # 4 special + 3 regular tokens
 
+    def test_vocab_diff_shows_oov_tokens(self, tmp_path):
+        """vocab diff shows out-of-vocabulary tokens."""
+        import subprocess
+        from cortical.experiments.vocabulary import Vocabulary
+
+        # Create vocab with limited tokens
+        vocab = Vocabulary.from_tokens(["hello", "world"])
+        vocab_path = tmp_path / "vocab.json"
+        vocab.save(vocab_path)
+
+        # Create document with mix of in-vocab and OOV tokens
+        doc_path = tmp_path / "doc.txt"
+        doc_path.write_text("hello world unknown_token foo bar")
+
+        result = subprocess.run(
+            [
+                "python", "-m", "cortical.experiments.cli",
+                "vocab", "diff",
+                "--vocab", str(vocab_path),
+                "--document", str(doc_path),
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 0
+        assert "Out of vocabulary:" in result.stdout
+        assert "unknown_token" in result.stdout
+        assert "foo" in result.stdout
+        assert "bar" in result.stdout
+
+    def test_vocab_diff_no_oov(self, tmp_path):
+        """vocab diff reports no OOV when document is fully covered."""
+        import subprocess
+        from cortical.experiments.vocabulary import Vocabulary
+
+        # Create vocab with all needed tokens
+        vocab = Vocabulary.from_tokens(["hello", "world", "test"])
+        vocab_path = tmp_path / "vocab.json"
+        vocab.save(vocab_path)
+
+        # Create document with only in-vocab tokens
+        doc_path = tmp_path / "doc.txt"
+        doc_path.write_text("hello world test")
+
+        result = subprocess.run(
+            [
+                "python", "-m", "cortical.experiments.cli",
+                "vocab", "diff",
+                "--vocab", str(vocab_path),
+                "--document", str(doc_path),
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 0
+        assert "No OOV tokens" in result.stdout
+
+    def test_vocab_diff_missing_vocab_file(self, tmp_path):
+        """vocab diff errors on missing vocab file."""
+        import subprocess
+
+        doc_path = tmp_path / "doc.txt"
+        doc_path.write_text("hello world")
+
+        result = subprocess.run(
+            [
+                "python", "-m", "cortical.experiments.cli",
+                "vocab", "diff",
+                "--vocab", "/nonexistent/vocab.json",
+                "--document", str(doc_path),
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 1
+        assert "ERROR" in result.stdout
+
+    def test_vocab_diff_missing_document(self, tmp_path):
+        """vocab diff errors on missing document."""
+        import subprocess
+        from cortical.experiments.vocabulary import Vocabulary
+
+        vocab = Vocabulary.from_tokens(["hello"])
+        vocab_path = tmp_path / "vocab.json"
+        vocab.save(vocab_path)
+
+        result = subprocess.run(
+            [
+                "python", "-m", "cortical.experiments.cli",
+                "vocab", "diff",
+                "--vocab", str(vocab_path),
+                "--document", "/nonexistent/doc.txt",
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 1
+        assert "ERROR" in result.stdout
+
+    def test_vocab_diff_shows_oov_rate(self, tmp_path):
+        """vocab diff shows OOV percentage."""
+        import subprocess
+        from cortical.experiments.vocabulary import Vocabulary
+
+        vocab = Vocabulary.from_tokens(["hello", "world"])
+        vocab_path = tmp_path / "vocab.json"
+        vocab.save(vocab_path)
+
+        # 2 in vocab, 2 OOV = 50% OOV rate
+        doc_path = tmp_path / "doc.txt"
+        doc_path.write_text("hello world foo bar")
+
+        result = subprocess.run(
+            [
+                "python", "-m", "cortical.experiments.cli",
+                "vocab", "diff",
+                "--vocab", str(vocab_path),
+                "--document", str(doc_path),
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 0
+        assert "OOV rate:" in result.stdout
+        assert "50" in result.stdout  # 50% OOV rate
+
 
 class TestRunWithVocab:
     """Tests for run command with --vocab parameter."""
