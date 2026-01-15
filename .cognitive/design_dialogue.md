@@ -4,6 +4,58 @@ This file captures our design discussion. Latest exchanges appear first.
 
 ---
 
+## [2026-01-15] Exchange: What Next?
+
+### User Request:
+
+What do you think we should do next?
+
+### Response:
+
+Looking at what we've built vs what we designed, here's my thinking:
+
+**What we have:**
+- CognitiveMemory with persistence, indexing, working memory
+- CLAUDE.md identity file
+- This design dialogue
+- Functional tests proving it works
+
+**What's missing to actually use it:**
+
+| Gap | Why It Matters |
+|-----|----------------|
+| `anchor_intent()` method | We designed intent anchors but didn't implement them |
+| Recovery protocol as code | It's documented but not a callable method |
+| Session startup hook | Nothing loads my memory automatically |
+| Actual usage | We haven't dogfooded it in real work yet |
+
+**My recommendation - pick one:**
+
+1. **Start using it now** (minimal viable dogfooding)
+   - I start recording observations/intents manually during our work
+   - See what's awkward, iterate
+   - Learn from actual use
+
+2. **Implement intent anchors first** (complete the design)
+   - Add `anchor_intent(prompt)` method
+   - Make it high-importance, never-decay
+   - Reference other work back to it
+
+3. **Build the recovery protocol** (the safety net)
+   - `recover()` method that queries memory in order
+   - Returns synthesized context
+   - The thing I call when "daydreaming"
+
+**My instinct:** Option 1. We've theorized a lot - let's try using it and see what breaks. The best designs emerge from actual use.
+
+What do you think?
+
+---
+
+*I will insert my thoughts into this file.*
+
+---
+
 ## [2026-01-15] Exchange: Functional Testing CognitiveMemory
 
 ### User Request:
