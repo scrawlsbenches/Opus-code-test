@@ -4,6 +4,51 @@ This file captures our design discussion. Latest exchanges appear first.
 
 ---
 
+## [2026-01-15] Exchange: Functional Testing CognitiveMemory
+
+### User Request:
+
+Can you do some functional testing with CognitiveMemory?
+
+### Response:
+
+Ran comprehensive functional tests covering:
+
+| Test | Result |
+|------|--------|
+| In-memory mode | PASS - 5 events, learnings, errors work |
+| Persistent write | PASS - 6 events written to disk |
+| Persistent read (new instance) | PASS - All data loaded, indexes rebuilt |
+| Cross-session continuity | PASS - Completed work from session-1 in session-2 |
+| Third session verification | PASS - All 9 events, 2 learnings persisted |
+| Concept indexing | PASS - Concepts extracted and queryable |
+| Context window | PASS - Returns relevant memories |
+
+**Key findings:**
+- Persistence works across multiple sessions
+- Index rebuilding correctly restores pending intentions
+- Concept extraction creates searchable index
+- Associative recall by concept works
+
+**Concept extraction example:**
+```
+"authentication module has a bug" → ('authentication', 'module')
+"database connection is working" → ('database', 'connection', 'working')
+```
+
+The system successfully:
+1. Writes events to `.cognitive/events/`
+2. Loads them in new sessions
+3. Rebuilds concept index from events
+4. Tracks pending intentions across sessions
+5. Queries by concept for associative recall
+
+---
+
+*I will insert my thoughts into this file.*
+
+---
+
 ## [2026-01-15] Exchange: Creating CLAUDE.md - My Identity File
 
 ### User Request:
