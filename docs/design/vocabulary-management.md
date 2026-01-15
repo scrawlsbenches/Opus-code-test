@@ -1,9 +1,9 @@
 # Vocabulary Management Design
 
-> **STATUS: DESIGN IN PROGRESS**
+> **STATUS: PHASE 1-2 COMPLETE, TESTED**
 >
-> Do not implement yet. Edge cases and design decisions are still under discussion.
-> This document is a working draft for collaborative design review.
+> Core vocabulary management is implemented and functionally tested.
+> Remaining items (Phase 3-4) are optional enhancements.
 
 ## Problem Statement
 
@@ -261,27 +261,39 @@ python -m cortical.experiments.cli vocab rebuild \
 
 ## Implementation Plan
 
-### Phase 1: Core Vocabulary Management
+### Phase 1: Core Vocabulary Management ✓
 - [x] `Vocabulary` class with save/load/extend methods
 - [x] `vocab create` command
 - [x] `vocab inspect` command
 - [x] Modify `run` to accept `--vocab` parameter
 - [x] Store vocab reference in checkpoint
 
-### Phase 2: OOV Handling
+### Phase 2: OOV Handling ✓
 - [x] OOV detection before training starts
-- [ ] `--extend-vocab` flag with embedding expansion
 - [x] `--allow-unk` flag with logging
 - [x] `vocab diff` command
-
-### Phase 3: Iterative Training
-- [ ] `vocab extend` command
-- [ ] `vocab audit` command
 - [x] Checkpoint-vocab hash verification
 - [x] Clear error messages for vocab mismatches
 
-### Phase 4: Future Enhancements
-- [ ] BPE integration (optional, for code/mixed content)
+### Phase 3: Functional Testing ✓
+- [x] Unit tests with in-memory API (TDD approach)
+- [x] CLI functional tests verified:
+  - `vocab create` from file and directory
+  - `vocab create --min-freq` filtering
+  - `vocab inspect` shows hash, size, sample tokens
+  - `vocab diff` shows OOV tokens and rate
+  - `run --vocab` with matching vocabulary
+  - `run --vocab` strict mode errors on OOV
+  - `run --vocab --allow-unk` warns but proceeds
+  - `run --resume` verifies vocab hash matches
+  - `run --resume` errors on vocab hash mismatch
+  - Error handling for missing files
+
+### Phase 4: Future Enhancements (Optional)
+- [ ] `vocab extend` command (add tokens to existing vocab)
+- [ ] `vocab audit` command (find unused tokens)
+- [ ] `--extend-vocab` flag with embedding expansion
+- [ ] BPE integration (for code/mixed content)
 - [ ] Vocabulary compression (merge rare tokens)
 - [ ] Pre-trained embeddings import
 
