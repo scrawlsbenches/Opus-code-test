@@ -1,5 +1,10 @@
 # Vocabulary Management Design
 
+> **STATUS: DESIGN IN PROGRESS**
+>
+> Do not implement yet. Edge cases and design decisions are still under discussion.
+> This document is a working draft for collaborative design review.
+
 ## Problem Statement
 
 The current experiment CLI builds vocabulary per-document, creating a rigid coupling between trained model weights and the specific tokens seen during training. This prevents:
@@ -473,6 +478,70 @@ def split_identifier(token: str) -> List[str]:
    loses some information vs a single compound token. Mitigation:
    - Keep high-frequency compounds as single tokens
    - Store `compound_tokens` mapping for reconstruction
+
+## Future Consideration: Morphological Variants
+
+### Problem
+
+"word" and "words" are semantically similar but consume two vocab slots.
+Repository analysis shows many such variants wasting embedding capacity.
+
+### Options Under Consideration
+
+| Approach | Example | Pros | Cons |
+|----------|---------|------|------|
+| **Stemming** | "words"→"word" | Smaller vocab | Loses tense/plurality |
+| **Lemmatization** | "better"→"good" | More accurate | Requires dictionary |
+| **Suffix tokens** | "words"→["word","+s"] | Preserves info, reuses stems | More tokens per word |
+| **Shared embeddings** | "word","words"→same ID | Simple | Loses distinction entirely |
+
+### Proposed: Suffix-Aware Tokenization (Tier 2.5)
+
+Insert between identifier splitting and fallback:
+
+```
+Token: "containerizations"
+    │
+TIER 2.5: Suffix stripping
+    │
+    ├─ Try: "containerization" + "+s"
+    │       └─ "containerization" not in vocab
+    │
+    └─ Recursive: "container" + "+ization" + "+s"
+                  └─ All found → [ID, ID, ID] ✓
+```
+
+### Common Suffixes (~20 tokens)
+
+```python
+SUFFIXES = [
+    # Plurality/possession
+    ("'s", "+poss"), ("s", "+s"),
+
+    # Verb forms
+    ("ing", "+ing"), ("ed", "+ed"), ("er", "+er"), ("est", "+est"),
+
+    # Noun forms
+    ("tion", "+tion"), ("ation", "+ation"), ("ment", "+ment"),
+    ("ness", "+ness"), ("ity", "+ity"),
+
+    # Adjective/adverb forms
+    ("ly", "+ly"), ("ful", "+ful"), ("less", "+less"),
+    ("able", "+able"), ("ible", "+ible"),
+]
+```
+
+### Impact Estimate
+
+- Adds ~20 suffix tokens to vocab
+- Could reduce word vocab by 10-20% through stem reuse
+- Preserves morphological information via suffix tokens
+
+### Decision Needed
+
+1. Implement suffix stripping or defer to character-level BPE later?
+2. If suffix stripping: apply during vocab build or only at tokenization?
+3. Should suffixes share embedding space with words or be separate?
 
 ## Notes
 
