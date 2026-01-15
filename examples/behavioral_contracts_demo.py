@@ -2,12 +2,14 @@
 """
 Behavioral Contracts - End-to-End Demonstration
 
-This example demonstrates the full contract lifecycle:
-1. Define contracts with @requires, @ensures, @invariant
-2. Register contracts with ContractRegistry
-3. Execute code and emit CEL events
-4. Materialize contract state from events
-5. Query violations and generate health reports
+This example demonstrates behavioral contracts in the context CEL was
+designed for: cognitive operations, task management, and knowledge transfer.
+
+The contracts express INTENT about:
+- Task state machine transitions (pending → in_progress → completed)
+- Knowledge transfer lifecycle (draft → finalized)
+- Session integrity (active before work, clean handoff)
+- Cognitive invariants (WAL entries >= committed entities)
 
 Run with:
     python examples/behavioral_contracts_demo.py
@@ -17,7 +19,9 @@ from __future__ import annotations
 
 import sys
 from datetime import datetime
+from enum import Enum, auto
 from pathlib import Path
+from typing import Dict, List, Optional
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -39,7 +43,7 @@ from cortical.contracts import (
 # =============================================================================
 
 print("=" * 70)
-print("BEHAVIORAL CONTRACTS - END-TO-END DEMONSTRATION")
+print("BEHAVIORAL CONTRACTS - COGNITIVE OPERATIONS DEMO")
 print("=" * 70)
 print()
 
@@ -51,85 +55,288 @@ emitter = ContractEventEmitter(emit_all_checks=True)
 registry = ContractRegistry(emitter=emitter)
 
 print("[1] Created ContractRegistry and ContractEventEmitter")
-print(f"    - emit_all_checks: True (for demonstration)")
-print(f"    - CEL store: None (using in-memory buffer)")
+print("    - emit_all_checks: True (for demonstration)")
+print("    - CEL store: None (using in-memory buffer)")
 print()
 
 
 # =============================================================================
-# STEP 2: Define a Class with Contracts
+# STEP 2: Define Cognitive Classes with Contracts
 # =============================================================================
 
-class BankAccount:
+class TaskStatus(Enum):
+    """Valid task states in the state machine."""
+    PENDING = auto()
+    IN_PROGRESS = auto()
+    BLOCKED = auto()
+    COMPLETED = auto()
+    CANCELLED = auto()
+
+
+class KTStatus(Enum):
+    """Knowledge Transfer document states."""
+    DRAFT = auto()
+    FINALIZED = auto()
+
+
+class Task:
     """
-    Example class demonstrating behavioral contracts.
+    A task in the Graph of Thought system.
 
-    This models a simple bank account with contracts that express
-    the INTENT of each operation.
-
-    NOTE: @registry.track MUST be the OUTERMOST decorator (first applied).
-    This allows it to capture all contracts defined by inner decorators.
+    Contracts enforce the state machine:
+    - Cannot complete a task that isn't in progress
+    - Cannot start a task that's already completed
+    - Task ID must be valid format
     """
 
-    def __init__(self, owner: str, initial_balance: float = 0.0):
-        self._owner = owner
-        self._balance = initial_balance
-        self._transaction_count = 0
-        self._is_frozen = False
+    VALID_TRANSITIONS = {
+        TaskStatus.PENDING: {TaskStatus.IN_PROGRESS, TaskStatus.CANCELLED},
+        TaskStatus.IN_PROGRESS: {TaskStatus.COMPLETED, TaskStatus.BLOCKED, TaskStatus.CANCELLED},
+        TaskStatus.BLOCKED: {TaskStatus.IN_PROGRESS, TaskStatus.CANCELLED},
+        TaskStatus.COMPLETED: set(),  # Terminal state
+        TaskStatus.CANCELLED: set(),  # Terminal state
+    }
 
-    @registry.track  # OUTERMOST - captures all contracts below
-    @requires(lambda self: not self._is_frozen, "Account must not be frozen")
-    @requires(lambda self, amount: amount > 0, "Deposit amount must be positive")
-    @ensures(lambda self, result: self._balance >= 0, "Balance must remain non-negative")
-    def deposit(self, amount: float) -> float:
-        """Deposit funds into the account."""
-        self._balance += amount
-        self._transaction_count += 1
-        return self._balance
-
-    @registry.track  # OUTERMOST
-    @requires(lambda self: not self._is_frozen, "Account must not be frozen")
-    @requires(lambda self, amount: amount > 0, "Withdrawal amount must be positive")
-    @requires(lambda self, amount: self._balance >= amount, "Insufficient funds")
-    @ensures(lambda self, result: self._balance >= 0, "Balance must remain non-negative")
-    @invariant(lambda self: self._transaction_count >= 0, "Transaction count must be non-negative")
-    def withdraw(self, amount: float) -> float:
-        """Withdraw funds from the account."""
-        self._balance -= amount
-        self._transaction_count += 1
-        return self._balance
-
-    @registry.track  # OUTERMOST
-    @requires(lambda self, target: target is not self, "Cannot transfer to self")
-    @requires(lambda self, target, amount: amount > 0, "Transfer amount must be positive")
-    @ensures(lambda self, result: result['success'], "Transfer must succeed")
-    def transfer(self, target: 'BankAccount', amount: float) -> dict:
-        """Transfer funds to another account."""
-        self.withdraw(amount)
-        target.deposit(amount)
-        return {'success': True, 'amount': amount}
-
-    @registry.track  # OUTERMOST
-    @invariant(lambda self: self._balance >= 0 or self._is_frozen,
-               "Unfrozen account must have non-negative balance")
-    def freeze(self) -> None:
-        """Freeze the account (no more transactions)."""
-        self._is_frozen = True
+    def __init__(self, task_id: str, title: str):
+        if not task_id.startswith("T-"):
+            raise ValueError(f"Invalid task ID format: {task_id}")
+        self._id = task_id
+        self._title = title
+        self._status = TaskStatus.PENDING
+        self._history: List[tuple] = [(datetime.now(), TaskStatus.PENDING)]
 
     @property
-    def balance(self) -> float:
-        return self._balance
+    def status(self) -> TaskStatus:
+        return self._status
+
+    @property
+    def id(self) -> str:
+        return self._id
+
+    def _can_transition_to(self, new_status: TaskStatus) -> bool:
+        """Check if transition is valid per state machine."""
+        return new_status in self.VALID_TRANSITIONS.get(self._status, set())
+
+    @registry.track
+    @requires(lambda self: self._status == TaskStatus.PENDING,
+              "Can only start a PENDING task")
+    @ensures(lambda self, result: self._status == TaskStatus.IN_PROGRESS,
+             "Task must be IN_PROGRESS after start")
+    def start(self) -> 'Task':
+        """Begin work on this task."""
+        self._status = TaskStatus.IN_PROGRESS
+        self._history.append((datetime.now(), TaskStatus.IN_PROGRESS))
+        return self
+
+    @registry.track
+    @requires(lambda self: self._status == TaskStatus.IN_PROGRESS,
+              "Can only complete an IN_PROGRESS task")
+    @requires(lambda self, retrospective: len(retrospective) > 0,
+              "Retrospective cannot be empty")
+    @ensures(lambda self, result: self._status == TaskStatus.COMPLETED,
+             "Task must be COMPLETED after completion")
+    def complete(self, retrospective: str) -> 'Task':
+        """Mark task as completed with retrospective."""
+        self._status = TaskStatus.COMPLETED
+        self._retrospective = retrospective
+        self._history.append((datetime.now(), TaskStatus.COMPLETED))
+        return self
+
+    @registry.track
+    @requires(lambda self: self._status == TaskStatus.IN_PROGRESS,
+              "Can only block an IN_PROGRESS task")
+    @requires(lambda self, reason: len(reason) > 0,
+              "Block reason cannot be empty")
+    def block(self, reason: str) -> 'Task':
+        """Mark task as blocked."""
+        self._status = TaskStatus.BLOCKED
+        self._block_reason = reason
+        self._history.append((datetime.now(), TaskStatus.BLOCKED))
+        return self
+
+    @registry.track
+    @requires(lambda self: self._status not in {TaskStatus.COMPLETED, TaskStatus.CANCELLED},
+              "Cannot cancel a terminal task")
+    def cancel(self) -> 'Task':
+        """Cancel the task."""
+        self._status = TaskStatus.CANCELLED
+        self._history.append((datetime.now(), TaskStatus.CANCELLED))
+        return self
 
 
-print("[2] Defined BankAccount class with contracts:")
-print("    - deposit(): @requires not frozen, amount > 0")
-print("                 @ensures balance >= 0")
-print("    - withdraw(): @requires not frozen, amount > 0, sufficient funds")
-print("                  @ensures balance >= 0")
-print("                  @invariant transaction_count >= 0")
-print("    - transfer(): @requires target != self, amount > 0")
-print("                  @ensures success")
-print("    - freeze():   @invariant balance >= 0 or frozen")
+class KnowledgeTransfer:
+    """
+    Knowledge Transfer document for preserving session learnings.
+
+    Contracts enforce:
+    - Cannot finalize an empty document
+    - Cannot append to a finalized document
+    - Must have summary before finalizing
+    """
+
+    def __init__(self, kt_id: str, title: str):
+        if not kt_id.startswith("KT-"):
+            raise ValueError(f"Invalid KT ID format: {kt_id}")
+        self._id = kt_id
+        self._title = title
+        self._status = KTStatus.DRAFT
+        self._sections: Dict[str, str] = {}
+        self._summary: Optional[str] = None
+
+    @property
+    def status(self) -> KTStatus:
+        return self._status
+
+    @property
+    def is_empty(self) -> bool:
+        return len(self._sections) == 0 and self._summary is None
+
+    @registry.track
+    @requires(lambda self: self._status == KTStatus.DRAFT,
+              "Cannot append to a finalized document")
+    @requires(lambda self, section_name, content: len(section_name) > 0,
+              "Section name cannot be empty")
+    @requires(lambda self, section_name, content: len(content) > 0,
+              "Section content cannot be empty")
+    @ensures(lambda self, result: not self.is_empty,
+             "Document must not be empty after append")
+    def append(self, section_name: str, content: str) -> 'KnowledgeTransfer':
+        """Append a section to the document."""
+        self._sections[section_name] = content
+        return self
+
+    @registry.track
+    @requires(lambda self: self._status == KTStatus.DRAFT,
+              "Cannot set summary on a finalized document")
+    @requires(lambda self, summary: len(summary) >= 10,
+              "Summary must be at least 10 characters")
+    def set_summary(self, summary: str) -> 'KnowledgeTransfer':
+        """Set the document summary."""
+        self._summary = summary
+        return self
+
+    @registry.track
+    @requires(lambda self: self._status == KTStatus.DRAFT,
+              "Document is already finalized")
+    @requires(lambda self: not self.is_empty,
+              "Cannot finalize an empty document")
+    @requires(lambda self: self._summary is not None,
+              "Cannot finalize without a summary")
+    @ensures(lambda self, result: self._status == KTStatus.FINALIZED,
+             "Document must be FINALIZED after finalize")
+    def finalize(self) -> 'KnowledgeTransfer':
+        """Finalize the document (no more changes allowed)."""
+        self._status = KTStatus.FINALIZED
+        return self
+
+
+class CognitiveSession:
+    """
+    An AI agent session with cognitive state management.
+
+    Contracts enforce:
+    - Session must be active before performing work
+    - WAL entries must be >= committed operations (durability invariant)
+    - Clean handoff requires saving state first
+    """
+
+    def __init__(self, session_id: str):
+        self._id = session_id
+        self._active = False
+        self._tasks: List[Task] = []
+        self._wal_entries = 0  # Write-ahead log entries
+        self._committed = 0    # Committed operations
+        self._state_saved = False
+
+    @property
+    def is_active(self) -> bool:
+        return self._active
+
+    @registry.track
+    @requires(lambda self: not self._active,
+              "Session is already active")
+    @ensures(lambda self, result: self._active,
+             "Session must be active after begin")
+    def begin(self) -> 'CognitiveSession':
+        """Begin the cognitive session."""
+        self._active = True
+        self._wal_entries += 1
+        return self
+
+    @registry.track
+    @requires(lambda self: self._active,
+              "Session must be active to create tasks")
+    @invariant(lambda self: self._wal_entries >= self._committed,
+               "WAL entries must be >= committed operations")
+    def create_task(self, task_id: str, title: str) -> Task:
+        """Create a new task in this session."""
+        self._wal_entries += 1  # WAL first
+        task = Task(task_id, title)
+        self._tasks.append(task)
+        self._committed += 1
+        return task
+
+    @registry.track
+    @requires(lambda self: self._active,
+              "Session must be active to save state")
+    @ensures(lambda self, result: self._state_saved,
+             "State must be marked as saved after save")
+    @invariant(lambda self: self._wal_entries >= self._committed,
+               "WAL entries must be >= committed operations")
+    def save_state(self) -> 'CognitiveSession':
+        """Save current session state."""
+        self._wal_entries += 1
+        self._state_saved = True
+        self._committed += 1
+        return self
+
+    @registry.track
+    @requires(lambda self: self._active,
+              "Session must be active to handoff")
+    @requires(lambda self: self._state_saved,
+              "Must save state before handoff")
+    @ensures(lambda self, result: not self._active,
+             "Session must not be active after handoff")
+    def handoff(self, target_agent: str) -> dict:
+        """Handoff session to another agent."""
+        self._active = False
+        return {
+            'session_id': self._id,
+            'target': target_agent,
+            'tasks': len(self._tasks),
+            'wal_entries': self._wal_entries,
+            'committed': self._committed,
+        }
+
+    @registry.track
+    @requires(lambda self: self._active,
+              "Session must be active to end")
+    @invariant(lambda self: self._wal_entries >= self._committed,
+               "WAL entries must be >= committed operations")
+    def end(self) -> 'CognitiveSession':
+        """End the session."""
+        self._active = False
+        return self
+
+
+print("[2] Defined cognitive classes with contracts:")
+print()
+print("    Task (state machine):")
+print("      - start(): @requires PENDING → @ensures IN_PROGRESS")
+print("      - complete(): @requires IN_PROGRESS + retrospective → @ensures COMPLETED")
+print("      - block(): @requires IN_PROGRESS + reason")
+print("      - cancel(): @requires not terminal state")
+print()
+print("    KnowledgeTransfer (document lifecycle):")
+print("      - append(): @requires DRAFT, non-empty content")
+print("      - set_summary(): @requires DRAFT, min 10 chars")
+print("      - finalize(): @requires DRAFT, not empty, has summary")
+print()
+print("    CognitiveSession (session integrity):")
+print("      - begin(): @requires not active → @ensures active")
+print("      - create_task(): @requires active, @invariant WAL >= committed")
+print("      - save_state(): @requires active, @invariant WAL >= committed")
+print("      - handoff(): @requires active + state saved → @ensures not active")
 print()
 
 
@@ -137,60 +344,85 @@ print()
 # STEP 3: Execute Operations (Some Will Pass, Some Will Fail)
 # =============================================================================
 
-print("[3] Executing operations...")
+print("[3] Executing cognitive operations...")
 print()
 
-# Create accounts
-alice = BankAccount("Alice", 1000.0)
-bob = BankAccount("Bob", 500.0)
+# Create a session
+session = CognitiveSession("S-001")
+print("    [OK] Session S-001 created")
 
-# Successful operations
-print("    [OK] Alice deposits $200")
-alice.deposit(200)
+session.begin()
+print("    [OK] Session began")
 
-print("    [OK] Alice withdraws $300")
-alice.withdraw(300)
+# Create and work on tasks
+task1 = session.create_task("T-001", "Implement behavioral contracts")
+print("    [OK] Created task T-001")
 
-print("    [OK] Alice transfers $100 to Bob")
-alice.transfer(bob, 100)
+task1.start()
+print("    [OK] Task T-001 started (PENDING → IN_PROGRESS)")
 
-print(f"    Alice balance: ${alice.balance}")
-print(f"    Bob balance: ${bob.balance}")
+task1.complete("Implemented @requires, @ensures, @invariant with CEL integration")
+print("    [OK] Task T-001 completed with retrospective")
+
+# Create a knowledge transfer
+kt = KnowledgeTransfer("KT-001", "Session Learnings")
+kt.append("What Worked", "Contract decorators capture intent effectively")
+kt.append("Challenges", "Decorator ordering matters - track must be outermost")
+kt.set_summary("Behavioral contracts enable executable documentation")
+kt.finalize()
+print("    [OK] Knowledge transfer KT-001 created and finalized")
+
+print()
+print("    Now attempting operations that violate contracts...")
 print()
 
-# Now trigger some violations
-print("    Attempting operations that will violate contracts...")
-print()
-
-# Violation 1: Negative deposit
+# Violation 1: Complete a task that isn't in progress
+task2 = session.create_task("T-002", "Another task")
 try:
-    print("    [FAIL] Alice deposits $-50 (negative amount)")
-    alice.deposit(-50)
+    print("    [FAIL] Complete T-002 without starting it")
+    task2.complete("This should fail")
 except ContractViolation as e:
     print(f"           Caught: {e.contract_type} - {e.description}")
 print()
 
-# Violation 2: Insufficient funds
+# Violation 2: Append to finalized KT
 try:
-    print("    [FAIL] Bob withdraws $10000 (insufficient funds)")
-    bob.withdraw(10000)
+    print("    [FAIL] Append to finalized KT-001")
+    kt.append("New Section", "This should fail")
 except ContractViolation as e:
     print(f"           Caught: {e.contract_type} - {e.description}")
 print()
 
-# Violation 3: Transfer to self
+# Violation 3: Finalize empty KT
+kt2 = KnowledgeTransfer("KT-002", "Empty KT")
 try:
-    print("    [FAIL] Alice transfers to herself")
-    alice.transfer(alice, 50)
+    print("    [FAIL] Finalize empty KT-002")
+    kt2.finalize()
 except ContractViolation as e:
     print(f"           Caught: {e.contract_type} - {e.description}")
 print()
 
-# Violation 4: Frozen account
-alice.freeze()
+# Violation 4: Handoff without saving state
 try:
-    print("    [FAIL] Alice deposits after freeze")
-    alice.deposit(100)
+    print("    [FAIL] Handoff without saving state")
+    session.handoff("agent-2")
+except ContractViolation as e:
+    print(f"           Caught: {e.contract_type} - {e.description}")
+print()
+
+# Proper handoff sequence
+session.save_state()
+print("    [OK] Session state saved")
+
+result = session.handoff("agent-2")
+print(f"    [OK] Session handed off to {result['target']}")
+print(f"         Tasks: {result['tasks']}, WAL: {result['wal_entries']}, Committed: {result['committed']}")
+print()
+
+# Violation 5: Create task on inactive session
+try:
+    print("    [FAIL] Create task on ended session")
+    session.create_task("T-003", "This should fail")
 except ContractViolation as e:
     print(f"           Caught: {e.contract_type} - {e.description}")
 print()
@@ -316,8 +548,8 @@ print("[9] Exported Contract Documentation:")
 print()
 
 docs = registry.export_documentation()
-# Show first 30 lines
-lines = docs.split('\n')[:30]
+# Show first 40 lines
+lines = docs.split('\n')[:40]
 for line in lines:
     print(f"    {line}")
 print("    ...")
@@ -332,32 +564,27 @@ print("=" * 70)
 print("SUMMARY")
 print("=" * 70)
 print()
-print("This demonstration showed the full contract lifecycle:")
+print("This demonstration showed behavioral contracts in cognitive operations:")
 print()
-print("  1. DEFINE: @requires, @ensures, @invariant decorators")
-print("     - Express INTENT, not just behavior")
-print("     - Contracts are executable documentation")
+print("  Task State Machine:")
+print("    - Contracts enforce valid state transitions")
+print("    - Cannot complete without starting first")
+print("    - Terminal states cannot be exited")
 print()
-print("  2. REGISTER: ContractRegistry.track decorator")
-print("     - Centralized contract tracking")
-print("     - Queryable metadata")
+print("  Knowledge Transfer Lifecycle:")
+print("    - Cannot finalize empty documents")
+print("    - Cannot modify finalized documents")
+print("    - Must have summary before finalizing")
 print()
-print("  3. EMIT: ContractEventEmitter")
-print("     - Contract checks → CEL Observation events")
-print("     - Violations → CEL MetaCognition events")
-print()
-print("  4. MATERIALIZE: ContractMaterializer")
-print("     - Fold events into ContractState")
-print("     - Temporal queries supported")
-print()
-print("  5. QUERY: Health reports, violation lists, statistics")
-print("     - \"What was the contract state at time T?\"")
-print("     - \"Which methods have the most violations?\"")
+print("  Cognitive Session Integrity:")
+print("    - WAL entries >= committed (durability invariant)")
+print("    - Must save state before handoff")
+print("    - Cannot work on inactive session")
 print()
 print("Integration with CEL enables:")
-print("  - Event compaction: Summarize contract history")
-print("  - Temporal queries: State at any point in time")
-print("  - Audit trails: Full history of contract checks")
-print("  - Self-healing: MetaCognition events trigger actions")
+print("  - Contract violations → MetaCognition events (self-awareness)")
+print("  - Temporal queries: 'What contracts were violated during task T-001?'")
+print("  - Compaction: Summarize contract history into statistics")
+print("  - Audit trail: Full history of cognitive operations")
 print()
 print("=" * 70)
