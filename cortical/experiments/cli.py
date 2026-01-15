@@ -150,14 +150,12 @@ def create_parser() -> argparse.ArgumentParser:
     # ============================================================================
 
     # Resume training from checkpoint
-    # TODO(agent): Implement checkpoint loading and optimizer state restoration
-    # SESSION_HANDOFF: Need to load parameters, optimizer state, and starting epoch
     run_parser.add_argument(
         "--resume",
         type=str,
         default=None,
         metavar="CHECKPOINT",
-        help="[EXPERIMENTAL] Resume training from checkpoint path (not yet implemented)",
+        help="Resume training from checkpoint.pkl path (restores parameters, optimizer, scheduler)",
     )
 
     # Early stopping
@@ -238,28 +236,17 @@ def _check_experimental_features(args: argparse.Namespace) -> None:
     This function validates that experimental CLI options are properly
     handled before they're implemented.
 
-    TODO(agent): Remove NotImplementedError once each feature is implemented
-    SESSION_HANDOFF: Three features need implementation:
-        1. --resume: Checkpoint loading with optimizer state
-        2. --early-stop: Patience-based early stopping with best model tracking
-        3. --lr-schedule: Learning rate scheduling (step, cosine, plateau)
+    Implemented features:
+        - --resume: Checkpoint loading with optimizer/scheduler state
+        - --lr-schedule: Learning rate scheduling (step, cosine, plateau)
+
+    Remaining features needing implementation:
+        - --early-stop: Patience-based early stopping with best model tracking
     """
     experimental_features = []
 
-    # Check --resume
-    if args.resume is not None:
-        experimental_features.append(f"--resume={args.resume}")
-        # TODO(agent): Implement checkpoint loading
-        # Steps:
-        #   1. Load checkpoint with ExperimentLog.load_checkpoint()
-        #   2. Restore parameters with ExperimentLog.restore_parameters()
-        #   3. Restore optimizer state with optimizer.load_state_dict()
-        #   4. Get starting epoch from checkpoint
-        raise NotImplementedError(
-            "Resume training (--resume) is not yet implemented.\n"
-            "Checkpoint loading infrastructure exists but needs integration.\n"
-            "See: cortical/experiments/logging.py:save_checkpoint()"
-        )
+    # --resume is now implemented!
+    # See run_experiment() for checkpoint loading logic
 
     # Check --early-stop
     if args.early_stop is not None:
@@ -457,6 +444,40 @@ def run_experiment(args: argparse.Namespace) -> int:
         )
         print(f"Using {config.lr_schedule} LR schedule (gamma={config.lr_gamma})")
 
+    # ========================================================================
+    # Resume from checkpoint if requested
+    # ========================================================================
+    start_epoch = 0
+    if args.resume is not None:
+        checkpoint_path = Path(args.resume)
+        if not checkpoint_path.exists():
+            print(f"ERROR: Checkpoint not found: {checkpoint_path}")
+            return 1
+
+        print(f"Resuming from checkpoint: {checkpoint_path}")
+        checkpoint = ExperimentLog.load_checkpoint(checkpoint_path)
+
+        # Restore parameters
+        restored_count = ExperimentLog.restore_parameters(all_params, checkpoint)
+        print(f"  Restored {restored_count}/{len(all_params)} parameters")
+
+        # Restore optimizer state
+        if checkpoint.get("optimizer_state") is not None:
+            optimizer.load_state_dict(checkpoint["optimizer_state"])
+            print(f"  Restored optimizer state (step={optimizer.t}, lr={optimizer.lr:.2e})")
+
+        # Restore scheduler state if present and scheduler is configured
+        if scheduler is not None and checkpoint.get("scheduler_state") is not None:
+            scheduler.load_state_dict(checkpoint["scheduler_state"])
+            print(f"  Restored scheduler state (last_epoch={scheduler.last_epoch})")
+
+        # Get starting epoch from checkpoint
+        if checkpoint.get("epoch") is not None:
+            start_epoch = checkpoint["epoch"]
+            print(f"  Resuming from epoch {start_epoch}")
+
+        print()
+
     # Setup logging
     log = ExperimentLog(config)
 
@@ -517,13 +538,16 @@ def run_experiment(args: argparse.Namespace) -> int:
         return correct / total if total > 0 else 0.0, correct, total
 
     # Training loop with optional validation
-    print("Training...")
+    if start_epoch > 0:
+        print(f"Continuing training from epoch {start_epoch} to {config.epochs}...")
+    else:
+        print("Training...")
     start_time = time.time()
 
     train_losses = []
     val_losses = []
 
-    for epoch in range(config.epochs):
+    for epoch in range(start_epoch, config.epochs):
         # Training step - extract loss value from StepMetrics
         step_metrics = kernel.train_step(
             targets=targets,

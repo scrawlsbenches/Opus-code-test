@@ -302,11 +302,8 @@ class ExperimentLog:
         Save model parameters to a checkpoint file.
 
         Saves parameter data (not gradients) using pickle format.
-        The checkpoint can be loaded later to restore model state.
-
-        TODO(agent): For resume training implementation:
-        SESSION_HANDOFF: Optimizer and scheduler state_dict methods are ready
-        CONTEXT: Optimizer has state_dict()/load_state_dict() in trainable.py
+        The checkpoint can be loaded later to restore model state
+        using load_checkpoint() and restore_parameters().
 
         Args:
             parameters: List of Parameter objects to save
@@ -332,7 +329,7 @@ class ExperimentLog:
             ],
             "config": self.config.to_dict(),
             "timestamp": datetime.now().isoformat(),
-            # TODO(agent): These fields enable resume training
+            # Resume training state
             "epoch": epoch,
             "optimizer_state": optimizer.state_dict() if optimizer is not None else None,
             "scheduler_state": scheduler.state_dict() if scheduler is not None else None,

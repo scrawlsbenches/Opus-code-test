@@ -378,3 +378,363 @@ class TestEndToEndCheckpoint:
         )
 
         assert correct_after == correct_before, f"Accuracy changed: {correct_before} -> {correct_after}"
+
+
+# =============================================================================
+# Resume Training Tests (TDD)
+# =============================================================================
+
+
+class TestCheckpointResumeData:
+    """Tests for checkpoint data required for resume training."""
+
+    @pytest.fixture
+    def temp_dir(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield Path(tmpdir)
+
+    @pytest.fixture
+    def sample_config(self):
+        return ExperimentConfig(
+            name="resume-test",
+            input_path="test.txt",
+            embedding_dim=16,
+            num_heads=2,
+            num_layers=2,
+        )
+
+    def test_checkpoint_saves_epoch_number(self, temp_dir, sample_config):
+        """Checkpoint should store the epoch number for resume."""
+        from cortical.graph.trainable import Parameter
+
+        log = ExperimentLog(config=sample_config, base_dir=temp_dir)
+        params = [Parameter(data=np.array([1.0, 2.0]), name="test")]
+
+        # Save with epoch
+        log.save_checkpoint(params, epoch=150)
+
+        # Load and verify
+        loaded = ExperimentLog.load_checkpoint(log.checkpoint_path)
+        assert "epoch" in loaded
+        assert loaded["epoch"] == 150
+
+    def test_checkpoint_saves_optimizer_state(self, temp_dir, sample_config):
+        """Checkpoint should store optimizer state dict."""
+        from cortical.graph.trainable import Parameter, Adam
+
+        log = ExperimentLog(config=sample_config, base_dir=temp_dir)
+        params = [Parameter(data=np.array([1.0, 2.0]), name="test")]
+        optimizer = Adam(params, lr=0.01)
+
+        # Simulate training steps to populate optimizer state
+        for _ in range(5):
+            params[0].grad = np.array([0.1, 0.2])
+            optimizer.step()
+
+        # Save checkpoint with optimizer
+        log.save_checkpoint(params, optimizer=optimizer, epoch=5)
+
+        # Load and verify
+        loaded = ExperimentLog.load_checkpoint(log.checkpoint_path)
+        assert "optimizer_state" in loaded
+        assert loaded["optimizer_state"] is not None
+        assert "lr" in loaded["optimizer_state"]
+        assert "t" in loaded["optimizer_state"]  # Adam step counter
+        assert loaded["optimizer_state"]["t"] == 5
+
+    def test_checkpoint_saves_scheduler_state(self, temp_dir, sample_config):
+        """Checkpoint should store scheduler state dict."""
+        from cortical.graph.trainable import Parameter, Adam
+        from cortical.experiments.scheduler import StepLR
+
+        log = ExperimentLog(config=sample_config, base_dir=temp_dir)
+        params = [Parameter(data=np.array([1.0, 2.0]), name="test")]
+        optimizer = Adam(params, lr=0.01)
+        scheduler = StepLR(optimizer, step_size=10, gamma=0.5)
+
+        # Simulate steps
+        for epoch in range(25):
+            scheduler.step(epoch=epoch)
+
+        # Save checkpoint with scheduler
+        log.save_checkpoint(params, optimizer=optimizer, epoch=25, scheduler=scheduler)
+
+        # Load and verify
+        loaded = ExperimentLog.load_checkpoint(log.checkpoint_path)
+        assert "scheduler_state" in loaded
+        assert loaded["scheduler_state"] is not None
+        assert loaded["scheduler_state"]["last_epoch"] == 24  # 0-indexed
+        assert loaded["scheduler_state"]["base_lr"] == 0.01
+
+
+class TestOptimizerStateRestoration:
+    """Tests for optimizer state restoration from checkpoint."""
+
+    def test_adam_state_dict_roundtrip(self):
+        """Adam optimizer state survives save/load cycle."""
+        from cortical.graph.trainable import Parameter, Adam
+
+        params = [Parameter(data=np.random.randn(10), name="test")]
+        optimizer1 = Adam(params, lr=0.01, beta1=0.9, beta2=0.999)
+
+        # Run several steps to build up momentum
+        for _ in range(10):
+            params[0].grad = np.random.randn(10) * 0.1
+            optimizer1.step()
+
+        # Save state
+        state = optimizer1.state_dict()
+
+        # Create fresh optimizer
+        params2 = [Parameter(data=np.random.randn(10), name="test")]
+        optimizer2 = Adam(params2, lr=0.05)  # Different initial LR
+
+        # Restore state
+        optimizer2.load_state_dict(state)
+
+        # Verify state restored
+        assert optimizer2.lr == optimizer1.lr
+        assert optimizer2.t == optimizer1.t
+        np.testing.assert_array_almost_equal(optimizer2.m[0], optimizer1.m[0])
+        np.testing.assert_array_almost_equal(optimizer2.v[0], optimizer1.v[0])
+
+    def test_optimizer_continues_from_saved_step(self):
+        """Optimizer continues training correctly from saved state."""
+        from cortical.graph.trainable import Parameter, Adam
+
+        # Train for 100 steps
+        params1 = [Parameter(data=np.zeros(5), name="test")]
+        optimizer1 = Adam(params1, lr=0.01)
+
+        np.random.seed(42)
+        for _ in range(100):
+            params1[0].grad = np.random.randn(5) * 0.1
+            optimizer1.step()
+
+        value_at_100 = params1[0].data.copy()
+        state_at_100 = optimizer1.state_dict()
+
+        # Continue training from step 100
+        np.random.seed(43)  # Different seed for continuation
+        for _ in range(50):
+            params1[0].grad = np.random.randn(5) * 0.1
+            optimizer1.step()
+
+        value_at_150_original = params1[0].data.copy()
+
+        # Now simulate resume: fresh optimizer, restore state, continue
+        params2 = [Parameter(data=value_at_100.copy(), name="test")]
+        optimizer2 = Adam(params2, lr=0.05)  # Different LR - should be overwritten
+        optimizer2.load_state_dict(state_at_100)
+
+        # Continue with same gradient sequence
+        np.random.seed(43)
+        for _ in range(50):
+            params2[0].grad = np.random.randn(5) * 0.1
+            optimizer2.step()
+
+        # Should match original training
+        np.testing.assert_array_almost_equal(
+            params2[0].data, value_at_150_original,
+            err_msg="Resumed optimizer didn't match original training"
+        )
+
+
+class TestSchedulerStateRestoration:
+    """Tests for LR scheduler state restoration from checkpoint."""
+
+    def test_step_lr_state_roundtrip(self):
+        """StepLR scheduler state survives save/load cycle."""
+        from cortical.graph.trainable import Parameter, Adam
+        from cortical.experiments.scheduler import StepLR
+
+        params = [Parameter(data=np.array([1.0]), name="test")]
+        optimizer = Adam(params, lr=0.1)
+        scheduler1 = StepLR(optimizer, step_size=10, gamma=0.5)
+
+        # Advance to epoch 25
+        for epoch in range(25):
+            scheduler1.step(epoch=epoch)
+
+        state = scheduler1.state_dict()
+
+        # Create fresh scheduler
+        optimizer2 = Adam(params, lr=0.1)
+        scheduler2 = StepLR(optimizer2, step_size=10, gamma=0.5)
+
+        # Restore
+        scheduler2.load_state_dict(state)
+
+        # Verify state
+        assert scheduler2.last_epoch == scheduler1.last_epoch
+        assert scheduler2._step_count == scheduler1._step_count
+        assert scheduler2.base_lr == scheduler1.base_lr
+
+    def test_cosine_lr_state_roundtrip(self):
+        """CosineAnnealingLR scheduler state survives save/load cycle."""
+        from cortical.graph.trainable import Parameter, Adam
+        from cortical.experiments.scheduler import CosineAnnealingLR
+
+        params = [Parameter(data=np.array([1.0]), name="test")]
+        optimizer = Adam(params, lr=0.1)
+        scheduler1 = CosineAnnealingLR(optimizer, T_max=100, lr_min=1e-6)
+
+        # Advance to epoch 50
+        for epoch in range(50):
+            scheduler1.step(epoch=epoch)
+
+        state = scheduler1.state_dict()
+        lr_at_50 = optimizer.lr
+
+        # Create fresh scheduler and restore
+        optimizer2 = Adam(params, lr=0.1)
+        scheduler2 = CosineAnnealingLR(optimizer2, T_max=100, lr_min=1e-6)
+        scheduler2.load_state_dict(state)
+
+        # Get LR at epoch 50 again
+        scheduler2.step(epoch=49)  # Recompute LR for last_epoch=49
+
+        assert optimizer2.lr == pytest.approx(lr_at_50, rel=1e-6)
+
+    def test_plateau_lr_state_roundtrip(self):
+        """ReduceLROnPlateau scheduler state survives save/load cycle."""
+        from cortical.graph.trainable import Parameter, Adam
+        from cortical.experiments.scheduler import ReduceLROnPlateau
+
+        params = [Parameter(data=np.array([1.0]), name="test")]
+        optimizer = Adam(params, lr=0.1)
+        scheduler1 = ReduceLROnPlateau(
+            optimizer, patience=5, factor=0.5, min_lr=1e-6
+        )
+
+        # Simulate training with plateauing loss
+        losses = [1.0, 0.9, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8]  # Plateaus after 0.8
+        for loss in losses:
+            scheduler1.step(loss)
+
+        state = scheduler1.state_dict()
+
+        # Create fresh scheduler
+        optimizer2 = Adam(params, lr=0.1)
+        scheduler2 = ReduceLROnPlateau(
+            optimizer2, patience=5, factor=0.5, min_lr=1e-6
+        )
+
+        # Restore
+        scheduler2.load_state_dict(state)
+
+        # Verify
+        assert scheduler2.best == scheduler1.best
+        assert scheduler2.num_bad_epochs == scheduler1.num_bad_epochs
+        assert scheduler2.current_lr == scheduler1.current_lr
+
+
+class TestResumeTrainingIntegration:
+    """Integration tests for complete resume training workflow."""
+
+    @pytest.fixture
+    def temp_dir(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield Path(tmpdir)
+
+    @pytest.fixture
+    def sample_config(self):
+        return ExperimentConfig(
+            name="resume-integration",
+            input_path="test.txt",
+            embedding_dim=16,
+            num_heads=2,
+            num_layers=2,
+        )
+
+    def test_full_resume_workflow(self, temp_dir, sample_config):
+        """
+        Complete resume workflow: train -> save -> restore -> continue.
+
+        This test verifies that:
+        1. Parameters are restored correctly
+        2. Optimizer state is restored correctly
+        3. Scheduler state is restored correctly
+        4. Training continues from the correct epoch
+        """
+        from cortical.graph.trainable import Parameter, Adam
+        from cortical.experiments.scheduler import StepLR
+
+        # === Phase 1: Initial training for 50 epochs ===
+        np.random.seed(42)
+        params1 = [
+            Parameter(data=np.random.randn(10), name="weights"),
+            Parameter(data=np.random.randn(5), name="bias"),
+        ]
+        optimizer1 = Adam(params1, lr=0.01)
+        scheduler1 = StepLR(optimizer1, step_size=25, gamma=0.5)
+
+        # Train for 50 epochs
+        for epoch in range(50):
+            for p in params1:
+                p.grad = np.random.randn(*p.data.shape) * 0.1
+            optimizer1.step()
+            scheduler1.step(epoch=epoch)
+
+        # Save checkpoint at epoch 50
+        log = ExperimentLog(config=sample_config, base_dir=temp_dir)
+        checkpoint_path = log.save_checkpoint(
+            params1,
+            optimizer=optimizer1,
+            epoch=50,
+            scheduler=scheduler1,
+        )
+
+        # Record state at epoch 50
+        params_at_50 = {p.name: p.data.copy() for p in params1}
+        lr_at_50 = optimizer1.lr
+        optimizer_t_at_50 = optimizer1.t
+
+        # === Phase 2: Continue training to epoch 100 (original) ===
+        np.random.seed(100)  # New seed for continuation
+        for epoch in range(50, 100):
+            for p in params1:
+                p.grad = np.random.randn(*p.data.shape) * 0.1
+            optimizer1.step()
+            scheduler1.step(epoch=epoch)
+
+        params_at_100_original = {p.name: p.data.copy() for p in params1}
+
+        # === Phase 3: Resume from checkpoint and continue ===
+        loaded = ExperimentLog.load_checkpoint(checkpoint_path)
+
+        # Create fresh model
+        np.random.seed(42)  # Same seed to create same initial structure
+        params2 = [
+            Parameter(data=np.random.randn(10), name="weights"),
+            Parameter(data=np.random.randn(5), name="bias"),
+        ]
+        optimizer2 = Adam(params2, lr=0.05)  # Different initial LR
+        scheduler2 = StepLR(optimizer2, step_size=25, gamma=0.5)
+
+        # Restore from checkpoint
+        ExperimentLog.restore_parameters(params2, loaded)
+        optimizer2.load_state_dict(loaded["optimizer_state"])
+        scheduler2.load_state_dict(loaded["scheduler_state"])
+
+        # Verify restoration
+        assert loaded["epoch"] == 50
+        for p in params2:
+            np.testing.assert_array_equal(p.data, params_at_50[p.name])
+        assert optimizer2.lr == pytest.approx(lr_at_50)
+        assert optimizer2.t == optimizer_t_at_50
+
+        # Continue training from epoch 50 to 100 (resumed)
+        np.random.seed(100)  # Same seed as original continuation
+        for epoch in range(50, 100):
+            for p in params2:
+                p.grad = np.random.randn(*p.data.shape) * 0.1
+            optimizer2.step()
+            scheduler2.step(epoch=epoch)
+
+        # === Verify: Resumed training matches original ===
+        for p in params2:
+            np.testing.assert_array_almost_equal(
+                p.data, params_at_100_original[p.name],
+                err_msg=f"Parameter {p.name} diverged after resume"
+            )

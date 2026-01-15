@@ -1,6 +1,6 @@
 # Experiment CLI and Management System Plan
 
-**Status**: Implemented (3 features stubbed for outside-in development)
+**Status**: Implemented (1 feature stubbed: early stopping)
 **Created**: 2026-01-14
 **Updated**: 2026-01-15
 **Branch**: claude/review-git-history-Qm3Vm
@@ -138,7 +138,7 @@ Output:
 These are NOT part of MVP but documented for future reference:
 
 1. ~~**Checkpointing**~~ - ✅ Implemented (pickle format)
-2. **Resume training** - 🔶 STUBBED (see implementation plan below)
+2. ~~**Resume training**~~ - ✅ Implemented (`--resume checkpoint.pkl`)
 3. **Parameter sweeps** - Grid/random search over hyperparameters
 4. **TensorBoard integration** - Visual training curves
 5. **Auto-naming** - Generate experiment names from config hash
@@ -150,9 +150,16 @@ These are NOT part of MVP but documented for future reference:
 
 | Feature | CLI Args | Config Fields | Status |
 |---------|----------|---------------|--------|
-| Resume Training | `--resume` | `resume_checkpoint` | 🔶 Stubbed |
+| Resume Training | `--resume` | `resume_checkpoint` | ✅ **Implemented** |
 | Early Stopping | `--early-stop`, `--early-stop-min-delta` | `early_stop_patience`, `early_stop_min_delta` | 🔶 Stubbed |
 | LR Scheduling | `--lr-schedule`, `--lr-step-size`, `--lr-gamma`, `--lr-min` | `lr_schedule`, `lr_step_size`, `lr_gamma`, `lr_min` | ✅ **Implemented** |
+
+**Resume Training** (implemented 2026-01-15):
+- Restores parameters from checkpoint using `restore_parameters()`
+- Restores optimizer state (Adam momentum, step counter, LR)
+- Restores scheduler state (last_epoch, internal counters)
+- Continues training from saved epoch
+- 10+ unit tests in `tests/unit/test_experiment_checkpoint.py`
 
 **LR Scheduling** (implemented 2026-01-15):
 - `StepLR` - Decay by gamma every step_size epochs
@@ -161,35 +168,30 @@ These are NOT part of MVP but documented for future reference:
 - 28 unit tests in `tests/unit/test_scheduler.py`
 
 **Files with stubs (remaining features):**
-- `cortical/experiments/cli.py` - `_check_experimental_features()` with NotImplementedError for resume/early-stop
+- `cortical/experiments/cli.py` - `_check_experimental_features()` with NotImplementedError for early-stop
 - `cortical/experiments/config.py` - Config fields with validation
-- `cortical/experiments/logging.py` - `save_checkpoint()` accepts optimizer/epoch/scheduler
 
 ---
 
 ## Implementation Plans for Remaining Features
 
-### Feature 1: Resume Training
+### Feature 1: Resume Training - ✅ IMPLEMENTED
 
 **Priority**: High (infrastructure exists, just needs wiring)
-**Stub Status**: ✅ CLI, config, and checkpoint updates DONE
+**Status**: ✅ **FULLY IMPLEMENTED** (2026-01-15)
 
-**Current State**:
-- `save_checkpoint()` saves parameters to `checkpoint.pkl`
-- `load_checkpoint()` and `restore_parameters()` exist in `logging.py`
-- Optimizers have `state_dict()` and `load_state_dict()` methods (trainable.py:450-466)
-- Adam saves: `lr`, `beta1`, `beta2`, `eps`, `weight_decay`, `amsgrad`, `t`, `m`, `v`, `v_max`
+**Implementation**:
+- ✅ `--resume` CLI argument loads checkpoint path
+- ✅ `restore_parameters()` restores model weights
+- ✅ `optimizer.load_state_dict()` restores Adam state (momentum, step counter)
+- ✅ `scheduler.load_state_dict()` restores LR scheduler state
+- ✅ Training loop starts from saved epoch
+- ✅ 10+ TDD unit tests in `tests/unit/test_experiment_checkpoint.py`
 
-**Stubbed (DONE)**:
-- ✅ `--resume` CLI argument added (raises NotImplementedError)
-- ✅ `resume_checkpoint` config field added
-- ✅ `save_checkpoint()` now accepts `optimizer`, `epoch`, `scheduler` params
-- ✅ Checkpoint now saves `optimizer_state`, `epoch`, `scheduler_state`
-
-**What's Missing** (to implement):
+**What was completed**:
 1. ~~Checkpoint doesn't save optimizer state or epoch number~~ ✅ DONE
 2. ~~No `--resume` CLI argument~~ ✅ DONE
-3. Logic to load and continue training (remove NotImplementedError)
+3. ~~Logic to load and continue training (remove NotImplementedError)~~ ✅ DONE
 
 **Implementation Steps**:
 
@@ -501,11 +503,12 @@ These are NOT part of MVP but documented for future reference:
 
 ## Implementation Priority Order
 
-**Completed**: ✅ LR Scheduling (2026-01-15)
+**Completed**:
+- ✅ LR Scheduling (2026-01-15)
+- ✅ Resume Training (2026-01-15)
 
-**Remaining** (2 features):
-1. **Resume Training** - Wire up checkpoint loading (~2 hours)
-2. **Early Stopping** - Patience counter, best model tracking (~3 hours)
+**Remaining** (1 feature):
+1. **Early Stopping** - Patience counter, best model tracking (~3 hours)
 
 **Note**: Stubs include detailed TODO comments with step-by-step instructions.
 
