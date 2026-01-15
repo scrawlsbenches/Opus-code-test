@@ -207,3 +207,8 @@ datasets/
 .git-ml/commits/
 .git-ml/cali/logs/
 .git-ml/cali/objects/
+
+# Cognitive Memory System - runtime event data (persistent session memory)
+# TRACKED: .cognitive/design_dialogue.md, CLAUDE.md (documentation)
+# IGNORED: .cognitive/events/ (runtime session data, rebuilt from use)
+.cognitive/events/
