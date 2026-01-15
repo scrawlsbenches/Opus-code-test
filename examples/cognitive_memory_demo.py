@@ -241,10 +241,15 @@ class CognitiveMemory:
 
     def pending_intentions(self) -> List[Dict]:
         """Get all pending (uncompleted) intentions - working memory."""
-        return [
-            {'id': eid, 'goal': goal}
-            for eid, goal in self._pending_intentions.items()
-        ]
+        results = []
+        for eid, goal in self._pending_intentions.items():
+            event = self._store.get(eid)
+            # Priority is stored in content when retrieved from persistent store
+            priority = 'medium'
+            if event and hasattr(event, 'content') and isinstance(event.content, dict):
+                priority = event.content.get('priority', 'medium')
+            results.append({'id': eid, 'goal': goal, 'priority': priority})
+        return results
 
     def abandon_intention(self, intention_id: str, reason: str) -> str:
         """Abandon an intention that won't be completed."""
