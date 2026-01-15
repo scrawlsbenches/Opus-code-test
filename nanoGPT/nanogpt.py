@@ -25,6 +25,7 @@ import functools
 import logging
 import math
 import os
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional, Tuple, List, Dict, Any, Callable
@@ -276,15 +277,25 @@ class CausalSelfAttention(nn.Module):
             k, v = kv_cache.update(k, v)
 
         if use_cache:
-            new_cache = KVCache(
-                key=k.clone(),
-                value=v.clone(),
-                max_length=self.config.max_cache_length,
-                eviction_strategy=self.config.cache_eviction_strategy,
-                sink_tokens=self.config.sink_tokens,
-            )
+            # Preserve cache settings from input cache if available (thread-safe),
+            # otherwise fall back to config defaults
             if kv_cache is not None:
+                new_cache = KVCache(
+                    key=k.clone(),
+                    value=v.clone(),
+                    max_length=kv_cache.max_length,
+                    eviction_strategy=kv_cache.eviction_strategy,
+                    sink_tokens=kv_cache.sink_tokens,
+                )
                 new_cache._position_offset = kv_cache._position_offset
+            else:
+                new_cache = KVCache(
+                    key=k.clone(),
+                    value=v.clone(),
+                    max_length=self.config.max_cache_length,
+                    eviction_strategy=self.config.cache_eviction_strategy,
+                    sink_tokens=self.config.sink_tokens,
+                )
 
         q_len = q.size(2)
         kv_len = k.size(2)
@@ -295,17 +306,48 @@ class CausalSelfAttention(nn.Module):
                 attn_mask = attention_mask.unsqueeze(1).unsqueeze(2)
                 attn_mask = attn_mask.expand(B, 1, q_len, kv_len).bool()
 
+            # Use is_causal only when no cache and square attention matrix
+            # When cache exists with multi-token input, we need explicit causal mask
+            use_builtin_causal = (kv_cache is None and attention_mask is None)
+
+            if not use_builtin_causal and q_len > 1:
+                # Build causal mask for cache + new tokens case
+                # Each query can attend to all cached keys plus causally to new keys
+                cache_len = kv_len - q_len
+                # New queries can attend to all cached tokens
+                cache_mask = torch.ones(q_len, cache_len, dtype=torch.bool, device=q.device)
+                # New queries attend causally to each other
+                causal_mask = torch.tril(torch.ones(q_len, q_len, dtype=torch.bool, device=q.device))
+                combined_mask = torch.cat([cache_mask, causal_mask], dim=1)
+                combined_mask = combined_mask.unsqueeze(0).unsqueeze(0)  # (1, 1, q_len, kv_len)
+                if attn_mask is not None:
+                    attn_mask = attn_mask & combined_mask
+                else:
+                    attn_mask = combined_mask
+
             y = F.scaled_dot_product_attention(
                 q, k, v,
                 attn_mask=attn_mask,
                 dropout_p=self.dropout if self.training else 0.0,
-                is_causal=(kv_cache is None and attention_mask is None)
+                is_causal=use_builtin_causal
             )
         else:
             att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(self.head_dim))
 
+            # Apply causal masking
             if kv_cache is None:
+                # Standard causal mask for full sequence
                 att = att.masked_fill(self.causal_mask[:, :, :T, :T] == 0, float('-inf'))
+            elif q_len > 1:
+                # Cache exists with multi-token input: apply causal mask among new tokens
+                # Each query can attend to all cached keys plus causally to new keys
+                cache_len = kv_len - q_len
+                # Build mask: ones for cache positions, lower triangular for new positions
+                cache_mask = torch.ones(q_len, cache_len, device=att.device)
+                causal_mask = torch.tril(torch.ones(q_len, q_len, device=att.device))
+                combined_mask = torch.cat([cache_mask, causal_mask], dim=1)
+                combined_mask = combined_mask.unsqueeze(0).unsqueeze(0)  # (1, 1, q_len, kv_len)
+                att = att.masked_fill(combined_mask == 0, float('-inf'))
 
             if attention_mask is not None:
                 mask = attention_mask.unsqueeze(1).unsqueeze(2)
@@ -422,9 +464,10 @@ class GPT(nn.Module):
         B, T = idx.size()
 
         # Handle position offset from cache eviction
+        # Must account for both current cache length AND evicted tokens
         pos_offset = 0
         if kv_caches is not None and len(kv_caches) > 0 and kv_caches[0] is not None:
-            pos_offset = kv_caches[0].seq_len
+            pos_offset = kv_caches[0].seq_len + kv_caches[0]._position_offset
 
         # For evicted caches, we need absolute positions
         # but clamp to block_size for the embedding lookup
@@ -503,22 +546,32 @@ class GPT(nn.Module):
         if top_p is not None and not (0 < top_p <= 1):
             raise ValueError(f"top_p must be in (0, 1], got {top_p}")
 
-        # Override config cache settings if provided
-        original_max_cache = self.config.max_cache_length
-        original_strategy = self.config.cache_eviction_strategy
-
-        if max_cache_length is not None:
-            self.config.max_cache_length = max_cache_length
-            self.config.cache_eviction_strategy = cache_eviction_strategy
-
         was_training = self.training
         self.eval()
 
         try:
+            # Create initial empty caches with desired settings (thread-safe approach)
+            # This avoids mutating self.config which would cause race conditions
             kv_caches = None
+            if use_cache and max_cache_length is not None:
+                batch_size = idx.size(0)
+                head_dim = self.config.n_embd // self.config.n_head
+                kv_caches = [
+                    KVCache.empty(
+                        batch_size=batch_size,
+                        n_head=self.config.n_head,
+                        head_dim=head_dim,
+                        device=idx.device,
+                        dtype=torch.float32,
+                        max_length=max_cache_length,
+                        eviction_strategy=cache_eviction_strategy,
+                        sink_tokens=self.config.sink_tokens,
+                    )
+                    for _ in range(self.config.n_layer)
+                ]
 
             for _ in range(max_new_tokens):
-                if use_cache and kv_caches is not None:
+                if use_cache and kv_caches is not None and kv_caches[0].seq_len > 0:
                     idx_cond = idx[:, -1:]
                 else:
                     idx_cond = idx if idx.size(1) <= self.config.block_size else idx[:, -self.config.block_size:]
@@ -549,9 +602,6 @@ class GPT(nn.Module):
         finally:
             if was_training:
                 self.train()
-            # Restore original config
-            self.config.max_cache_length = original_max_cache
-            self.config.cache_eviction_strategy = original_strategy
 
         return idx
 
@@ -1085,7 +1135,7 @@ def demo(
     use_amp = device_type == 'cuda' and parallel_mode != ParallelMode.FSDP
     dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
     ctx = torch.autocast(device_type=device_type, dtype=dtype) if use_amp else nullcontext()
-    scaler = torch.cuda.amp.GradScaler(enabled=(use_amp and dtype == torch.float16))
+    scaler = torch.amp.GradScaler(enabled=(use_amp and dtype == torch.float16))
 
     # Training
     if is_master:
@@ -1152,13 +1202,6 @@ def demo(
         cleanup_distributed()
 
     return raw_model, tokenizer
-
-
-class nullcontext:
-    def __enter__(self):
-        return self
-    def __exit__(self, *args):
-        pass
 
 
 if __name__ == '__main__':
