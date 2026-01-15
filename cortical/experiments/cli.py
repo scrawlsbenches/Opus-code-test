@@ -163,6 +163,15 @@ def create_parser() -> argparse.ArgumentParser:
         help="Resume training from checkpoint.pkl path (restores parameters, optimizer, scheduler)",
     )
 
+    # Vocabulary file
+    run_parser.add_argument(
+        "--vocab",
+        type=str,
+        default=None,
+        metavar="VOCAB_FILE",
+        help="Use pre-built vocabulary JSON file instead of building from input",
+    )
+
     # Early stopping
     run_parser.add_argument(
         "--early-stop",
@@ -244,6 +253,52 @@ def create_parser() -> argparse.ArgumentParser:
         help="Base directory for experiments (default: experiments/runs)",
     )
 
+    # Vocab command (with subcommands)
+    vocab_parser = subparsers.add_parser("vocab", help="Vocabulary management")
+    vocab_subparsers = vocab_parser.add_subparsers(dest="vocab_command", help="Vocab commands")
+
+    # vocab create
+    vocab_create_parser = vocab_subparsers.add_parser("create", help="Create vocabulary from corpus")
+    vocab_create_parser.add_argument(
+        "--from",
+        dest="from_path",
+        type=str,
+        required=True,
+        help="Input file or directory (loads all .txt files from directory)",
+    )
+    vocab_create_parser.add_argument(
+        "--output", "-o",
+        type=str,
+        required=True,
+        help="Output vocabulary JSON file",
+    )
+    vocab_create_parser.add_argument(
+        "--min-freq",
+        type=int,
+        default=1,
+        help="Minimum token frequency for inclusion (default: 1)",
+    )
+    vocab_create_parser.add_argument(
+        "--max-vocab",
+        type=int,
+        default=None,
+        help="Maximum vocabulary size (default: unlimited)",
+    )
+
+    # vocab inspect
+    vocab_inspect_parser = vocab_subparsers.add_parser("inspect", help="Inspect vocabulary file")
+    vocab_inspect_parser.add_argument(
+        "vocab_path",
+        type=str,
+        help="Path to vocabulary JSON file",
+    )
+    vocab_inspect_parser.add_argument(
+        "--show-tokens",
+        type=int,
+        default=10,
+        help="Number of sample tokens to show (default: 10)",
+    )
+
     return parser
 
 
@@ -310,10 +365,20 @@ def run_experiment(args: argparse.Namespace) -> int:
         print(f"Loaded {file_count} files from {input_path}")
     else:
         print(f"Loaded from {input_path}")
-    vocab, id_to_token = build_vocab(tokens)
+
+    # Use provided vocabulary or build from input
+    if args.vocab:
+        from .vocabulary import Vocabulary
+        vocab_obj = Vocabulary.load(args.vocab)
+        vocab = vocab_obj.get_token_to_id()
+        id_to_token = vocab_obj.get_id_to_token()
+        print(f"Using vocabulary from: {args.vocab}")
+    else:
+        vocab, id_to_token = build_vocab(tokens)
+
     token_ids = tokens_to_ids(tokens, vocab)
 
-    print(f"Loaded {len(tokens)} tokens, vocabulary size: {len(vocab)}")
+    print(f"Loaded {len(tokens)} tokens, vocabulary size: {len(vocab)} tokens")
     print()
 
     # Set seed for reproducibility
@@ -749,6 +814,53 @@ def compare_experiments(args: argparse.Namespace) -> int:
     return 0
 
 
+def vocab_create(args: argparse.Namespace) -> int:
+    """Create vocabulary from corpus."""
+    from .vocabulary import Vocabulary
+
+    print(f"Creating vocabulary from: {args.from_path}")
+
+    vocab = Vocabulary.from_file(
+        args.from_path,
+        min_freq=args.min_freq,
+        max_vocab_size=args.max_vocab,
+    )
+
+    vocab.save(args.output)
+
+    print(f"Vocabulary created: {vocab.size} tokens")
+    print(f"  - Special tokens: 4")
+    print(f"  - Regular tokens: {vocab.size - 4}")
+    print(f"  - Min frequency: {args.min_freq}")
+    print(f"  - Source files: {len(vocab.source_files)}")
+    print(f"Saved to: {args.output}")
+
+    return 0
+
+
+def vocab_inspect(args: argparse.Namespace) -> int:
+    """Inspect vocabulary file."""
+    from .vocabulary import Vocabulary
+
+    vocab = Vocabulary.load(args.vocab_path)
+
+    print(f"\nVocabulary: {args.vocab_path}")
+    print("-" * 50)
+    print(f"Size: {vocab.size} tokens")
+    print(f"Hash: {vocab.hash()}")
+    print(f"Source files: {vocab.source_files}")
+
+    # Show sample tokens
+    id_to_token = vocab.get_id_to_token()
+    print(f"\nSample tokens (first {args.show_tokens}):")
+    for i in range(min(args.show_tokens, vocab.size)):
+        token = id_to_token.get(i, "?")
+        print(f"  {i}: {token!r}")
+
+    print()
+    return 0
+
+
 def list_all_experiments(args: argparse.Namespace) -> int:
     """List all experiments."""
     base_dir = Path(args.dir)
@@ -793,6 +905,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         return compare_experiments(args)
     elif args.command == "list":
         return list_all_experiments(args)
+    elif args.command == "vocab":
+        if args.vocab_command == "create":
+            return vocab_create(args)
+        elif args.vocab_command == "inspect":
+            return vocab_inspect(args)
+        else:
+            parser.print_help()
+            return 1
     else:
         parser.print_help()
         return 1
