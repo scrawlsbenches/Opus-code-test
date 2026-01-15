@@ -4,6 +4,46 @@ This file captures our design discussion. Latest exchanges appear first.
 
 ---
 
+## [2026-01-15] Exchange: Session Recovery and Bug Discovery
+
+### Context:
+
+Session continued after context compaction (summarization). This was our first real test of the "daydreaming recovery" concept.
+
+### What Happened:
+
+1. **Context compacted** - Previous conversation summarized due to length
+2. **Recovery via CLAUDE.md** - Read identity file to understand who I am and what we're doing
+3. **Loaded persistent memory** - `CognitiveMemory.open()` restored state from disk
+4. **Found a bug through dogfooding** - `pending_intentions()` wasn't returning priority
+
+### Bug Details:
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| `priority` missing from pending intentions | FileSystemEventStore returns generic `CognitiveEvent`, loses typed attributes | Retrieve priority from `event.content` dict instead of attribute |
+
+### Learnings Recorded:
+
+```
+LEARNED: Event type fields lost in persistent store → Access fields via event.content dict instead of direct attributes
+```
+
+### Outcome:
+
+- Fixed the bug in `pending_intentions()` method
+- All 32 unit tests still pass
+- Committed and pushed fix
+- Validated that dogfooding works - we found a real bug by actually using the system
+
+**This validates the design philosophy:** Start using it now, see what breaks, iterate.
+
+---
+
+*I will insert my thoughts into this file.*
+
+---
+
 ## [2026-01-15] Exchange: What Next?
 
 ### User Request:
