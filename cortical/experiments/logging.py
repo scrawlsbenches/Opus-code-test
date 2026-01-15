@@ -297,6 +297,8 @@ class ExperimentLog:
         optimizer: Optional[Any] = None,
         epoch: Optional[int] = None,
         scheduler: Optional[Any] = None,
+        vocab_path: Optional[str] = None,
+        vocab_hash: Optional[str] = None,
     ) -> Path:
         """
         Save model parameters to a checkpoint file.
@@ -310,6 +312,8 @@ class ExperimentLog:
             optimizer: Optional optimizer to save state (has state_dict() method)
             epoch: Optional current epoch number for resume
             scheduler: Optional LR scheduler to save state (has state_dict() method)
+            vocab_path: Optional path to vocabulary file used for training
+            vocab_hash: Optional hash of vocabulary for verification on resume
 
         Returns:
             Path to the checkpoint file
@@ -333,6 +337,9 @@ class ExperimentLog:
             "epoch": epoch,
             "optimizer_state": optimizer.state_dict() if optimizer is not None else None,
             "scheduler_state": scheduler.state_dict() if scheduler is not None else None,
+            # Vocabulary reference for verification on resume
+            "vocab_path": vocab_path,
+            "vocab_hash": vocab_hash,
         }
 
         with open(self.checkpoint_path, "wb") as f:

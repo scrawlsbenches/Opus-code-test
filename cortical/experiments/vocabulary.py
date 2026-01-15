@@ -26,6 +26,10 @@ class Vocabulary:
     - Saving/loading to JSON
     - Extending with new tokens
     - Hash verification for checkpoint compatibility
+
+    TODO: Consider adding token frequency tracking for analysis
+    TODO: Consider adding support for loading pre-trained embeddings
+    TODO: Consider adding vocabulary merge/diff operations
     """
 
     def __init__(

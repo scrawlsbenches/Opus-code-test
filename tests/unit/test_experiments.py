@@ -1339,3 +1339,319 @@ class TestRunWithVocab:
         # For now, we'll test that it at least runs (OOV maps to UNK)
         # Strict mode can be added later
         assert "unknown_token" in result.stdout or result.returncode == 0
+
+
+class TestCheckpointVocabReference:
+    """Tests for storing and verifying vocab reference in checkpoints."""
+
+    def test_checkpoint_stores_vocab_path_and_hash(self, tmp_path):
+        """Checkpoint includes vocab path and hash when --vocab is used."""
+        import subprocess
+        import pickle
+        from cortical.experiments.vocabulary import Vocabulary
+
+        # Create vocab
+        vocab = Vocabulary.from_tokens(["hello", "world", "test"])
+        vocab_path = tmp_path / "vocab.json"
+        vocab.save(vocab_path)
+        expected_hash = vocab.hash()
+
+        # Create input file
+        text_file = tmp_path / "sample.txt"
+        text_file.write_text("hello world test")
+
+        # Run training with vocab
+        result = subprocess.run(
+            [
+                "python", "-m", "cortical.experiments.cli",
+                "run",
+                "--input", str(text_file),
+                "--name", "checkpoint_vocab_test",
+                "--vocab", str(vocab_path),
+                "--epochs", "1",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, f"Failed: {result.stderr}"
+
+        # Find and load checkpoint
+        import glob
+        checkpoints = glob.glob("experiments/runs/*checkpoint_vocab_test*/checkpoint.pkl")
+        assert len(checkpoints) == 1, f"Expected 1 checkpoint, found {checkpoints}"
+
+        with open(checkpoints[0], "rb") as f:
+            checkpoint = pickle.load(f)
+
+        # Verify vocab reference is stored
+        assert "vocab_path" in checkpoint, "Checkpoint should store vocab_path"
+        assert "vocab_hash" in checkpoint, "Checkpoint should store vocab_hash"
+        assert checkpoint["vocab_hash"] == expected_hash
+
+    def test_checkpoint_without_vocab_has_no_vocab_reference(self, tmp_path):
+        """Checkpoint without --vocab has no vocab reference."""
+        import subprocess
+        import pickle
+
+        # Create input file
+        text_file = tmp_path / "sample.txt"
+        text_file.write_text("hello world test")
+
+        # Run training without vocab
+        result = subprocess.run(
+            [
+                "python", "-m", "cortical.experiments.cli",
+                "run",
+                "--input", str(text_file),
+                "--name", "no_vocab_checkpoint_test",
+                "--epochs", "1",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, f"Failed: {result.stderr}"
+
+        # Find and load checkpoint
+        import glob
+        checkpoints = glob.glob("experiments/runs/*no_vocab_checkpoint_test*/checkpoint.pkl")
+        assert len(checkpoints) == 1
+
+        with open(checkpoints[0], "rb") as f:
+            checkpoint = pickle.load(f)
+
+        # No vocab reference when not using --vocab
+        assert checkpoint.get("vocab_path") is None
+        assert checkpoint.get("vocab_hash") is None
+
+    def test_resume_fails_on_vocab_hash_mismatch(self, tmp_path):
+        """Resume fails if vocab file has changed (hash mismatch)."""
+        import subprocess
+        import pickle
+        from cortical.experiments.vocabulary import Vocabulary
+
+        # Create vocab and train
+        vocab = Vocabulary.from_tokens(["hello", "world"])
+        vocab_path = tmp_path / "vocab.json"
+        vocab.save(vocab_path)
+
+        text_file = tmp_path / "sample.txt"
+        text_file.write_text("hello world hello world")
+
+        # Initial training
+        result = subprocess.run(
+            [
+                "python", "-m", "cortical.experiments.cli",
+                "run",
+                "--input", str(text_file),
+                "--name", "hash_mismatch_test",
+                "--vocab", str(vocab_path),
+                "--epochs", "1",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0
+
+        # Find checkpoint
+        import glob
+        checkpoints = glob.glob("experiments/runs/*hash_mismatch_test*/checkpoint.pkl")
+        checkpoint_path = checkpoints[0]
+
+        # Modify vocab (changes hash)
+        vocab.extend(["new_token"])
+        vocab.save(vocab_path)
+
+        # Attempt resume - should fail or warn about hash mismatch
+        result = subprocess.run(
+            [
+                "python", "-m", "cortical.experiments.cli",
+                "run",
+                "--input", str(text_file),
+                "--name", "hash_mismatch_resume",
+                "--vocab", str(vocab_path),
+                "--resume", checkpoint_path,
+                "--epochs", "2",
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        # Should error on vocab hash mismatch
+        assert result.returncode == 1 or "mismatch" in result.stdout.lower() or "mismatch" in result.stderr.lower()
+
+    def test_resume_succeeds_with_matching_vocab(self, tmp_path):
+        """Resume succeeds when vocab hash matches."""
+        import subprocess
+        from cortical.experiments.vocabulary import Vocabulary
+
+        # Create vocab
+        vocab = Vocabulary.from_tokens(["hello", "world", "test"])
+        vocab_path = tmp_path / "vocab.json"
+        vocab.save(vocab_path)
+
+        text_file = tmp_path / "sample.txt"
+        text_file.write_text("hello world test hello")
+
+        # Initial training
+        result = subprocess.run(
+            [
+                "python", "-m", "cortical.experiments.cli",
+                "run",
+                "--input", str(text_file),
+                "--name", "resume_match_test",
+                "--vocab", str(vocab_path),
+                "--epochs", "1",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0
+
+        # Find checkpoint
+        import glob
+        checkpoints = glob.glob("experiments/runs/*resume_match_test*/checkpoint.pkl")
+        checkpoint_path = checkpoints[0]
+
+        # Resume with same vocab - should succeed
+        result = subprocess.run(
+            [
+                "python", "-m", "cortical.experiments.cli",
+                "run",
+                "--input", str(text_file),
+                "--name", "resume_match_continued",
+                "--vocab", str(vocab_path),
+                "--resume", checkpoint_path,
+                "--epochs", "2",
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 0, f"Resume should succeed with matching vocab: {result.stderr}"
+
+
+class TestOOVHandling:
+    """Tests for OOV handling with --allow-unk flag."""
+
+    def test_strict_mode_errors_on_oov(self, tmp_path):
+        """Default strict mode errors when OOV tokens detected."""
+        import subprocess
+        from cortical.experiments.vocabulary import Vocabulary
+
+        # Create vocab with limited tokens
+        vocab = Vocabulary.from_tokens(["hello", "world"])
+        vocab_path = tmp_path / "vocab.json"
+        vocab.save(vocab_path)
+
+        # Create input with OOV tokens
+        text_file = tmp_path / "sample.txt"
+        text_file.write_text("hello world unknown_token")
+
+        result = subprocess.run(
+            [
+                "python", "-m", "cortical.experiments.cli",
+                "run",
+                "--input", str(text_file),
+                "--name", "strict_oov_test",
+                "--vocab", str(vocab_path),
+                "--epochs", "1",
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        # Should error by default (strict mode)
+        assert result.returncode == 1
+        assert "OOV" in result.stdout or "out of vocabulary" in result.stdout.lower()
+
+    def test_allow_unk_proceeds_with_warning(self, tmp_path):
+        """--allow-unk flag allows training with OOV tokens mapped to UNK."""
+        import subprocess
+        from cortical.experiments.vocabulary import Vocabulary
+
+        # Create vocab with limited tokens
+        vocab = Vocabulary.from_tokens(["hello", "world"])
+        vocab_path = tmp_path / "vocab.json"
+        vocab.save(vocab_path)
+
+        # Create input with OOV tokens
+        text_file = tmp_path / "sample.txt"
+        text_file.write_text("hello world unknown_token")
+
+        result = subprocess.run(
+            [
+                "python", "-m", "cortical.experiments.cli",
+                "run",
+                "--input", str(text_file),
+                "--name", "allow_unk_test",
+                "--vocab", str(vocab_path),
+                "--allow-unk",
+                "--epochs", "1",
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        # Should succeed with warning
+        assert result.returncode == 0, f"Failed: {result.stderr}"
+        assert "WARNING" in result.stdout
+        assert "UNK" in result.stdout
+
+    def test_allow_unk_logs_oov_tokens(self, tmp_path):
+        """--allow-unk logs which tokens are mapped to UNK."""
+        import subprocess
+        from cortical.experiments.vocabulary import Vocabulary
+
+        vocab = Vocabulary.from_tokens(["hello", "world"])
+        vocab_path = tmp_path / "vocab.json"
+        vocab.save(vocab_path)
+
+        text_file = tmp_path / "sample.txt"
+        text_file.write_text("hello world foo bar baz")
+
+        result = subprocess.run(
+            [
+                "python", "-m", "cortical.experiments.cli",
+                "run",
+                "--input", str(text_file),
+                "--name", "unk_logging_test",
+                "--vocab", str(vocab_path),
+                "--allow-unk",
+                "--epochs", "1",
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 0
+        # Should list the OOV tokens
+        assert "foo" in result.stdout or "bar" in result.stdout or "baz" in result.stdout
+
+    def test_no_oov_no_warning(self, tmp_path):
+        """No OOV tokens means no warning even without --allow-unk."""
+        import subprocess
+        from cortical.experiments.vocabulary import Vocabulary
+
+        vocab = Vocabulary.from_tokens(["hello", "world", "test"])
+        vocab_path = tmp_path / "vocab.json"
+        vocab.save(vocab_path)
+
+        text_file = tmp_path / "sample.txt"
+        text_file.write_text("hello world test")
+
+        result = subprocess.run(
+            [
+                "python", "-m", "cortical.experiments.cli",
+                "run",
+                "--input", str(text_file),
+                "--name", "no_oov_test",
+                "--vocab", str(vocab_path),
+                "--epochs", "1",
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        # Should succeed without warning
+        assert result.returncode == 0
+        assert "WARNING" not in result.stdout

@@ -171,6 +171,12 @@ def create_parser() -> argparse.ArgumentParser:
         metavar="VOCAB_FILE",
         help="Use pre-built vocabulary JSON file instead of building from input",
     )
+    run_parser.add_argument(
+        "--allow-unk",
+        action="store_true",
+        help="Allow out-of-vocabulary tokens (map to <UNK> with warning). "
+             "Default: error on OOV tokens",
+    )
 
     # Early stopping
     run_parser.add_argument(
@@ -382,11 +388,15 @@ def run_experiment(args: argparse.Namespace) -> int:
         print(f"Loaded from {input_path}")
 
     # Use provided vocabulary or build from input
+    vocab_path = None
+    vocab_hash = None
     if args.vocab:
         from .vocabulary import Vocabulary
         vocab_obj = Vocabulary.load(args.vocab)
         vocab = vocab_obj.get_token_to_id()
         id_to_token = vocab_obj.get_id_to_token()
+        vocab_path = args.vocab
+        vocab_hash = vocab_obj.hash()
         print(f"Using vocabulary from: {args.vocab}")
     else:
         vocab, id_to_token = build_vocab(tokens)
@@ -394,6 +404,8 @@ def run_experiment(args: argparse.Namespace) -> int:
     token_ids = tokens_to_ids(tokens, vocab)
 
     # Detect OOV tokens when using external vocab
+    # TODO: Consider adding --extend-vocab flag to auto-extend vocab with OOV tokens
+    # TODO: Consider logging OOV tokens to file for later analysis
     if args.vocab:
         from .tokenizer import UNK_TOKEN
         unk_id = vocab.get(UNK_TOKEN, 1)
@@ -404,12 +416,27 @@ def run_experiment(args: argparse.Namespace) -> int:
 
         if oov_tokens:
             unique_oov = sorted(set(oov_tokens))
-            print(f"WARNING: {len(oov_tokens)} tokens mapped to <UNK> ({len(unique_oov)} unique)")
-            if len(unique_oov) <= 10:
-                print(f"  OOV tokens: {unique_oov}")
+            if args.allow_unk:
+                # --allow-unk: warn but continue
+                print(f"WARNING: {len(oov_tokens)} tokens mapped to <UNK> ({len(unique_oov)} unique)")
+                if len(unique_oov) <= 10:
+                    print(f"  OOV tokens: {unique_oov}")
+                else:
+                    print(f"  First 10 OOV: {unique_oov[:10]}")
+                    print(f"  ... and {len(unique_oov) - 10} more")
             else:
-                print(f"  First 10 OOV: {unique_oov[:10]}")
-                print(f"  ... and {len(unique_oov) - 10} more")
+                # Default strict mode: error on OOV
+                print(f"ERROR: {len(oov_tokens)} OOV tokens detected ({len(unique_oov)} unique)")
+                if len(unique_oov) <= 10:
+                    print(f"  OOV tokens: {unique_oov}")
+                else:
+                    print(f"  First 10 OOV: {unique_oov[:10]}")
+                    print(f"  ... and {len(unique_oov) - 10} more")
+                print()
+                print("Options:")
+                print("  --allow-unk    Map OOV tokens to <UNK> and continue")
+                print("  vocab diff     Check coverage before training")
+                return 1
 
     print(f"Loaded {len(tokens)} tokens, vocabulary size: {len(vocab)} tokens")
     print()
@@ -591,6 +618,22 @@ def run_experiment(args: argparse.Namespace) -> int:
             start_epoch = checkpoint["epoch"]
             print(f"  Resuming from epoch {start_epoch}")
 
+        # Verify vocabulary hash matches if checkpoint was saved with vocab
+        # TODO: Consider adding --force flag to bypass vocab hash verification
+        checkpoint_vocab_hash = checkpoint.get("vocab_hash")
+        if checkpoint_vocab_hash is not None:
+            if vocab_hash is None:
+                print("ERROR: Checkpoint was trained with --vocab but no --vocab provided for resume")
+                print(f"  Checkpoint vocab hash: {checkpoint_vocab_hash}")
+                return 1
+            if vocab_hash != checkpoint_vocab_hash:
+                print("ERROR: Vocabulary hash mismatch - vocab file has changed since checkpoint was saved")
+                print(f"  Checkpoint vocab hash: {checkpoint_vocab_hash}")
+                print(f"  Current vocab hash:    {vocab_hash}")
+                print("  Use the same vocab file, or start training from scratch")
+                return 1
+            print(f"  Vocabulary hash verified: {vocab_hash}")
+
         print()
 
     # Setup logging
@@ -763,6 +806,8 @@ def run_experiment(args: argparse.Namespace) -> int:
         optimizer=optimizer,
         epoch=final_epoch,  # Actual final epoch (may differ if early stopped)
         scheduler=scheduler,  # May be None if no LR schedule
+        vocab_path=vocab_path,
+        vocab_hash=vocab_hash,
     )
 
     # Print results
