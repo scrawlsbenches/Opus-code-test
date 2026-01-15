@@ -144,24 +144,26 @@ These are NOT part of MVP but documented for future reference:
 5. **Auto-naming** - Generate experiment names from config hash
 6. ~~**Validation split**~~ - ✅ Implemented (`--val-split` flag)
 7. **Early stopping** - 🔶 STUBBED (see implementation plan below)
-8. **Learning rate scheduling** - 🔶 STUBBED (see implementation plan below)
+8. ~~**Learning rate scheduling**~~ - ✅ Implemented (StepLR, CosineAnnealing, ReduceLROnPlateau)
 
-### Stub Status (Outside-In Development)
+### Feature Status
 
-The following features have CLI arguments, config fields, and stub classes ready.
-They raise `NotImplementedError` when used, with detailed TODO comments for implementation.
+| Feature | CLI Args | Config Fields | Status |
+|---------|----------|---------------|--------|
+| Resume Training | `--resume` | `resume_checkpoint` | 🔶 Stubbed |
+| Early Stopping | `--early-stop`, `--early-stop-min-delta` | `early_stop_patience`, `early_stop_min_delta` | 🔶 Stubbed |
+| LR Scheduling | `--lr-schedule`, `--lr-step-size`, `--lr-gamma`, `--lr-min` | `lr_schedule`, `lr_step_size`, `lr_gamma`, `lr_min` | ✅ **Implemented** |
 
-| Feature | CLI Args | Config Fields | Stub Classes | Status |
-|---------|----------|---------------|--------------|--------|
-| Resume Training | `--resume` | `resume_checkpoint` | N/A | Ready for impl |
-| Early Stopping | `--early-stop`, `--early-stop-min-delta` | `early_stop_patience`, `early_stop_min_delta` | N/A | Ready for impl |
-| LR Scheduling | `--lr-schedule`, `--lr-step-size`, `--lr-gamma`, `--lr-min` | `lr_schedule`, `lr_step_size`, `lr_gamma`, `lr_min` | `StepLR`, `CosineAnnealingLR`, `ReduceLROnPlateau` | Ready for impl |
+**LR Scheduling** (implemented 2026-01-15):
+- `StepLR` - Decay by gamma every step_size epochs
+- `CosineAnnealingLR` - Smooth cosine decay to lr_min
+- `ReduceLROnPlateau` - Reduce when val_loss plateaus
+- 28 unit tests in `tests/unit/test_scheduler.py`
 
-**Files with stubs:**
-- `cortical/experiments/cli.py` - `_check_experimental_features()` with NotImplementedError
+**Files with stubs (remaining features):**
+- `cortical/experiments/cli.py` - `_check_experimental_features()` with NotImplementedError for resume/early-stop
 - `cortical/experiments/config.py` - Config fields with validation
-- `cortical/experiments/logging.py` - `save_checkpoint()` accepts optimizer/epoch
-- `cortical/experiments/scheduler.py` - NEW: Scheduler stub classes
+- `cortical/experiments/logging.py` - `save_checkpoint()` accepts optimizer/epoch/scheduler
 
 ---
 
@@ -326,12 +328,12 @@ They raise `NotImplementedError` when used, with detailed TODO comments for impl
 
 ---
 
-### Feature 3: Learning Rate Scheduling
+### Feature 3: Learning Rate Scheduling - ✅ IMPLEMENTED
 
 **Priority**: Medium
-**Stub Status**: ✅ CLI, config, and scheduler.py DONE
+**Status**: ✅ **FULLY IMPLEMENTED** (2026-01-15)
 
-**Current State**:
+**Previous State**:
 - Optimizer has `self.lr` that can be modified at any time
 - `optimizer.load_state_dict()` can update `lr`
 - Training loop has access to epoch number
@@ -347,11 +349,13 @@ They raise `NotImplementedError` when used, with detailed TODO comments for impl
   - `ReduceLROnPlateau` - logic in NotImplementedError docstring
   - `create_scheduler()` factory function (works, calls stub classes)
 
-**What's Missing** (to implement):
-1. `StepLR.get_lr()` - implement formula: `base_lr * gamma^(epoch // step_size)`
-2. `CosineAnnealingLR.get_lr()` - implement formula: `lr_min + (base_lr - lr_min) * (1 + cos(π * epoch / T_max)) / 2`
-3. `ReduceLROnPlateau.step()` - implement patience tracking and LR reduction
-4. Integration in cli.py training loop (call `scheduler.step()`)
+**Completed**:
+1. ✅ `StepLR.get_lr()` - formula: `base_lr * gamma^(epoch // step_size)`
+2. ✅ `CosineAnnealingLR.get_lr()` - formula: `lr_min + (base_lr - lr_min) * (1 + cos(π * epoch / T_max)) / 2`
+3. ✅ `ReduceLROnPlateau.step()` - patience tracking, threshold, mode='min'/'max'
+4. ✅ Integration in cli.py training loop (calls `scheduler.step()` per epoch)
+5. ✅ Unit tests: 28 tests in `tests/unit/test_scheduler.py`
+6. ✅ Scheduler state saved in checkpoint for resume
 
 **Design Decision**: Create scheduler as separate classes (like PyTorch) vs inline logic?
 - **Decision Made**: Classes (already implemented as stubs in scheduler.py)
@@ -497,14 +501,13 @@ They raise `NotImplementedError` when used, with detailed TODO comments for impl
 
 ## Implementation Priority Order
 
-All three features are now stubbed and ready for implementation.
-Recommended order (simplest first):
+**Completed**: ✅ LR Scheduling (2026-01-15)
 
-1. **LR Scheduling** - Just implement `get_lr()` formulas (math only, ~1 hour)
-2. **Resume Training** - Wire up checkpoint loading (~2 hours)
-3. **Early Stopping** - Most complex: patience counter, best model tracking (~3 hours)
+**Remaining** (2 features):
+1. **Resume Training** - Wire up checkpoint loading (~2 hours)
+2. **Early Stopping** - Patience counter, best model tracking (~3 hours)
 
-**Note**: Stubs include detailed TODO comments with formulas and step-by-step instructions.
+**Note**: Stubs include detailed TODO comments with step-by-step instructions.
 
 ## Architecture Decisions
 
@@ -615,6 +618,7 @@ Additional features implemented:
 - [x] List command to show all experiments
 - [x] Dropout rate CLI argument (`--dropout`)
 - [x] Attention bias CLI argument (`--use-bias`)
+- [x] LR scheduling (`--lr-schedule step/cosine/plateau`)
 
 ## Testing Strategy
 
