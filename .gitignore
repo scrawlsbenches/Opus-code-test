@@ -199,3 +199,6 @@ benchmarks/trainable_graph_benchmarks.json
 benchmarks/checkpoint_*.pkl
 experiments/runs/
 samples/subset/
+
+# Generated training datasets
+datasets/
