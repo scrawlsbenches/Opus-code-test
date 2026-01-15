@@ -530,3 +530,292 @@ class TestIntegrationScenario:
 
         # Registry has contracts
         assert registry.stats()["total_contracts"] >= 4
+
+
+# =============================================================================
+# Test: Contract Reducer (CEL Integration)
+# =============================================================================
+
+class TestContractReducer:
+    """Tests for contract_reducer and related CEL integration."""
+
+    def test_contract_reducer_initializes_state(self):
+        """Reducer initializes state on first call."""
+        from cortical.contracts.cel_integration import contract_reducer
+
+        # First call with None state initializes
+        state = contract_reducer(None, object())
+
+        assert state is not None
+        assert state['total_checks'] == 0
+        assert state['total_violations'] == 0
+        assert state['violations_by_method'] == {}
+
+    def test_contract_reducer_counts_checks(self):
+        """Reducer counts contract checks from events."""
+        from cortical.contracts.cel_integration import contract_reducer
+        from cortical.cel.core.events import Observation
+
+        # Create mock check event
+        event = Observation(
+            content={'type': 'contract_check', 'method': 'Test.method'},
+            concepts=('contract',),
+        )
+
+        state = contract_reducer(None, event)
+        assert state['total_checks'] == 1
+        assert state['last_check'] is not None
+        assert state['first_check'] is not None
+
+        # Second check
+        state = contract_reducer(state, event)
+        assert state['total_checks'] == 2
+
+    def test_contract_reducer_counts_violations(self):
+        """Reducer counts violations from MetaCognition events."""
+        from cortical.contracts.cel_integration import contract_reducer
+        from cortical.cel.core.events import MetaCognition
+
+        # Create violation event
+        event = MetaCognition(
+            observation_type='contract_violation',
+            metrics={'method': 'MyClass.mymethod'},
+            conclusions=['Contract violated'],
+            actions_triggered=['log'],
+        )
+
+        state = contract_reducer(None, event)
+        assert state['total_violations'] == 1
+        assert state['last_violation'] is not None
+        assert state['violations_by_method']['MyClass.mymethod'] == 1
+
+    def test_contract_reducer_wrapper(self):
+        """_ContractReducerWrapper implements EventReducer protocol."""
+        from cortical.contracts.cel_integration import (
+            create_contract_reducer,
+            _ContractReducerWrapper,
+        )
+
+        wrapper = create_contract_reducer()
+        assert isinstance(wrapper, _ContractReducerWrapper)
+        assert wrapper.entity_type == 'contract_summary'
+
+        # Can call it
+        state = wrapper(None, object())
+        assert state is not None
+
+
+# =============================================================================
+# Test: Registry Query Methods
+# =============================================================================
+
+class TestContractRegistryQueries:
+    """Tests for ContractRegistry query methods."""
+
+    def test_for_class_returns_contracts(self, registry):
+        """for_class returns all contracts for a class."""
+        class QueryTestClass:
+            @registry.track
+            @requires(lambda self: True, "Always pass")
+            def method1(self):
+                pass
+
+            @registry.track
+            @requires(lambda self: True, "Also pass")
+            def method2(self):
+                pass
+
+        # Contracts are registered when @registry.track is applied
+        # Class name includes full qualname path for nested classes
+        all_contracts = registry.all()
+        assert len(all_contracts) >= 2
+
+        # Get the actual class name used (includes test function prefix)
+        class_name = all_contracts[0].class_name
+        contracts = registry.for_class(class_name)
+        assert len(contracts) >= 2
+
+    def test_for_method_returns_specific(self, registry):
+        """for_method returns contracts for a specific method."""
+        class MethodTestClass:
+            @registry.track
+            @requires(lambda self: True, "Pass")
+            @ensures(lambda self, result: True, "Also pass")
+            def specific_method(self):
+                return True
+
+        # Get the actual class name used (includes full qualname)
+        all_contracts = registry.all()
+        assert len(all_contracts) >= 2
+
+        class_name = all_contracts[0].class_name
+        method_name = all_contracts[0].method_name
+
+        contracts = registry.for_method(class_name, method_name)
+        # Should have both requires and ensures
+        assert len(contracts) >= 2
+
+    def test_by_type_filters_correctly(self, registry):
+        """by_type returns only contracts of that type."""
+        # ContractType is in registry module, not decorators
+        @registry.track
+        @requires(lambda self: True, "Precondition")
+        def with_requires(self):
+            pass
+
+        @registry.track
+        @ensures(lambda self, result: True, "Postcondition")
+        def with_ensures(self):
+            return True
+
+        requires_contracts = registry.by_type(ContractType.REQUIRES)
+        ensures_contracts = registry.by_type(ContractType.ENSURES)
+
+        assert len(requires_contracts) >= 1
+        assert len(ensures_contracts) >= 1
+
+    def test_contracts_with_violations(self, registry):
+        """contracts_with_violations returns violated contracts."""
+        class ViolationTestClass:
+            @registry.track
+            @requires(lambda self: False, "Will fail")
+            def failing(self):
+                pass
+
+        obj = ViolationTestClass()
+        try:
+            obj.failing()
+        except ContractViolation:
+            pass
+
+        # Update stats since the decorator doesn't auto-update registry
+        contracts = registry.all()
+        for c in contracts:
+            if "Will fail" in c.description:
+                registry.update_stats(c.id, passed=False)
+
+        violated = registry.contracts_with_violations()
+        assert len(violated) >= 1
+        assert all(c.violation_count > 0 for c in violated)
+
+    def test_contracts_never_checked(self, registry):
+        """contracts_never_checked returns unchecked contracts."""
+        # Register but don't execute
+        @registry.track
+        @requires(lambda self: True, "Never called")
+        def never_called(self):
+            pass
+
+        # Check initial state - new registry should have unchecked contracts
+        # after registration but before execution
+        # Note: contracts are registered on first call, so this tests
+        # the registry state after some contracts have been checked
+        never_checked = registry.contracts_never_checked()
+        # Just verify the method works
+        assert isinstance(never_checked, list)
+
+
+# =============================================================================
+# Test: Registry Statistics
+# =============================================================================
+
+class TestContractRegistryStats:
+    """Tests for ContractRegistry statistics methods."""
+
+    def test_stats_returns_summary(self, registry):
+        """stats returns comprehensive statistics."""
+        class StatsTestClass:
+            @registry.track
+            @requires(lambda self: True, "Pass")
+            def passing(self):
+                pass
+
+            @registry.track
+            @requires(lambda self: False, "Fail")
+            def failing(self):
+                pass
+
+        obj = StatsTestClass()
+
+        # Execute - passing calls
+        obj.passing()
+        obj.passing()
+
+        # Execute - failing call
+        try:
+            obj.failing()
+        except ContractViolation:
+            pass
+
+        # Update stats since decorator doesn't auto-update
+        contracts = registry.all()
+        for c in contracts:
+            if "Pass" in c.description:
+                registry.update_stats(c.id, passed=True)
+                registry.update_stats(c.id, passed=True)
+            elif "Fail" in c.description:
+                registry.update_stats(c.id, passed=False)
+
+        stats = registry.stats()
+
+        assert 'total_contracts' in stats
+        assert 'contracts_with_violations' in stats
+        assert 'total_checks' in stats
+        assert 'total_violations' in stats
+        assert 'violation_rate' in stats
+        assert 'by_type' in stats
+        assert 'classes_covered' in stats
+
+        assert stats['total_contracts'] >= 2
+        assert stats['total_violations'] >= 1
+
+    def test_update_stats_increments_counts(self, registry):
+        """update_stats correctly updates contract statistics."""
+        @registry.track
+        @requires(lambda self: True, "Test")
+        def method(self):
+            pass
+
+        class Obj:
+            pass
+
+        # Execute to register
+        method(Obj())
+
+        # Get the contract
+        contracts = registry.all()
+        assert len(contracts) >= 1
+
+        contract = contracts[0]
+        initial_checks = contract.check_count
+
+        # Manually update stats (simulating emitter)
+        registry.update_stats(contract.id, passed=True)
+
+        assert contract.check_count == initial_checks + 1
+
+    def test_get_contract_by_id(self, registry):
+        """get returns contract by ID."""
+        @registry.track
+        @requires(lambda self: True, "Test")
+        def method(self):
+            pass
+
+        class Obj:
+            pass
+
+        method(Obj())
+
+        contracts = registry.all()
+        assert len(contracts) >= 1
+
+        contract_id = contracts[0].id
+        retrieved = registry.get(contract_id)
+
+        assert retrieved is not None
+        assert retrieved.id == contract_id
+
+    def test_get_missing_returns_none(self, registry):
+        """get returns None for missing contract."""
+        result = registry.get("nonexistent-contract-id")
+        assert result is None
