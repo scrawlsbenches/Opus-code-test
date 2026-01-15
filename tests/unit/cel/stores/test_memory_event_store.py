@@ -258,3 +258,211 @@ class TestMemoryEventStoreStats:
         repr_str = repr(store)
         assert 'MemoryEventStore' in repr_str
         assert 'events=1' in repr_str
+
+
+# =============================================================================
+# CEL INTEGRATION TESTS - LatticeBuilder
+# =============================================================================
+
+
+class TestMemoryEventStoreLatticeIntegration:
+    """Test MemoryEventStore works with CEL's LatticeBuilder."""
+
+    def test_lattice_builder_with_memory_store(self):
+        """LatticeBuilder.with_storage(MemoryEventStore) works."""
+        from cortical.cel.container import LatticeBuilder
+
+        lattice = (
+            LatticeBuilder()
+            .with_storage(MemoryEventStore)
+            .build()
+        )
+
+        assert lattice is not None
+        assert lattice.event_store is not None
+        assert isinstance(lattice.event_store, MemoryEventStore)
+
+    def test_lattice_append_and_retrieve(self):
+        """Can append and retrieve events through lattice."""
+        from cortical.cel.container import LatticeBuilder
+
+        lattice = (
+            LatticeBuilder()
+            .with_storage(MemoryEventStore)
+            .build()
+        )
+
+        event = Observation(
+            content={'type': 'test', 'value': 42},
+            concepts=('integration', 'test'),
+        )
+        root = lattice.event_store.append(event)
+
+        retrieved = lattice.event_store.get(root.value)
+        assert retrieved is not None
+        assert retrieved.content['value'] == 42
+
+    def test_lattice_current_horizon(self):
+        """Lattice horizon updates as events are added."""
+        from cortical.cel.container import LatticeBuilder
+
+        lattice = (
+            LatticeBuilder()
+            .with_storage(MemoryEventStore)
+            .build()
+        )
+
+        # Empty store has GENESIS horizon
+        horizon = lattice.current_horizon
+        assert horizon.event_id == "GENESIS"
+
+        # Add event
+        event = Observation(content={'test': 1}, concepts=('test',))
+        root = lattice.event_store.append(event)
+
+        # Horizon should now point to the event
+        horizon = lattice.current_horizon
+        assert horizon.event_id == root.value
+        assert horizon.is_head is True
+
+    def test_lattice_with_materializer(self):
+        """MemoryEventStore works with CachingMaterializer."""
+        from cortical.cel.container import Container, CognitiveLatticeImpl
+        from cortical.cel.core.protocols import EventStore, Materializer
+        from cortical.cel.wisdom.materializer import (
+            CachingMaterializer,
+            default_reducer_registry,
+        )
+
+        # Create store and materializer manually (LatticeBuilder doesn't
+        # auto-wire reducer_registry)
+        store = MemoryEventStore()
+        reducers = default_reducer_registry()
+        materializer = CachingMaterializer(
+            event_store=store,
+            reducer_registry=reducers,
+        )
+
+        container = Container()
+        container.register_instance(EventStore, store)
+        container.register_instance(Materializer, materializer)
+
+        lattice = CognitiveLatticeImpl(container)
+
+        assert lattice.event_store is not None
+        assert lattice.materializer is not None
+
+        # Add events and verify materializer can process them
+        for i in range(5):
+            event = Observation(
+                content={'entity_id': f'TEST-{i}', 'value': i},
+                concepts=('test',),
+            )
+            lattice.event_store.append(event)
+
+        # Materializer should be able to iterate the events
+        assert lattice.event_store.count == 5
+
+    def test_container_register_instance(self):
+        """Can register MemoryEventStore instance directly."""
+        from cortical.cel.container import Container, CognitiveLatticeImpl
+        from cortical.cel.core.protocols import EventStore
+
+        store = MemoryEventStore()
+
+        # Pre-populate with data
+        event = Observation(content={'pre': 'existing'}, concepts=('test',))
+        store.append(event)
+
+        container = Container()
+        container.register_instance(EventStore, store)
+
+        lattice = CognitiveLatticeImpl(container)
+
+        # Should have our pre-populated event
+        assert lattice.event_store.count == 1
+        assert lattice.event_store is store
+
+    def test_event_store_protocol_compliance(self):
+        """MemoryEventStore satisfies EventStore protocol."""
+        from cortical.cel.core.protocols import EventStore
+
+        store = MemoryEventStore()
+
+        # Verify protocol compliance via isinstance (runtime_checkable)
+        assert isinstance(store, EventStore)
+
+    def test_causal_chain_through_lattice(self):
+        """Causal relationships work through lattice."""
+        from cortical.cel.container import LatticeBuilder
+
+        lattice = (
+            LatticeBuilder()
+            .with_storage(MemoryEventStore)
+            .build()
+        )
+
+        # Create causal chain: root -> child -> grandchild
+        root = Observation(content={'level': 0}, concepts=('root',))
+        root_hash = lattice.event_store.append(root)
+
+        child = Observation(
+            content={'level': 1},
+            concepts=('child',),
+            causal_parents=[root_hash.value],
+        )
+        child_hash = lattice.event_store.append(child)
+
+        grandchild = Observation(
+            content={'level': 2},
+            concepts=('grandchild',),
+            causal_parents=[child_hash.value],
+        )
+        grandchild_hash = lattice.event_store.append(grandchild)
+
+        # Verify ancestors
+        ancestors = list(lattice.event_store.ancestors(grandchild_hash.value))
+        ancestor_levels = [a.content['level'] for a in ancestors]
+        assert 1 in ancestor_levels  # child
+        assert 0 in ancestor_levels  # root
+
+        # Verify descendants
+        descendants = list(lattice.event_store.descendants(root_hash.value))
+        descendant_levels = [d.content['level'] for d in descendants]
+        assert 1 in descendant_levels  # child
+        assert 2 in descendant_levels  # grandchild
+
+    def test_iterate_with_event_type_filter(self):
+        """Event type filtering works through lattice."""
+        from cortical.cel.container import LatticeBuilder
+
+        lattice = (
+            LatticeBuilder()
+            .with_storage(MemoryEventStore)
+            .build()
+        )
+
+        # Add mixed event types
+        obs = Observation(content={'type': 'obs'}, concepts=('test',))
+        meta = MetaCognition(
+            observation_type='self_check',
+            metrics={'health': 1.0},
+            conclusions=['all good'],
+            actions_triggered=[],
+        )
+
+        lattice.event_store.append(obs)
+        lattice.event_store.append(meta)
+
+        # Filter by type
+        observations = list(lattice.event_store.iterate(
+            event_types=[EventType.OBSERVATION]
+        ))
+        assert len(observations) == 1
+        assert observations[0].event_type == EventType.OBSERVATION
+
+        metacognitions = list(lattice.event_store.iterate(
+            event_types=[EventType.METACOGNITION]
+        ))
+        assert len(metacognitions) == 1
+        assert metacognitions[0].event_type == EventType.METACOGNITION
