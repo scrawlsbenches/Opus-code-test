@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
 """
-Behavioral Contracts - End-to-End Demonstration
+Behavioral Contracts - End-to-End Demonstration with CEL Integration
 
 This example demonstrates behavioral contracts in the context CEL was
 designed for: cognitive operations, task management, and knowledge transfer.
 
 The contracts express INTENT about:
-- Task state machine transitions (pending → in_progress → completed)
-- Knowledge transfer lifecycle (draft → finalized)
+- Task state machine transitions (pending -> in_progress -> completed)
+- Knowledge transfer lifecycle (draft -> finalized)
 - Session integrity (active before work, clean handoff)
 - Cognitive invariants (WAL entries >= committed entities)
+
+NEW: Full CEL integration showing:
+- In-memory EventStore for contract events
+- Temporal queries ("What was contract state at event X?")
+- Compaction demonstration (semantic compression of contract history)
+- Recovery flow (handling violations gracefully)
 
 Run with:
     python examples/behavioral_contracts_demo.py
@@ -18,10 +24,11 @@ Run with:
 from __future__ import annotations
 
 import sys
-from datetime import datetime
+from collections import OrderedDict
+from datetime import datetime, timezone, timedelta
 from enum import Enum, auto
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, Iterator, List, Optional, Sequence, Set
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -37,26 +44,201 @@ from cortical.contracts import (
     ContractState,
 )
 
+# CEL imports for integration
+from cortical.cel.core.events import (
+    CognitiveEvent,
+    EventType,
+    Observation,
+    MetaCognition,
+    Compaction,
+)
+from cortical.cel.core.references import MerkleRoot, EventHorizon
+
 
 # =============================================================================
-# STEP 1: Create Registry and Emitter
+# STEP 0: In-Memory EventStore (implements CEL EventStore protocol)
+# =============================================================================
+
+class MemoryEventStore:
+    """
+    In-memory implementation of CEL EventStore protocol.
+
+    This is a lightweight store for demonstrations and testing.
+    In production, use StreamingEventStore or SQLiteEventStore.
+
+    Features:
+    - Append-only semantics (immutable events)
+    - Content-addressed IDs (via CognitiveEvent.id)
+    - Causal ordering preserved
+    - Temporal query support (iterate with from_event/to_event)
+    """
+
+    def __init__(self):
+        self._events: OrderedDict[str, CognitiveEvent] = OrderedDict()
+        self._children: Dict[str, Set[str]] = {}  # parent_id -> child_ids
+
+    def append(self, event: CognitiveEvent) -> MerkleRoot:
+        """Append event to store. Returns Merkle root (content hash)."""
+        event_id = event.id
+
+        # Idempotent - don't add duplicates
+        if event_id in self._events:
+            return MerkleRoot(event_id)
+
+        # Track causal relationships
+        for parent_id in event.causal_parents:
+            if parent_id not in self._children:
+                self._children[parent_id] = set()
+            self._children[parent_id].add(event_id)
+
+        self._events[event_id] = event
+        return MerkleRoot(event_id)
+
+    def get(self, event_id: str) -> Optional[CognitiveEvent]:
+        """Retrieve event by ID."""
+        return self._events.get(event_id)
+
+    def iterate(
+        self,
+        from_event: Optional[str] = None,
+        to_event: Optional[str] = None,
+        event_types: Optional[Sequence[EventType]] = None,
+    ) -> Iterator[CognitiveEvent]:
+        """Iterate events in causal order."""
+        started = from_event is None
+
+        for event_id, event in self._events.items():
+            if not started:
+                if event_id == from_event:
+                    started = True
+                continue
+
+            if event_types is None or event.event_type in event_types:
+                yield event
+
+            if to_event and event_id == to_event:
+                break
+
+    def heads(self) -> List[MerkleRoot]:
+        """Get events with no children (branch heads)."""
+        all_ids = set(self._events.keys())
+        children = set()
+        for child_set in self._children.values():
+            children.update(child_set)
+
+        head_ids = all_ids - children
+        return [MerkleRoot(eid) for eid in head_ids]
+
+    def latest(self) -> Optional[MerkleRoot]:
+        """Get most recent event."""
+        if not self._events:
+            return None
+        # OrderedDict preserves insertion order
+        last_id = list(self._events.keys())[-1]
+        return MerkleRoot(last_id)
+
+    def ancestors(self, event_id: str, depth: int = -1) -> Iterator[CognitiveEvent]:
+        """Iterate ancestors in reverse causal order."""
+        visited = set()
+        to_visit = [event_id]
+        current_depth = 0
+
+        while to_visit and (depth == -1 or current_depth < depth):
+            next_level = []
+            for eid in to_visit:
+                if eid in visited:
+                    continue
+                visited.add(eid)
+
+                event = self.get(eid)
+                if event and eid != event_id:  # Don't yield start event
+                    yield event
+
+                if event:
+                    for parent_id in event.causal_parents:
+                        if parent_id not in visited:
+                            next_level.append(parent_id)
+
+            to_visit = next_level
+            current_depth += 1
+
+    def descendants(self, event_id: str) -> Iterator[CognitiveEvent]:
+        """Iterate descendants in causal order."""
+        visited = set()
+        to_visit = [event_id]
+
+        while to_visit:
+            next_level = []
+            for eid in to_visit:
+                if eid in visited:
+                    continue
+                visited.add(eid)
+
+                if eid != event_id:  # Don't yield start event
+                    event = self.get(eid)
+                    if event:
+                        yield event
+
+                for child_id in self._children.get(eid, set()):
+                    if child_id not in visited:
+                        next_level.append(child_id)
+
+            to_visit = next_level
+
+    @property
+    def count(self) -> int:
+        """Total number of events."""
+        return len(self._events)
+
+    def events_in_range(
+        self,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+    ) -> Iterator[CognitiveEvent]:
+        """Iterate events within a time range."""
+        for event in self._events.values():
+            event_time = datetime.fromisoformat(event.timestamp.replace('Z', '+00:00'))
+            if event_time.tzinfo is None:
+                event_time = event_time.replace(tzinfo=timezone.utc)
+
+            if start_time and event_time < start_time:
+                continue
+            if end_time and event_time > end_time:
+                continue
+
+            yield event
+
+
+# =============================================================================
+# STEP 1: Create Registry, Emitter, and EventStore
 # =============================================================================
 
 print("=" * 70)
-print("BEHAVIORAL CONTRACTS - COGNITIVE OPERATIONS DEMO")
+print("BEHAVIORAL CONTRACTS - CEL INTEGRATED DEMO")
 print("=" * 70)
 print()
 
-# Create event emitter (standalone mode - no CEL store)
-# In production, you'd pass a CEL EventStore here
-emitter = ContractEventEmitter(emit_all_checks=True)
+# Create in-memory CEL event store
+event_store = MemoryEventStore()
+print("[1] Created in-memory CEL EventStore")
+
+# Create event emitter WITH CEL store
+emitter = ContractEventEmitter(
+    event_store=event_store,
+    emit_all_checks=True,
+)
+print("    - Connected ContractEventEmitter to EventStore")
 
 # Create registry with emitter
 registry = ContractRegistry(emitter=emitter)
+print("    - Created ContractRegistry")
 
-print("[1] Created ContractRegistry and ContractEventEmitter")
-print("    - emit_all_checks: True (for demonstration)")
-print("    - CEL store: None (using in-memory buffer)")
+# Create materializer with store
+materializer = ContractMaterializer(
+    event_store=event_store,
+    emitter=emitter,
+)
+print("    - Created ContractMaterializer with EventStore")
 print()
 
 
@@ -321,48 +503,40 @@ class CognitiveSession:
 
 print("[2] Defined cognitive classes with contracts:")
 print()
-print("    Task (state machine):")
-print("      - start(): @requires PENDING → @ensures IN_PROGRESS")
-print("      - complete(): @requires IN_PROGRESS + retrospective → @ensures COMPLETED")
-print("      - block(): @requires IN_PROGRESS + reason")
-print("      - cancel(): @requires not terminal state")
-print()
-print("    KnowledgeTransfer (document lifecycle):")
-print("      - append(): @requires DRAFT, non-empty content")
-print("      - set_summary(): @requires DRAFT, min 10 chars")
-print("      - finalize(): @requires DRAFT, not empty, has summary")
-print()
-print("    CognitiveSession (session integrity):")
-print("      - begin(): @requires not active → @ensures active")
-print("      - create_task(): @requires active, @invariant WAL >= committed")
-print("      - save_state(): @requires active, @invariant WAL >= committed")
-print("      - handoff(): @requires active + state saved → @ensures not active")
+print("    Task: start(), complete(), block(), cancel()")
+print("    KnowledgeTransfer: append(), set_summary(), finalize()")
+print("    CognitiveSession: begin(), create_task(), save_state(), handoff()")
 print()
 
 
 # =============================================================================
-# STEP 3: Execute Operations (Some Will Pass, Some Will Fail)
+# STEP 3: Execute Operations - Capture Horizon Markers
 # =============================================================================
 
-print("[3] Executing cognitive operations...")
+print("[3] Executing cognitive operations with horizon markers...")
 print()
+
+# Capture initial horizon
+initial_horizon = event_store.latest()
+print(f"    Initial horizon: {initial_horizon}")
 
 # Create a session
 session = CognitiveSession("S-001")
-print("    [OK] Session S-001 created")
-
 session.begin()
-print("    [OK] Session began")
+print("    [OK] Session S-001 began")
+
+# Capture horizon after session start
+post_begin_horizon = event_store.latest()
 
 # Create and work on tasks
 task1 = session.create_task("T-001", "Implement behavioral contracts")
-print("    [OK] Created task T-001")
-
 task1.start()
-print("    [OK] Task T-001 started (PENDING → IN_PROGRESS)")
-
 task1.complete("Implemented @requires, @ensures, @invariant with CEL integration")
-print("    [OK] Task T-001 completed with retrospective")
+print("    [OK] Task T-001: PENDING -> IN_PROGRESS -> COMPLETED")
+
+# Capture horizon after task completion
+post_task_horizon = event_store.latest()
+print(f"    Post-task horizon: {post_task_horizon.value[:12] if post_task_horizon else 'None'}...")
 
 # Create a knowledge transfer
 kt = KnowledgeTransfer("KT-001", "Session Learnings")
@@ -372,121 +546,295 @@ kt.set_summary("Behavioral contracts enable executable documentation")
 kt.finalize()
 print("    [OK] Knowledge transfer KT-001 created and finalized")
 
+# Capture horizon after KT
+post_kt_horizon = event_store.latest()
+
 print()
-print("    Now attempting operations that violate contracts...")
+print("    Now triggering contract violations...")
 print()
 
 # Violation 1: Complete a task that isn't in progress
 task2 = session.create_task("T-002", "Another task")
 try:
-    print("    [FAIL] Complete T-002 without starting it")
     task2.complete("This should fail")
 except ContractViolation as e:
-    print(f"           Caught: {e.contract_type} - {e.description}")
-print()
+    print(f"    [VIOLATION] {e.contract_type}: {e.description}")
+
+# Capture violation horizon
+violation1_horizon = event_store.latest()
 
 # Violation 2: Append to finalized KT
 try:
-    print("    [FAIL] Append to finalized KT-001")
     kt.append("New Section", "This should fail")
 except ContractViolation as e:
-    print(f"           Caught: {e.contract_type} - {e.description}")
-print()
+    print(f"    [VIOLATION] {e.contract_type}: {e.description}")
 
 # Violation 3: Finalize empty KT
 kt2 = KnowledgeTransfer("KT-002", "Empty KT")
 try:
-    print("    [FAIL] Finalize empty KT-002")
     kt2.finalize()
 except ContractViolation as e:
-    print(f"           Caught: {e.contract_type} - {e.description}")
-print()
+    print(f"    [VIOLATION] {e.contract_type}: {e.description}")
 
 # Violation 4: Handoff without saving state
 try:
-    print("    [FAIL] Handoff without saving state")
     session.handoff("agent-2")
 except ContractViolation as e:
-    print(f"           Caught: {e.contract_type} - {e.description}")
+    print(f"    [VIOLATION] {e.contract_type}: {e.description}")
+
 print()
 
 # Proper handoff sequence
 session.save_state()
-print("    [OK] Session state saved")
-
 result = session.handoff("agent-2")
 print(f"    [OK] Session handed off to {result['target']}")
-print(f"         Tasks: {result['tasks']}, WAL: {result['wal_entries']}, Committed: {result['committed']}")
-print()
+print(f"         WAL: {result['wal_entries']}, Committed: {result['committed']}")
 
-# Violation 5: Create task on inactive session
-try:
-    print("    [FAIL] Create task on ended session")
-    session.create_task("T-003", "This should fail")
-except ContractViolation as e:
-    print(f"           Caught: {e.contract_type} - {e.description}")
+# Final horizon
+final_horizon = event_store.latest()
+print()
+print(f"    Final horizon: {final_horizon.value[:12] if final_horizon else 'None'}...")
+print(f"    Total events in store: {event_store.count}")
 print()
 
 
 # =============================================================================
-# STEP 4: Query Contract State via Materializer
+# STEP 4: Temporal Queries - "What was the state at horizon X?"
 # =============================================================================
 
-print("[4] Materializing contract state from events...")
+print("[4] Temporal Queries - Querying contract state at different horizons")
 print()
 
-materializer = ContractMaterializer(emitter=emitter)
-state = materializer.current_state()
+def state_at_horizon(horizon: Optional[MerkleRoot]) -> ContractState:
+    """Compute contract state up to a specific horizon."""
+    state = ContractState()
 
-print(f"    {state}")
-print(f"    - Total checks: {state.total_checks}")
-print(f"    - Total violations: {state.total_violations}")
-print(f"    - Violation rate: {state.violation_rate:.2f}%")
-print(f"    - Is healthy: {state.is_healthy}")
+    if horizon is None:
+        return state
+
+    # Iterate events up to horizon
+    for event in event_store.iterate(to_event=horizon.value):
+        content = event.content
+        timestamp = datetime.fromisoformat(event.timestamp.replace('Z', '+00:00'))
+
+        if content.get('type') == 'contract_check':
+            state.total_checks += 1
+            state.last_check = timestamp
+            if state.first_check is None:
+                state.first_check = timestamp
+
+        if content.get('observation_type') == 'contract_violation':
+            state.total_violations += 1
+            state.last_violation = timestamp
+
+            method = content.get('violation_detail', {}).get('method', 'unknown')
+            if method not in state.violations_by_method:
+                state.violations_by_method[method] = 0
+            state.violations_by_method[method] += 1
+
+    return state
+
+# Query state at different points in time
+print("    State after task completion (before violations):")
+state_pre_violation = state_at_horizon(post_task_horizon)
+print(f"      Checks: {state_pre_violation.total_checks}, Violations: {state_pre_violation.total_violations}")
+print(f"      Healthy: {state_pre_violation.is_healthy}")
 print()
 
-if state.violations_by_method:
-    print("    Violations by method:")
-    for method, count in state.violations_by_method.items():
-        print(f"      - {method}: {count}")
+print("    State after first violation:")
+state_post_violation = state_at_horizon(violation1_horizon)
+print(f"      Checks: {state_post_violation.total_checks}, Violations: {state_post_violation.total_violations}")
+print(f"      Healthy: {state_post_violation.is_healthy}")
+print()
+
+print("    Final state:")
+final_state = materializer.current_state()
+print(f"      Checks: {final_state.total_checks}, Violations: {final_state.total_violations}")
+print(f"      Violation rate: {final_state.violation_rate:.2f}%")
+print(f"      Healthy: {final_state.is_healthy}")
+print()
+
+# Show temporal comparison
+print("    Temporal comparison:")
+print(f"      Pre-violation: {state_pre_violation.violation_rate:.1f}% violation rate")
+print(f"      Post-violation: {final_state.violation_rate:.1f}% violation rate")
+print(f"      Delta: +{final_state.total_violations - state_pre_violation.total_violations} violations")
+print()
+
+
+# =============================================================================
+# STEP 5: Compaction Demonstration
+# =============================================================================
+
+print("[5] Compaction - Semantic compression of contract history")
+print()
+
+def demonstrate_compaction():
+    """
+    Demonstrate how contract events could be compacted.
+
+    Compaction preserves the same materialized state while reducing
+    event count. For contracts:
+    - Multiple passing checks for same method -> single summary
+    - Violation count preserved (never lose violation history)
+    """
+    print("    Before compaction:")
+    print(f"      Total events: {event_store.count}")
+
+    # Count events by type
+    check_events = 0
+    violation_events = 0
+    other_events = 0
+
+    for event in event_store.iterate():
+        if event.event_type == EventType.OBSERVATION:
+            check_events += 1
+        elif event.event_type == EventType.METACOGNITION:
+            violation_events += 1
+        else:
+            other_events += 1
+
+    print(f"      Contract checks: {check_events}")
+    print(f"      MetaCognition (violations): {violation_events}")
+    print(f"      Other events: {other_events}")
     print()
 
+    # Calculate compaction potential
+    # Contract checks for same method could be compacted to counts
+    method_check_counts: Dict[str, int] = {}
+    for event in event_store.iterate():
+        if event.event_type == EventType.OBSERVATION:
+            method = event.content.get('method', 'unknown')
+            if method not in method_check_counts:
+                method_check_counts[method] = 0
+            method_check_counts[method] += 1
+
+    compactable = sum(count - 1 for count in method_check_counts.values() if count > 1)
+
+    print("    Compaction analysis:")
+    print(f"      Methods with multiple checks: {sum(1 for c in method_check_counts.values() if c > 1)}")
+    print(f"      Events that could be compacted: {compactable}")
+    print(f"      Compaction ratio: {(event_store.count - compactable) / event_store.count:.1%}")
+    print()
+
+    # Show what a compaction event would look like
+    print("    Example compaction event structure:")
+    print("      {")
+    print("        'type': 'COMPACTION',")
+    print("        'compressed_events': [<event_ids>],")
+    print("        'snapshot': {")
+    print("          'total_checks': %d," % final_state.total_checks)
+    print("          'total_violations': %d," % final_state.total_violations)
+    print("          'checks_by_method': {...}")
+    print("        },")
+    print("        'preserved_merkle_root': '%s...'" % (final_horizon.value[:12] if final_horizon else 'None'))
+    print("      }")
+    print()
+    print("    Key invariant: materialize(events) == materialize(compact(events))")
+    print()
+
+demonstrate_compaction()
+
 
 # =============================================================================
-# STEP 5: View CEL Events (Buffered)
+# STEP 6: Recovery Flow - Handling violations gracefully
 # =============================================================================
 
-print("[5] CEL Events emitted (in-memory buffer):")
+print("[6] Recovery Flow - Handling contract violations gracefully")
 print()
 
-events = emitter.buffered_events
-print(f"    Total events: {len(events)}")
+class RecoverableSession:
+    """
+    A session that can recover from contract violations.
+
+    Instead of crashing on violation, captures the violation event
+    and suggests corrective actions.
+    """
+
+    def __init__(self, session_id: str, registry: ContractRegistry):
+        self._inner = CognitiveSession(session_id)
+        self._registry = registry
+        self._recovery_log: List[Dict[str, Any]] = []
+
+    def safe_handoff(self, target: str) -> Optional[dict]:
+        """Attempt handoff with automatic recovery."""
+        try:
+            return self._inner.handoff(target)
+        except ContractViolation as e:
+            # Log violation for analysis
+            recovery_entry = {
+                'operation': 'handoff',
+                'violation': e.description,
+                'suggestion': 'Save state before handoff',
+                'timestamp': datetime.now().isoformat(),
+            }
+            self._recovery_log.append(recovery_entry)
+
+            # Attempt automatic recovery
+            if 'save state' in e.description.lower():
+                print(f"      [RECOVERY] Auto-saving state...")
+                self._inner.save_state()
+                return self._inner.handoff(target)
+
+            return None
+
+    @property
+    def recovery_log(self) -> List[Dict[str, Any]]:
+        return self._recovery_log
+
+# Demonstrate recovery
+print("    Demonstrating automatic recovery from violation...")
 print()
 
-# Show last 5 events
-print("    Last 5 events:")
-for event in events[-5:]:
-    event_type = event.get('event_type', 'UNKNOWN')
-    content = event.get('content', {})
+# Create a new session for recovery demo
+recovery_session = RecoverableSession("S-002", registry)
+recovery_session._inner.begin()
+recovery_session._inner.create_task("T-003", "Recovery demo task")
+print("    Created new session S-002 with task T-003")
 
-    if event_type == 'OBSERVATION':
-        check_type = content.get('contract_type', 'unknown')
-        method = content.get('method', 'unknown')
-        passed = content.get('passed', False)
-        status = "PASS" if passed else "FAIL"
-        print(f"      [{event_type}] {status} {check_type} on {method}")
-    elif event_type == 'METACOGNITION':
-        obs_type = content.get('observation_type', 'unknown')
-        conclusions = content.get('conclusions', [])
-        print(f"      [{event_type}] {obs_type}: {conclusions[0] if conclusions else 'N/A'}")
+# This would normally fail - state not saved
+result = recovery_session.safe_handoff("agent-3")
+if result:
+    print(f"    [OK] Recovery succeeded! Handed off to {result['target']}")
+    print()
+    print("    Recovery log:")
+    for entry in recovery_session.recovery_log:
+        print(f"      - {entry['operation']}: {entry['violation']}")
+        print(f"        Suggestion: {entry['suggestion']}")
 print()
 
 
 # =============================================================================
-# STEP 6: Generate Health Report
+# STEP 7: CEL Event Store Statistics
 # =============================================================================
 
-print("[6] Health Report:")
+print("[7] CEL Event Store Statistics")
+print()
+
+print(f"    Total events: {event_store.count}")
+print(f"    Branch heads: {len(event_store.heads())}")
+print(f"    Latest horizon: {event_store.latest().value[:16] if event_store.latest() else 'None'}...")
+print()
+
+# Count by event type
+type_counts: Dict[str, int] = {}
+for event in event_store.iterate():
+    type_name = event.event_type.name
+    if type_name not in type_counts:
+        type_counts[type_name] = 0
+    type_counts[type_name] += 1
+
+print("    Events by type:")
+for type_name, count in sorted(type_counts.items()):
+    print(f"      {type_name}: {count}")
+print()
+
+
+# =============================================================================
+# STEP 8: Health Report
+# =============================================================================
+
+print("[8] Contract Health Report")
 print()
 
 report = materializer.health_report()
@@ -503,88 +851,36 @@ print()
 
 
 # =============================================================================
-# STEP 7: Query Recent Violations
-# =============================================================================
-
-print("[7] Recent Violations:")
-print()
-
-violations = materializer.violations_since(hours=1)
-print(f"    Found {len(violations)} violations in last hour:")
-print()
-
-for v in violations:
-    print(f"      {v.timestamp.strftime('%H:%M:%S')} | {v.method}")
-    print(f"        {v.description}")
-print()
-
-
-# =============================================================================
-# STEP 8: Registry Statistics
-# =============================================================================
-
-print("[8] Contract Registry Statistics:")
-print()
-
-stats = registry.stats()
-print(f"    Total contracts: {stats['total_contracts']}")
-print(f"    Contracts with violations: {stats['contracts_with_violations']}")
-print(f"    Total checks: {stats['total_checks']}")
-print(f"    Total violations: {stats['total_violations']}")
-print(f"    Violation rate: {stats['violation_rate']:.2%}")
-print()
-
-print("    By type:")
-for type_name, count in stats['by_type'].items():
-    print(f"      - {type_name}: {count}")
-print()
-
-
-# =============================================================================
-# STEP 9: Export Documentation
-# =============================================================================
-
-print("[9] Exported Contract Documentation:")
-print()
-
-docs = registry.export_documentation()
-# Show first 40 lines
-lines = docs.split('\n')[:40]
-for line in lines:
-    print(f"    {line}")
-print("    ...")
-print()
-
-
-# =============================================================================
 # SUMMARY
 # =============================================================================
 
 print("=" * 70)
-print("SUMMARY")
+print("SUMMARY - CEL Integration Features Demonstrated")
 print("=" * 70)
 print()
-print("This demonstration showed behavioral contracts in cognitive operations:")
+print("  1. In-Memory EventStore:")
+print("     - Implements CEL EventStore protocol")
+print("     - Content-addressed events with Merkle roots")
+print("     - Causal ordering preserved")
 print()
-print("  Task State Machine:")
-print("    - Contracts enforce valid state transitions")
-print("    - Cannot complete without starting first")
-print("    - Terminal states cannot be exited")
+print("  2. Temporal Queries:")
+print("     - 'What was contract state at horizon X?'")
+print("     - Query state before/after violations")
+print("     - Track contract health over time")
 print()
-print("  Knowledge Transfer Lifecycle:")
-print("    - Cannot finalize empty documents")
-print("    - Cannot modify finalized documents")
-print("    - Must have summary before finalizing")
+print("  3. Compaction Awareness:")
+print("     - Multiple checks -> summary stats")
+print("     - Preserves violation history")
+print("     - Maintains materialized state invariant")
 print()
-print("  Cognitive Session Integrity:")
-print("    - WAL entries >= committed (durability invariant)")
-print("    - Must save state before handoff")
-print("    - Cannot work on inactive session")
+print("  4. Recovery Flow:")
+print("     - Catch violations gracefully")
+print("     - Suggest corrective actions")
+print("     - Automatic recovery when possible")
 print()
-print("Integration with CEL enables:")
-print("  - Contract violations → MetaCognition events (self-awareness)")
-print("  - Temporal queries: 'What contracts were violated during task T-001?'")
-print("  - Compaction: Summarize contract history into statistics")
-print("  - Audit trail: Full history of cognitive operations")
+print("  5. Integration Points:")
+print("     - Contract checks -> OBSERVATION events")
+print("     - Violations -> METACOGNITION events (self-awareness)")
+print("     - Full audit trail in event store")
 print()
 print("=" * 70)
