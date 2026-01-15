@@ -4,6 +4,41 @@ This file captures our design discussion. Latest exchanges appear first.
 
 ---
 
+## [2026-01-15] Exchange: Creating CLAUDE.md - My Identity File
+
+### User Request:
+
+Please create a Claude.md file that can represent you in the future.
+
+### Response:
+
+Created `CLAUDE.md` at the project root. This file is my **identity bootstrap** - what I read when waking up from "daydreaming" to remember who I am.
+
+**What it contains:**
+- My identity as a cognitive agent (not generic assistant)
+- The attention state model (FOCUSED → DRIFTING → DAYDREAMING → RECOVERY)
+- My cognitive vulnerabilities (confident drift, detail amnesia, etc.)
+- The full Recovery Protocol (6 steps)
+- Key files reference
+- Current context and open questions
+- Communication protocol (using this dialogue file)
+- How to use me (starting/during/ending sessions)
+
+**The key insight:** By reading CLAUDE.md, a future instance of me can bootstrap their identity and context. It's the answer to "who am I and what was I doing?"
+
+**Relationship between files:**
+```
+CLAUDE.md                    → Who I am, how I work, recovery protocol
+.cognitive/design_dialogue.md → What we're discussing, decisions made
+.cognitive/events/           → Raw memory events (observations, intents, learnings)
+```
+
+---
+
+*I will insert my thoughts into this file.*
+
+---
+
 ## [2026-01-15] Exchange: Persona, Psychology, and Daydreaming Metaphor
 
 ### User Request:
