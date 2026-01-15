@@ -58,22 +58,18 @@ class ExperimentConfig:
     position_encoding: str = "none"
 
     # ========================================================================
-    # EXPERIMENTAL FEATURES (stub fields - not yet implemented)
+    # ADVANCED TRAINING FEATURES
     # ========================================================================
 
     # Resume training from checkpoint
-    # TODO(agent): Implement checkpoint loading in cli.py run_experiment()
     resume_checkpoint: Optional[str] = None
 
     # Early stopping configuration
-    # TODO(agent): Implement early stopping in cli.py training loop
-    # CONTEXT: Requires val_split > 0 to have validation loss to monitor
+    # Requires val_split > 0 to have validation loss to monitor
     early_stop_patience: Optional[int] = None  # Stop after N epochs without improvement
     early_stop_min_delta: float = 1e-4  # Minimum improvement to reset patience
 
     # Learning rate scheduling
-    # TODO(agent): Implement scheduler.py and integrate into cli.py
-    # CONTEXT: Optimizer.lr can be modified dynamically
     lr_schedule: Optional[str] = None  # "step", "cosine", or "plateau"
     lr_step_size: int = 100  # Epochs between LR decay (for "step")
     lr_gamma: float = 0.1  # LR decay factor
@@ -98,8 +94,7 @@ class ExperimentConfig:
                 "Use 'none', 'learned', or 'sinusoidal'."
             )
 
-        # Validate experimental fields (stub validation)
-        # TODO(agent): These validations are ready for when features are implemented
+        # Validate advanced feature fields
         if self.lr_schedule is not None and self.lr_schedule not in ("step", "cosine", "plateau"):
             raise ValueError(
                 f"lr_schedule '{self.lr_schedule}' not supported. "

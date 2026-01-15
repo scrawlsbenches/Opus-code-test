@@ -146,7 +146,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     # ============================================================================
-    # EXPERIMENTAL FEATURES (stub - not yet implemented)
+    # ADVANCED TRAINING FEATURES
     # ============================================================================
 
     # Resume training from checkpoint
@@ -228,14 +228,14 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _check_experimental_features(args: argparse.Namespace) -> None:
+def _validate_feature_requirements(args: argparse.Namespace) -> None:
     """
-    Check for experimental features and validate requirements.
+    Validate feature requirements and dependencies.
 
-    This function validates that experimental CLI options are properly
-    configured and have required dependencies.
+    This function validates that CLI options are properly configured
+    and have required dependencies.
 
-    Implemented features:
+    Features:
         - --resume: Checkpoint loading with optimizer/scheduler state
         - --lr-schedule: Learning rate scheduling (step, cosine, plateau)
         - --early-stop: Patience-based early stopping with best model tracking
@@ -261,9 +261,9 @@ def run_experiment(args: argparse.Namespace) -> int:
     from cortical.experiments.early_stopping import EarlyStopper
 
     # ============================================================================
-    # Check for experimental features and warn/fail
+    # Validate feature requirements
     # ============================================================================
-    _check_experimental_features(args)
+    _validate_feature_requirements(args)
 
     # Create config
     config = ExperimentConfig.from_args(args)
