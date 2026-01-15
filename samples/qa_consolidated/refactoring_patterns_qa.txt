@@ -1,0 +1,44 @@
+Q: What is the Extract Method refactoring pattern and when should you apply it?
+A: Extract Method involves taking a code fragment from an existing method and moving it into a new method with a descriptive name. You should apply this pattern when you have a method that is too long, contains code that can be logically grouped together, or has comments explaining what a block of code does. The extracted method name should clearly communicate the intent of the code, making the original method more readable and the extracted logic reusable.
+
+Q: How does the Rename refactoring improve code quality?
+A: Rename refactoring changes the name of a variable, method, class, or other identifier to better reflect its purpose and meaning. Good names are one of the most powerful tools for code clarity because they serve as documentation that stays synchronized with the code. When you find yourself adding comments to explain what something does, that is often a signal that a better name would eliminate the need for the comment entirely.
+
+Q: What is the Move Method refactoring and what problem does it solve?
+A: Move Method transfers a method from one class to another when the method uses more features of the target class than its current class. This refactoring addresses the code smell of Feature Envy, where a method seems more interested in another class than its own. By moving the method closer to the data it operates on, you improve cohesion and reduce coupling between classes.
+
+Q: How does Replace Conditional with Polymorphism work?
+A: Replace Conditional with Polymorphism transforms complex conditional logic that varies behavior based on type into a class hierarchy with polymorphic method overrides. Instead of using switch statements or if-else chains to determine behavior, you create subclasses that each implement the behavior appropriate to their type. This makes the code more extensible because adding new types only requires creating new subclasses rather than modifying existing conditional logic.
+
+Q: What is the Introduce Parameter Object refactoring pattern?
+A: Introduce Parameter Object replaces a group of parameters that naturally go together with a single object that contains those values. This is particularly useful when you see the same cluster of parameters passed to multiple methods, indicating a missing abstraction. The new parameter object can also become a home for behavior that operates on those values, leading to a richer domain model.
+
+Q: Why should you replace magic numbers with named constants?
+A: Magic numbers are literal numeric values embedded directly in code without explanation of their meaning or purpose. Replacing them with named constants improves readability by giving the value a meaningful name, makes maintenance easier since the value is defined in one place, and reduces bugs by ensuring consistent usage throughout the codebase. A named constant like MAX_RETRY_ATTEMPTS is far more communicative than the number 3 scattered throughout the code.
+
+Q: What constitutes dead code and how should it be removed?
+A: Dead code includes unreachable statements, unused variables, methods that are never called, and commented-out code blocks that have been left behind. Removing dead code improves maintainability by reducing the cognitive load on developers who must understand the codebase. Before deletion, verify the code is truly unused through static analysis tools and comprehensive search, and rely on version control to preserve history rather than keeping commented code.
+
+Q: What are the most common code smells that indicate a need for refactoring?
+A: Common code smells include Long Method where functions try to do too much, Large Class with too many responsibilities, Duplicate Code appearing in multiple locations, Feature Envy where methods are overly interested in other classes, and Primitive Obsession using basic types instead of small objects. Data Clumps of parameters that appear together and Shotgun Surgery requiring changes across many classes are also strong indicators that refactoring would improve the design.
+
+Q: When is the right time to refactor code?
+A: The best times to refactor are before adding new features to ensure the existing code structure can accommodate changes cleanly, after getting a feature working when you can improve the implementation without changing behavior, and during code review when fresh eyes can spot improvement opportunities. The Rule of Three suggests refactoring when you encounter duplicate code for the third time. Avoid refactoring during critical release periods or when you lack adequate test coverage.
+
+Q: How do tests enable safe refactoring?
+A: Tests act as a safety net that validates behavior is preserved after refactoring changes the internal structure of code. Before refactoring, ensure you have comprehensive tests covering the functionality you plan to modify. Run the tests frequently during refactoring, ideally after each small change, to catch any regressions immediately when the cause is obvious. Without tests, refactoring becomes risky because you cannot confidently verify that behavior remains unchanged.
+
+Q: What is the relationship between refactoring and technical debt?
+A: Refactoring is the primary tool for paying down technical debt, which accumulates when quick solutions are chosen over better-designed ones. Regular, incremental refactoring prevents debt from compounding to the point where it significantly slows development. Strategic refactoring sessions should target the areas of highest debt that are most frequently modified, maximizing the return on investment in code quality improvement.
+
+Q: How should you approach refactoring a large legacy codebase?
+A: Start by establishing a characterization test suite that captures current behavior, even if imperfect. Apply the Strangler Fig pattern by gradually replacing legacy components with refactored versions rather than attempting a complete rewrite. Focus refactoring efforts on code that needs to change for new features, following the Boy Scout Rule of leaving code cleaner than you found it. Break large refactorings into small, safe steps that can each be verified independently.
+
+Q: What is the Extract Class refactoring and when should it be applied?
+A: Extract Class creates a new class from a subset of responsibilities currently handled by an existing class. This refactoring is appropriate when a class has grown too large, when you can identify a coherent subset of data and methods that belong together, or when a class has multiple reasons to change. The result is two classes with clearer, more focused responsibilities that are easier to understand, test, and maintain.
+
+Q: How does the Replace Type Code with Subclasses pattern work?
+A: Replace Type Code with Subclasses transforms a class that uses a type code to affect behavior into a class hierarchy where each type becomes a subclass. This pattern is particularly valuable when the type code influences multiple methods through conditional logic. After the transformation, type-specific behavior lives in the appropriate subclass, and adding new types becomes a matter of creating new subclasses rather than modifying existing conditionals.
+
+Q: What role does refactoring play in the Test-Driven Development cycle?
+A: In TDD, refactoring is the third step of the Red-Green-Refactor cycle, performed after tests pass to improve code structure without changing behavior. This disciplined approach ensures you always have passing tests before and after refactoring, making the process safe. The refactoring step is where design emerges and improves incrementally, transforming working code into well-designed code while maintaining the confidence provided by the test suite.

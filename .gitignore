@@ -199,3 +199,11 @@ benchmarks/trainable_graph_benchmarks.json
 benchmarks/checkpoint_*.pkl
 experiments/runs/
 samples/subset/
+
+# Generated training datasets
+datasets/
+
+# Large ML data files (regenerate with: python scripts/ml_data_collector.py backfill -n 500)
+.git-ml/commits/
+.git-ml/cali/logs/
+.git-ml/cali/objects/
