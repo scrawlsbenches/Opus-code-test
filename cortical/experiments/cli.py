@@ -299,6 +299,21 @@ def create_parser() -> argparse.ArgumentParser:
         help="Number of sample tokens to show (default: 10)",
     )
 
+    # vocab diff
+    vocab_diff_parser = vocab_subparsers.add_parser("diff", help="Compare document against vocabulary")
+    vocab_diff_parser.add_argument(
+        "--vocab",
+        type=str,
+        required=True,
+        help="Path to vocabulary JSON file",
+    )
+    vocab_diff_parser.add_argument(
+        "--document",
+        type=str,
+        required=True,
+        help="Path to document file",
+    )
+
     return parser
 
 
@@ -377,6 +392,24 @@ def run_experiment(args: argparse.Namespace) -> int:
         vocab, id_to_token = build_vocab(tokens)
 
     token_ids = tokens_to_ids(tokens, vocab)
+
+    # Detect OOV tokens when using external vocab
+    if args.vocab:
+        from .tokenizer import UNK_TOKEN
+        unk_id = vocab.get(UNK_TOKEN, 1)
+        oov_tokens = []
+        for i, (token, token_id) in enumerate(zip(tokens, token_ids)):
+            if token_id == unk_id and token != UNK_TOKEN:
+                oov_tokens.append(token)
+
+        if oov_tokens:
+            unique_oov = sorted(set(oov_tokens))
+            print(f"WARNING: {len(oov_tokens)} tokens mapped to <UNK> ({len(unique_oov)} unique)")
+            if len(unique_oov) <= 10:
+                print(f"  OOV tokens: {unique_oov}")
+            else:
+                print(f"  First 10 OOV: {unique_oov[:10]}")
+                print(f"  ... and {len(unique_oov) - 10} more")
 
     print(f"Loaded {len(tokens)} tokens, vocabulary size: {len(vocab)} tokens")
     print()
@@ -874,6 +907,69 @@ def vocab_inspect(args: argparse.Namespace) -> int:
     return 0
 
 
+def vocab_diff(args: argparse.Namespace) -> int:
+    """Compare document against vocabulary to find OOV tokens."""
+    import json
+    from pathlib import Path
+    from .vocabulary import Vocabulary
+    from .tokenizer import tokenize, load_text, UNK_TOKEN
+
+    # Load vocabulary
+    try:
+        vocab = Vocabulary.load(args.vocab)
+    except FileNotFoundError:
+        print(f"ERROR: Vocabulary file not found: {args.vocab}")
+        return 1
+    except json.JSONDecodeError as e:
+        print(f"ERROR: Invalid JSON in vocabulary file: {e}")
+        return 1
+
+    # Load and tokenize document
+    doc_path = Path(args.document)
+    if not doc_path.exists():
+        print(f"ERROR: Document not found: {args.document}")
+        return 1
+
+    text = load_text(doc_path)
+    tokens = tokenize(text)
+    vocab_dict = vocab.get_token_to_id()
+
+    # Find OOV tokens
+    unk_id = vocab_dict.get(UNK_TOKEN, 1)
+    oov_tokens = []
+    in_vocab_tokens = []
+
+    for token in tokens:
+        if token in vocab_dict and vocab_dict[token] != unk_id:
+            in_vocab_tokens.append(token)
+        else:
+            oov_tokens.append(token)
+
+    unique_oov = sorted(set(oov_tokens))
+    unique_in_vocab = sorted(set(in_vocab_tokens))
+
+    print(f"\nVocabulary: {args.vocab} ({vocab.size} tokens)")
+    print(f"Document: {args.document} ({len(tokens)} tokens)")
+    print("-" * 50)
+    print(f"In vocabulary: {len(in_vocab_tokens)} tokens ({len(unique_in_vocab)} unique)")
+    print(f"Out of vocabulary: {len(oov_tokens)} tokens ({len(unique_oov)} unique)")
+
+    if oov_tokens:
+        oov_pct = len(oov_tokens) / len(tokens) * 100
+        print(f"\nOOV rate: {oov_pct:.1f}%")
+        print(f"\nOOV tokens ({len(unique_oov)}):")
+        for token in unique_oov[:20]:
+            count = oov_tokens.count(token)
+            print(f"  {token!r} (x{count})")
+        if len(unique_oov) > 20:
+            print(f"  ... and {len(unique_oov) - 20} more")
+    else:
+        print("\nNo OOV tokens - document fully covered by vocabulary.")
+
+    print()
+    return 0
+
+
 def list_all_experiments(args: argparse.Namespace) -> int:
     """List all experiments."""
     base_dir = Path(args.dir)
@@ -923,6 +1019,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             return vocab_create(args)
         elif args.vocab_command == "inspect":
             return vocab_inspect(args)
+        elif args.vocab_command == "diff":
+            return vocab_diff(args)
         else:
             parser.print_help()
             return 1
