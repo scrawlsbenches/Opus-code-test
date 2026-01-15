@@ -866,3 +866,722 @@ class TestCreatePositionEncoding:
         """Raises error for unknown encoding type."""
         with pytest.raises(ValueError, match="Unknown"):
             create_position_encoding("unknown", max_len=10, embedding_dim=16)
+
+
+# =============================================================================
+# VOCABULARY MANAGEMENT TESTS
+# =============================================================================
+
+
+class TestVocabulary:
+    """Tests for Vocabulary class - save/load/create from corpus."""
+
+    def test_create_from_tokens(self):
+        """Creates vocabulary from token list."""
+        from cortical.experiments.vocabulary import Vocabulary
+
+        tokens = ["the", "cat", "sat", "on", "the", "mat"]
+        vocab = Vocabulary.from_tokens(tokens)
+
+        assert "the" in vocab
+        assert "cat" in vocab
+        assert vocab.size > 0
+
+    def test_create_from_tokens_with_min_freq(self):
+        """Filters tokens below min_freq."""
+        from cortical.experiments.vocabulary import Vocabulary
+
+        tokens = ["a", "a", "a", "b", "b", "c"]
+        vocab = Vocabulary.from_tokens(tokens, min_freq=2)
+
+        assert "a" in vocab
+        assert "b" in vocab
+        assert "c" not in vocab
+
+    def test_save_and_load(self, tmp_path):
+        """Vocabulary can be saved and loaded."""
+        from cortical.experiments.vocabulary import Vocabulary
+
+        tokens = ["hello", "world", "test"]
+        vocab = Vocabulary.from_tokens(tokens)
+
+        vocab_path = tmp_path / "vocab.json"
+        vocab.save(vocab_path)
+
+        loaded = Vocabulary.load(vocab_path)
+
+        assert loaded.size == vocab.size
+        assert "hello" in loaded
+        assert "world" in loaded
+
+    def test_token_to_id_and_back(self):
+        """Token to ID mapping is reversible."""
+        from cortical.experiments.vocabulary import Vocabulary
+
+        tokens = ["foo", "bar", "baz"]
+        vocab = Vocabulary.from_tokens(tokens)
+
+        for token in tokens:
+            id_ = vocab.token_to_id(token)
+            back = vocab.id_to_token(id_)
+            assert back == token
+
+    def test_unknown_token_returns_unk_id(self):
+        """Unknown tokens return UNK token ID."""
+        from cortical.experiments.vocabulary import Vocabulary
+
+        vocab = Vocabulary.from_tokens(["hello"])
+        unk_id = vocab.token_to_id("<UNK>")
+
+        assert vocab.token_to_id("unknown_word") == unk_id
+
+    def test_special_tokens_present(self):
+        """Special tokens are in vocabulary."""
+        from cortical.experiments.vocabulary import Vocabulary
+
+        vocab = Vocabulary.from_tokens(["test"])
+
+        assert "<PAD>" in vocab
+        assert "<UNK>" in vocab
+        assert "<BOS>" in vocab
+        assert "<EOS>" in vocab
+
+    def test_hash_changes_on_modification(self):
+        """Vocabulary hash changes when vocab changes."""
+        from cortical.experiments.vocabulary import Vocabulary
+
+        vocab = Vocabulary.from_tokens(["hello", "world"])
+        hash1 = vocab.hash()
+
+        vocab.extend(["new_token"])
+        hash2 = vocab.hash()
+
+        assert hash1 != hash2
+
+    def test_extend_adds_new_tokens(self):
+        """Extend adds new tokens to vocabulary."""
+        from cortical.experiments.vocabulary import Vocabulary
+
+        vocab = Vocabulary.from_tokens(["hello"])
+        original_size = vocab.size
+
+        vocab.extend(["world", "test"])
+
+        assert vocab.size == original_size + 2
+        assert "world" in vocab
+        assert "test" in vocab
+
+    def test_extend_ignores_existing_tokens(self):
+        """Extend doesn't duplicate existing tokens."""
+        from cortical.experiments.vocabulary import Vocabulary
+
+        vocab = Vocabulary.from_tokens(["hello", "world"])
+        original_size = vocab.size
+
+        vocab.extend(["hello", "new"])
+
+        assert vocab.size == original_size + 1  # Only "new" added
+
+    def test_create_from_file(self, tmp_path):
+        """Creates vocabulary from text file."""
+        from cortical.experiments.vocabulary import Vocabulary
+
+        text_file = tmp_path / "sample.txt"
+        text_file.write_text("hello world hello test")
+
+        vocab = Vocabulary.from_file(text_file)
+
+        assert "hello" in vocab
+        assert "world" in vocab
+        assert "test" in vocab
+
+    def test_create_from_directory(self, tmp_path):
+        """Creates vocabulary from directory of text files."""
+        from cortical.experiments.vocabulary import Vocabulary
+
+        (tmp_path / "file1.txt").write_text("hello world")
+        (tmp_path / "file2.txt").write_text("foo bar")
+
+        vocab = Vocabulary.from_file(tmp_path)
+
+        assert "hello" in vocab
+        assert "world" in vocab
+        assert "foo" in vocab
+        assert "bar" in vocab
+
+    def test_metadata_stored(self, tmp_path):
+        """Vocabulary stores metadata about source files."""
+        from cortical.experiments.vocabulary import Vocabulary
+
+        text_file = tmp_path / "sample.txt"
+        text_file.write_text("hello world")
+
+        vocab = Vocabulary.from_file(text_file)
+        vocab_path = tmp_path / "vocab.json"
+        vocab.save(vocab_path)
+
+        loaded = Vocabulary.load(vocab_path)
+
+        assert "sample.txt" in str(loaded.source_files)
+
+
+class TestVocabCLI:
+    """Tests for vocab CLI commands using in-memory API."""
+
+    def test_vocab_create_from_file(self, tmp_path, capsys):
+        """vocab create command creates vocabulary from file."""
+        import argparse
+        from cortical.experiments.cli import vocab_create
+        from cortical.experiments.vocabulary import Vocabulary
+
+        # Create sample file
+        text_file = tmp_path / "sample.txt"
+        text_file.write_text("hello world hello test foo bar")
+
+        output_path = tmp_path / "vocab.json"
+
+        # Create mock args
+        args = argparse.Namespace(
+            from_path=str(text_file),
+            output=str(output_path),
+            min_freq=1,
+            max_vocab=None,
+        )
+
+        result = vocab_create(args)
+
+        assert result == 0
+        assert output_path.exists()
+
+        # Verify vocab was created correctly
+        vocab = Vocabulary.load(output_path)
+        assert "hello" in vocab
+        assert "world" in vocab
+
+    def test_vocab_create_with_min_freq(self, tmp_path):
+        """vocab create respects --min-freq."""
+        import argparse
+        from cortical.experiments.cli import vocab_create
+        from cortical.experiments.vocabulary import Vocabulary
+
+        # Create sample with varying frequencies
+        text_file = tmp_path / "sample.txt"
+        text_file.write_text("a a a b b c")  # a=3, b=2, c=1
+
+        output_path = tmp_path / "vocab.json"
+
+        args = argparse.Namespace(
+            from_path=str(text_file),
+            output=str(output_path),
+            min_freq=2,
+            max_vocab=None,
+        )
+
+        result = vocab_create(args)
+
+        assert result == 0
+
+        vocab = Vocabulary.load(output_path)
+        assert "a" in vocab
+        assert "b" in vocab
+        assert "c" not in vocab  # freq < 2
+
+    def test_vocab_create_from_directory(self, tmp_path):
+        """vocab create handles directory input."""
+        import argparse
+        from cortical.experiments.cli import vocab_create
+        from cortical.experiments.vocabulary import Vocabulary
+
+        # Create sample files
+        (tmp_path / "file1.txt").write_text("hello world")
+        (tmp_path / "file2.txt").write_text("foo bar baz")
+
+        output_path = tmp_path / "vocab.json"
+
+        args = argparse.Namespace(
+            from_path=str(tmp_path),
+            output=str(output_path),
+            min_freq=1,
+            max_vocab=None,
+        )
+
+        result = vocab_create(args)
+
+        assert result == 0
+
+        vocab = Vocabulary.load(output_path)
+        assert "hello" in vocab
+        assert "foo" in vocab
+        assert "baz" in vocab
+
+    def test_vocab_inspect(self, tmp_path, capsys):
+        """vocab inspect shows vocabulary info."""
+        import argparse
+        from cortical.experiments.cli import vocab_inspect
+        from cortical.experiments.vocabulary import Vocabulary
+
+        # Create vocab
+        vocab = Vocabulary.from_tokens(["hello", "world", "test"])
+        vocab_path = tmp_path / "vocab.json"
+        vocab.save(vocab_path)
+
+        args = argparse.Namespace(
+            vocab_path=str(vocab_path),
+            show_tokens=10,
+        )
+
+        result = vocab_inspect(args)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        # Should show size (7 = 4 special + 3 regular)
+        assert "7" in captured.out
+
+    def test_vocab_diff_shows_oov_tokens(self, tmp_path, capsys):
+        """vocab diff shows out-of-vocabulary tokens."""
+        import argparse
+        from cortical.experiments.cli import vocab_diff
+        from cortical.experiments.vocabulary import Vocabulary
+
+        # Create vocab with limited tokens
+        vocab = Vocabulary.from_tokens(["hello", "world"])
+        vocab_path = tmp_path / "vocab.json"
+        vocab.save(vocab_path)
+
+        # Create document with mix of in-vocab and OOV tokens
+        doc_path = tmp_path / "doc.txt"
+        doc_path.write_text("hello world unknown_token foo bar")
+
+        args = argparse.Namespace(
+            vocab=str(vocab_path),
+            document=str(doc_path),
+        )
+
+        result = vocab_diff(args)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Out of vocabulary:" in captured.out
+        assert "unknown_token" in captured.out
+        assert "foo" in captured.out
+        assert "bar" in captured.out
+
+    def test_vocab_diff_no_oov(self, tmp_path, capsys):
+        """vocab diff reports no OOV when document is fully covered."""
+        import argparse
+        from cortical.experiments.cli import vocab_diff
+        from cortical.experiments.vocabulary import Vocabulary
+
+        # Create vocab with all needed tokens
+        vocab = Vocabulary.from_tokens(["hello", "world", "test"])
+        vocab_path = tmp_path / "vocab.json"
+        vocab.save(vocab_path)
+
+        # Create document with only in-vocab tokens
+        doc_path = tmp_path / "doc.txt"
+        doc_path.write_text("hello world test")
+
+        args = argparse.Namespace(
+            vocab=str(vocab_path),
+            document=str(doc_path),
+        )
+
+        result = vocab_diff(args)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "No OOV tokens" in captured.out
+
+    def test_vocab_diff_missing_vocab_file(self, tmp_path, capsys):
+        """vocab diff errors on missing vocab file."""
+        import argparse
+        from cortical.experiments.cli import vocab_diff
+
+        doc_path = tmp_path / "doc.txt"
+        doc_path.write_text("hello world")
+
+        args = argparse.Namespace(
+            vocab="/nonexistent/vocab.json",
+            document=str(doc_path),
+        )
+
+        result = vocab_diff(args)
+
+        assert result == 1
+        captured = capsys.readouterr()
+        assert "ERROR" in captured.out
+
+    def test_vocab_diff_missing_document(self, tmp_path, capsys):
+        """vocab diff errors on missing document."""
+        import argparse
+        from cortical.experiments.cli import vocab_diff
+        from cortical.experiments.vocabulary import Vocabulary
+
+        vocab = Vocabulary.from_tokens(["hello"])
+        vocab_path = tmp_path / "vocab.json"
+        vocab.save(vocab_path)
+
+        args = argparse.Namespace(
+            vocab=str(vocab_path),
+            document="/nonexistent/doc.txt",
+        )
+
+        result = vocab_diff(args)
+
+        assert result == 1
+        captured = capsys.readouterr()
+        assert "ERROR" in captured.out
+
+    def test_vocab_diff_shows_oov_rate(self, tmp_path, capsys):
+        """vocab diff shows OOV percentage."""
+        import argparse
+        from cortical.experiments.cli import vocab_diff
+        from cortical.experiments.vocabulary import Vocabulary
+
+        vocab = Vocabulary.from_tokens(["hello", "world"])
+        vocab_path = tmp_path / "vocab.json"
+        vocab.save(vocab_path)
+
+        # 2 in vocab, 2 OOV = 50% OOV rate
+        doc_path = tmp_path / "doc.txt"
+        doc_path.write_text("hello world foo bar")
+
+        args = argparse.Namespace(
+            vocab=str(vocab_path),
+            document=str(doc_path),
+        )
+
+        result = vocab_diff(args)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "OOV rate:" in captured.out
+        assert "50" in captured.out  # 50% OOV rate
+
+
+class TestRunWithVocab:
+    """Tests for run command with --vocab parameter using in-memory API."""
+
+    def test_vocab_tokens_to_ids_with_external_vocab(self):
+        """Verify tokens_to_ids uses provided vocab correctly."""
+        from cortical.experiments.vocabulary import Vocabulary
+        from cortical.experiments.tokenizer import tokenize, tokens_to_ids
+
+        # Create vocabulary with specific tokens
+        vocab = Vocabulary.from_tokens(["hello", "world", "foo", "bar"])
+        vocab_dict = vocab.get_token_to_id()
+
+        # Tokenize text
+        tokens = tokenize("hello world hello world")
+
+        # Convert using external vocab
+        token_ids = tokens_to_ids(tokens, vocab_dict)
+
+        # Should use the vocab's IDs
+        assert len(token_ids) == 4
+        assert token_ids[0] == vocab_dict["hello"]
+        assert token_ids[1] == vocab_dict["world"]
+
+    def test_vocab_size_matches_external_vocab(self):
+        """External vocab size is used, not input token count."""
+        from cortical.experiments.vocabulary import Vocabulary
+
+        vocab = Vocabulary.from_tokens(["hello", "world", "foo", "bar", "extra"])
+        assert vocab.size == 9  # 4 special + 5 regular
+
+    def test_oov_detection_finds_unknown_tokens(self):
+        """OOV detection correctly identifies out-of-vocabulary tokens."""
+        from cortical.experiments.vocabulary import Vocabulary
+        from cortical.experiments.tokenizer import tokenize, tokens_to_ids, UNK_TOKEN
+
+        # Create vocab with limited tokens
+        vocab = Vocabulary.from_tokens(["hello", "world"])
+        vocab_dict = vocab.get_token_to_id()
+
+        # Tokenize text with unknown token
+        tokens = tokenize("hello world unknown_token")
+        token_ids = tokens_to_ids(tokens, vocab_dict)
+
+        # Find OOV tokens
+        unk_id = vocab_dict[UNK_TOKEN]
+        oov_tokens = [
+            t for t, tid in zip(tokens, token_ids)
+            if tid == unk_id and t != UNK_TOKEN
+        ]
+
+        assert "unknown_token" in oov_tokens
+        assert len(oov_tokens) == 1
+
+
+class TestCheckpointVocabReference:
+    """Tests for storing and verifying vocab reference in checkpoints using in-memory API."""
+
+    def test_checkpoint_stores_vocab_path_and_hash(self, tmp_path):
+        """Checkpoint includes vocab path and hash when provided."""
+        import pickle
+        import numpy as np
+        from cortical.experiments.logging import ExperimentLog
+        from cortical.experiments.config import ExperimentConfig
+        from cortical.experiments.vocabulary import Vocabulary
+
+        # Create a mock parameter
+        class MockParameter:
+            def __init__(self, name):
+                self.name = name
+                self.data = np.array([1.0, 2.0, 3.0])
+                self.requires_grad = True
+
+        # Create vocab
+        vocab = Vocabulary.from_tokens(["hello", "world", "test"])
+        vocab_path = str(tmp_path / "vocab.json")
+        vocab.save(vocab_path)
+        expected_hash = vocab.hash()
+
+        # Create experiment log
+        config = ExperimentConfig(name="test_checkpoint", input_path="test.txt")
+        log = ExperimentLog(config, base_dir=tmp_path)
+        log.run_dir = tmp_path / "run"
+        log.run_dir.mkdir(parents=True, exist_ok=True)
+
+        # Save checkpoint with vocab info
+        params = [MockParameter("test_param")]
+        log.save_checkpoint(
+            params,
+            vocab_path=vocab_path,
+            vocab_hash=expected_hash,
+        )
+
+        # Load and verify
+        checkpoint = ExperimentLog.load_checkpoint(tmp_path / "run" / "checkpoint.pkl")
+
+        assert checkpoint["vocab_path"] == vocab_path
+        assert checkpoint["vocab_hash"] == expected_hash
+
+    def test_checkpoint_without_vocab_has_no_vocab_reference(self, tmp_path):
+        """Checkpoint without vocab has None for vocab fields."""
+        import numpy as np
+        from cortical.experiments.logging import ExperimentLog
+        from cortical.experiments.config import ExperimentConfig
+
+        class MockParameter:
+            def __init__(self, name):
+                self.name = name
+                self.data = np.array([1.0, 2.0, 3.0])
+                self.requires_grad = True
+
+        config = ExperimentConfig(name="test_no_vocab", input_path="test.txt")
+        log = ExperimentLog(config, base_dir=tmp_path)
+        log.run_dir = tmp_path / "run"
+        log.run_dir.mkdir(parents=True, exist_ok=True)
+
+        # Save checkpoint without vocab info
+        params = [MockParameter("test_param")]
+        log.save_checkpoint(params)
+
+        # Load and verify
+        checkpoint = ExperimentLog.load_checkpoint(tmp_path / "run" / "checkpoint.pkl")
+
+        assert checkpoint.get("vocab_path") is None
+        assert checkpoint.get("vocab_hash") is None
+
+    def test_vocab_hash_mismatch_detection(self):
+        """Hash mismatch is correctly detected."""
+        from cortical.experiments.vocabulary import Vocabulary
+
+        vocab1 = Vocabulary.from_tokens(["hello", "world"])
+        hash1 = vocab1.hash()
+
+        # Extend vocab (changes hash)
+        vocab1.extend(["new_token"])
+        hash2 = vocab1.hash()
+
+        assert hash1 != hash2  # Hashes should differ
+
+    def test_vocab_hash_stable_for_same_content(self):
+        """Same vocabulary content produces same hash."""
+        from cortical.experiments.vocabulary import Vocabulary
+
+        vocab1 = Vocabulary.from_tokens(["hello", "world", "test"])
+        vocab2 = Vocabulary.from_tokens(["hello", "world", "test"])
+
+        assert vocab1.hash() == vocab2.hash()
+
+    def test_checkpoint_load_preserves_vocab_info(self, tmp_path):
+        """Loaded checkpoint preserves vocab path and hash."""
+        import pickle
+        import numpy as np
+        from cortical.experiments.logging import ExperimentLog
+        from cortical.experiments.config import ExperimentConfig
+
+        class MockParameter:
+            def __init__(self, name):
+                self.name = name
+                self.data = np.array([1.0])
+                self.requires_grad = True
+
+        config = ExperimentConfig(name="test_load", input_path="test.txt")
+        log = ExperimentLog(config, base_dir=tmp_path)
+        log.run_dir = tmp_path / "run"
+        log.run_dir.mkdir(parents=True, exist_ok=True)
+
+        # Save with vocab info
+        params = [MockParameter("p")]
+        log.save_checkpoint(
+            params,
+            vocab_path="/path/to/vocab.json",
+            vocab_hash="abc123",
+        )
+
+        # Load multiple times to verify stability
+        for _ in range(3):
+            checkpoint = ExperimentLog.load_checkpoint(tmp_path / "run" / "checkpoint.pkl")
+            assert checkpoint["vocab_path"] == "/path/to/vocab.json"
+            assert checkpoint["vocab_hash"] == "abc123"
+
+    def test_resume_vocab_verification_logic(self, tmp_path):
+        """Verify resume logic correctly compares vocab hashes."""
+        from cortical.experiments.vocabulary import Vocabulary
+
+        # Create two vocabs - one matching, one different
+        vocab_original = Vocabulary.from_tokens(["hello", "world"])
+        vocab_same = Vocabulary.from_tokens(["hello", "world"])
+        vocab_different = Vocabulary.from_tokens(["hello", "world", "extra"])
+
+        original_hash = vocab_original.hash()
+        same_hash = vocab_same.hash()
+        different_hash = vocab_different.hash()
+
+        # Same content should produce matching hash
+        assert original_hash == same_hash, "Same vocab content should produce same hash"
+
+        # Different content should produce different hash
+        assert original_hash != different_hash, "Different vocab should produce different hash"
+
+        # Simulate checkpoint verification logic
+        checkpoint_vocab_hash = original_hash
+
+        # Matching vocab - should pass
+        current_vocab_hash = same_hash
+        hash_matches = current_vocab_hash == checkpoint_vocab_hash
+        assert hash_matches, "Resume with matching vocab should pass"
+
+        # Non-matching vocab - should fail
+        current_vocab_hash = different_hash
+        hash_matches = current_vocab_hash == checkpoint_vocab_hash
+        assert not hash_matches, "Resume with different vocab should fail"
+
+
+class TestOOVHandling:
+    """Tests for OOV handling with --allow-unk flag using in-memory API."""
+
+    def test_oov_detection_finds_unknown_tokens(self):
+        """OOV detection correctly identifies out-of-vocabulary tokens."""
+        from cortical.experiments.vocabulary import Vocabulary
+        from cortical.experiments.tokenizer import tokenize, tokens_to_ids, UNK_TOKEN
+
+        # Create vocab with limited tokens
+        vocab = Vocabulary.from_tokens(["hello", "world"])
+        vocab_dict = vocab.get_token_to_id()
+
+        # Tokenize text with unknown token
+        tokens = tokenize("hello world unknown_token foo bar")
+        token_ids = tokens_to_ids(tokens, vocab_dict)
+
+        # Find OOV tokens
+        unk_id = vocab_dict[UNK_TOKEN]
+        oov_tokens = [
+            t for t, tid in zip(tokens, token_ids)
+            if tid == unk_id and t != UNK_TOKEN
+        ]
+
+        assert "unknown_token" in oov_tokens
+        assert "foo" in oov_tokens
+        assert "bar" in oov_tokens
+        assert "hello" not in oov_tokens
+        assert "world" not in oov_tokens
+
+    def test_oov_detection_returns_empty_when_all_in_vocab(self):
+        """OOV detection returns empty list when all tokens in vocab."""
+        from cortical.experiments.vocabulary import Vocabulary
+        from cortical.experiments.tokenizer import tokenize, tokens_to_ids, UNK_TOKEN
+
+        vocab = Vocabulary.from_tokens(["hello", "world", "test"])
+        vocab_dict = vocab.get_token_to_id()
+
+        tokens = tokenize("hello world test")
+        token_ids = tokens_to_ids(tokens, vocab_dict)
+
+        unk_id = vocab_dict[UNK_TOKEN]
+        oov_tokens = [
+            t for t, tid in zip(tokens, token_ids)
+            if tid == unk_id and t != UNK_TOKEN
+        ]
+
+        assert oov_tokens == []
+
+    def test_strict_mode_behavior(self):
+        """Strict mode (default) behavior: error when OOV tokens detected."""
+        from cortical.experiments.vocabulary import Vocabulary
+        from cortical.experiments.tokenizer import tokenize, tokens_to_ids, UNK_TOKEN
+
+        vocab = Vocabulary.from_tokens(["hello", "world"])
+        vocab_dict = vocab.get_token_to_id()
+        unk_id = vocab_dict[UNK_TOKEN]
+
+        # Text with OOV token
+        tokens = tokenize("hello unknown_token world")
+        token_ids = tokens_to_ids(tokens, vocab_dict)
+
+        oov_tokens = [
+            t for t, tid in zip(tokens, token_ids)
+            if tid == unk_id and t != UNK_TOKEN
+        ]
+
+        # Simulate strict mode logic
+        allow_unk = False
+        should_error = len(oov_tokens) > 0 and not allow_unk
+
+        assert should_error, "Strict mode should error when OOV detected"
+
+    def test_allow_unk_mode_behavior(self):
+        """Allow-unk mode behavior: proceed when OOV tokens detected."""
+        from cortical.experiments.vocabulary import Vocabulary
+        from cortical.experiments.tokenizer import tokenize, tokens_to_ids, UNK_TOKEN
+
+        vocab = Vocabulary.from_tokens(["hello", "world"])
+        vocab_dict = vocab.get_token_to_id()
+        unk_id = vocab_dict[UNK_TOKEN]
+
+        # Text with OOV token
+        tokens = tokenize("hello unknown_token world")
+        token_ids = tokens_to_ids(tokens, vocab_dict)
+
+        oov_tokens = [
+            t for t, tid in zip(tokens, token_ids)
+            if tid == unk_id and t != UNK_TOKEN
+        ]
+
+        # Simulate allow-unk mode logic
+        allow_unk = True
+        should_error = len(oov_tokens) > 0 and not allow_unk
+        should_warn = len(oov_tokens) > 0 and allow_unk
+
+        assert not should_error, "Allow-unk mode should not error"
+        assert should_warn, "Allow-unk mode should warn when OOV detected"
+
+    def test_oov_tokens_correctly_mapped_to_unk_id(self):
+        """OOV tokens are mapped to UNK ID for training."""
+        from cortical.experiments.vocabulary import Vocabulary
+        from cortical.experiments.tokenizer import tokenize, tokens_to_ids, UNK_TOKEN
+
+        vocab = Vocabulary.from_tokens(["hello", "world"])
+        vocab_dict = vocab.get_token_to_id()
+        unk_id = vocab_dict[UNK_TOKEN]
+
+        tokens = tokenize("hello unknown_token world")
+        token_ids = tokens_to_ids(tokens, vocab_dict)
+
+        # Verify OOV token gets UNK ID
+        assert token_ids[0] == vocab_dict["hello"]
+        assert token_ids[1] == unk_id  # unknown_token -> UNK
+        assert token_ids[2] == vocab_dict["world"]

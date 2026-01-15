@@ -23,6 +23,11 @@ import numpy as np
 from .config import ExperimentConfig
 from .logging import ExperimentLog, ExperimentMetrics, list_experiments
 
+# Token embedding initialization scale
+# This value is used to scale random embeddings for stable training.
+# Must match between training (cli.py) and inference (predict.py).
+EMBEDDING_INIT_SCALE = 0.35
+
 
 def create_parser() -> argparse.ArgumentParser:
     """Create the argument parser."""
@@ -145,6 +150,97 @@ def create_parser() -> argparse.ArgumentParser:
         help="Loss function: 'mse' for embedding matching, 'cross_entropy' for language modeling (default: mse)",
     )
 
+    # ============================================================================
+    # ADVANCED TRAINING FEATURES
+    # ============================================================================
+
+    # Resume training from checkpoint
+    run_parser.add_argument(
+        "--resume",
+        type=str,
+        default=None,
+        metavar="CHECKPOINT",
+        help="Resume training from checkpoint.pkl path (restores parameters, optimizer, scheduler)",
+    )
+
+    # Vocabulary file
+    run_parser.add_argument(
+        "--vocab",
+        type=str,
+        default=None,
+        metavar="VOCAB_FILE",
+        help="Use pre-built vocabulary JSON file instead of building from input",
+    )
+    run_parser.add_argument(
+        "--allow-unk",
+        action="store_true",
+        help="Allow out-of-vocabulary tokens (map to <UNK> with warning). "
+             "Default: error on OOV tokens",
+    )
+
+    # Early stopping
+    run_parser.add_argument(
+        "--early-stop",
+        type=int,
+        default=None,
+        metavar="PATIENCE",
+        help="Stop training if val loss doesn't improve for N epochs. "
+             "Requires --val-split > 0. Restores best model parameters at end.",
+    )
+    run_parser.add_argument(
+        "--early-stop-min-delta",
+        type=float,
+        default=1e-4,
+        metavar="DELTA",
+        help="Minimum improvement to reset early stop patience (default: 1e-4)",
+    )
+
+    # Learning rate scheduling
+    run_parser.add_argument(
+        "--lr-schedule",
+        type=str,
+        choices=["step", "cosine", "plateau"],
+        default=None,
+        metavar="TYPE",
+        help="LR schedule: 'step' (decay every N epochs), 'cosine' (smooth decay), "
+             "or 'plateau' (reduce on val loss stall)",
+    )
+    run_parser.add_argument(
+        "--lr-step-size",
+        type=int,
+        default=100,
+        metavar="N",
+        help="Epochs between LR reductions for 'step' schedule (default: 100)",
+    )
+    run_parser.add_argument(
+        "--lr-gamma",
+        type=float,
+        default=0.1,
+        metavar="FACTOR",
+        help="LR decay factor for 'step' and 'plateau' schedules (default: 0.1)",
+    )
+    run_parser.add_argument(
+        "--lr-min",
+        type=float,
+        default=1e-6,
+        metavar="LR",
+        help="Minimum learning rate for 'cosine' and 'plateau' (default: 1e-6)",
+    )
+    run_parser.add_argument(
+        "--warmup-epochs",
+        type=int,
+        default=0,
+        metavar="N",
+        help="Number of epochs for linear LR warmup (default: 0, disabled)",
+    )
+    run_parser.add_argument(
+        "--warmup-start-lr",
+        type=float,
+        default=0.0,
+        metavar="LR",
+        help="Starting learning rate for warmup (default: 0)",
+    )
+
     # Compare command
     compare_parser = subparsers.add_parser("compare", help="Compare experiment results")
     compare_parser.add_argument(
@@ -163,7 +259,89 @@ def create_parser() -> argparse.ArgumentParser:
         help="Base directory for experiments (default: experiments/runs)",
     )
 
+    # Vocab command (with subcommands)
+    vocab_parser = subparsers.add_parser("vocab", help="Vocabulary management")
+    vocab_subparsers = vocab_parser.add_subparsers(dest="vocab_command", help="Vocab commands")
+
+    # vocab create
+    vocab_create_parser = vocab_subparsers.add_parser("create", help="Create vocabulary from corpus")
+    vocab_create_parser.add_argument(
+        "--from",
+        dest="from_path",
+        type=str,
+        required=True,
+        help="Input file or directory (loads all .txt files from directory)",
+    )
+    vocab_create_parser.add_argument(
+        "--output", "-o",
+        type=str,
+        required=True,
+        help="Output vocabulary JSON file",
+    )
+    vocab_create_parser.add_argument(
+        "--min-freq",
+        type=int,
+        default=1,
+        help="Minimum token frequency for inclusion (default: 1)",
+    )
+    vocab_create_parser.add_argument(
+        "--max-vocab",
+        type=int,
+        default=None,
+        help="Maximum vocabulary size (default: unlimited)",
+    )
+
+    # vocab inspect
+    vocab_inspect_parser = vocab_subparsers.add_parser("inspect", help="Inspect vocabulary file")
+    vocab_inspect_parser.add_argument(
+        "vocab_path",
+        type=str,
+        help="Path to vocabulary JSON file",
+    )
+    vocab_inspect_parser.add_argument(
+        "--show-tokens",
+        type=int,
+        default=10,
+        help="Number of sample tokens to show (default: 10)",
+    )
+
+    # vocab diff
+    vocab_diff_parser = vocab_subparsers.add_parser("diff", help="Compare document against vocabulary")
+    vocab_diff_parser.add_argument(
+        "--vocab",
+        type=str,
+        required=True,
+        help="Path to vocabulary JSON file",
+    )
+    vocab_diff_parser.add_argument(
+        "--document",
+        type=str,
+        required=True,
+        help="Path to document file",
+    )
+
     return parser
+
+
+def _validate_feature_requirements(args: argparse.Namespace) -> None:
+    """
+    Validate feature requirements and dependencies.
+
+    This function validates that CLI options are properly configured
+    and have required dependencies.
+
+    Features:
+        - --resume: Checkpoint loading with optimizer/scheduler state
+        - --lr-schedule: Learning rate scheduling (step, cosine, plateau)
+        - --warmup-epochs: Linear LR warmup to prevent gradient explosion
+        - --early-stop: Patience-based early stopping with best model tracking
+    """
+    # --early-stop requires --val-split > 0
+    if args.early_stop is not None and args.val_split <= 0:
+        raise ValueError(
+            "Early stopping (--early-stop) requires validation split.\n"
+            "Please add --val-split 0.1 (or similar) to enable validation loss monitoring."
+        )
 
 
 def run_experiment(args: argparse.Namespace) -> int:
@@ -175,6 +353,13 @@ def run_experiment(args: argparse.Namespace) -> int:
     from cortical.experiments.tokenizer import tokenize, build_vocab, tokens_to_ids, load_text
     from cortical.experiments.position import create_position_encoding
     from cortical.experiments.projection import VocabProjection, CrossEntropyWithLogits
+    from cortical.experiments.scheduler import create_scheduler
+    from cortical.experiments.early_stopping import EarlyStopper
+
+    # ============================================================================
+    # Validate feature requirements
+    # ============================================================================
+    _validate_feature_requirements(args)
 
     # Create config
     config = ExperimentConfig.from_args(args)
@@ -201,17 +386,66 @@ def run_experiment(args: argparse.Namespace) -> int:
         print(f"Loaded {file_count} files from {input_path}")
     else:
         print(f"Loaded from {input_path}")
-    vocab, id_to_token = build_vocab(tokens)
+
+    # Use provided vocabulary or build from input
+    vocab_path = None
+    vocab_hash = None
+    if args.vocab:
+        from .vocabulary import Vocabulary
+        vocab_obj = Vocabulary.load(args.vocab)
+        vocab = vocab_obj.get_token_to_id()
+        id_to_token = vocab_obj.get_id_to_token()
+        vocab_path = args.vocab
+        vocab_hash = vocab_obj.hash()
+        print(f"Using vocabulary from: {args.vocab}")
+    else:
+        vocab, id_to_token = build_vocab(tokens)
+
     token_ids = tokens_to_ids(tokens, vocab)
 
-    print(f"Loaded {len(tokens)} tokens, vocabulary size: {len(vocab)}")
+    # Detect OOV tokens when using external vocab
+    # TODO: Consider adding --extend-vocab flag to auto-extend vocab with OOV tokens
+    # TODO: Consider logging OOV tokens to file for later analysis
+    if args.vocab:
+        from .tokenizer import UNK_TOKEN
+        unk_id = vocab.get(UNK_TOKEN, 1)
+        oov_tokens = []
+        for i, (token, token_id) in enumerate(zip(tokens, token_ids)):
+            if token_id == unk_id and token != UNK_TOKEN:
+                oov_tokens.append(token)
+
+        if oov_tokens:
+            unique_oov = sorted(set(oov_tokens))
+            if args.allow_unk:
+                # --allow-unk: warn but continue
+                print(f"WARNING: {len(oov_tokens)} tokens mapped to <UNK> ({len(unique_oov)} unique)")
+                if len(unique_oov) <= 10:
+                    print(f"  OOV tokens: {unique_oov}")
+                else:
+                    print(f"  First 10 OOV: {unique_oov[:10]}")
+                    print(f"  ... and {len(unique_oov) - 10} more")
+            else:
+                # Default strict mode: error on OOV
+                print(f"ERROR: {len(oov_tokens)} OOV tokens detected ({len(unique_oov)} unique)")
+                if len(unique_oov) <= 10:
+                    print(f"  OOV tokens: {unique_oov}")
+                else:
+                    print(f"  First 10 OOV: {unique_oov[:10]}")
+                    print(f"  ... and {len(unique_oov) - 10} more")
+                print()
+                print("Options:")
+                print("  --allow-unk    Map OOV tokens to <UNK> and continue")
+                print("  vocab diff     Check coverage before training")
+                return 1
+
+    print(f"Loaded {len(tokens)} tokens, vocabulary size: {len(vocab)} tokens")
     print()
 
     # Set seed for reproducibility
     np.random.seed(config.seed)
 
     # Create embeddings
-    embeddings = np.random.randn(len(vocab), config.embedding_dim) * 0.35
+    embeddings = np.random.randn(len(vocab), config.embedding_dim) * EMBEDDING_INIT_SCALE
 
     # Create position encoding if requested
     pos_encoding = create_position_encoding(
@@ -303,12 +537,104 @@ def run_experiment(args: argparse.Namespace) -> int:
     targets = train_targets  # Use train_targets for training loop
 
     optimizer = Adam(all_params, lr=config.lr, weight_decay=config.weight_decay)
+    # TODO: Add --profile CLI flag to enable profiling with memory tracking.
+    # Simplest option: always track memory when profiling is enabled.
     kernel = ExperimentKernel(
         graph, optimizer, loss_fn,
         profiling=False,
         position_encoding=pos_encoding,
         vocab_projection=vocab_proj,
     )
+
+    # Setup LR scheduler if requested
+    scheduler = None
+    if config.lr_schedule is not None:
+        scheduler = create_scheduler(
+            optimizer,
+            schedule_type=config.lr_schedule,
+            epochs=config.epochs,
+            step_size=config.lr_step_size,
+            gamma=config.lr_gamma,
+            lr_min=config.lr_min,
+            warmup_epochs=config.warmup_epochs,
+            warmup_start_lr=config.warmup_start_lr,
+        )
+        schedule_info = f"Using {config.lr_schedule} LR schedule (gamma={config.lr_gamma})"
+        if config.warmup_epochs > 0:
+            schedule_info += f" with {config.warmup_epochs} warmup epochs"
+        print(schedule_info)
+
+    # Setup early stopping if requested
+    early_stopper = None
+    best_param_snapshot = None
+    if args.early_stop is not None:
+        early_stopper = EarlyStopper(
+            patience=args.early_stop,
+            min_delta=args.early_stop_min_delta,
+            mode="min",  # Lower val_loss is better
+        )
+        print(f"Using early stopping (patience={args.early_stop}, min_delta={args.early_stop_min_delta})")
+
+    # Helper functions for parameter snapshots (for early stopping)
+    def save_param_snapshot(params):
+        """Save a snapshot of parameter values."""
+        return {p.name: p.data.copy() for p in params}
+
+    def restore_param_snapshot(params, snapshot):
+        """Restore parameters from snapshot."""
+        for p in params:
+            if p.name in snapshot:
+                p.data[:] = snapshot[p.name]
+
+    # ========================================================================
+    # Resume from checkpoint if requested
+    # ========================================================================
+    start_epoch = 0
+    if args.resume is not None:
+        checkpoint_path = Path(args.resume)
+        if not checkpoint_path.exists():
+            print(f"ERROR: Checkpoint not found: {checkpoint_path}")
+            return 1
+
+        print(f"Resuming from checkpoint: {checkpoint_path}")
+        checkpoint = ExperimentLog.load_checkpoint(checkpoint_path)
+
+        # Restore parameters
+        restored_count = ExperimentLog.restore_parameters(all_params, checkpoint)
+        print(f"  Restored {restored_count}/{len(all_params)} parameters")
+
+        # Restore optimizer state
+        if checkpoint.get("optimizer_state") is not None:
+            optimizer.load_state_dict(checkpoint["optimizer_state"])
+            print(f"  Restored optimizer state (step={optimizer.t}, lr={optimizer.lr:.2e})")
+
+        # Restore scheduler state if present and scheduler is configured
+        if scheduler is not None and checkpoint.get("scheduler_state") is not None:
+            scheduler.load_state_dict(checkpoint["scheduler_state"])
+            print(f"  Restored scheduler state (last_epoch={scheduler.last_epoch})")
+
+        # Get starting epoch from checkpoint
+        if checkpoint.get("epoch") is not None:
+            start_epoch = checkpoint["epoch"]
+            print(f"  Resuming from epoch {start_epoch}")
+
+        # Verify vocabulary hash matches if checkpoint was saved with vocab
+        # TODO: Consider adding --force flag to bypass vocab hash verification
+        checkpoint_vocab_hash = checkpoint.get("vocab_hash")
+        if checkpoint_vocab_hash is not None:
+            if vocab_hash is None:
+                print("ERROR: Checkpoint was trained with --vocab but no --vocab provided for resume")
+                print(f"  Checkpoint vocab hash: {checkpoint_vocab_hash}")
+                return 1
+            if vocab_hash != checkpoint_vocab_hash:
+                print("ERROR: Vocabulary hash mismatch - vocab file has changed since checkpoint was saved")
+                print(f"  Checkpoint vocab hash: {checkpoint_vocab_hash}")
+                print(f"  Current vocab hash:    {vocab_hash}")
+                print("  Use the same vocab file, or start training from scratch")
+                return 1
+            print(f"  Vocabulary hash verified: {vocab_hash}")
+
+        print()
 
     # Setup logging
     log = ExperimentLog(config)
@@ -370,13 +696,18 @@ def run_experiment(args: argparse.Namespace) -> int:
         return correct / total if total > 0 else 0.0, correct, total
 
     # Training loop with optional validation
-    print("Training...")
+    if start_epoch > 0:
+        print(f"Continuing training from epoch {start_epoch} to {config.epochs}...")
+    else:
+        print("Training...")
     start_time = time.time()
 
     train_losses = []
     val_losses = []
+    stopped_early = False
+    final_epoch = config.epochs
 
-    for epoch in range(config.epochs):
+    for epoch in range(start_epoch, config.epochs):
         # Training step - extract loss value from StepMetrics
         step_metrics = kernel.train_step(
             targets=targets,
@@ -396,14 +727,51 @@ def run_experiment(args: argparse.Namespace) -> int:
         # Log epoch
         log.log_epoch(train_loss, val_loss=val_loss)
 
+        # Early stopping check
+        if early_stopper is not None and val_loss is not None:
+            result = early_stopper.step(val_loss, epoch=epoch)
+
+            # Save best parameters when val_loss improves
+            if result.is_best:
+                best_param_snapshot = save_param_snapshot(all_params)
+
+            # Check if we should stop
+            if result.should_stop:
+                stopped_early = True
+                final_epoch = epoch + 1
+                if args.verbose:
+                    print(f"Early stopping at epoch {epoch + 1} (patience={args.early_stop} exceeded)")
+                    print(f"  Best val_loss: {early_stopper.best:.4f}")
+                break
+
+        # Update learning rate schedule
+        if scheduler is not None:
+            if config.lr_schedule == "plateau":
+                # ReduceLROnPlateau needs metric (use val_loss or train_loss)
+                metric = val_loss if val_loss is not None else train_loss
+                scheduler.step(metric)
+            else:
+                # StepLR and CosineAnnealing use epoch
+                scheduler.step(epoch=epoch)
+
         # Verbose output
         if args.verbose and (epoch + 1) % max(1, config.epochs // 20) == 0:
             msg = f"Epoch {epoch + 1}/{config.epochs}: train_loss={train_loss:.4f}"
             if val_loss is not None:
                 msg += f", val_loss={val_loss:.4f}"
+            if scheduler is not None:
+                msg += f", lr={optimizer.lr:.2e}"
+            if early_stopper is not None:
+                msg += f", patience={early_stopper.patience - early_stopper.counter}"
             print(msg)
 
     training_time = time.time() - start_time
+
+    # Restore best parameters if early stopped
+    if stopped_early and best_param_snapshot is not None:
+        restore_param_snapshot(all_params, best_param_snapshot)
+        if args.verbose:
+            print(f"Restored best parameters (val_loss={early_stopper.best:.4f})")
 
     # Evaluate final accuracy
     all_positions = list(range(len(tokens) - 1))
@@ -432,14 +800,24 @@ def run_experiment(args: argparse.Namespace) -> int:
     # Save results
     run_dir = log.save()
 
-    # Save model checkpoint
-    checkpoint_path = log.save_checkpoint(all_params)
+    # Save model checkpoint (includes optimizer and scheduler state for resume)
+    checkpoint_path = log.save_checkpoint(
+        all_params,
+        optimizer=optimizer,
+        epoch=final_epoch,  # Actual final epoch (may differ if early stopped)
+        scheduler=scheduler,  # May be None if no LR schedule
+        vocab_path=vocab_path,
+        vocab_hash=vocab_hash,
+    )
 
     # Print results
     print()
     print("=" * 60)
     print("RESULTS")
     print("=" * 60)
+    if stopped_early:
+        print(f"  Early stopped at epoch {final_epoch}/{config.epochs}")
+        print(f"  Best val_loss: {early_stopper.best:.4f}")
     print(f"  Final train loss: {train_losses[-1]:.4f}")
     print(f"  Min train loss: {min(train_losses):.4f}")
     print(f"  Train accuracy: {train_accuracy:.1%} ({train_correct}/{train_total})")
@@ -514,6 +892,129 @@ def compare_experiments(args: argparse.Namespace) -> int:
     return 0
 
 
+def vocab_create(args: argparse.Namespace) -> int:
+    """Create vocabulary from corpus."""
+    import json
+    from .vocabulary import Vocabulary
+
+    print(f"Creating vocabulary from: {args.from_path}")
+
+    try:
+        vocab = Vocabulary.from_file(
+            args.from_path,
+            min_freq=args.min_freq,
+            max_vocab_size=args.max_vocab,
+        )
+    except FileNotFoundError as e:
+        print(f"ERROR: {e}")
+        return 1
+
+    vocab.save(args.output)
+
+    print(f"Vocabulary created: {vocab.size} tokens")
+    print(f"  - Special tokens: 4")
+    print(f"  - Regular tokens: {vocab.size - 4}")
+    print(f"  - Min frequency: {args.min_freq}")
+    print(f"  - Source files: {len(vocab.source_files)}")
+    print(f"Saved to: {args.output}")
+
+    return 0
+
+
+def vocab_inspect(args: argparse.Namespace) -> int:
+    """Inspect vocabulary file."""
+    import json
+    from .vocabulary import Vocabulary
+
+    try:
+        vocab = Vocabulary.load(args.vocab_path)
+    except FileNotFoundError:
+        print(f"ERROR: Vocabulary file not found: {args.vocab_path}")
+        return 1
+    except json.JSONDecodeError as e:
+        print(f"ERROR: Invalid JSON in vocabulary file: {e}")
+        return 1
+
+    print(f"\nVocabulary: {args.vocab_path}")
+    print("-" * 50)
+    print(f"Size: {vocab.size} tokens")
+    print(f"Hash: {vocab.hash()}")
+    print(f"Source files: {vocab.source_files}")
+
+    # Show sample tokens
+    id_to_token = vocab.get_id_to_token()
+    print(f"\nSample tokens (first {args.show_tokens}):")
+    for i in range(min(args.show_tokens, vocab.size)):
+        token = id_to_token.get(i, "?")
+        print(f"  {i}: {token!r}")
+
+    print()
+    return 0
+
+
+def vocab_diff(args: argparse.Namespace) -> int:
+    """Compare document against vocabulary to find OOV tokens."""
+    import json
+    from pathlib import Path
+    from .vocabulary import Vocabulary
+    from .tokenizer import tokenize, load_text, UNK_TOKEN
+
+    # Load vocabulary
+    try:
+        vocab = Vocabulary.load(args.vocab)
+    except FileNotFoundError:
+        print(f"ERROR: Vocabulary file not found: {args.vocab}")
+        return 1
+    except json.JSONDecodeError as e:
+        print(f"ERROR: Invalid JSON in vocabulary file: {e}")
+        return 1
+
+    # Load and tokenize document
+    doc_path = Path(args.document)
+    if not doc_path.exists():
+        print(f"ERROR: Document not found: {args.document}")
+        return 1
+
+    text = load_text(doc_path)
+    tokens = tokenize(text)
+    vocab_dict = vocab.get_token_to_id()
+
+    # Find OOV tokens
+    unk_id = vocab_dict.get(UNK_TOKEN, 1)
+    oov_tokens = []
+    in_vocab_tokens = []
+
+    for token in tokens:
+        if token in vocab_dict and vocab_dict[token] != unk_id:
+            in_vocab_tokens.append(token)
+        else:
+            oov_tokens.append(token)
+
+    unique_oov = sorted(set(oov_tokens))
+    unique_in_vocab = sorted(set(in_vocab_tokens))
+
+    print(f"\nVocabulary: {args.vocab} ({vocab.size} tokens)")
+    print(f"Document: {args.document} ({len(tokens)} tokens)")
+    print("-" * 50)
+    print(f"In vocabulary: {len(in_vocab_tokens)} tokens ({len(unique_in_vocab)} unique)")
+    print(f"Out of vocabulary: {len(oov_tokens)} tokens ({len(unique_oov)} unique)")
+
+    if oov_tokens:
+        oov_pct = len(oov_tokens) / len(tokens) * 100
+        print(f"\nOOV rate: {oov_pct:.1f}%")
+        print(f"\nOOV tokens ({len(unique_oov)}):")
+        for token in unique_oov[:20]:
+            count = oov_tokens.count(token)
+            print(f"  {token!r} (x{count})")
+        if len(unique_oov) > 20:
+            print(f"  ... and {len(unique_oov) - 20} more")
+    else:
+        print("\nNo OOV tokens - document fully covered by vocabulary.")
+
+    print()
+    return 0
+
+
 def list_all_experiments(args: argparse.Namespace) -> int:
     """List all experiments."""
     base_dir = Path(args.dir)
@@ -558,6 +1059,16 @@ def main(argv: Optional[List[str]] = None) -> int:
         return compare_experiments(args)
     elif args.command == "list":
         return list_all_experiments(args)
+    elif args.command == "vocab":
+        if args.vocab_command == "create":
+            return vocab_create(args)
+        elif args.vocab_command == "inspect":
+            return vocab_inspect(args)
+        elif args.vocab_command == "diff":
+            return vocab_diff(args)
+        else:
+            parser.print_help()
+            return 1
     else:
         parser.print_help()
         return 1
