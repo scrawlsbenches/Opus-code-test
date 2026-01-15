@@ -475,7 +475,7 @@ class TestOptimizerStateRestoration:
         from cortical.graph.trainable import Parameter, Adam
 
         params = [Parameter(data=np.random.randn(10), name="test")]
-        optimizer1 = Adam(params, lr=0.01, beta1=0.9, beta2=0.999)
+        optimizer1 = Adam(params, lr=0.01, betas=(0.9, 0.999))
 
         # Run several steps to build up momentum
         for _ in range(10):
