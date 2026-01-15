@@ -355,3 +355,55 @@ class TestCausalChaining:
 
         assert id1 in event2.causal_parents
         assert id2 in event3.causal_parents
+
+
+class TestRecoveryProtocol:
+    """Test the recovery protocol (safety net)."""
+
+    def test_recover_returns_formatted_string(self):
+        """Recovery should return a formatted markdown string."""
+        memory = CognitiveMemory(persistent=False)
+        memory.observe_user_request("fix the bug")
+        memory.intend("fix bug", priority="high")
+        memory.learn("null error", "add null check")
+
+        result = memory.recover()
+        assert "## Recovery Summary" in result
+        assert "Pending Work" in result
+        assert "fix bug" in result
+
+    def test_recover_includes_user_requests(self):
+        """Recovery should include user requests."""
+        memory = CognitiveMemory(persistent=False)
+        memory.observe_user_request("implement feature X")
+
+        result = memory.recover()
+        assert "implement feature X" in result
+
+    def test_recover_includes_learnings(self):
+        """Recovery should include recent learnings."""
+        memory = CognitiveMemory(persistent=False)
+        memory.learn("problem A", "solution B")
+
+        result = memory.recover()
+        assert "problem A" in result
+        assert "solution B" in result
+
+    def test_recover_records_recovery_event(self):
+        """Recovery should record that it happened."""
+        memory = CognitiveMemory(persistent=False)
+        memory.recover()
+
+        stats = memory.stats
+        assert stats['by_type'].get('METACOGNITION', 0) >= 1
+
+    def test_recall_user_requests_returns_list(self):
+        """Should return list of user request strings."""
+        memory = CognitiveMemory(persistent=False)
+        memory.observe_user_request("request 1")
+        memory.observe_user_request("request 2")
+
+        requests = memory.recall_user_requests()
+        assert len(requests) == 2
+        assert "request 1" in requests
+        assert "request 2" in requests

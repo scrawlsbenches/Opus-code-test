@@ -317,6 +317,88 @@ class CognitiveMemory:
         )
         return self._append(event)
 
+    # --- Recovery Protocol (The Safety Net) ---
+
+    def recover(self) -> str:
+        """
+        The safety net. Call this when confused/daydreaming.
+
+        Synthesizes a recovery summary from:
+        1. Pending intentions (what's incomplete)
+        2. Recent learnings (what was discovered)
+        3. User requests (what was originally asked)
+        4. Recent errors (what went wrong)
+
+        Returns a formatted string that can restore context.
+        """
+        # Gather pending work
+        pending = self.pending_intentions()
+
+        # Gather learnings
+        learnings = self.recall_learnings()[-5:]  # Last 5
+
+        # Gather user requests
+        user_requests = []
+        for obs in self.recall_observations():
+            if obs['content'].get('observation') == 'user_request':
+                user_requests.append(obs['content'].get('request', 'unknown'))
+        user_requests = user_requests[-3:]  # Last 3
+
+        # Gather recent errors
+        errors = self.recall_errors()[-3:]  # Last 3
+
+        # Build recovery summary
+        lines = ["## Recovery Summary", ""]
+
+        # Stats
+        stats = self.stats
+        lines.append(f"**Memory State:** {stats['total_events']} events, {stats['indexed_concepts']} concepts")
+        lines.append("")
+
+        # Pending work (most important)
+        if pending:
+            lines.append(f"**Pending Work:** {len(pending)} tasks")
+            for p in pending:
+                lines.append(f"- [{p['priority']}] {p['goal']}")
+            lines.append("")
+        else:
+            lines.append("**Pending Work:** None")
+            lines.append("")
+
+        # User requests (intent anchors)
+        if user_requests:
+            lines.append("**User Requests:**")
+            for req in user_requests:
+                lines.append(f"- {req}")
+            lines.append("")
+
+        # Learnings
+        if learnings:
+            lines.append("**Recent Learnings:**")
+            for l in learnings:
+                lines.append(f"- {l['problem']} -> {l['solution']}")
+            lines.append("")
+
+        # Errors (if any)
+        if errors:
+            lines.append("**Recent Errors:**")
+            for err in errors:
+                lines.append(f"- {err.get('error', 'unknown')[:60]}")
+            lines.append("")
+
+        # Record that recovery happened
+        self.reflect("Recovery protocol executed", category="recovery")
+
+        return "\n".join(lines)
+
+    def recall_user_requests(self) -> List[str]:
+        """Get all user requests (for intent tracking)."""
+        requests = []
+        for obs in self.recall_observations():
+            if obs['content'].get('observation') == 'user_request':
+                requests.append(obs['content'].get('request', 'unknown'))
+        return requests
+
     # --- Querying Memory ---
 
     def recall_observations(self, concept: str = None) -> List[Dict]:
