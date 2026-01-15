@@ -173,8 +173,10 @@ class KVCache:
                 self.key = torch.cat([sink_k, recent_k], dim=2)
                 self.value = torch.cat([sink_v, recent_v], dim=2)
 
-                # Position offset tracks where "recent" starts in absolute terms
-                self._position_offset = current_len - keep_recent
+                # Position offset accumulates to track absolute positions
+                # The evicted tokens are those between sink and recent
+                evicted_middle = current_len - self.sink_tokens - keep_recent
+                self._position_offset += evicted_middle
             else:
                 # Fallback to sliding window if not enough tokens for sinks
                 self.key = self.key[:, :, tokens_to_remove:, :]
