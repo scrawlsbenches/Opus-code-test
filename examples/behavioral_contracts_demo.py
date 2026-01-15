@@ -24,11 +24,10 @@ Run with:
 from __future__ import annotations
 
 import sys
-from collections import OrderedDict
 from datetime import datetime, timezone, timedelta
 from enum import Enum, auto
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Sequence, Set
+from typing import Any, Dict, List, Optional
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -53,160 +52,7 @@ from cortical.cel.core.events import (
     Compaction,
 )
 from cortical.cel.core.references import MerkleRoot, EventHorizon
-
-
-# =============================================================================
-# STEP 0: In-Memory EventStore (implements CEL EventStore protocol)
-# =============================================================================
-
-class MemoryEventStore:
-    """
-    In-memory implementation of CEL EventStore protocol.
-
-    This is a lightweight store for demonstrations and testing.
-    In production, use StreamingEventStore or SQLiteEventStore.
-
-    Features:
-    - Append-only semantics (immutable events)
-    - Content-addressed IDs (via CognitiveEvent.id)
-    - Causal ordering preserved
-    - Temporal query support (iterate with from_event/to_event)
-    """
-
-    def __init__(self):
-        self._events: OrderedDict[str, CognitiveEvent] = OrderedDict()
-        self._children: Dict[str, Set[str]] = {}  # parent_id -> child_ids
-
-    def append(self, event: CognitiveEvent) -> MerkleRoot:
-        """Append event to store. Returns Merkle root (content hash)."""
-        event_id = event.id
-
-        # Idempotent - don't add duplicates
-        if event_id in self._events:
-            return MerkleRoot(event_id)
-
-        # Track causal relationships
-        for parent_id in event.causal_parents:
-            if parent_id not in self._children:
-                self._children[parent_id] = set()
-            self._children[parent_id].add(event_id)
-
-        self._events[event_id] = event
-        return MerkleRoot(event_id)
-
-    def get(self, event_id: str) -> Optional[CognitiveEvent]:
-        """Retrieve event by ID."""
-        return self._events.get(event_id)
-
-    def iterate(
-        self,
-        from_event: Optional[str] = None,
-        to_event: Optional[str] = None,
-        event_types: Optional[Sequence[EventType]] = None,
-    ) -> Iterator[CognitiveEvent]:
-        """Iterate events in causal order."""
-        started = from_event is None
-
-        for event_id, event in self._events.items():
-            if not started:
-                if event_id == from_event:
-                    started = True
-                continue
-
-            if event_types is None or event.event_type in event_types:
-                yield event
-
-            if to_event and event_id == to_event:
-                break
-
-    def heads(self) -> List[MerkleRoot]:
-        """Get events with no children (branch heads)."""
-        all_ids = set(self._events.keys())
-        children = set()
-        for child_set in self._children.values():
-            children.update(child_set)
-
-        head_ids = all_ids - children
-        return [MerkleRoot(eid) for eid in head_ids]
-
-    def latest(self) -> Optional[MerkleRoot]:
-        """Get most recent event."""
-        if not self._events:
-            return None
-        # OrderedDict preserves insertion order
-        last_id = list(self._events.keys())[-1]
-        return MerkleRoot(last_id)
-
-    def ancestors(self, event_id: str, depth: int = -1) -> Iterator[CognitiveEvent]:
-        """Iterate ancestors in reverse causal order."""
-        visited = set()
-        to_visit = [event_id]
-        current_depth = 0
-
-        while to_visit and (depth == -1 or current_depth < depth):
-            next_level = []
-            for eid in to_visit:
-                if eid in visited:
-                    continue
-                visited.add(eid)
-
-                event = self.get(eid)
-                if event and eid != event_id:  # Don't yield start event
-                    yield event
-
-                if event:
-                    for parent_id in event.causal_parents:
-                        if parent_id not in visited:
-                            next_level.append(parent_id)
-
-            to_visit = next_level
-            current_depth += 1
-
-    def descendants(self, event_id: str) -> Iterator[CognitiveEvent]:
-        """Iterate descendants in causal order."""
-        visited = set()
-        to_visit = [event_id]
-
-        while to_visit:
-            next_level = []
-            for eid in to_visit:
-                if eid in visited:
-                    continue
-                visited.add(eid)
-
-                if eid != event_id:  # Don't yield start event
-                    event = self.get(eid)
-                    if event:
-                        yield event
-
-                for child_id in self._children.get(eid, set()):
-                    if child_id not in visited:
-                        next_level.append(child_id)
-
-            to_visit = next_level
-
-    @property
-    def count(self) -> int:
-        """Total number of events."""
-        return len(self._events)
-
-    def events_in_range(
-        self,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-    ) -> Iterator[CognitiveEvent]:
-        """Iterate events within a time range."""
-        for event in self._events.values():
-            event_time = datetime.fromisoformat(event.timestamp.replace('Z', '+00:00'))
-            if event_time.tzinfo is None:
-                event_time = event_time.replace(tzinfo=timezone.utc)
-
-            if start_time and event_time < start_time:
-                continue
-            if end_time and event_time > end_time:
-                continue
-
-            yield event
+from cortical.cel.stores import MemoryEventStore
 
 
 # =============================================================================
