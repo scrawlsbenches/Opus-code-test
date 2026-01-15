@@ -159,21 +159,20 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     # Early stopping
-    # TODO(agent): Implement early stopping with patience counter and best model tracking
-    # CONTEXT: Validation infrastructure already exists (val_split, val_losses)
     run_parser.add_argument(
         "--early-stop",
         type=int,
         default=None,
         metavar="PATIENCE",
-        help="[EXPERIMENTAL] Stop training if val loss doesn't improve for N epochs (not yet implemented)",
+        help="Stop training if val loss doesn't improve for N epochs. "
+             "Requires --val-split > 0. Restores best model parameters at end.",
     )
     run_parser.add_argument(
         "--early-stop-min-delta",
         type=float,
         default=1e-4,
         metavar="DELTA",
-        help="[EXPERIMENTAL] Minimum improvement to reset early stop patience (default: 1e-4)",
+        help="Minimum improvement to reset early stop patience (default: 1e-4)",
     )
 
     # Learning rate scheduling
@@ -231,54 +230,22 @@ def create_parser() -> argparse.ArgumentParser:
 
 def _check_experimental_features(args: argparse.Namespace) -> None:
     """
-    Check for experimental features and raise NotImplementedError.
+    Check for experimental features and validate requirements.
 
     This function validates that experimental CLI options are properly
-    handled before they're implemented.
+    configured and have required dependencies.
 
     Implemented features:
         - --resume: Checkpoint loading with optimizer/scheduler state
         - --lr-schedule: Learning rate scheduling (step, cosine, plateau)
-
-    Remaining features needing implementation:
         - --early-stop: Patience-based early stopping with best model tracking
     """
-    experimental_features = []
-
-    # --resume is now implemented!
-    # See run_experiment() for checkpoint loading logic
-
-    # Check --early-stop
-    if args.early_stop is not None:
-        experimental_features.append(f"--early-stop={args.early_stop}")
-        # TODO(agent): Implement early stopping
-        # Steps:
-        #   1. Track best_val_loss and patience_counter in training loop
-        #   2. If val_loss improves by min_delta, reset counter
-        #   3. If counter exceeds patience, stop training
-        #   4. Save best model checkpoint when val_loss improves
-        raise NotImplementedError(
-            "Early stopping (--early-stop) is not yet implemented.\n"
-            "Validation infrastructure exists (--val-split) but early stopping logic is needed.\n"
-            "Requires: patience counter, best model tracking, min_delta comparison"
+    # --early-stop requires --val-split > 0
+    if args.early_stop is not None and args.val_split <= 0:
+        raise ValueError(
+            "Early stopping (--early-stop) requires validation split.\n"
+            "Please add --val-split 0.1 (or similar) to enable validation loss monitoring."
         )
-
-    # LR scheduling is now implemented!
-    # See cortical/experiments/scheduler.py for StepLR, CosineAnnealingLR, ReduceLROnPlateau
-
-    # Print warning if any experimental features are used (before NotImplementedError)
-    if experimental_features:
-        print()
-        print("=" * 60)
-        print("WARNING: EXPERIMENTAL FEATURES DETECTED")
-        print("=" * 60)
-        for feature in experimental_features:
-            print(f"  • {feature}")
-        print()
-        print("These features are stubbed out and not yet functional.")
-        print("See cortical/experiments/scheduler.py for implementation stubs.")
-        print("=" * 60)
-        print()
 
 
 def run_experiment(args: argparse.Namespace) -> int:
@@ -291,6 +258,7 @@ def run_experiment(args: argparse.Namespace) -> int:
     from cortical.experiments.position import create_position_encoding
     from cortical.experiments.projection import VocabProjection, CrossEntropyWithLogits
     from cortical.experiments.scheduler import create_scheduler
+    from cortical.experiments.early_stopping import EarlyStopper
 
     # ============================================================================
     # Check for experimental features and warn/fail
@@ -444,6 +412,28 @@ def run_experiment(args: argparse.Namespace) -> int:
         )
         print(f"Using {config.lr_schedule} LR schedule (gamma={config.lr_gamma})")
 
+    # Setup early stopping if requested
+    early_stopper = None
+    best_param_snapshot = None
+    if args.early_stop is not None:
+        early_stopper = EarlyStopper(
+            patience=args.early_stop,
+            min_delta=args.early_stop_min_delta,
+            mode="min",  # Lower val_loss is better
+        )
+        print(f"Using early stopping (patience={args.early_stop}, min_delta={args.early_stop_min_delta})")
+
+    # Helper functions for parameter snapshots (for early stopping)
+    def save_param_snapshot(params):
+        """Save a snapshot of parameter values."""
+        return {p.name: p.data.copy() for p in params}
+
+    def restore_param_snapshot(params, snapshot):
+        """Restore parameters from snapshot."""
+        for p in params:
+            if p.name in snapshot:
+                p.data[:] = snapshot[p.name]
+
     # ========================================================================
     # Resume from checkpoint if requested
     # ========================================================================
@@ -546,6 +536,8 @@ def run_experiment(args: argparse.Namespace) -> int:
 
     train_losses = []
     val_losses = []
+    stopped_early = False
+    final_epoch = config.epochs
 
     for epoch in range(start_epoch, config.epochs):
         # Training step - extract loss value from StepMetrics
@@ -567,6 +559,23 @@ def run_experiment(args: argparse.Namespace) -> int:
         # Log epoch
         log.log_epoch(train_loss, val_loss=val_loss)
 
+        # Early stopping check
+        if early_stopper is not None and val_loss is not None:
+            result = early_stopper.step(val_loss, epoch=epoch)
+
+            # Save best parameters when val_loss improves
+            if result.is_best:
+                best_param_snapshot = save_param_snapshot(all_params)
+
+            # Check if we should stop
+            if result.should_stop:
+                stopped_early = True
+                final_epoch = epoch + 1
+                if args.verbose:
+                    print(f"Early stopping at epoch {epoch + 1} (patience={args.early_stop} exceeded)")
+                    print(f"  Best val_loss: {early_stopper.best:.4f}")
+                break
+
         # Update learning rate schedule
         if scheduler is not None:
             if config.lr_schedule == "plateau":
@@ -584,9 +593,17 @@ def run_experiment(args: argparse.Namespace) -> int:
                 msg += f", val_loss={val_loss:.4f}"
             if scheduler is not None:
                 msg += f", lr={optimizer.lr:.2e}"
+            if early_stopper is not None:
+                msg += f", patience={early_stopper.patience - early_stopper.counter}"
             print(msg)
 
     training_time = time.time() - start_time
+
+    # Restore best parameters if early stopped
+    if stopped_early and best_param_snapshot is not None:
+        restore_param_snapshot(all_params, best_param_snapshot)
+        if args.verbose:
+            print(f"Restored best parameters (val_loss={early_stopper.best:.4f})")
 
     # Evaluate final accuracy
     all_positions = list(range(len(tokens) - 1))
@@ -619,7 +636,7 @@ def run_experiment(args: argparse.Namespace) -> int:
     checkpoint_path = log.save_checkpoint(
         all_params,
         optimizer=optimizer,
-        epoch=config.epochs,  # Final epoch
+        epoch=final_epoch,  # Actual final epoch (may differ if early stopped)
         scheduler=scheduler,  # May be None if no LR schedule
     )
 
@@ -628,6 +645,9 @@ def run_experiment(args: argparse.Namespace) -> int:
     print("=" * 60)
     print("RESULTS")
     print("=" * 60)
+    if stopped_early:
+        print(f"  Early stopped at epoch {final_epoch}/{config.epochs}")
+        print(f"  Best val_loss: {early_stopper.best:.4f}")
     print(f"  Final train loss: {train_losses[-1]:.4f}")
     print(f"  Min train loss: {min(train_losses):.4f}")
     print(f"  Train accuracy: {train_accuracy:.1%} ({train_correct}/{train_total})")

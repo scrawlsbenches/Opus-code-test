@@ -1,6 +1,6 @@
 # Experiment CLI and Management System Plan
 
-**Status**: Implemented (1 feature stubbed: early stopping)
+**Status**: Fully Implemented (all features complete)
 **Created**: 2026-01-14
 **Updated**: 2026-01-15
 **Branch**: claude/review-git-history-Qm3Vm
@@ -143,7 +143,7 @@ These are NOT part of MVP but documented for future reference:
 4. **TensorBoard integration** - Visual training curves
 5. **Auto-naming** - Generate experiment names from config hash
 6. ~~**Validation split**~~ - ✅ Implemented (`--val-split` flag)
-7. **Early stopping** - 🔶 STUBBED (see implementation plan below)
+7. ~~**Early stopping**~~ - ✅ Implemented (`--early-stop`, requires `--val-split`)
 8. ~~**Learning rate scheduling**~~ - ✅ Implemented (StepLR, CosineAnnealing, ReduceLROnPlateau)
 
 ### Feature Status
@@ -151,7 +151,7 @@ These are NOT part of MVP but documented for future reference:
 | Feature | CLI Args | Config Fields | Status |
 |---------|----------|---------------|--------|
 | Resume Training | `--resume` | `resume_checkpoint` | ✅ **Implemented** |
-| Early Stopping | `--early-stop`, `--early-stop-min-delta` | `early_stop_patience`, `early_stop_min_delta` | 🔶 Stubbed |
+| Early Stopping | `--early-stop`, `--early-stop-min-delta` | `early_stop_patience`, `early_stop_min_delta` | ✅ **Implemented** |
 | LR Scheduling | `--lr-schedule`, `--lr-step-size`, `--lr-gamma`, `--lr-min` | `lr_schedule`, `lr_step_size`, `lr_gamma`, `lr_min` | ✅ **Implemented** |
 
 **Resume Training** (implemented 2026-01-15):
@@ -167,9 +167,15 @@ These are NOT part of MVP but documented for future reference:
 - `ReduceLROnPlateau` - Reduce when val_loss plateaus
 - 28 unit tests in `tests/unit/test_scheduler.py`
 
-**Files with stubs (remaining features):**
-- `cortical/experiments/cli.py` - `_check_experimental_features()` with NotImplementedError for early-stop
-- `cortical/experiments/config.py` - Config fields with validation
+**Early Stopping** (implemented 2026-01-15):
+- `EarlyStopper` class in `cortical/experiments/early_stopping.py`
+- Monitors val_loss with configurable patience and min_delta
+- Saves best parameter snapshot when val_loss improves
+- Restores best parameters when early stopping triggers
+- Requires `--val-split > 0` for validation loss monitoring
+- 15+ unit tests in `tests/unit/test_early_stopping.py`
+
+**All wishlist features now implemented!**
 
 ---
 
@@ -246,28 +252,27 @@ These are NOT part of MVP but documented for future reference:
 
 ---
 
-### Feature 2: Early Stopping
+### Feature 2: Early Stopping - ✅ IMPLEMENTED
 
 **Priority**: Medium (requires validation split to be useful)
-**Stub Status**: ✅ CLI and config DONE
+**Status**: ✅ **FULLY IMPLEMENTED** (2026-01-15)
 
-**Current State**:
-- Validation loss is computed each epoch when `val_split > 0`
-- `val_losses` list tracks history
-- Loop runs for fixed `config.epochs`
+**Implementation**:
+- ✅ `EarlyStopper` class in `cortical/experiments/early_stopping.py`
+- ✅ `--early-stop` and `--early-stop-min-delta` CLI arguments
+- ✅ Monitors validation loss with patience counter
+- ✅ Saves best parameter snapshot when val_loss improves
+- ✅ Restores best parameters when early stopping triggers
+- ✅ Requires `--val-split > 0` (validation enforced)
+- ✅ 15+ TDD unit tests in `tests/unit/test_early_stopping.py`
 
-**Stubbed (DONE)**:
-- ✅ `--early-stop` and `--early-stop-min-delta` CLI arguments added (raises NotImplementedError)
-- ✅ `early_stop_patience` and `early_stop_min_delta` config fields added
-- ✅ Validation in config: `early_stop_patience >= 1` if set
+**What was completed**:
+1. ~~Patience counter in training loop~~ ✅ DONE
+2. ~~Best model tracking (save params when val_loss improves)~~ ✅ DONE
+3. ~~Early exit logic when patience exceeded~~ ✅ DONE
+4. ~~Restore best params at end~~ ✅ DONE
 
-**What's Missing** (to implement):
-1. Patience counter in training loop
-2. Best model tracking (save params when val_loss improves)
-3. Early exit logic when patience exceeded
-4. Restore best params at end
-
-**Implementation Steps**:
+**Reference Implementation Steps** (for documentation):
 
 1. **Add CLI arguments**:
    ```python
@@ -503,14 +508,12 @@ These are NOT part of MVP but documented for future reference:
 
 ## Implementation Priority Order
 
-**Completed**:
+**All Completed**:
 - ✅ LR Scheduling (2026-01-15)
 - ✅ Resume Training (2026-01-15)
+- ✅ Early Stopping (2026-01-15)
 
-**Remaining** (1 feature):
-1. **Early Stopping** - Patience counter, best model tracking (~3 hours)
-
-**Note**: Stubs include detailed TODO comments with step-by-step instructions.
+**Note**: All wishlist features from the original plan are now implemented!
 
 ## Architecture Decisions
 
@@ -637,4 +640,5 @@ Additional features implemented:
 - Uses existing profiler from `cortical/experiments/profiler.py`
 - New `cortical/experiments/projection.py` provides `VocabProjection` and `CrossEntropyWithLogits` for language modeling
 - Checkpoint saving uses pickle format (see `cortical/experiments/logging.py`)
-- New `cortical/experiments/scheduler.py` provides stub LR scheduler classes (StepLR, CosineAnnealingLR, ReduceLROnPlateau)
+- New `cortical/experiments/scheduler.py` provides LR scheduler classes (StepLR, CosineAnnealingLR, ReduceLROnPlateau)
+- New `cortical/experiments/early_stopping.py` provides EarlyStopper class for patience-based early stopping
