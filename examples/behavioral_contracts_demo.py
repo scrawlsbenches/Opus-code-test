@@ -53,10 +53,14 @@ from cortical.cel.core.events import (
 )
 from cortical.cel.core.references import MerkleRoot, EventHorizon
 from cortical.cel.stores import MemoryEventStore
+from cortical.cel.container import LatticeBuilder, Container
+from cortical.cel.core.protocols import EventStore, Materializer
+from cortical.cel.wisdom.materializer import CachingMaterializer, default_reducer_registry
+from cortical.contracts.cel_integration import create_contract_reducer
 
 
 # =============================================================================
-# STEP 1: Create Registry, Emitter, and EventStore
+# STEP 1: Create CognitiveLattice with LatticeBuilder (Proper CEL DI)
 # =============================================================================
 
 print("=" * 70)
@@ -64,27 +68,50 @@ print("BEHAVIORAL CONTRACTS - CEL INTEGRATED DEMO")
 print("=" * 70)
 print()
 
-# Create in-memory CEL event store
-event_store = MemoryEventStore()
-print("[1] Created in-memory CEL EventStore")
+# Build CognitiveLattice using LatticeBuilder (CEL's DI pattern)
+print("[1] Building CognitiveLattice with LatticeBuilder...")
 
-# Create event emitter WITH CEL store
+# Method 1: Use LatticeBuilder for storage
+lattice = (
+    LatticeBuilder()
+    .with_storage(MemoryEventStore)
+    .build()
+)
+print("    - Built CognitiveLattice with MemoryEventStore via LatticeBuilder")
+
+# Get the event store from the lattice (proper DI)
+event_store = lattice.event_store
+print(f"    - EventStore type: {type(event_store).__name__}")
+
+# Register contract_reducer with CEL's reducer registry for materialization
+reducer_registry = default_reducer_registry()
+reducer_registry.add(create_contract_reducer())
+print("    - Registered contract_reducer with CEL reducer registry")
+
+# Create CEL CachingMaterializer with contract reducer
+cel_materializer = CachingMaterializer(
+    event_store=event_store,
+    reducer_registry=reducer_registry,
+)
+print("    - Created CEL CachingMaterializer with contract_reducer")
+
+# Create contract emitter connected to CEL EventStore
 emitter = ContractEventEmitter(
     event_store=event_store,
     emit_all_checks=True,
 )
-print("    - Connected ContractEventEmitter to EventStore")
+print("    - Connected ContractEventEmitter to CEL EventStore")
 
 # Create registry with emitter
 registry = ContractRegistry(emitter=emitter)
 print("    - Created ContractRegistry")
 
-# Create materializer with store
+# Create contract materializer (for convenience API)
 materializer = ContractMaterializer(
     event_store=event_store,
     emitter=emitter,
 )
-print("    - Created ContractMaterializer with EventStore")
+print("    - Created ContractMaterializer (convenience wrapper)")
 print()
 
 
@@ -509,6 +536,51 @@ print()
 
 
 # =============================================================================
+# STEP 4b: CEL contract_reducer - Direct Event Stream Materialization
+# =============================================================================
+
+print("[4b] CEL contract_reducer - Materializing from event stream")
+print()
+
+# Contracts are different from entity-specific CEL patterns:
+# - Entity pattern: Each entity (T-001, D-002) has its own events
+# - Contract pattern: ALL contract events aggregate into ONE summary
+#
+# We use contract_reducer directly on the event stream for this "aggregate" pattern
+
+print("    Using contract_reducer to materialize contract summary...")
+contract_reducer = create_contract_reducer()
+
+# Fold all events through the reducer
+cel_contract_state = None
+for event in event_store.iterate():
+    cel_contract_state = contract_reducer(cel_contract_state, event)
+
+if cel_contract_state:
+    print(f"      Entity type: {cel_contract_state.get('entity_type', 'N/A')}")
+    print(f"      Total checks: {cel_contract_state.get('total_checks', 0)}")
+    print(f"      Total violations: {cel_contract_state.get('total_violations', 0)}")
+    print(f"      First check: {cel_contract_state.get('first_check', 'N/A')}")
+    print(f"      Last check: {cel_contract_state.get('last_check', 'N/A')}")
+
+    violations_by_method = cel_contract_state.get('violations_by_method', {})
+    if violations_by_method:
+        print(f"      Violations by method:")
+        for method, count in violations_by_method.items():
+            print(f"        - {method}: {count}")
+    print()
+
+    print("    CEL Reducer Integration Benefits:")
+    print("      - Same reducer works with CachingMaterializer (for entity patterns)")
+    print("      - Same reducer works with direct stream folding (for aggregate patterns)")
+    print("      - Temporal queries: Fold events up to a specific horizon")
+    print("      - Compaction: Reducer output can be snapshotted for compression")
+else:
+    print("      [INFO] No contract events in stream")
+print()
+
+
+# =============================================================================
 # STEP 5: Compaction Demonstration
 # =============================================================================
 
@@ -793,29 +865,34 @@ print("=" * 70)
 print("SUMMARY - CEL Integration Features Demonstrated")
 print("=" * 70)
 print()
-print("  1. In-Memory EventStore:")
-print("     - Implements CEL EventStore protocol")
-print("     - Content-addressed events with Merkle roots")
-print("     - Causal ordering preserved")
+print("  1. LatticeBuilder Integration:")
+print("     - CognitiveLattice built with LatticeBuilder DI pattern")
+print("     - MemoryEventStore injected via .with_storage()")
+print("     - Proper dependency injection for testability")
 print()
-print("  2. Temporal Queries:")
+print("  2. contract_reducer with CEL:")
+print("     - Registered with EntityReducerRegistry")
+print("     - Materializes contract state from event stream")
+print("     - Works with CachingMaterializer or direct stream folding")
+print()
+print("  3. Temporal Queries:")
 print("     - 'What was contract state at horizon X?'")
 print("     - Query state before/after violations")
 print("     - Track contract health over time")
 print()
-print("  3. Compaction Awareness:")
+print("  4. Compaction Awareness:")
 print("     - Multiple checks -> summary stats")
 print("     - Preserves violation history")
 print("     - Maintains materialized state invariant")
 print()
-print("  4. Recovery Flow:")
+print("  5. Recovery Flow:")
 print("     - Catch violations gracefully")
 print("     - Suggest corrective actions")
 print("     - Automatic recovery when possible")
 print()
-print("  5. Integration Points:")
+print("  6. Integration Points:")
 print("     - Contract checks -> OBSERVATION events")
 print("     - Violations -> METACOGNITION events (self-awareness)")
-print("     - Full audit trail in event store")
+print("     - Full audit trail in CEL EventStore")
 print()
 print("=" * 70)
