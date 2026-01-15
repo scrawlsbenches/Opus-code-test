@@ -1,0 +1,46 @@
+Code Review Best Practices - Q&A
+
+Q: What are the most important things to look for during a code review?
+A: The primary focus areas during code review should be correctness, maintainability, and adherence to established patterns. Look for logical errors, edge cases that might not be handled, and whether the code accomplishes what it claims to do. Additionally, evaluate readability, appropriate naming conventions, and whether the implementation follows the team's architectural decisions and coding standards.
+
+Q: How can reviewers provide constructive feedback without discouraging the author?
+A: Frame feedback as suggestions or questions rather than demands, using phrases like "Have you considered..." or "What do you think about..." instead of "This is wrong." Focus on the code, not the person, and explain the reasoning behind your suggestions so the author understands the underlying principle. Always acknowledge what was done well before discussing improvements, and recognize that there are often multiple valid approaches to solving a problem.
+
+Q: What is an appropriate size limit for pull requests submitted for review?
+A: Pull requests should ideally be limited to 200-400 lines of changed code to ensure thorough review quality. Larger changes lead to reviewer fatigue, decreased attention to detail, and a higher likelihood of bugs slipping through. When a feature requires more extensive changes, break it into smaller, logical chunks that can be reviewed independently, such as separating refactoring from new functionality or implementing changes in incremental stages.
+
+Q: What role should automated checks play in the code review process?
+A: Automated checks should handle objective, repeatable validations like linting, formatting, type checking, and test execution before human review begins. This frees human reviewers to focus on higher-level concerns like design decisions, business logic correctness, and code clarity that machines cannot evaluate. Automated gates also ensure consistent standards are applied to every change and provide immediate feedback to authors, reducing review cycle time.
+
+Q: How do you distinguish between nitpicking and substantive feedback in code reviews?
+A: Substantive feedback addresses issues that affect correctness, security, performance, or long-term maintainability, while nitpicks concern stylistic preferences or minor inconsistencies that do not materially impact the code. If automated tools could catch an issue, it is likely a nitpick. When providing minor suggestions, explicitly label them as non-blocking so authors know they can proceed without addressing every comment, and consider whether the feedback would be worth the author's time to implement.
+
+Q: What specific security concerns should reviewers examine during code review?
+A: Security-focused review should examine input validation and sanitization, authentication and authorization checks, and proper handling of sensitive data like credentials or personal information. Look for SQL injection, XSS, and other injection vulnerabilities, as well as insecure cryptographic practices or hardcoded secrets. Verify that error messages do not leak sensitive information and that audit logging captures security-relevant events without exposing confidential data.
+
+Q: How should reviewers evaluate performance implications in code changes?
+A: Assess algorithmic complexity and whether the chosen data structures are appropriate for the expected scale. Look for potential N+1 query problems, unnecessary memory allocations, blocking operations in performance-critical paths, and inefficient loops or redundant computations. Consider whether the code will perform acceptably under production load conditions and whether there are opportunities for caching, batching, or lazy evaluation that would improve efficiency.
+
+Q: What aspects of documentation should be reviewed alongside code changes?
+A: Review that public APIs have clear documentation explaining their purpose, parameters, return values, and any side effects or exceptions. Verify that complex algorithms or non-obvious implementations include inline comments explaining the reasoning. Check that README files, architecture documents, and any user-facing documentation are updated to reflect the changes, and ensure code comments remain accurate and do not describe previous implementations.
+
+Q: How should test coverage be evaluated during code review?
+A: Verify that new functionality has corresponding unit tests covering the happy path and important edge cases, including error conditions and boundary values. Assess whether integration tests are needed to verify component interactions and whether existing tests remain valid after the changes. Look for tests that are too tightly coupled to implementation details, as these become maintenance burdens, and ensure test code follows the same quality standards as production code.
+
+Q: What is the best approach for handling disagreements between reviewer and author?
+A: Start by ensuring both parties understand each other's perspectives through clarifying questions rather than assertions. If disagreement persists, reference established team standards, documented architectural decisions, or industry best practices as neutral arbiters. For genuinely subjective matters where reasonable people disagree, defer to the author's judgment as the person who will maintain the code. Escalate to a third party or team lead only when the issue has significant implications and cannot be resolved through discussion.
+
+Q: How frequently should code reviews be conducted during development?
+A: Code reviews should happen early and often, ideally with small, focused changes reviewed within hours of submission to maintain development velocity. Avoid batching reviews at the end of a sprint or feature, as this leads to large, difficult-to-review changes and delays feedback that could have improved earlier work. Establish team norms for review turnaround time, typically within one business day, to prevent reviews from becoming bottlenecks in the development process.
+
+Q: What preparation should an author do before requesting a code review?
+A: Authors should self-review their changes first, checking for obvious issues like debugging code left in, incomplete implementations, or failing tests. Provide context in the pull request description explaining what the change does, why it is needed, and any design decisions that might not be obvious from the code. Ensure all automated checks pass before requesting review, and annotate specific areas where you would particularly appreciate feedback or have concerns about your approach.
+
+Q: How should reviewers approach reviewing code in unfamiliar areas of the codebase?
+A: Start by reading any available documentation, architectural overviews, or related tests to understand the context and existing patterns. Focus on universal quality concerns like error handling, resource management, and code clarity rather than domain-specific implementation details. Ask questions to learn rather than making assumptions, and consider pairing with someone more familiar with that area if the changes are significant. This is also an opportunity to identify documentation gaps.
+
+Q: What is the reviewer's responsibility regarding code that works but could be improved?
+A: Reviewers should distinguish between blocking issues that must be fixed and suggestions for improvement that are optional. Changes that are functional, readable, and meet requirements should generally be approved even if they could be marginally improved, avoiding perfectionism that slows delivery. For larger improvement opportunities, consider creating follow-up tasks rather than blocking the current change. The goal is continuous improvement over time, not perfection in every individual review.
+
+Q: How can teams establish and maintain effective code review culture?
+A: Document clear review guidelines covering expectations, standards, and examples of good feedback to align team members on shared practices. Lead by example with thorough, respectful reviews and be open to receiving feedback on your own code. Track metrics like review turnaround time and revision cycles to identify process improvements, and regularly discuss code review practices in retrospectives. Recognize that good reviewing is a skill that improves with practice and mentorship.
