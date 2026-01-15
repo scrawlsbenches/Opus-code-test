@@ -14,7 +14,7 @@ import subprocess
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union
 
 from .config import ExperimentConfig
 
@@ -291,15 +291,28 @@ class ExperimentLog:
         log._saved = True
         return log
 
-    def save_checkpoint(self, parameters: List["Parameter"]) -> Path:
+    def save_checkpoint(
+        self,
+        parameters: List["Parameter"],
+        optimizer: Optional[Any] = None,
+        epoch: Optional[int] = None,
+        scheduler: Optional[Any] = None,
+    ) -> Path:
         """
         Save model parameters to a checkpoint file.
 
         Saves parameter data (not gradients) using pickle format.
         The checkpoint can be loaded later to restore model state.
 
+        TODO(agent): For resume training implementation:
+        SESSION_HANDOFF: Optimizer and scheduler state_dict methods are ready
+        CONTEXT: Optimizer has state_dict()/load_state_dict() in trainable.py
+
         Args:
             parameters: List of Parameter objects to save
+            optimizer: Optional optimizer to save state (has state_dict() method)
+            epoch: Optional current epoch number for resume
+            scheduler: Optional LR scheduler to save state (has state_dict() method)
 
         Returns:
             Path to the checkpoint file
@@ -319,6 +332,10 @@ class ExperimentLog:
             ],
             "config": self.config.to_dict(),
             "timestamp": datetime.now().isoformat(),
+            # TODO(agent): These fields enable resume training
+            "epoch": epoch,
+            "optimizer_state": optimizer.state_dict() if optimizer is not None else None,
+            "scheduler_state": scheduler.state_dict() if scheduler is not None else None,
         }
 
         with open(self.checkpoint_path, "wb") as f:

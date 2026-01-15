@@ -145,6 +145,72 @@ def create_parser() -> argparse.ArgumentParser:
         help="Loss function: 'mse' for embedding matching, 'cross_entropy' for language modeling (default: mse)",
     )
 
+    # ============================================================================
+    # EXPERIMENTAL FEATURES (stub - not yet implemented)
+    # ============================================================================
+
+    # Resume training from checkpoint
+    # TODO(agent): Implement checkpoint loading and optimizer state restoration
+    # SESSION_HANDOFF: Need to load parameters, optimizer state, and starting epoch
+    run_parser.add_argument(
+        "--resume",
+        type=str,
+        default=None,
+        metavar="CHECKPOINT",
+        help="[EXPERIMENTAL] Resume training from checkpoint path (not yet implemented)",
+    )
+
+    # Early stopping
+    # TODO(agent): Implement early stopping with patience counter and best model tracking
+    # CONTEXT: Validation infrastructure already exists (val_split, val_losses)
+    run_parser.add_argument(
+        "--early-stop",
+        type=int,
+        default=None,
+        metavar="PATIENCE",
+        help="[EXPERIMENTAL] Stop training if val loss doesn't improve for N epochs (not yet implemented)",
+    )
+    run_parser.add_argument(
+        "--early-stop-min-delta",
+        type=float,
+        default=1e-4,
+        metavar="DELTA",
+        help="[EXPERIMENTAL] Minimum improvement to reset early stop patience (default: 1e-4)",
+    )
+
+    # Learning rate scheduling
+    # TODO(agent): Implement LR schedulers (StepLR, CosineAnnealing, ReduceLROnPlateau)
+    # CONTEXT: Optimizer.lr can be modified dynamically
+    run_parser.add_argument(
+        "--lr-schedule",
+        type=str,
+        choices=["step", "cosine", "plateau"],
+        default=None,
+        metavar="TYPE",
+        help="[EXPERIMENTAL] LR schedule: 'step', 'cosine', or 'plateau' (not yet implemented)",
+    )
+    run_parser.add_argument(
+        "--lr-step-size",
+        type=int,
+        default=100,
+        metavar="N",
+        help="[EXPERIMENTAL] Epochs between LR reductions for 'step' schedule (default: 100)",
+    )
+    run_parser.add_argument(
+        "--lr-gamma",
+        type=float,
+        default=0.1,
+        metavar="FACTOR",
+        help="[EXPERIMENTAL] LR decay factor (default: 0.1)",
+    )
+    run_parser.add_argument(
+        "--lr-min",
+        type=float,
+        default=1e-6,
+        metavar="LR",
+        help="[EXPERIMENTAL] Minimum learning rate (default: 1e-6)",
+    )
+
     # Compare command
     compare_parser = subparsers.add_parser("compare", help="Compare experiment results")
     compare_parser.add_argument(
@@ -166,6 +232,82 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _check_experimental_features(args: argparse.Namespace) -> None:
+    """
+    Check for experimental features and raise NotImplementedError.
+
+    This function validates that experimental CLI options are properly
+    handled before they're implemented.
+
+    TODO(agent): Remove NotImplementedError once each feature is implemented
+    SESSION_HANDOFF: Three features need implementation:
+        1. --resume: Checkpoint loading with optimizer state
+        2. --early-stop: Patience-based early stopping with best model tracking
+        3. --lr-schedule: Learning rate scheduling (step, cosine, plateau)
+    """
+    experimental_features = []
+
+    # Check --resume
+    if args.resume is not None:
+        experimental_features.append(f"--resume={args.resume}")
+        # TODO(agent): Implement checkpoint loading
+        # Steps:
+        #   1. Load checkpoint with ExperimentLog.load_checkpoint()
+        #   2. Restore parameters with ExperimentLog.restore_parameters()
+        #   3. Restore optimizer state with optimizer.load_state_dict()
+        #   4. Get starting epoch from checkpoint
+        raise NotImplementedError(
+            "Resume training (--resume) is not yet implemented.\n"
+            "Checkpoint loading infrastructure exists but needs integration.\n"
+            "See: cortical/experiments/logging.py:save_checkpoint()"
+        )
+
+    # Check --early-stop
+    if args.early_stop is not None:
+        experimental_features.append(f"--early-stop={args.early_stop}")
+        # TODO(agent): Implement early stopping
+        # Steps:
+        #   1. Track best_val_loss and patience_counter in training loop
+        #   2. If val_loss improves by min_delta, reset counter
+        #   3. If counter exceeds patience, stop training
+        #   4. Save best model checkpoint when val_loss improves
+        raise NotImplementedError(
+            "Early stopping (--early-stop) is not yet implemented.\n"
+            "Validation infrastructure exists (--val-split) but early stopping logic is needed.\n"
+            "Requires: patience counter, best model tracking, min_delta comparison"
+        )
+
+    # Check --lr-schedule
+    if args.lr_schedule is not None:
+        experimental_features.append(f"--lr-schedule={args.lr_schedule}")
+        # TODO(agent): Implement LR scheduling
+        # Steps:
+        #   1. Create scheduler.py with LRScheduler base class
+        #   2. Implement StepLR: decay every N epochs
+        #   3. Implement CosineAnnealingLR: smooth decay to lr_min
+        #   4. Implement ReduceLROnPlateau: decay when val_loss stalls
+        #   5. Call scheduler.step() in training loop
+        raise NotImplementedError(
+            f"LR scheduling (--lr-schedule={args.lr_schedule}) is not yet implemented.\n"
+            "Optimizer.lr can be modified dynamically but scheduler classes are needed.\n"
+            "Types to implement: step, cosine, plateau"
+        )
+
+    # Print warning if any experimental features are used (before NotImplementedError)
+    if experimental_features:
+        print()
+        print("=" * 60)
+        print("WARNING: EXPERIMENTAL FEATURES DETECTED")
+        print("=" * 60)
+        for feature in experimental_features:
+            print(f"  • {feature}")
+        print()
+        print("These features are stubbed out and not yet functional.")
+        print("See cortical/experiments/scheduler.py for implementation stubs.")
+        print("=" * 60)
+        print()
+
+
 def run_experiment(args: argparse.Namespace) -> int:
     """Run a training experiment."""
     # Import here to avoid slow startup for other commands
@@ -175,6 +317,11 @@ def run_experiment(args: argparse.Namespace) -> int:
     from cortical.experiments.tokenizer import tokenize, build_vocab, tokens_to_ids, load_text
     from cortical.experiments.position import create_position_encoding
     from cortical.experiments.projection import VocabProjection, CrossEntropyWithLogits
+
+    # ============================================================================
+    # Check for experimental features and warn/fail
+    # ============================================================================
+    _check_experimental_features(args)
 
     # Create config
     config = ExperimentConfig.from_args(args)
@@ -433,7 +580,12 @@ def run_experiment(args: argparse.Namespace) -> int:
     run_dir = log.save()
 
     # Save model checkpoint
-    checkpoint_path = log.save_checkpoint(all_params)
+    # TODO(agent): Pass scheduler when LR scheduling is implemented
+    checkpoint_path = log.save_checkpoint(
+        all_params,
+        optimizer=optimizer,
+        epoch=config.epochs,  # Final epoch
+    )
 
     # Print results
     print()

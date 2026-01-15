@@ -57,6 +57,28 @@ class ExperimentConfig:
     # - sinusoidal: Fixed sin/cos patterns from "Attention Is All You Need"
     position_encoding: str = "none"
 
+    # ========================================================================
+    # EXPERIMENTAL FEATURES (stub fields - not yet implemented)
+    # ========================================================================
+
+    # Resume training from checkpoint
+    # TODO(agent): Implement checkpoint loading in cli.py run_experiment()
+    resume_checkpoint: Optional[str] = None
+
+    # Early stopping configuration
+    # TODO(agent): Implement early stopping in cli.py training loop
+    # CONTEXT: Requires val_split > 0 to have validation loss to monitor
+    early_stop_patience: Optional[int] = None  # Stop after N epochs without improvement
+    early_stop_min_delta: float = 1e-4  # Minimum improvement to reset patience
+
+    # Learning rate scheduling
+    # TODO(agent): Implement scheduler.py and integrate into cli.py
+    # CONTEXT: Optimizer.lr can be modified dynamically
+    lr_schedule: Optional[str] = None  # "step", "cosine", or "plateau"
+    lr_step_size: int = 100  # Epochs between LR decay (for "step")
+    lr_gamma: float = 0.1  # LR decay factor
+    lr_min: float = 1e-6  # Minimum LR (for "cosine" and "plateau")
+
     def __post_init__(self) -> None:
         """Validate configuration after initialization."""
         if self.embedding_dim % self.num_heads != 0:
@@ -74,6 +96,19 @@ class ExperimentConfig:
             raise ValueError(
                 f"position_encoding '{self.position_encoding}' not supported. "
                 "Use 'none', 'learned', or 'sinusoidal'."
+            )
+
+        # Validate experimental fields (stub validation)
+        # TODO(agent): These validations are ready for when features are implemented
+        if self.lr_schedule is not None and self.lr_schedule not in ("step", "cosine", "plateau"):
+            raise ValueError(
+                f"lr_schedule '{self.lr_schedule}' not supported. "
+                "Use 'step', 'cosine', or 'plateau'."
+            )
+
+        if self.early_stop_patience is not None and self.early_stop_patience < 1:
+            raise ValueError(
+                f"early_stop_patience must be >= 1, got {self.early_stop_patience}"
             )
 
         if not 0.0 <= self.val_split <= 0.5:
@@ -135,6 +170,14 @@ class ExperimentConfig:
             val_split=getattr(args, "val_split", 0.0),
             loss_fn=getattr(args, "loss_fn", "mse"),
             position_encoding=getattr(args, "position_encoding", "none"),
+            # Experimental features (stub)
+            resume_checkpoint=getattr(args, "resume", None),
+            early_stop_patience=getattr(args, "early_stop", None),
+            early_stop_min_delta=getattr(args, "early_stop_min_delta", 1e-4),
+            lr_schedule=getattr(args, "lr_schedule", None),
+            lr_step_size=getattr(args, "lr_step_size", 100),
+            lr_gamma=getattr(args, "lr_gamma", 0.1),
+            lr_min=getattr(args, "lr_min", 1e-6),
         )
 
     def summary(self) -> str:
