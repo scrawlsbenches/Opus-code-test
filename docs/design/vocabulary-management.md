@@ -266,19 +266,19 @@ python -m cortical.experiments.cli vocab rebuild \
 - [x] `vocab create` command
 - [x] `vocab inspect` command
 - [x] Modify `run` to accept `--vocab` parameter
-- [ ] Store vocab reference in checkpoint
+- [x] Store vocab reference in checkpoint
 
 ### Phase 2: OOV Handling
 - [x] OOV detection before training starts
 - [ ] `--extend-vocab` flag with embedding expansion
-- [ ] `--allow-unk` flag with logging
+- [x] `--allow-unk` flag with logging
 - [x] `vocab diff` command
 
 ### Phase 3: Iterative Training
 - [ ] `vocab extend` command
 - [ ] `vocab audit` command
-- [ ] Checkpoint-vocab hash verification
-- [ ] Clear error messages for vocab mismatches
+- [x] Checkpoint-vocab hash verification
+- [x] Clear error messages for vocab mismatches
 
 ### Phase 4: Future Enhancements
 - [ ] BPE integration (optional, for code/mixed content)
