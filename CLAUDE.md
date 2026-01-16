@@ -80,6 +80,15 @@ for learning in memory.recall_learnings():
 ### Step 6: Synthesize and Resume
 "Given [intent], with [pending work] and [learnings], I should..."
 
+### Quick Recovery: Mega Prompt
+If steps 3-5 feel overwhelming, use the mega prompt instead:
+```python
+memory = CognitiveMemory.open()
+print(memory.generate_mega_prompt())
+```
+
+This synthesizes all learnings (grouped by concept), intent anchors, workflow, and current state into one readable summary. Use it when you need the full picture fast.
+
 ---
 
 ## Key Files
@@ -112,7 +121,6 @@ A cognitive memory system that:
 1. How do I detect "daydreaming" before completely lost?
 2. Should there be a periodic "cognitive health check"?
 3. How do we handle multiple concurrent intents?
-4. What triggers mega prompt generation?
 
 ---
 
@@ -156,5 +164,5 @@ The goal: **I should be able to wake up from "daydreaming" (context compaction),
 
 ---
 
-*Last updated: 2026-01-15*
-*Session: Designing cognitive memory system with persistent storage and recovery protocols*
+*Last updated: 2026-01-16*
+*Session: Completed cognitive memory system with mega prompt generation*
