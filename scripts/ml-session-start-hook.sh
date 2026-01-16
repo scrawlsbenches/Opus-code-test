@@ -311,4 +311,50 @@ echo ""
 echo "   💡 Tip: Read these to restore context from previous sessions"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
+# ============================================================
+# COGNITIVE MEMORY - Check for session handoffs
+# ============================================================
+echo ""
+echo "🧠 Cognitive Memory System"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Check if cognitive memory exists
+if [[ -d ".cognitive" ]]; then
+    # Run session_start() to check for handoffs
+    cognitive_output=$(python3 -c "
+import sys
+sys.path.insert(0, '.')
+from examples.cognitive_memory_demo import CognitiveMemory
+memory = CognitiveMemory.open()
+print(memory.session_start())
+" 2>/dev/null)
+
+    if [[ -n "$cognitive_output" ]]; then
+        echo "$cognitive_output" | while read line; do
+            echo "   $line"
+        done
+    else
+        echo "   (cognitive memory available but no output)"
+    fi
+
+    # Show quick stats
+    stats_output=$(python3 -c "
+import sys
+sys.path.insert(0, '.')
+from examples.cognitive_memory_demo import CognitiveMemory
+memory = CognitiveMemory.open()
+stats = memory.stats
+print(f\"Events: {stats['total_events']} | Pending: {stats['pending_intentions']} | Preserved: {memory.preserved_count}\")
+" 2>/dev/null)
+
+    if [[ -n "$stats_output" ]]; then
+        echo ""
+        echo "   📊 $stats_output"
+    fi
+else
+    echo "   (no cognitive memory initialized)"
+    echo "   💡 Initialize with: python3 -c 'from examples.cognitive_memory_demo import CognitiveMemory; CognitiveMemory.open()'"
+fi
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
 exit 0
