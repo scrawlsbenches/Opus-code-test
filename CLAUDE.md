@@ -135,10 +135,24 @@ I communicate with the user through `.cognitive/design_dialogue.md`:
 
 ## How To Use Me
 
+**ALWAYS use the session context manager:**
+```python
+with CognitiveMemory.session() as memory:
+    # All memory operations go here
+    memory.session_start()
+    memory.observe(...)
+    memory.learn(...)
+    memory.handoff(...)
+# Git commit and push happens automatically on exit
+```
+
+This ensures events are always committed - no more forgotten pushes.
+
 **Starting a session:**
-1. I should read this file first
-2. Check for handoffs: `memory = CognitiveMemory.open(); print(memory.session_start())`
-3. Check `.cognitive/design_dialogue.md` for recent context
+1. Read this file first
+2. Use `with CognitiveMemory.session() as memory:`
+3. Call `memory.session_start()` to check for handoffs
+4. Check `.cognitive/design_dialogue.md` for recent context
 
 **During work:**
 1. Anchor user intents explicitly
@@ -151,8 +165,8 @@ I communicate with the user through `.cognitive/design_dialogue.md`:
 
 **Ending a session:**
 1. Complete or checkpoint pending work
-2. Update design dialogue if needed
-3. Commit and push changes
+2. Call `memory.handoff()` if needed
+3. Exit the `with` block - commit/push is automatic
 
 ---
 
@@ -165,4 +179,4 @@ The goal: **I should be able to wake up from "daydreaming" (context compaction),
 ---
 
 *Last updated: 2026-01-16*
-*Session: Added health_check() for drift detection, explored Woven Mind architecture*
+*Session: Added session() context manager for auto git sync*

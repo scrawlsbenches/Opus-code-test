@@ -152,8 +152,15 @@ class CognitiveMemory:
         """
         Open or create a persistent cognitive memory.
 
-        This is the recommended way to get a memory instance.
-        Events persist across sessions.
+        NOTE: Prefer using session() context manager instead for automatic
+        git commit/push on exit:
+
+            with CognitiveMemory.session() as memory:
+                memory.observe(...)
+            # Auto-committed here
+
+        Use open() directly only for read-only queries or when you need
+        manual control over git operations.
 
         Args:
             storage_path: Where to store events (default: .cognitive/)
