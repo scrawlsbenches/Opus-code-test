@@ -656,3 +656,82 @@ class TestMegaPrompt:
 
         stats = memory.stats
         assert stats['by_type'].get('METACOGNITION', 0) >= 1
+
+
+class TestHealthCheck:
+    """Test the health_check() method for drift detection."""
+
+    def test_health_check_returns_dict(self):
+        """Health check should return a dictionary with expected keys."""
+        memory = CognitiveMemory(persistent=False)
+
+        result = memory.health_check()
+
+        assert isinstance(result, dict)
+        assert 'status' in result
+        assert 'signals' in result
+        assert 'recommendations' in result
+        assert 'metrics' in result
+
+    def test_healthy_status_with_no_issues(self):
+        """Clean memory should report healthy status."""
+        memory = CognitiveMemory(persistent=False)
+
+        result = memory.health_check()
+
+        # New memory should be healthy (no signals)
+        assert result['status'] == 'healthy'
+        assert len(result['signals']) == 0
+
+    def test_drifting_status_with_pending_overload(self):
+        """Too many pending intentions should signal drift."""
+        memory = CognitiveMemory(persistent=False)
+
+        # Create many pending intentions
+        for i in range(6):
+            memory.intend(f"Task {i}", priority="medium")
+
+        result = memory.health_check()
+
+        # Should detect pending overload
+        assert result['metrics']['pending_count'] == 6
+        assert any('pending count' in s.lower() for s in result['signals'])
+
+    def test_concerning_status_with_multiple_issues(self):
+        """Multiple issues should result in concerning status."""
+        memory = CognitiveMemory(persistent=False)
+
+        # Create many pending intentions
+        for i in range(6):
+            memory.intend(f"Task {i}", priority="medium")
+
+        # Create many errors
+        for i in range(4):
+            memory.observe_error(f"Error {i}", f"context {i}")
+
+        result = memory.health_check()
+
+        # Multiple signals should trigger concerning status
+        assert result['status'] in ('drifting', 'concerning')
+        assert len(result['signals']) >= 2
+
+    def test_metrics_include_pending_count(self):
+        """Metrics should include pending intention count."""
+        memory = CognitiveMemory(persistent=False)
+        memory.intend("Test task")
+
+        result = memory.health_check()
+
+        assert 'pending_count' in result['metrics']
+        assert result['metrics']['pending_count'] == 1
+
+    def test_metrics_include_completion_rate(self):
+        """Metrics should include completion rate when there are intentions."""
+        memory = CognitiveMemory(persistent=False)
+        task_id = memory.intend("Test task")
+        memory.complete_intention(task_id, "Done")
+
+        result = memory.health_check()
+
+        assert 'completion_rate' in result['metrics']
+        assert result['metrics']['completion_rate'] == 1.0  # 100% complete

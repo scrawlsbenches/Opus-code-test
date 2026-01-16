@@ -465,6 +465,111 @@ class CognitiveMemory:
 
         return "\n".join(lines)
 
+    def health_check(self) -> Dict:
+        """
+        Check cognitive health - detect drift before it becomes confusion.
+
+        Inspired by Woven Mind's surprise detection, but adapted for our
+        event-based model. Checks multiple signals to assess cognitive state.
+
+        Returns dict with:
+            status: 'healthy', 'drifting', or 'concerning'
+            signals: list of warning signals detected
+            recommendations: list of suggested actions
+            metrics: raw metrics used for assessment
+        """
+        signals = []
+        recommendations = []
+        metrics = {}
+
+        # 1. Intent alignment - are recent observations related to intents?
+        intent_anchors = self.recall_intent_anchors()
+        intent_concepts = set()
+        for anchor in intent_anchors:
+            # Extract concepts from intent anchor prompts
+            prompt = anchor.get('prompt', '').lower()
+            for word in prompt.split():
+                if len(word) > 3:  # Skip short words
+                    intent_concepts.add(word)
+
+        recent_concepts = set()
+        recent_obs = list(self.recall_observations())[-10:]
+        for obs in recent_obs:
+            recent_concepts.update(obs.get('concepts', []))
+
+        if intent_concepts and recent_concepts:
+            overlap = len(intent_concepts & recent_concepts)
+            alignment = overlap / len(intent_concepts) if intent_concepts else 0
+            metrics['intent_alignment'] = alignment
+            if alignment < 0.2:
+                signals.append(f"Low intent alignment ({alignment:.0%}) - recent work may be off-track")
+                recommendations.append("Review intent anchors with recover()")
+
+        # 2. Pending intention count
+        pending = self.pending_intentions()
+        metrics['pending_count'] = len(pending)
+        if len(pending) > 5:
+            signals.append(f"High pending count ({len(pending)}) - may indicate scope creep")
+            recommendations.append("Complete or abandon some pending intentions")
+        elif len(pending) == 0 and intent_anchors:
+            signals.append("No pending work but intent anchors exist")
+            recommendations.append("Check if intent anchors are fulfilled")
+
+        # 3. Error rate - recent confusions/errors
+        recent_errors = self.recall_errors()[-10:]
+        metrics['recent_errors'] = len(recent_errors)
+        if len(recent_errors) > 3:
+            signals.append(f"Elevated error rate ({len(recent_errors)} recent errors)")
+            recommendations.append("Review errors, consider different approach")
+
+        # 4. Completion rate - fulfilled vs pending
+        # Count Fulfillment events for completed intentions
+        completed_count = sum(
+            1 for e in self._store.iterate()
+            if e.event_type == EventType.FULFILLMENT
+        )
+        total_intentions = completed_count + len(pending)
+        if total_intentions > 0:
+            completion_rate = completed_count / total_intentions
+            metrics['completion_rate'] = completion_rate
+            metrics['completed_count'] = completed_count
+            if completion_rate < 0.3 and total_intentions > 3:
+                signals.append(f"Low completion rate ({completion_rate:.0%})")
+                recommendations.append("Focus on completing existing work before new tasks")
+
+        # 5. Event diversity - are we stuck in one mode?
+        stats = self.stats
+        by_type = stats.get('by_type', {})
+        total = sum(by_type.values())
+        if total > 10:
+            observation_ratio = by_type.get('OBSERVATION', 0) / total
+            metacognition_ratio = by_type.get('META_COGNITION', 0) / total
+            metrics['observation_ratio'] = observation_ratio
+            metrics['metacognition_ratio'] = metacognition_ratio
+            if observation_ratio > 0.8:
+                signals.append("Heavy observation ratio - may be passively watching not acting")
+            if metacognition_ratio > 0.5:
+                signals.append("Heavy meta-cognition ratio - may be overthinking")
+
+        # Determine overall status
+        if len(signals) == 0:
+            status = 'healthy'
+        elif len(signals) <= 2:
+            status = 'drifting'
+        else:
+            status = 'concerning'
+
+        # Add default recommendation if concerning
+        if status == 'concerning' and not recommendations:
+            recommendations.append("Run recover() for full context restoration")
+
+        return {
+            'status': status,
+            'signals': signals,
+            'recommendations': recommendations,
+            'metrics': metrics,
+        }
+
     def recall_user_requests(self) -> List[str]:
         """Get all user requests (for intent tracking)."""
         requests = []

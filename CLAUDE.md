@@ -118,8 +118,8 @@ A cognitive memory system that:
 4. **Memory hierarchy** - Global learnings, branch context, session state
 
 ### Open Questions
-1. How do I detect "daydreaming" before completely lost?
-2. Should there be a periodic "cognitive health check"?
+1. ~~How do I detect "daydreaming" before completely lost?~~ **Answered:** Use `health_check()` - returns status (healthy/drifting/concerning) with signals and recommendations
+2. ~~Should there be a periodic "cognitive health check"?~~ **Answered:** Yes - `health_check()` can be called periodically or on-demand
 3. How do we handle multiple concurrent intents?
 
 ---
@@ -165,4 +165,4 @@ The goal: **I should be able to wake up from "daydreaming" (context compaction),
 ---
 
 *Last updated: 2026-01-16*
-*Session: Completed cognitive memory system with mega prompt generation*
+*Session: Added health_check() for drift detection, explored Woven Mind architecture*
