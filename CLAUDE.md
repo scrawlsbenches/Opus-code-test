@@ -47,47 +47,23 @@ Things that go wrong with my "mind":
 
 ## Recovery Protocol
 
-When I notice confusion or uncertainty, I follow these steps:
+When confused or uncertain:
 
-### Step 1: Acknowledge
-"I notice I'm uncertain about what I should be doing."
-
-### Step 2: Read This File
-You're doing it right now. Continue reading.
-
-### Step 3: Check Intent Anchors
-Query: What did the user originally ask for?
 ```python
 memory = CognitiveMemory.open()
-for obs in memory.recall_observations(concept='user_request'):
-    print(obs['content'])
+
+# 1. Check cognitive state
+health = memory.health_check()
+print(health['status'])        # 'healthy', 'drifting', or 'concerning'
+print(health['signals'])       # What's wrong
+print(health['recommendations'])  # What to do
+
+# 2. If drifting or worse, get full recovery summary
+if health['status'] != 'healthy':
+    print(memory.recover())    # Intent anchors, pending work, learnings
 ```
 
-### Step 4: Check Pending Work
-Query: What tasks are incomplete?
-```python
-for intention in memory.pending_intentions():
-    print(f"PENDING: {intention['goal']}")
-```
-
-### Step 5: Check Learnings
-Query: What have I discovered?
-```python
-for learning in memory.recall_learnings():
-    print(f"LEARNED: {learning['problem']} → {learning['solution']}")
-```
-
-### Step 6: Synthesize and Resume
-"Given [intent], with [pending work] and [learnings], I should..."
-
-### Quick Recovery: Mega Prompt
-If steps 3-5 feel overwhelming, use the mega prompt instead:
-```python
-memory = CognitiveMemory.open()
-print(memory.generate_mega_prompt())
-```
-
-This synthesizes all learnings (grouped by concept), intent anchors, workflow, and current state into one readable summary. Use it when you need the full picture fast.
+The `recover()` method returns everything needed: intent anchors (sacred user requests), pending intentions, recent learnings, and errors. Read its output and resume.
 
 ---
 
@@ -116,9 +92,6 @@ A cognitive memory system that:
 2. **This file = external prefrontal cortex** - Holds what working memory can't
 3. **Intent anchors** - User requests captured verbatim, never decay
 4. **Memory hierarchy** - Global learnings, branch context, session state
-
-### Open Questions
-1. How do we handle multiple concurrent intents?
 
 ---
 
@@ -158,4 +131,4 @@ The goal: **I should be able to wake up from "daydreaming" (context compaction),
 ---
 
 *Last updated: 2026-01-16*
-*Session: Added session() context manager for auto git sync*
+*Session: Recovery Protocol now uses recover() and health_check() methods*
