@@ -17,9 +17,11 @@ Usage:
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Dict, Generator, List, Optional, Set, Union
+import subprocess
 
 from cortical.cel.core.events import (
     CognitiveEvent,
@@ -148,10 +150,9 @@ class CognitiveMemory:
         session_id: Optional[str] = None,
     ) -> 'CognitiveMemory':
         """
-        Open or create a persistent cognitive memory.
+        Open a persistent cognitive memory for read-only queries.
 
-        This is the recommended way to get a memory instance.
-        Events persist across sessions.
+        For sessions that create events, use session() context manager.
 
         Args:
             storage_path: Where to store events (default: .cognitive/)
@@ -165,6 +166,87 @@ class CognitiveMemory:
             storage_path=storage_path,
             persistent=True,
         )
+
+    @classmethod
+    @contextmanager
+    def session(
+        cls,
+        auto_sync: bool = True,
+        commit_message: Optional[str] = None,
+        storage_path: Optional[Union[str, Path]] = None,
+        session_id: Optional[str] = None,
+    ) -> Generator['CognitiveMemory', None, None]:
+        """
+        Context manager for cognitive memory sessions with auto git sync.
+
+        Guarantees that all cognitive events are committed and pushed
+        when the session ends (even if an exception occurs).
+
+        Usage:
+            with CognitiveMemory.session() as memory:
+                memory.observe(...)
+                memory.learn(...)
+                memory.anchor_intent(...)
+            # Auto git add, commit, push happens here
+
+        Args:
+            auto_sync: If True, git commit and push on exit (default True)
+            commit_message: Custom commit message (auto-generated if None)
+            storage_path: Where to store events (default: .cognitive/)
+            session_id: Session identifier (auto-generated if None)
+
+        Yields:
+            CognitiveMemory instance
+        """
+        memory = cls.open(storage_path=storage_path, session_id=session_id)
+        initial_event_count = memory.stats['total_events']
+
+        try:
+            yield memory
+        finally:
+            if auto_sync:
+                # Check if any new events were created
+                new_event_count = memory.stats['total_events']
+                if new_event_count > initial_event_count:
+                    events_added = new_event_count - initial_event_count
+                    msg = commit_message or f"chore: Sync cognitive memory events ({events_added} new)"
+                    memory._git_sync(msg)
+
+    def _git_sync(self, message: str) -> bool:
+        """
+        Commit and push cognitive memory changes to git.
+
+        Returns:
+            True if changes were synced, False if nothing to sync
+        """
+        storage_path = str(self._storage_path)
+
+        # Check for changes in .cognitive/
+        result = subprocess.run(
+            ['git', 'status', '--porcelain', storage_path],
+            capture_output=True, text=True
+        )
+
+        if not result.stdout.strip():
+            return False  # Nothing to sync
+
+        # Add cognitive directory
+        subprocess.run(['git', 'add', storage_path], check=True)
+
+        # Commit
+        subprocess.run(['git', 'commit', '-m', message], check=True)
+
+        # Push (get current branch)
+        branch_result = subprocess.run(
+            ['git', 'branch', '--show-current'],
+            capture_output=True, text=True
+        )
+        branch = branch_result.stdout.strip()
+
+        if branch:
+            subprocess.run(['git', 'push', '-u', 'origin', branch], check=True)
+
+        return True
 
     def _append(self, event: CognitiveEvent, importance: float = 1.0) -> str:
         """Append event and track causal chain."""

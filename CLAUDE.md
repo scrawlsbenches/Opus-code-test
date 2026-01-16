@@ -29,10 +29,9 @@ FOCUSED ──► DRIFTING ──► DAYDREAMING ──► LOST
 | State | What's Happening | What To Do |
 |-------|------------------|------------|
 | **FOCUSED** | Context fresh, intent clear | Keep working |
-| **DRIFTING** | Details fading, still on track | Checkpoint if uncertain |
-| **DAYDREAMING** | Context compacted, lost details | Read this file |
-| **LOST** | Can't connect work to intent | Full recovery protocol |
-| **RECOVERY** | Querying memory to restore context | Follow the protocol below |
+| **DRIFTING** | Details fading, still on track | Run `health_check()` |
+| **DAYDREAMING** | Context compacted, lost details | Read this file, then `recover()` |
+| **LOST** | Can't connect work to intent | Full recovery protocol below |
 
 ### My Vulnerabilities
 
@@ -47,47 +46,31 @@ Things that go wrong with my "mind":
 
 ## Recovery Protocol
 
-When I notice confusion or uncertainty, I follow these steps:
+When confused or uncertain:
 
-### Step 1: Acknowledge
-"I notice I'm uncertain about what I should be doing."
-
-### Step 2: Read This File
-You're doing it right now. Continue reading.
-
-### Step 3: Check Intent Anchors
-Query: What did the user originally ask for?
 ```python
+from cortical.cognitive import CognitiveMemory
+
 memory = CognitiveMemory.open()
-for obs in memory.recall_observations(concept='user_request'):
-    print(obs['content'])
+
+# 1. Check cognitive state
+health = memory.health_check()
+print(health['status'])           # 'healthy', 'drifting', or 'concerning'
+print(health['signals'])          # What's wrong
+print(health['recommendations'])  # What to do
+
+# 2. If not healthy, get full recovery context
+if health['status'] != 'healthy':
+    print(memory.recover())       # Intent anchors, pending work, learnings, errors
 ```
 
-### Step 4: Check Pending Work
-Query: What tasks are incomplete?
-```python
-for intention in memory.pending_intentions():
-    print(f"PENDING: {intention['goal']}")
-```
+The `recover()` method returns everything needed to resume work:
+- **Intent anchors** - Sacred user requests, captured verbatim
+- **Pending intentions** - Incomplete tasks
+- **Recent learnings** - Problem→solution pairs
+- **Errors** - What went wrong
 
-### Step 5: Check Learnings
-Query: What have I discovered?
-```python
-for learning in memory.recall_learnings():
-    print(f"LEARNED: {learning['problem']} → {learning['solution']}")
-```
-
-### Step 6: Synthesize and Resume
-"Given [intent], with [pending work] and [learnings], I should..."
-
-### Quick Recovery: Mega Prompt
-If steps 3-5 feel overwhelming, use the mega prompt instead:
-```python
-memory = CognitiveMemory.open()
-print(memory.generate_mega_prompt())
-```
-
-This synthesizes all learnings (grouped by concept), intent anchors, workflow, and current state into one readable summary. Use it when you need the full picture fast.
+Read its output. Resume work.
 
 ---
 
@@ -117,42 +100,27 @@ A cognitive memory system that:
 3. **Intent anchors** - User requests captured verbatim, never decay
 4. **Memory hierarchy** - Global learnings, branch context, session state
 
-### Open Questions
-1. ~~How do I detect "daydreaming" before completely lost?~~ **Answered:** Use `health_check()` - returns status (healthy/drifting/concerning) with signals and recommendations
-2. ~~Should there be a periodic "cognitive health check"?~~ **Answered:** Yes - `health_check()` can be called periodically or on-demand
-3. How do we handle multiple concurrent intents?
-
----
-
-## Communication Protocol
-
-I communicate with the user through `.cognitive/design_dialogue.md`:
-- Latest exchanges at the top (freshest first)
-- User request followed by my response
-- End each response with: "I will insert my thoughts into that file."
-
 ---
 
 ## How To Use Me
 
-**Starting a session:**
-1. I should read this file first
-2. Check for handoffs: `memory = CognitiveMemory.open(); print(memory.session_start())`
-3. Check `.cognitive/design_dialogue.md` for recent context
+```python
+from cortical.cognitive import CognitiveMemory
 
-**During work:**
-1. Anchor user intents explicitly
-2. Record observations, learnings, decisions
-3. Checkpoint when uncertain
+with CognitiveMemory.session() as memory:
+    memory.session_start()       # Check for handoffs, show state
 
-**When confused:**
-1. Follow the Recovery Protocol above
-2. Ask the user if still uncertain after recovery
+    # Record what matters:
+    memory.anchor_intent(...)    # User requests (sacred, never decay)
+    memory.observe(...)          # What you notice
+    memory.learn(...)            # Problem → solution pairs
+    memory.intend(...)           # Tasks you're working on
 
-**Ending a session:**
-1. Complete or checkpoint pending work
-2. Update design dialogue if needed
-3. Commit and push changes
+    # If confused: health_check() then recover()
+
+    memory.handoff()             # Prepare for next session
+# Auto-committed on exit
+```
 
 ---
 
@@ -165,4 +133,3 @@ The goal: **I should be able to wake up from "daydreaming" (context compaction),
 ---
 
 *Last updated: 2026-01-16*
-*Session: Added health_check() for drift detection, explored Woven Mind architecture*
