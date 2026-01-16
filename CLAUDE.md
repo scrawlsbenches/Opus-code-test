@@ -97,7 +97,7 @@ This synthesizes all learnings (grouped by concept), intent anchors, workflow, a
 |------|---------|
 | `.cognitive/design_dialogue.md` | Living design discussion with user |
 | `.cognitive/events/` | Persistent memory storage |
-| `examples/cognitive_memory_demo.py` | CognitiveMemory implementation |
+| `cortical/cognitive/memory.py` | CognitiveMemory implementation |
 | `CLAUDE.md` | This file - my identity and recovery guide |
 
 ---

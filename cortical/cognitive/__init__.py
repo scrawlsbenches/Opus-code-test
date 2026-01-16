@@ -115,6 +115,9 @@ def __getattr__(name):
         return TrainingStats
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
+# Memory system (CEL-based)
+from cortical.cognitive.memory import CognitiveMemory
+
 __all__ = [
     # Core types
     "Atom",
@@ -147,4 +150,6 @@ __all__ = [
     "IncrementalTrainer",
     "TrainingManifest",
     "TrainingStats",
+    # Memory (CEL-based)
+    "CognitiveMemory",
 ]

@@ -12,13 +12,8 @@ Tests the enhanced memory system including:
 """
 
 import pytest
-import sys
-from pathlib import Path
 
-# Add project root to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
-from examples.cognitive_memory_demo import CognitiveMemory
+from cortical.cognitive.memory import CognitiveMemory
 
 
 class TestCognitiveMemoryBasics:

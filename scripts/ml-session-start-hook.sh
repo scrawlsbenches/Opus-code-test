@@ -324,7 +324,7 @@ if [[ -d ".cognitive" ]]; then
     cognitive_output=$(python3 -c "
 import sys
 sys.path.insert(0, '.')
-from examples.cognitive_memory_demo import CognitiveMemory
+from cortical.cognitive.memory import CognitiveMemory
 memory = CognitiveMemory.open()
 print(memory.session_start())
 " 2>/dev/null)
@@ -341,7 +341,7 @@ print(memory.session_start())
     stats_output=$(python3 -c "
 import sys
 sys.path.insert(0, '.')
-from examples.cognitive_memory_demo import CognitiveMemory
+from cortical.cognitive.memory import CognitiveMemory
 memory = CognitiveMemory.open()
 stats = memory.stats
 print(f\"Events: {stats['total_events']} | Pending: {stats['pending_intentions']} | Preserved: {memory.preserved_count}\")
@@ -353,7 +353,7 @@ print(f\"Events: {stats['total_events']} | Pending: {stats['pending_intentions']
     fi
 else
     echo "   (no cognitive memory initialized)"
-    echo "   💡 Initialize with: python3 -c 'from examples.cognitive_memory_demo import CognitiveMemory; CognitiveMemory.open()'"
+    echo "   💡 Initialize with: python3 -c 'from cortical.cognitive.memory import CognitiveMemory; CognitiveMemory.open()'"
 fi
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 

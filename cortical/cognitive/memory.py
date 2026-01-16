@@ -2,23 +2,24 @@
 """
 Cognitive Memory System - CEL as AI Agent Memory
 
-Demonstrates using the Cognitive Event Lattice as a memory system:
+Uses the Cognitive Event Lattice as a persistent memory system for AI agents:
 - Episodic memory: What happened (Observations)
 - Working memory: Current goals (Intentions)
 - Learning: Errors and solutions (MetaCognition)
 - Memory consolidation: Session summaries (Compaction)
+- Intent anchors: Sacred user requests that never decay
+- Session hooks: Handoffs between sessions
 
-Run: python examples/cognitive_memory_demo.py
+Usage:
+    from cortical.cognitive.memory import CognitiveMemory
+    memory = CognitiveMemory.open()
 """
 
 from __future__ import annotations
 
-import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Union
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from cortical.cel.core.events import (
     CognitiveEvent,
