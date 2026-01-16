@@ -407,3 +407,104 @@ class TestRecoveryProtocol:
         assert len(requests) == 2
         assert "request 1" in requests
         assert "request 2" in requests
+
+
+class TestIntentAnchors:
+    """Test intent anchoring (sacred, never-decay user requests)."""
+
+    def test_anchor_intent_creates_preserved_event(self):
+        """Anchored intents should be marked as preserved."""
+        memory = CognitiveMemory(persistent=False)
+        event_id = memory.anchor_intent("Build a cognitive memory system")
+
+        assert event_id in memory._preserved_events
+        assert memory.preserved_count == 1
+
+    def test_anchor_intent_has_high_importance(self):
+        """Anchored intents should have maximum importance."""
+        memory = CognitiveMemory(persistent=False)
+        event_id = memory.anchor_intent("Important task")
+
+        assert memory._importance_scores[event_id] == 10.0
+
+    def test_recall_intent_anchors_returns_all_anchors(self):
+        """Should return all intent anchors."""
+        memory = CognitiveMemory(persistent=False)
+        memory.anchor_intent("First intent")
+        memory.anchor_intent("Second intent")
+
+        anchors = memory.recall_intent_anchors()
+        assert len(anchors) == 2
+        prompts = [a['prompt'] for a in anchors]
+        assert "First intent" in prompts
+        assert "Second intent" in prompts
+
+    def test_anchor_intent_includes_timestamp(self):
+        """Intent anchors should have anchored_at timestamp."""
+        memory = CognitiveMemory(persistent=False)
+        memory.anchor_intent("Timestamped intent")
+
+        anchors = memory.recall_intent_anchors()
+        assert len(anchors) == 1
+        assert 'anchored_at' in anchors[0]
+        assert anchors[0]['anchored_at'] is not None
+
+    def test_recover_shows_intent_anchors_first(self):
+        """Recovery should prioritize intent anchors."""
+        memory = CognitiveMemory(persistent=False)
+        memory.anchor_intent("Sacred user request")
+        memory.observe_user_request("Regular request")
+
+        result = memory.recover()
+        assert "Intent Anchors (Sacred)" in result
+        assert "Sacred user request" in result
+
+
+class TestCompaction:
+    """Test memory compaction integration with CEL."""
+
+    def test_preserved_count_property(self):
+        """Should track number of preserved events."""
+        memory = CognitiveMemory(persistent=False)
+        assert memory.preserved_count == 0
+
+        memory.anchor_intent("First")
+        assert memory.preserved_count == 1
+
+        memory.anchor_intent("Second")
+        assert memory.preserved_count == 2
+
+    def test_should_compact_false_when_few_events(self):
+        """Should not recommend compaction with few events."""
+        memory = CognitiveMemory(persistent=False)
+        memory.observe("Something happened")
+
+        assert not memory.should_compact()
+
+    def test_compact_returns_result(self):
+        """Compact should return CompactionResult."""
+        memory = CognitiveMemory(persistent=False)
+        # Add a few events
+        for i in range(5):
+            memory.observe(f"Event {i}")
+
+        result = memory.compact()
+        assert result is not None
+        assert hasattr(result, 'original_count')
+        assert hasattr(result, 'compacted_count')
+
+    def test_compact_preserves_intent_anchors(self):
+        """Compaction should not remove intent anchors."""
+        memory = CognitiveMemory(persistent=False)
+        anchor_id = memory.anchor_intent("Sacred request")
+
+        # Add many similar observations
+        for i in range(10):
+            memory.observe("similar observation about testing")
+
+        memory.compact()
+
+        # Anchor should still exist
+        assert anchor_id in memory._preserved_events
+        anchors = memory.recall_intent_anchors()
+        assert len(anchors) == 1

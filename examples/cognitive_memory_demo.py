@@ -14,9 +14,9 @@ Run: python examples/cognitive_memory_demo.py
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Set, Union
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -32,6 +32,11 @@ from cortical.cel.core.events import (
 from cortical.cel.core.references import MerkleRoot
 from cortical.cel.stores import MemoryEventStore
 from cortical.cel.wisdom.dag import FileSystemEventStore
+from cortical.cel.sanity.compaction import (
+    TimeWindowCompactor,
+    SemanticCompactor,
+    CompactionResult,
+)
 
 
 # =============================================================================
@@ -95,6 +100,7 @@ class CognitiveMemory:
         self._concept_index: Dict[str, set] = {}  # concept -> event_ids
         self._pending_intentions: Dict[str, str] = {}  # event_id -> title
         self._importance_scores: Dict[str, float] = {}  # event_id -> importance
+        self._preserved_events: Set[str] = set()  # events that should never be compacted
 
         # Rebuild indexes from existing events
         self._rebuild_indexes()
@@ -127,8 +133,12 @@ class CognitiveMemory:
                     if intention_id:
                         self._pending_intentions.pop(intention_id, None)
 
-            # Default importance (could store in metadata if needed)
-            self._importance_scores[event_id] = 1.0
+            # Restore preserved events (intent anchors)
+            if event.metadata.get('preserved'):
+                self._preserved_events.add(event_id)
+
+            # Restore importance from metadata, default 1.0
+            self._importance_scores[event_id] = event.metadata.get('importance', 1.0)
 
     @classmethod
     def open(
@@ -195,6 +205,58 @@ class CognitiveMemory:
     def observe_user_request(self, request: str) -> str:
         """Record a user request."""
         return self.observe('user_request', {'request': request})
+
+    def anchor_intent(self, prompt: str) -> str:
+        """
+        Create a sacred, never-decay user intent anchor.
+
+        Intent anchors are:
+        - Preserved from compaction (never deleted/merged)
+        - Maximum importance (always surface in recovery)
+        - The ground truth for "what the user asked for"
+
+        Use this for user requests that should persist across all sessions
+        and context compactions.
+
+        Args:
+            prompt: The user's request/intent
+
+        Returns:
+            Event ID of the anchor
+        """
+        # Create observation with special metadata
+        event = Observation(
+            content={
+                'observation': 'intent_anchor',
+                'prompt': prompt,
+                'anchored_at': datetime.now(timezone.utc).isoformat(),
+            },
+            concepts=self._extract_concepts(prompt) + ('intent_anchor', 'user_request'),
+            metadata={
+                'session': self._session_id,
+                'preserved': True,  # Signal to compaction: don't touch this
+                'importance': 10.0,  # Maximum importance
+                'anchor_type': 'user_intent',
+            },
+        )
+        event_id = self._append(event, importance=10.0)
+
+        # Mark as preserved (for in-memory tracking)
+        self._preserved_events.add(event_id)
+
+        return event_id
+
+    def recall_intent_anchors(self) -> List[Dict]:
+        """Get all intent anchors (sacred user requests)."""
+        anchors = []
+        for obs in self.recall_observations():
+            if obs['content'].get('observation') == 'intent_anchor':
+                anchors.append({
+                    'id': obs['id'],
+                    'prompt': obs['content'].get('prompt'),
+                    'anchored_at': obs['content'].get('anchored_at'),
+                })
+        return anchors
 
     def observe_error(self, error: str, context: str = None) -> str:
         """Record an error encountered."""
@@ -324,20 +386,24 @@ class CognitiveMemory:
         The safety net. Call this when confused/daydreaming.
 
         Synthesizes a recovery summary from:
-        1. Pending intentions (what's incomplete)
-        2. Recent learnings (what was discovered)
-        3. User requests (what was originally asked)
-        4. Recent errors (what went wrong)
+        1. Intent anchors (sacred user requests - MOST important)
+        2. Pending intentions (what's incomplete)
+        3. Recent learnings (what was discovered)
+        4. User requests (what was originally asked)
+        5. Recent errors (what went wrong)
 
         Returns a formatted string that can restore context.
         """
+        # Gather intent anchors (sacred, preserved user requests)
+        intent_anchors = self.recall_intent_anchors()
+
         # Gather pending work
         pending = self.pending_intentions()
 
         # Gather learnings
         learnings = self.recall_learnings()[-5:]  # Last 5
 
-        # Gather user requests
+        # Gather user requests (non-anchored)
         user_requests = []
         for obs in self.recall_observations():
             if obs['content'].get('observation') == 'user_request':
@@ -352,10 +418,17 @@ class CognitiveMemory:
 
         # Stats
         stats = self.stats
-        lines.append(f"**Memory State:** {stats['total_events']} events, {stats['indexed_concepts']} concepts")
+        lines.append(f"**Memory State:** {stats['total_events']} events, {stats['indexed_concepts']} concepts, {self.preserved_count} preserved")
         lines.append("")
 
-        # Pending work (most important)
+        # Intent anchors FIRST (most sacred)
+        if intent_anchors:
+            lines.append(f"**Intent Anchors (Sacred):** {len(intent_anchors)}")
+            for anchor in intent_anchors:
+                lines.append(f"- {anchor['prompt']}")
+            lines.append("")
+
+        # Pending work
         if pending:
             lines.append(f"**Pending Work:** {len(pending)} tasks")
             for p in pending:
@@ -365,9 +438,9 @@ class CognitiveMemory:
             lines.append("**Pending Work:** None")
             lines.append("")
 
-        # User requests (intent anchors)
+        # User requests (non-anchored, for context)
         if user_requests:
-            lines.append("**User Requests:**")
+            lines.append("**Recent Requests:**")
             for req in user_requests:
                 lines.append(f"- {req}")
             lines.append("")
@@ -573,6 +646,71 @@ class CognitiveMemory:
         # Sort by importance * recency
         memories.sort(key=lambda x: x['importance'], reverse=True)
         return memories[:limit]
+
+    # --- Compaction (Memory Consolidation) ---
+
+    def compact(
+        self,
+        strategy: str = 'semantic',
+        min_age_days: int = 7,
+    ) -> CompactionResult:
+        """
+        Compact memory using CEL's compaction infrastructure.
+
+        Preserved events (intent anchors, learnings) are never compacted.
+
+        Args:
+            strategy: 'semantic' (concept overlap) or 'time' (age-based)
+            min_age_days: Only compact events older than this
+
+        Returns:
+            CompactionResult with statistics
+        """
+        if strategy == 'time':
+            compactor = TimeWindowCompactor(
+                self._store,
+                window_size=timedelta(hours=24),
+                min_age=timedelta(days=min_age_days),
+            )
+        else:  # semantic
+            compactor = SemanticCompactor(
+                self._store,
+                similarity_threshold=0.8,
+                min_group_size=3,
+            )
+
+        # Mark all preserved events as non-compactable
+        for event_id in self._preserved_events:
+            compactor.preserve(event_id)
+
+        # Also preserve all learnings (they're valuable)
+        for event in self._store.iterate():
+            if event.event_type == EventType.METACOGNITION:
+                if event.content.get('observation_type') == 'learning':
+                    compactor.preserve(event.id)
+
+        # Execute compaction
+        result = compactor.compact()
+
+        # Record that compaction happened
+        self.reflect(
+            f"Memory compacted: {result.original_count} -> {result.compacted_count} events "
+            f"({result.compression_ratio:.1%} ratio)",
+            category='compaction',
+        )
+
+        return result
+
+    def should_compact(self) -> bool:
+        """Check if memory compaction is recommended."""
+        total = sum(1 for _ in self._store.iterate())
+        # Recommend if >100 events
+        return total > 100
+
+    @property
+    def preserved_count(self) -> int:
+        """Number of preserved (non-compactable) events."""
+        return len(self._preserved_events)
 
 
 # =============================================================================
