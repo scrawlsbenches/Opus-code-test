@@ -1,0 +1,23 @@
+{
+  "id": "7c16e0db6d4249054a01f3c1b2a5f28d7fd2b70c97a7f569fa3c27a4ceac6920",
+  "timestamp": "2026-01-16T09:57:33.037252+00:00",
+  "event_type": "METACOGNITION",
+  "causal_parents": [
+    "84f555064f6793951767921ca243e320dcc50f4a1e823d8de516e522a74865a6"
+  ],
+  "content": {
+    "observation_type": "mega_prompt",
+    "metrics": {},
+    "conclusions": [
+      "Generated mega prompt for knowledge consolidation"
+    ],
+    "actions_triggered": []
+  },
+  "concepts": [
+    "metacognition",
+    "mega_prompt"
+  ],
+  "metadata": {
+    "session": "session-20260116-095733"
+  }
+}

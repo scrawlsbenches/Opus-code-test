@@ -1,0 +1,26 @@
+{
+  "id": "a0cb8c5ab1b83982087145d97cd9b6c7b0bf79dbf66250ebd3e746821615bb2e",
+  "timestamp": "2026-01-16T09:55:14.557631+00:00",
+  "event_type": "METACOGNITION",
+  "causal_parents": [
+    "1b87e62ae8e05a7d1c2517710086446827155feda1750a1a824931e1163e45d1"
+  ],
+  "content": {
+    "observation_type": "learning",
+    "metrics": {
+      "problem": "How does Woven Mind relate to cognitive states?",
+      "solution": "Loom's surprise detection maps to FOCUSED\u2192DRIFTING\u2192LOST. surprise<0.2=FOCUSED, 0.2-0.3=DRIFTING, >0.3=trigger SLOW mode (recovery)"
+    },
+    "conclusions": [
+      "Learned: Loom's surprise detection maps to FOCUSED\u2192DRIFTING\u2192LOST. surprise<0.2=FOCUSED, 0.2-0.3=DRIFTING, >0.3=trigger SLOW mode (recovery)"
+    ],
+    "actions_triggered": []
+  },
+  "concepts": [
+    "metacognition",
+    "learning"
+  ],
+  "metadata": {
+    "session": "session-20260116-095514"
+  }
+}

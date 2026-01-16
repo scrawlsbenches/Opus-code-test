@@ -1,0 +1,26 @@
+{
+  "id": "1b87e62ae8e05a7d1c2517710086446827155feda1750a1a824931e1163e45d1",
+  "timestamp": "2026-01-16T09:55:14.556168+00:00",
+  "event_type": "METACOGNITION",
+  "causal_parents": [
+    "9e35e7a35452fe4461c3d4dc3036596629e54cdcd3739bcad9a6d76182e2be5b"
+  ],
+  "content": {
+    "observation_type": "learning",
+    "metrics": {
+      "problem": "What's the actual state of Woven Mind?",
+      "solution": "Surprise detection and mode switching work. Consolidation pattern tracking is fragile. See .cognitive/woven_mind_assessment.md"
+    },
+    "conclusions": [
+      "Learned: Surprise detection and mode switching work. Consolidation pattern tracking is fragile. See .cognitive/woven_mind_assessment.md"
+    ],
+    "actions_triggered": []
+  },
+  "concepts": [
+    "metacognition",
+    "learning"
+  ],
+  "metadata": {
+    "session": "session-20260116-095514"
+  }
+}

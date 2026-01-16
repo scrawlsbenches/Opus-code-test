@@ -207,3 +207,7 @@ datasets/
 .git-ml/commits/
 .git-ml/cali/logs/
 .git-ml/cali/objects/
+
+# Cognitive Memory System
+# TRACKED: All of .cognitive/ including events (learnings, observations, intent anchors)
+# Events must persist across clones - they ARE the memory

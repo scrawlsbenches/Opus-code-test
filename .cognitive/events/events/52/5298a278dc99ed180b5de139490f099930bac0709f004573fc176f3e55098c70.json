@@ -1,0 +1,26 @@
+{
+  "id": "5298a278dc99ed180b5de139490f099930bac0709f004573fc176f3e55098c70",
+  "timestamp": "2026-01-16T09:55:14.561602+00:00",
+  "event_type": "METACOGNITION",
+  "causal_parents": [
+    "ae782788a5d0e5462893fdec9cdeaa9f5b2d74acbd72f1796c272ab057f47ee7"
+  ],
+  "content": {
+    "observation_type": "learning",
+    "metrics": {
+      "problem": "How to implement drift detection without Woven Mind's token-based surprise?",
+      "solution": "Check multiple signals: intent alignment, pending count, error rate, completion rate, event diversity. Simpler and fits our event-based model."
+    },
+    "conclusions": [
+      "Learned: Check multiple signals: intent alignment, pending count, error rate, completion rate, event diversity. Simpler and fits our event-based model."
+    ],
+    "actions_triggered": []
+  },
+  "concepts": [
+    "metacognition",
+    "learning"
+  ],
+  "metadata": {
+    "session": "session-20260116-095514"
+  }
+}

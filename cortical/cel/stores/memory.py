@@ -41,7 +41,7 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from datetime import datetime, timezone
-from typing import Dict, Iterator, List, Optional, Sequence, Set
+from typing import Any, Dict, Iterator, List, Optional, Sequence, Set
 
 from ..core.events import CognitiveEvent, EventType
 from ..core.references import MerkleRoot, EventHorizon
@@ -302,7 +302,7 @@ class MemoryEventStore:
         return len(self._events)
 
     @property
-    def stats(self) -> Dict[str, any]:
+    def stats(self) -> Dict[str, Any]:
         """
         Get store statistics.
 

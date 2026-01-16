@@ -1,0 +1,27 @@
+{
+  "id": "9e35e7a35452fe4461c3d4dc3036596629e54cdcd3739bcad9a6d76182e2be5b",
+  "timestamp": "2026-01-16T09:55:14.554790+00:00",
+  "event_type": "OBSERVATION",
+  "causal_parents": [],
+  "content": {
+    "observation": "intent_anchor",
+    "prompt": "Build cognitive memory system with CEL integration",
+    "anchored_at": "2026-01-16T09:55:14.554759+00:00"
+  },
+  "concepts": [
+    "build",
+    "cognitive",
+    "memory",
+    "system",
+    "with",
+    "integration",
+    "intent_anchor",
+    "user_request"
+  ],
+  "metadata": {
+    "session": "session-20260116-095514",
+    "preserved": true,
+    "importance": 10.0,
+    "anchor_type": "user_intent"
+  }
+}
