@@ -150,17 +150,9 @@ class CognitiveMemory:
         session_id: Optional[str] = None,
     ) -> 'CognitiveMemory':
         """
-        Open or create a persistent cognitive memory.
+        Open a persistent cognitive memory for read-only queries.
 
-        NOTE: Prefer using session() context manager instead for automatic
-        git commit/push on exit:
-
-            with CognitiveMemory.session() as memory:
-                memory.observe(...)
-            # Auto-committed here
-
-        Use open() directly only for read-only queries or when you need
-        manual control over git operations.
+        For sessions that create events, use session() context manager.
 
         Args:
             storage_path: Where to store events (default: .cognitive/)
