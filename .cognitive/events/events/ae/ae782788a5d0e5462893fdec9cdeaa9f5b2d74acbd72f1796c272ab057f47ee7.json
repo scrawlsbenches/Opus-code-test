@@ -1,0 +1,26 @@
+{
+  "id": "ae782788a5d0e5462893fdec9cdeaa9f5b2d74acbd72f1796c272ab057f47ee7",
+  "timestamp": "2026-01-16T09:55:14.560377+00:00",
+  "event_type": "METACOGNITION",
+  "causal_parents": [
+    "c4126c645713bb93f4b4edab43e4b420befb1d3418ccb1f22fe63d132e189a70"
+  ],
+  "content": {
+    "observation_type": "learning",
+    "metrics": {
+      "problem": "Why must .cognitive/events/ be in git?",
+      "solution": "Without git tracking, events can be accidentally lost (as demonstrated). They ARE the memory - learnings, observations, intent anchors."
+    },
+    "conclusions": [
+      "Learned: Without git tracking, events can be accidentally lost (as demonstrated). They ARE the memory - learnings, observations, intent anchors."
+    ],
+    "actions_triggered": []
+  },
+  "concepts": [
+    "metacognition",
+    "learning"
+  ],
+  "metadata": {
+    "session": "session-20260116-095514"
+  }
+}

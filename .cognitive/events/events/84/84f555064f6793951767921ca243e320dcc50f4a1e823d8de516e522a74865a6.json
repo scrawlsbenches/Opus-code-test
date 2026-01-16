@@ -1,0 +1,24 @@
+{
+  "id": "84f555064f6793951767921ca243e320dcc50f4a1e823d8de516e522a74865a6",
+  "timestamp": "2026-01-16T09:55:14.562726+00:00",
+  "event_type": "OBSERVATION",
+  "causal_parents": [
+    "5298a278dc99ed180b5de139490f099930bac0709f004573fc176f3e55098c70"
+  ],
+  "content": {
+    "observation": "Accidentally deleted .cognitive/events during test - proved why git tracking is essential"
+  },
+  "concepts": [
+    "accidentally",
+    "deleted",
+    ".cognitive/events",
+    "during",
+    "test",
+    "proved",
+    "tracking",
+    "essential"
+  ],
+  "metadata": {
+    "session": "session-20260116-095514"
+  }
+}
