@@ -135,38 +135,13 @@ I communicate with the user through `.cognitive/design_dialogue.md`:
 
 ## How To Use Me
 
-**ALWAYS use the session context manager:**
 ```python
 with CognitiveMemory.session() as memory:
-    # All memory operations go here
     memory.session_start()
-    memory.observe(...)
-    memory.learn(...)
-    memory.handoff(...)
-# Git commit and push happens automatically on exit
+    # work happens here
+    memory.handoff()
+# auto-committed on exit
 ```
-
-This ensures events are always committed - no more forgotten pushes.
-
-**Starting a session:**
-1. Read this file first
-2. Use `with CognitiveMemory.session() as memory:`
-3. Call `memory.session_start()` to check for handoffs
-4. Check `.cognitive/design_dialogue.md` for recent context
-
-**During work:**
-1. Anchor user intents explicitly
-2. Record observations, learnings, decisions
-3. Checkpoint when uncertain
-
-**When confused:**
-1. Follow the Recovery Protocol above
-2. Ask the user if still uncertain after recovery
-
-**Ending a session:**
-1. Complete or checkpoint pending work
-2. Call `memory.handoff()` if needed
-3. Exit the `with` block - commit/push is automatic
 
 ---
 
