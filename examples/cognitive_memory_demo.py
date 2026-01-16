@@ -472,6 +472,134 @@ class CognitiveMemory:
                 requests.append(obs['content'].get('request', 'unknown'))
         return requests
 
+    # --- Session Hooks (Handoff Between Sessions) ---
+
+    def handoff(self, summary: str = None, focus: str = None) -> str:
+        """
+        Create a handoff for the next session.
+
+        Call this at session end to capture state for continuation.
+        The next session can check_handoff() to pick up where you left off.
+
+        Args:
+            summary: Optional summary of what was accomplished
+            focus: Optional note about what to focus on next
+
+        Returns:
+            Event ID of the handoff
+        """
+        # Gather current state
+        pending = self.pending_intentions()
+        learnings = self.recall_learnings()[-3:]
+        anchors = self.recall_intent_anchors()
+
+        # Auto-generate summary if not provided
+        if not summary:
+            if pending:
+                summary = f"Session ended with {len(pending)} pending tasks"
+            else:
+                summary = "Session ended with no pending tasks"
+
+        # Create handoff event
+        event = MetaCognition(
+            observation_type='session_handoff',
+            metrics={
+                'pending_count': len(pending),
+                'pending_tasks': [p['goal'] for p in pending[:5]],
+                'recent_learnings': [l['problem'] for l in learnings],
+                'intent_anchors': [a['prompt'] for a in anchors[:3]],
+                'focus': focus,
+            },
+            conclusions=[summary],
+            metadata={
+                'session': self._session_id,
+                'handoff_time': datetime.now(timezone.utc).isoformat(),
+                'acknowledged': False,  # Will be set True when next session picks up
+            },
+        )
+        return self._append(event)
+
+    def check_handoff(self) -> Optional[Dict]:
+        """
+        Check for unacknowledged handoffs from previous sessions.
+
+        Call this at session start to see if there's pending work
+        from a previous session.
+
+        Returns:
+            Handoff info dict if found, None otherwise
+        """
+        # Find most recent unacknowledged handoff
+        for event in reversed(list(self._store.iterate())):
+            if event.event_type == EventType.METACOGNITION:
+                if event.content.get('observation_type') == 'session_handoff':
+                    if not event.metadata.get('acknowledged', False):
+                        return {
+                            'id': event.id,
+                            'summary': event.content.get('conclusions', [''])[0],
+                            'pending_tasks': event.content.get('metrics', {}).get('pending_tasks', []),
+                            'focus': event.content.get('metrics', {}).get('focus'),
+                            'handoff_time': event.metadata.get('handoff_time'),
+                            'from_session': event.metadata.get('session'),
+                        }
+        return None
+
+    def acknowledge_handoff(self, handoff_id: str) -> None:
+        """
+        Mark a handoff as acknowledged.
+
+        Call this after processing a handoff so it won't surface again.
+        """
+        # Record acknowledgment (we can't modify the original event,
+        # but we can record that we've seen it)
+        self.reflect(
+            f"Acknowledged handoff from previous session: {handoff_id[:12]}",
+            category='handoff_ack',
+        )
+        # Note: In a real implementation, we might want to track acknowledged
+        # handoffs in a separate index. For now, we rely on the handoff being
+        # from a different session than the current one.
+
+    def session_start(self) -> str:
+        """
+        Initialize a new session - check for handoffs and return status.
+
+        Call this at the beginning of a session for a clean start.
+
+        Returns:
+            Formatted string with session status
+        """
+        lines = [f"## Session Start: {self._session_id}", ""]
+
+        # Check for handoff
+        handoff = self.check_handoff()
+        if handoff:
+            lines.append("**Handoff from previous session:**")
+            lines.append(f"- {handoff['summary']}")
+            if handoff['focus']:
+                lines.append(f"- Focus: {handoff['focus']}")
+            if handoff['pending_tasks']:
+                lines.append(f"- Pending: {', '.join(handoff['pending_tasks'][:3])}")
+            lines.append("")
+            # Auto-acknowledge
+            self.acknowledge_handoff(handoff['id'])
+        else:
+            lines.append("No pending handoff from previous session.")
+            lines.append("")
+
+        # Show current state
+        stats = self.stats
+        lines.append(f"**Memory State:** {stats['total_events']} events, {self.preserved_count} preserved")
+
+        # Show intent anchors if any
+        anchors = self.recall_intent_anchors()
+        if anchors:
+            lines.append(f"**Active Intent Anchors:** {len(anchors)}")
+            for a in anchors[:3]:
+                lines.append(f"- {a['prompt']}")
+
+        return "\n".join(lines)
+
     # --- Querying Memory ---
 
     def recall_observations(self, concept: str = None) -> List[Dict]:

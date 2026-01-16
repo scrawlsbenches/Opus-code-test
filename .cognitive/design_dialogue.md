@@ -4,6 +4,67 @@ This file captures our design discussion. Latest exchanges appear first.
 
 ---
 
+## [2026-01-16] Exchange: Session Hooks and Workflow Integration
+
+### What Was Built:
+
+Added session hooks for continuity between sessions:
+
+| Method | Purpose |
+|--------|---------|
+| `handoff(summary, focus)` | Capture state at session end |
+| `check_handoff()` | Check for pending handoffs |
+| `acknowledge_handoff(id)` | Mark handoff as processed |
+| `session_start()` | Initialize session, surface handoffs |
+
+### The Cognitive Workflow:
+
+```
+    ┌─────────────────────────────────────────────┐
+    │              SESSION START                  │
+    │  CLAUDE.md → session_start() → work        │
+    └─────────────────┬───────────────────────────┘
+                      │
+                      ▼
+    ┌─────────────────────────────────────────────┐
+    │              DURING SESSION                 │
+    │  anchor_intent() → observe() → learn()     │
+    │            intend() → complete()           │
+    │                                             │
+    │  If confused: recover()                    │
+    └─────────────────┬───────────────────────────┘
+                      │
+                      ▼
+    ┌─────────────────────────────────────────────┐
+    │              SESSION END                    │
+    │  handoff(summary, focus) → commit → push   │
+    └─────────────────┬───────────────────────────┘
+                      │
+                      ▼
+              (Next session picks up)
+```
+
+### Key Insight:
+
+The workflow now has **explicit boundaries**:
+- **Start**: `session_start()` checks for handoffs from previous session
+- **During**: `observe()`, `learn()`, `intend()`, `recover()` as needed
+- **End**: `handoff()` captures state for next session
+
+This creates a **handoff chain** - each session ends by preparing context for the next.
+
+### Current State:
+
+- 53 tests passing
+- Session handoff working (tested with session-1 → session-2 flow)
+- Workflow documented
+
+---
+
+*I will insert my thoughts into this file.*
+
+---
+
 ## [2026-01-15] Exchange: Implemented recover() and Imagined Goals
 
 ### What Was Built:

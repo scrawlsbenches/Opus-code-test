@@ -508,3 +508,84 @@ class TestCompaction:
         assert anchor_id in memory._preserved_events
         anchors = memory.recall_intent_anchors()
         assert len(anchors) == 1
+
+
+class TestSessionHooks:
+    """Test session handoff between sessions."""
+
+    def test_handoff_creates_event(self):
+        """Handoff should create a metacognition event."""
+        memory = CognitiveMemory(persistent=False)
+        memory.intend("Some task")
+
+        event_id = memory.handoff(summary="Ending session")
+
+        assert event_id is not None
+        stats = memory.stats
+        assert stats['by_type'].get('METACOGNITION', 0) >= 1
+
+    def test_handoff_captures_pending_tasks(self):
+        """Handoff should capture pending intentions."""
+        memory = CognitiveMemory(persistent=False)
+        memory.intend("Task A", priority="high")
+        memory.intend("Task B", priority="medium")
+
+        memory.handoff()
+
+        # Check handoff from a "new session"
+        handoff = memory.check_handoff()
+        assert handoff is not None
+        assert "Task A" in handoff['pending_tasks']
+        assert "Task B" in handoff['pending_tasks']
+
+    def test_handoff_with_focus(self):
+        """Handoff can include focus note."""
+        memory = CognitiveMemory(persistent=False)
+
+        memory.handoff(
+            summary="Made progress on feature",
+            focus="Continue with testing next"
+        )
+
+        handoff = memory.check_handoff()
+        assert handoff['focus'] == "Continue with testing next"
+
+    def test_check_handoff_returns_none_when_empty(self):
+        """No handoff should return None."""
+        memory = CognitiveMemory(persistent=False)
+
+        handoff = memory.check_handoff()
+        assert handoff is None
+
+    def test_session_start_shows_handoff(self):
+        """Session start should surface pending handoff."""
+        memory = CognitiveMemory(persistent=False)
+        memory.intend("Pending work")
+        memory.handoff(summary="Left off here", focus="Continue testing")
+
+        # Simulate new session
+        result = memory.session_start()
+
+        assert "Handoff from previous session" in result
+        assert "Left off here" in result
+        assert "Continue testing" in result
+
+    def test_session_start_no_handoff(self):
+        """Session start with no handoff shows clean state."""
+        memory = CognitiveMemory(persistent=False)
+
+        result = memory.session_start()
+
+        assert "No pending handoff" in result
+
+    def test_acknowledge_handoff_records_ack(self):
+        """Acknowledging handoff should record it."""
+        memory = CognitiveMemory(persistent=False)
+        memory.handoff(summary="Test handoff")
+
+        handoff = memory.check_handoff()
+        memory.acknowledge_handoff(handoff['id'])
+
+        # Check that acknowledgment was recorded
+        stats = memory.stats
+        assert stats['by_type'].get('METACOGNITION', 0) >= 2  # handoff + ack
