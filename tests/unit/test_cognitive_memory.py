@@ -589,3 +589,75 @@ class TestSessionHooks:
         # Check that acknowledgment was recorded
         stats = memory.stats
         assert stats['by_type'].get('METACOGNITION', 0) >= 2  # handoff + ack
+
+
+class TestMegaPrompt:
+    """Test mega prompt generation (consolidated wisdom)."""
+
+    def test_generate_mega_prompt_returns_markdown(self):
+        """Mega prompt should return formatted markdown."""
+        memory = CognitiveMemory(persistent=False)
+        memory.learn("test problem", "test solution")
+
+        result = memory.generate_mega_prompt()
+
+        assert "# Cognitive Summary" in result
+        assert "## Learnings" in result
+
+    def test_mega_prompt_includes_learnings(self):
+        """Mega prompt should include all learnings."""
+        memory = CognitiveMemory(persistent=False)
+        memory.learn("Problem A", "Solution A")
+        memory.learn("Problem B", "Solution B")
+
+        result = memory.generate_mega_prompt()
+
+        assert "Problem A" in result
+        assert "Solution A" in result
+        assert "Problem B" in result
+
+    def test_mega_prompt_includes_intent_anchors(self):
+        """Mega prompt should include intent anchors."""
+        memory = CognitiveMemory(persistent=False)
+        memory.anchor_intent("Build amazing feature")
+
+        result = memory.generate_mega_prompt()
+
+        assert "Intent Anchors" in result
+        assert "Build amazing feature" in result
+
+    def test_mega_prompt_includes_workflow(self):
+        """Mega prompt should include workflow by default."""
+        memory = CognitiveMemory(persistent=False)
+
+        result = memory.generate_mega_prompt()
+
+        assert "## Workflow" in result
+        assert "SESSION START" in result
+
+    def test_mega_prompt_without_workflow(self):
+        """Mega prompt can exclude workflow section."""
+        memory = CognitiveMemory(persistent=False)
+
+        result = memory.generate_mega_prompt(include_workflow=False)
+
+        assert "## Workflow" not in result
+
+    def test_mega_prompt_groups_learnings(self):
+        """Learnings should be grouped by concept category."""
+        memory = CognitiveMemory(persistent=False)
+        memory.learn("How to persist data to storage", "Use FileSystemEventStore")
+        memory.learn("Recovery from context loss", "Call recover() method")
+
+        result = memory.generate_mega_prompt()
+
+        # Should have category headers (at least one)
+        assert "###" in result
+
+    def test_mega_prompt_records_generation(self):
+        """Generating mega prompt should record the event."""
+        memory = CognitiveMemory(persistent=False)
+        memory.generate_mega_prompt()
+
+        stats = memory.stats
+        assert stats['by_type'].get('METACOGNITION', 0) >= 1

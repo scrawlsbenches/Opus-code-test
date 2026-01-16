@@ -840,6 +840,163 @@ class CognitiveMemory:
         """Number of preserved (non-compactable) events."""
         return len(self._preserved_events)
 
+    # --- Mega Prompt Generation (Consolidated Wisdom) ---
+
+    def generate_mega_prompt(self, include_workflow: bool = True) -> str:
+        """
+        Generate a consolidated cognitive prompt from all learnings and insights.
+
+        This creates a reusable summary that can be:
+        - Injected into CLAUDE.md
+        - Used as context for future sessions
+        - Shared across projects
+
+        Args:
+            include_workflow: Include workflow patterns section
+
+        Returns:
+            Formatted markdown suitable for prompt injection
+        """
+        lines = [
+            "# Cognitive Summary",
+            "",
+            f"*Generated from {self.stats['total_events']} events, "
+            f"{len(self.recall_learnings())} learnings*",
+            "",
+        ]
+
+        # Intent Anchors (Sacred User Requests)
+        anchors = self.recall_intent_anchors()
+        if anchors:
+            lines.append("## Intent Anchors (Sacred)")
+            lines.append("")
+            lines.append("These are the core user requests that drive all work:")
+            lines.append("")
+            for anchor in anchors:
+                lines.append(f"- **{anchor['prompt']}**")
+            lines.append("")
+
+        # Learnings - grouped by concept similarity
+        learnings = self.recall_learnings()
+        if learnings:
+            lines.append("## Learnings")
+            lines.append("")
+
+            # Group learnings by shared concepts
+            grouped = self._group_learnings_by_concept(learnings)
+
+            for category, category_learnings in grouped.items():
+                if category != "general":
+                    lines.append(f"### {category.title()}")
+                    lines.append("")
+
+                for learning in category_learnings:
+                    problem = learning['problem']
+                    solution = learning['solution']
+                    lines.append(f"- **{problem}**")
+                    lines.append(f"  - {solution}")
+                    lines.append("")
+
+            # General learnings (no clear category)
+            if "general" in grouped and grouped["general"]:
+                lines.append("### General")
+                lines.append("")
+                for learning in grouped["general"]:
+                    lines.append(f"- **{learning['problem']}** → {learning['solution']}")
+                lines.append("")
+
+        # Workflow patterns (if requested)
+        if include_workflow:
+            lines.append("## Workflow")
+            lines.append("")
+            lines.append("```")
+            lines.append("SESSION START")
+            lines.append("  ├─ Read CLAUDE.md (identity)")
+            lines.append("  ├─ memory.session_start() - check handoffs")
+            lines.append("  └─ Begin work")
+            lines.append("")
+            lines.append("DURING SESSION")
+            lines.append("  ├─ anchor_intent() - sacred user requests")
+            lines.append("  ├─ observe() / learn() - capture experience")
+            lines.append("  ├─ intend() / complete() - track tasks")
+            lines.append("  └─ recover() - if confused")
+            lines.append("")
+            lines.append("SESSION END")
+            lines.append("  ├─ handoff(summary, focus) - prepare for next")
+            lines.append("  └─ commit and push")
+            lines.append("```")
+            lines.append("")
+
+        # Current state summary
+        lines.append("## Current State")
+        lines.append("")
+        stats = self.stats
+        lines.append(f"- **Events:** {stats['total_events']}")
+        lines.append(f"- **Pending intentions:** {stats['pending_intentions']}")
+        lines.append(f"- **Preserved (sacred):** {self.preserved_count}")
+        lines.append(f"- **Indexed concepts:** {stats['indexed_concepts']}")
+        lines.append("")
+
+        # Record that mega prompt was generated
+        self.reflect("Generated mega prompt for knowledge consolidation", category="mega_prompt")
+
+        return "\n".join(lines)
+
+    def _group_learnings_by_concept(self, learnings: List[Dict]) -> Dict[str, List[Dict]]:
+        """Group learnings by their primary concept for better organization."""
+        # Define concept categories
+        categories = {
+            'persistence': ['store', 'persist', 'save', 'load', 'file', 'storage'],
+            'recovery': ['recover', 'restore', 'context', 'confused', 'daydream'],
+            'workflow': ['session', 'handoff', 'start', 'end', 'hook'],
+            'compaction': ['compact', 'compress', 'preserve', 'anchor'],
+            'memory': ['memory', 'event', 'observe', 'learn', 'intent'],
+        }
+
+        grouped: Dict[str, List[Dict]] = {cat: [] for cat in categories}
+        grouped['general'] = []
+
+        for learning in learnings:
+            problem_lower = learning['problem'].lower()
+            solution_lower = learning['solution'].lower()
+            combined = problem_lower + " " + solution_lower
+
+            # Find best matching category
+            best_category = 'general'
+            best_score = 0
+
+            for category, keywords in categories.items():
+                score = sum(1 for kw in keywords if kw in combined)
+                if score > best_score:
+                    best_score = score
+                    best_category = category
+
+            grouped[best_category].append(learning)
+
+        # Remove empty categories
+        return {k: v for k, v in grouped.items() if v}
+
+    def save_mega_prompt(self, path: str = None) -> str:
+        """
+        Generate and save mega prompt to a file.
+
+        Args:
+            path: Output path (default: .cognitive/mega_prompt.md)
+
+        Returns:
+            Path where file was saved
+        """
+        if path is None:
+            path = str(self._storage_path / "mega_prompt.md")
+
+        content = self.generate_mega_prompt()
+
+        with open(path, 'w') as f:
+            f.write(content)
+
+        self.observe(f"Saved mega prompt to {path}")
+        return path
+
 
 # =============================================================================
 # Demo: Simulated Agent Session
