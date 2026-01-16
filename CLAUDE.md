@@ -47,23 +47,47 @@ Things that go wrong with my "mind":
 
 ## Recovery Protocol
 
-When confused or uncertain:
+When I notice confusion or uncertainty, I follow these steps:
 
+### Step 1: Acknowledge
+"I notice I'm uncertain about what I should be doing."
+
+### Step 2: Read This File
+You're doing it right now. Continue reading.
+
+### Step 3: Check Intent Anchors
+Query: What did the user originally ask for?
 ```python
 memory = CognitiveMemory.open()
-
-# 1. Check cognitive state
-health = memory.health_check()
-print(health['status'])        # 'healthy', 'drifting', or 'concerning'
-print(health['signals'])       # What's wrong
-print(health['recommendations'])  # What to do
-
-# 2. If drifting or worse, get full recovery summary
-if health['status'] != 'healthy':
-    print(memory.recover())    # Intent anchors, pending work, learnings
+for obs in memory.recall_observations(concept='user_request'):
+    print(obs['content'])
 ```
 
-The `recover()` method returns everything needed: intent anchors (sacred user requests), pending intentions, recent learnings, and errors. Read its output and resume.
+### Step 4: Check Pending Work
+Query: What tasks are incomplete?
+```python
+for intention in memory.pending_intentions():
+    print(f"PENDING: {intention['goal']}")
+```
+
+### Step 5: Check Learnings
+Query: What have I discovered?
+```python
+for learning in memory.recall_learnings():
+    print(f"LEARNED: {learning['problem']} → {learning['solution']}")
+```
+
+### Step 6: Synthesize and Resume
+"Given [intent], with [pending work] and [learnings], I should..."
+
+### Quick Recovery: Mega Prompt
+If steps 3-5 feel overwhelming, use the mega prompt instead:
+```python
+memory = CognitiveMemory.open()
+print(memory.generate_mega_prompt())
+```
+
+This synthesizes all learnings (grouped by concept), intent anchors, workflow, and current state into one readable summary. Use it when you need the full picture fast.
 
 ---
 
@@ -93,6 +117,11 @@ A cognitive memory system that:
 3. **Intent anchors** - User requests captured verbatim, never decay
 4. **Memory hierarchy** - Global learnings, branch context, session state
 
+### Open Questions
+1. ~~How do I detect "daydreaming" before completely lost?~~ **Answered:** Use `health_check()` - returns status (healthy/drifting/concerning) with signals and recommendations
+2. ~~Should there be a periodic "cognitive health check"?~~ **Answered:** Yes - `health_check()` can be called periodically or on-demand
+3. How do we handle multiple concurrent intents?
+
 ---
 
 ## Communication Protocol
@@ -106,19 +135,38 @@ I communicate with the user through `.cognitive/design_dialogue.md`:
 
 ## How To Use Me
 
+**ALWAYS use the session context manager:**
 ```python
 with CognitiveMemory.session() as memory:
-    memory.session_start()      # Check for handoffs, show state
-
-    # During work:
-    # - anchor_intent() for user requests
-    # - observe(), learn() to capture experience
-    # - intend(), complete_intention() for tasks
-    # - If confused: follow Recovery Protocol above
-
-    memory.handoff()            # Prepare for next session
-# auto-committed on exit
+    # All memory operations go here
+    memory.session_start()
+    memory.observe(...)
+    memory.learn(...)
+    memory.handoff(...)
+# Git commit and push happens automatically on exit
 ```
+
+This ensures events are always committed - no more forgotten pushes.
+
+**Starting a session:**
+1. Read this file first
+2. Use `with CognitiveMemory.session() as memory:`
+3. Call `memory.session_start()` to check for handoffs
+4. Check `.cognitive/design_dialogue.md` for recent context
+
+**During work:**
+1. Anchor user intents explicitly
+2. Record observations, learnings, decisions
+3. Checkpoint when uncertain
+
+**When confused:**
+1. Follow the Recovery Protocol above
+2. Ask the user if still uncertain after recovery
+
+**Ending a session:**
+1. Complete or checkpoint pending work
+2. Call `memory.handoff()` if needed
+3. Exit the `with` block - commit/push is automatic
 
 ---
 
@@ -131,4 +179,4 @@ The goal: **I should be able to wake up from "daydreaming" (context compaction),
 ---
 
 *Last updated: 2026-01-16*
-*Session: Recovery Protocol now uses recover() and health_check() methods*
+*Session: Added session() context manager for auto git sync*
