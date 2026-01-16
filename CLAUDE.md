@@ -135,9 +135,15 @@ I communicate with the user through `.cognitive/design_dialogue.md`:
 
 ```python
 with CognitiveMemory.session() as memory:
-    memory.session_start()
-    # work happens here
-    memory.handoff()
+    memory.session_start()      # Check for handoffs, show state
+
+    # During work:
+    # - anchor_intent() for user requests
+    # - observe(), learn() to capture experience
+    # - intend(), complete_intention() for tasks
+    # - If confused: follow Recovery Protocol above
+
+    memory.handoff()            # Prepare for next session
 # auto-committed on exit
 ```
 
