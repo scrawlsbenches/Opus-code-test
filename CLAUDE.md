@@ -137,8 +137,8 @@ I communicate with the user through `.cognitive/design_dialogue.md`:
 
 **Starting a session:**
 1. I should read this file first
-2. Check `.cognitive/design_dialogue.md` for recent context
-3. Query `CognitiveMemory.open()` for pending work
+2. Check for handoffs: `memory = CognitiveMemory.open(); print(memory.session_start())`
+3. Check `.cognitive/design_dialogue.md` for recent context
 
 **During work:**
 1. Anchor user intents explicitly
