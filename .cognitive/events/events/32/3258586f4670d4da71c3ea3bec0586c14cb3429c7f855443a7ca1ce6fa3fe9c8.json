@@ -1,0 +1,23 @@
+{
+  "id": "3258586f4670d4da71c3ea3bec0586c14cb3429c7f855443a7ca1ce6fa3fe9c8",
+  "timestamp": "2026-01-16T10:10:35.458376+00:00",
+  "event_type": "METACOGNITION",
+  "causal_parents": [
+    "f5dd0363660f1bf392cc97eaeaba4f32865acc004719a413472ccf36186a2a49"
+  ],
+  "content": {
+    "observation_type": "handoff_ack",
+    "metrics": {},
+    "conclusions": [
+      "Acknowledged handoff from previous session: 8af808d2b2d2"
+    ],
+    "actions_triggered": []
+  },
+  "concepts": [
+    "metacognition",
+    "handoff_ack"
+  ],
+  "metadata": {
+    "session": "session-20260116-101035"
+  }
+}
